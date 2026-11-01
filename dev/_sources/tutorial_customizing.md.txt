@@ -511,9 +511,10 @@ These pages cover the topics of this tutorial in more detail:
 - [Share behavior with base views](#share-behaviour-with-base-views): the full
   inheritance guide
 - [Testing](testing.md): the test fixtures, and test databases
-- [New & Existing Projects](projects.md): split the file into packages as
-  the app grows, generate a project with `restly new`, or add Restly beside
-  the routes you already have
+- [New Projects](new_projects.md): split the file into packages as the app
+  grows, or generate a project with `restly new`
+- [Existing Projects](existing_projects.md): add Restly beside the routes you
+  already have
 - [Deploying](deploying.md): a production database, and Alembic migrations
   instead of `async_create_all`
 - [API Reference](api_reference.md)

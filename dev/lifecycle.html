@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 
 
@@ -28,8 +27,8 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
-<link href="_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+  <link href="_static/styles/theme.css?digest=18bd87630a240e9c25be" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=18bd87630a240e9c25be" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
@@ -37,10 +36,10 @@
     <link rel="stylesheet" type="text/css" href="_static/custom.css?v=643d5ecc" />
   
   <!-- So that users can add custom icons -->
-  <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <script defer src="_static/scripts/fontawesome.js?digest=18bd87630a240e9c25be"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
-<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=18bd87630a240e9c25be" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=18bd87630a240e9c25be" />
 
     <script src="_static/documentation_options.js?v=61ccb1f1"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
@@ -50,12 +49,13 @@
     <script src="_static/design-tabs.js?v=f930bc37"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'lifecycle';</script>
     <script>
-        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_version = '0.23.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://www.fastapi-restly.org/switcher.json';
         DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'dev';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             false;
         </script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
     <script src="_static/newsletter.js?v=7326e93d"></script>
     <link rel="canonical" href="https://www.fastapi-restly.org/dev/lifecycle.html" />
     <link rel="icon" href="_static/favicon.svg"/>
@@ -66,8 +66,15 @@
     <link rel="prev" title="CRUD Routes" href="crud_routes.html" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="color-scheme" content="light dark"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="0.12" />
+  
+    
+    <script src="_static/searchtools.js"></script>
+    <script src="_static/language_data.js"></script>
+    <script src="searchindex.js"></script>
+  
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -78,19 +85,19 @@
         async src="//gc.zgo.at/count.js"></script>
 
   </head>
-  
-  
-  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="auto">
-
+  <body data-default-mode="auto">
   
   
   <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
   
   <div id="pst-scroll-pixel-helper"></div>
   
   <button type="button" class="btn rounded-pill" id="pst-back-to-top">
     <i class="fa-solid fa-arrow-up"></i>Back to top</button>
-
+  
+  
+  
   
   <dialog id="pst-search-dialog">
     
@@ -116,9 +123,9 @@
 </div>
 
   
-    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
 <div class="bd-header__inner bd-page-width">
-  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+  <button type="button" class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
     <span class="fa-solid fa-bars"></span>
   </button>
   
@@ -187,23 +194,13 @@
   </a>
 </li>
 
-            <li class="nav-item dropdown">
-                <button class="btn dropdown-toggle nav-item" type="button"
-                data-bs-toggle="dropdown" aria-expanded="false"
-                aria-controls="pst-nav-more-links">
-                    More
-                </button>
-                <ul id="pst-nav-more-links" class="dropdown-menu">
-                    
-<li class=" ">
-  <a class="nav-link dropdown-item nav-internal" href="about.html">
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="about.html">
     About
   </a>
 </li>
 
-                </ul>
-            </li>
-            
   </ul>
 </nav></div>
       
@@ -215,7 +212,7 @@
         <div class="navbar-item navbar-persistent--container">
           
 
-<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+<button type="button" class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
  <i class="fa-solid fa-magnifying-glass"></i>
  <span class="search-button__default-text">Search</span>
  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
@@ -245,11 +242,18 @@
       
         <div class="navbar-item">
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button></div>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button type="button" class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
       
         <div class="navbar-item"><ul class="navbar-icon-links"
     aria-label="Icon Links">
@@ -262,8 +266,7 @@
           
           
           
-          <a href="https://github.com/rjprins/fastapi-restly" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">GitHub</span></a>
+          <a href="https://github.com/rjprins/fastapi-restly" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
         </li>
 </ul></div>
       
@@ -274,7 +277,7 @@
   
     <div class="navbar-persistent--mobile">
 
-<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+<button type="button" class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
  <i class="fa-solid fa-magnifying-glass"></i>
  <span class="search-button__default-text">Search</span>
  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
@@ -283,7 +286,7 @@
   
 
   
-    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+    <button type="button" class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
       <span class="fa-solid fa-outdent"></span>
     </button>
   
@@ -379,11 +382,18 @@
         
           <div class="navbar-item">
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button></div>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button type="button" class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
         
           <div class="navbar-item"><ul class="navbar-icon-links"
     aria-label="Icon Links">
@@ -396,8 +406,7 @@
           
           
           
-          <a href="https://github.com/rjprins/fastapi-restly" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">GitHub</span></a>
+          <a href="https://github.com/rjprins/fastapi-restly" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
         </li>
 </ul></div>
         
@@ -406,13 +415,22 @@
   </div>
   
     <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item pst-sidebar-collapse"><button type="button" id="pst-collapse-sidebar-button" aria-expanded="true" aria-controls="pst-primary-sidebar">
+  <svg class="pst-icon" role="img" aria-hidden="true" focusable="false" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+    <path fill="currentColor" d="M3 15.5C2.36232 15.5 1.74874 15.2564 1.28478 14.8189C0.820828 14.3815 0.541576 13.7832 0.504167 13.1467L0.5 13L0.5 3C0.499965 2.36232 0.743605 1.74874 1.18107 1.28478C1.61854 0.820828 2.21676 0.541576 2.85333 0.504167L3 0.5L13 0.5C13.6377 0.499965 14.2513 0.743605 14.7152 1.18107C15.1792 1.61854 15.4584 2.21676 15.4958 2.85333L15.5 3L15.5 13C15.5 13.6377 15.2564 14.2513 14.8189 14.7152C14.3815 15.1792 13.7832 15.4584 13.1467 15.4958L13 15.5L3 15.5ZM3 13.8333L10.5 13.8333L10.5 2.16667L3 2.16667C2.79589 2.16669 2.59889 2.24163 2.44636 2.37726C2.29383 2.5129 2.19638 2.69979 2.1725 2.9025L2.16667 3L2.16667 13C2.16669 13.2041 2.24163 13.4011 2.37726 13.5536C2.5129 13.7062 2.69979 13.8036 2.9025 13.8275L3 13.8333ZM6.65583 10.325L6.5775 10.2558L4.91083 8.58917C4.76735 8.44567 4.68116 8.25476 4.66843 8.05223C4.65569 7.84971 4.71729 7.6495 4.84167 7.48917L4.91083 7.41083L6.5775 5.74417C6.72747 5.59471 6.9287 5.50794 7.14032 5.50148C7.35194 5.49502 7.55809 5.56935 7.7169 5.70937C7.8757 5.8494 7.97525 6.04463 7.99533 6.25539C8.01541 6.46616 7.95451 6.67667 7.825 6.84417L7.75583 6.9225L6.67917 8L7.75583 9.0775C7.89931 9.22099 7.98551 9.41191 7.99824 9.61443C8.01097 9.81695 7.94938 10.0172 7.825 10.1775L7.75583 10.2558C7.61234 10.3993 7.42142 10.4855 7.2189 10.4982C7.01638 10.511 6.81617 10.4494 6.65583 10.325Z"/>
+  </svg>
+  <span class="pst-collapse-sidebar-label">Collapse Sidebar</span>
+  <span class="pst-expand-sidebar-label">Expand Sidebar</span>
+</button></div>
         <div class="sidebar-primary-item">
+
 <nav class="bd-docs-nav bd-links"
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Setup</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="projects.html">New &amp; Existing Projects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="new_projects.html">New Projects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="existing_projects.html">Existing Projects</a></li>
 <li class="toctree-l1"><a class="reference internal" href="database.html">Database &amp; Configuration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="models.html">Models</a></li>
 </ul>
@@ -420,7 +438,7 @@
 <ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="views.html">Views</a></li>
 <li class="toctree-l1"><a class="reference internal" href="crud_routes.html">CRUD Routes</a></li>
-<li class="toctree-l1 current active"><a class="current reference internal" href="#">Request Lifecycle &amp; Hooks</a></li>
+<li class="toctree-l1 current active"><a aria-current="page" class="current reference internal" href="#">Request Lifecycle &amp; Hooks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="react_admin.html">React Admin</a></li>
 <li class="toctree-l1"><a class="reference internal" href="typing.html">Type Annotations</a></li>
 </ul>
@@ -527,14 +545,14 @@ dependencies and inheritance.</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>POST /
 <span class="hll">  └─ create_endpoint(data)                # endpoint method: the HTTP contract
 </span>       ├─ handle_create(data)             # handler: runs the steps (final)
-<span class="hll">       │    ├─ authorize(&quot;create&quot;, data=data)
+<span class="hll">       │    ├─ authorize("create", data=data)
 </span>       │    ├─ check the references in data   # an id that does not exist: 404
 <span class="hll">       │    ├─ create(data)               # business method: builds the object;
 </span><span class="hll">       │    │                             #   nothing is written yet
 </span>       │    ├─ save: flush, refresh obj, load it with the loader options
-<span class="hll">       │    ├─ before_action_commit(&quot;create&quot;, new=obj, old=None)
+<span class="hll">       │    ├─ before_action_commit("create", new=obj, old=None)
 </span>       │    ├─ commit
-<span class="hll">       │    └─ after_action_commit(&quot;create&quot;, new=obj, old=None)
+<span class="hll">       │    └─ after_action_commit("create", new=obj, old=None)
 </span><span class="hll">       └─ to_response(obj)
 </span></pre></div>
 </div>
@@ -615,14 +633,14 @@ step of the load comes from a declaration or from a small hook:</p>
        │    │    │                            #   VISIBILITY: a hidden row is a 404 for every caller
 <span class="hll">       │    │    ├─ .where(where_id(id))      # hook: the primary key by default
 </span><span class="hll">       │    │    └─ no row: raise not_found(id)   # hook: a 404 by default
-</span><span class="hll">       │    └─ authorize(&quot;get_one&quot;, obj=obj)  # POLICY: checks the loaded row
+</span><span class="hll">       │    └─ authorize("get_one", obj=obj)  # POLICY: checks the loaded row
 </span><span class="hll">       └─ to_response(obj)
 </span><span class="hll">            └─ to_single_response(obj)        # the response of the row
 </span>
 GET /
 <span class="hll">  └─ get_many_endpoint(list_params)
 </span>       ├─ handle_get_many(list_params)
-<span class="hll">       │    ├─ authorize(&quot;get_many&quot;)          # POLICY: no row yet
+<span class="hll">       │    ├─ authorize("get_many")          # POLICY: no row yet
 </span>       │    └─ get_many(list_params)          # the load (final)
        │         ├─ select()                  # the same start as get_one
 <span class="hll">       │         ├─ apply_list_params(stmt, list_params)   # filters, sort, page
@@ -797,7 +815,7 @@ event instead.</p></li>
 
 <span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
-    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/users&quot;</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">"/users"</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
     <span class="n">schema</span> <span class="o">=</span> <span class="n">UserSchema</span>
 
@@ -820,7 +838,7 @@ out of every response.</p>
 <code class="docutils literal notranslate"><span class="pre">update</span></code> as well:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
         <span class="n">user</span> <span class="o">=</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
-        <span class="k">if</span> <span class="s2">&quot;password&quot;</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">model_fields_set</span><span class="p">:</span>
+        <span class="k">if</span> <span class="s2">"password"</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">model_fields_set</span><span class="p">:</span>
             <span class="n">user</span><span class="o">.</span><span class="n">password</span> <span class="o">=</span> <span class="n">hash_password</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">password</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">user</span>
 </pre></div>
@@ -844,7 +862,7 @@ When <code class="docutils literal notranslate"><span class="pre">create</span><
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
         <span class="n">report</span> <span class="o">=</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
         <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>  <span class="c1"># report.id is set now</span>
-        <span class="n">report</span><span class="o">.</span><span class="n">file_path</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;reports/</span><span class="si">{</span><span class="n">report</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">.pdf&quot;</span>
+        <span class="n">report</span><span class="o">.</span><span class="n">file_path</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"reports/</span><span class="si">{</span><span class="n">report</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">.pdf"</span>
         <span class="k">return</span> <span class="n">report</span>
 </pre></div>
 </div>
@@ -884,7 +902,7 @@ already loaded through the scope, not the id. A rule that needs the stored row
 or the database goes here:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">obj</span><span class="o">.</span><span class="n">locked</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="n">fr</span><span class="o">.</span><span class="n">exc</span><span class="o">.</span><span class="n">Conflict</span><span class="p">(</span><span class="s2">&quot;This record is locked&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="n">fr</span><span class="o">.</span><span class="n">exc</span><span class="o">.</span><span class="n">Conflict</span><span class="p">(</span><span class="s2">"This record is locked"</span><span class="p">)</span>
         <span class="k">return</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -902,7 +920,7 @@ Every response of the view passes there: one row, each row of a list, the
 row after a write, and a custom route that returns the row:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">def</span><span class="w"> </span><span class="nf">to_single_response</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
         <span class="n">response</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">to_single_response</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">response</span><span class="o">.</span><span class="n">model_copy</span><span class="p">(</span><span class="n">update</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;can_edit&quot;</span><span class="p">:</span> <span class="n">obj</span><span class="o">.</span><span class="n">owner_id</span> <span class="o">==</span> <span class="n">Current</span><span class="o">.</span><span class="n">user_id</span><span class="p">()})</span>
+        <span class="k">return</span> <span class="n">response</span><span class="o">.</span><span class="n">model_copy</span><span class="p">(</span><span class="n">update</span><span class="o">=</span><span class="p">{</span><span class="s2">"can_edit"</span><span class="p">:</span> <span class="n">obj</span><span class="o">.</span><span class="n">owner_id</span> <span class="o">==</span> <span class="n">Current</span><span class="o">.</span><span class="n">user_id</span><span class="p">()})</span>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">Current.user_id()</span></code> is the id of the caller
@@ -967,7 +985,7 @@ call, and builds the response:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi_restly.views</span><span class="w"> </span><span class="kn">import</span> <span class="n">ViewListResponse</span>
 
 
-<span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+<span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/"</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_many_endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">list_params</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ViewListResponse</span><span class="p">:</span>
     <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_get_many</span><span class="p">(</span><span class="n">list_params</span><span class="p">)</span>
     <span class="n">ratings</span> <span class="o">=</span> <span class="k">await</span> <span class="n">rating_service</span><span class="o">.</span><span class="n">for_ids</span><span class="p">([</span><span class="n">p</span><span class="o">.</span><span class="n">id</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">objects</span><span class="p">])</span>
@@ -1013,7 +1031,7 @@ loader options. Then it runs <code class="docutils literal notranslate"><span cl
 <p>So an override calls <code class="docutils literal notranslate"><span class="pre">super()</span></code>, and changes the object before or after that
 call. To build the object in another way, build it yourself and return it:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
-        <span class="c1"># this model&#39;s constructor takes the values in another form</span>
+        <span class="c1"># this model's constructor takes the values in another form</span>
         <span class="k">return</span> <span class="n">Product</span><span class="o">.</span><span class="n">from_catalog_entry</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">catalog_entry</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -1061,7 +1079,7 @@ function and call it from both:</p>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
-    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/users&quot;</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">"/users"</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
     <span class="n">schema</span> <span class="o">=</span> <span class="n">UserSchema</span>
 
@@ -1112,44 +1130,65 @@ see <a class="reference internal" href="database.html#own-session-generator"><sp
 </div>
 <section id="when-a-write-action-raises">
 <span id="write-action-error"></span><h3>When a write action raises<a class="headerlink" href="#when-a-write-action-raises" title="Link to this heading">#</a></h3>
-<p>To catch the error of a write action and go on, put each write action in
-<a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/session_api.html#sqlalchemy.orm.Session.begin_nested" title="(in SQLAlchemy v2.0)"><code class="xref py py-meth docutils literal notranslate"><span class="pre">session.begin_nested()</span></code></a>. Catch
-the error outside it:</p>
+<p>When a write action raises, Restly rolls back what the action changed, and
+the session stays usable. So a route can catch the error of one write and go
+on:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTTPException</span>
 
-    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/bulk&quot;</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">201</span><span class="p">)</span>
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">"/bulk"</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">201</span><span class="p">)</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">bulk_create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">items</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">OrderCreate</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">ViewResponse</span><span class="p">]:</span>
         <span class="n">orders</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">items</span><span class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
-                <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">begin_nested</span><span class="p">():</span>
-                    <span class="n">orders</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_create</span><span class="p">(</span><span class="n">item</span><span class="p">))</span>
+                <span class="n">orders</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_create</span><span class="p">(</span><span class="n">item</span><span class="p">))</span>
             <span class="k">except</span> <span class="n">HTTPException</span><span class="p">:</span>  <span class="c1"># also fr.exc.Conflict, for a duplicate value</span>
                 <span class="k">continue</span>
         <span class="k">return</span> <span class="n">orders</span>
 </pre></div>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">begin_nested()</span></code> starts a savepoint. When the handler raises before its
-commit, SQLAlchemy rolls back to the savepoint. This undoes what the handler
-changed, and the session stays usable. When the handler succeeds, it
-commits, so each order is saved on its own. On <code class="docutils literal notranslate"><span class="pre">fr.RestView</span></code>, use <code class="docutils literal notranslate"><span class="pre">with</span></code> and
-the sync handlers.</p>
-<p>The savepoint ends at the commit. So an error from <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code>
-does not undo the order: the order is saved. See
-<a class="reference internal" href="#after-action-commit-raises">When <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code> raises</a>. After an
-error at the commit itself, such as from a deferred constraint, the session
-needs <code class="docutils literal notranslate"><span class="pre">session.rollback()</span></code> before it can write again.</p>
-<p>Without the savepoint, the error skips the commit of the action, but it does
-not undo what the action already changed in the session. So the next write
-action commits that change too, such as a row that <code class="docutils literal notranslate"><span class="pre">before_action_commit</span></code>
-refused. After a database error at the flush, such as a duplicate value, the
-next write fails with SQLAlchemy’s
-<a class="reference external" href="https://docs.sqlalchemy.org/en/20/core/exceptions.html#sqlalchemy.exc.PendingRollbackError" title="(in SQLAlchemy v2.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">PendingRollbackError</span></code></a> instead.
-Inside a <code class="docutils literal notranslate"><span class="pre">shared_write_action_commit()</span></code> block, Restly raises <code class="docutils literal notranslate"><span class="pre">RuntimeError</span></code>
-in both cases. A route that does not catch the error needs no savepoint: the
-request fails, and the session rolls back when the request ends.</p>
-<p>To save all orders in one commit, see
+<p>Each order is committed on its own. On <code class="docutils literal notranslate"><span class="pre">fr.RestView</span></code>, use the sync handlers.
+To save all orders in one commit, see
 <a class="reference internal" href="#shared-write-action-commit">Commit several writes together</a>.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p>Each outermost write action runs in a savepoint, SQLAlchemy’s
+<a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/session_api.html#sqlalchemy.orm.Session.begin_nested" title="(in SQLAlchemy v2.0)"><code class="xref py py-meth docutils literal notranslate"><span class="pre">session.begin_nested()</span></code></a>. The
+savepoint begins after <code class="docutils literal notranslate"><span class="pre">authorize</span></code>, the reference check and the snapshot, and
+it ends at the commit. When the action raises before the commit, Restly rolls
+back to the savepoint. This undoes only what the action changed. Rows that
+the action did not change stay loaded, so async code can still read them.
+Rows that it changed, such as the row of an update, are expired. In async
+code, call <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">session.refresh(obj)</span></code> before you read such a row. Inside a
+<code class="docutils literal notranslate"><span class="pre">shared_write_action_commit()</span></code> block, or inside the block of another action,
+an action has no savepoint of its own; see
+<a class="reference internal" href="#shared-write-action-commit">Commit several writes together</a>.</p>
+<p>A savepoint begins with a flush of what is pending in the session, as
+<code class="docutils literal notranslate"><span class="pre">begin_nested()</span></code> always does. So an object that a route adds to the session
+before the write action is written when the action begins, and an error in
+the action does not undo it. This is also true for a new object that a route
+appends to a collection of a loaded row. Give a new object to <code class="docutils literal notranslate"><span class="pre">write_action</span></code>
+as <code class="docutils literal notranslate"><span class="pre">obj</span></code>, without <code class="docutils literal notranslate"><span class="pre">session.add()</span></code>, and connect it to loaded rows inside the
+block: the action then adds it inside its savepoint.</p>
+<p>An error from <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code> does not undo the order: the order is
+saved. See <a class="reference internal" href="#after-action-commit-raises">When <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code> raises</a>.
+When the commit itself fails, for example on a deferred constraint, Restly
+rolls back the whole transaction. This also expires the rows that were loaded
+before. On SQLite, Restly sends <code class="docutils literal notranslate"><span class="pre">BEGIN</span></code> before the savepoint. With the default
+settings of the driver, the end of the savepoint would commit already
+otherwise.</p>
+<p>The savepoint costs two more statements for each write: <code class="docutils literal notranslate"><span class="pre">SAVEPOINT</span></code> and
+<code class="docutils literal notranslate"><span class="pre">RELEASE</span> <span class="pre">SAVEPOINT</span></code>. On SQLite, <code class="docutils literal notranslate"><span class="pre">BEGIN</span></code> is a third.</p>
+<p>SQLAlchemy calls the listeners of the session for a savepoint too:
+<code class="docutils literal notranslate"><span class="pre">after_begin</span></code> when it begins, <code class="docutils literal notranslate"><span class="pre">before_commit</span></code> and <code class="docutils literal notranslate"><span class="pre">after_commit</span></code> when it ends,
+and <code class="docutils literal notranslate"><span class="pre">after_rollback</span></code> when it rolls back. So <code class="docutils literal notranslate"><span class="pre">before_commit</span></code> and <code class="docutils literal notranslate"><span class="pre">after_commit</span></code>
+run twice for each outermost write action: when the savepoint ends, and at the
+commit. The first time is before the commit, which can still fail. A listener
+that must run only at the commit returns early when
+<code class="docutils literal notranslate"><span class="pre">session.in_nested_transaction()</span></code> is true. Work that must wait for the commit,
+such as an email, belongs in <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code>. On SQLite, the savepoint
+can also make <code class="docutils literal notranslate"><span class="pre">database</span> <span class="pre">is</span> <span class="pre">locked</span></code> come sooner; see
+<a class="reference internal" href="database.html#sqlite-wal"><span class="std std-ref">Turn on WAL for SQLite</span></a>.</p>
+</div>
 </section>
 </section>
 <section id="run-code-before-or-after-the-commit">
@@ -1184,7 +1223,7 @@ has no <code class="docutils literal notranslate"><span class="pre">new</span></
 handlers and for every <code class="docutils literal notranslate"><span class="pre">write_action</span></code> block. So a hook can check what changed
 without a list of routes:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">after_action_commit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">,</span> <span class="n">new</span><span class="p">,</span> <span class="n">old</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="k">if</span> <span class="n">old</span> <span class="ow">and</span> <span class="n">new</span> <span class="ow">and</span> <span class="n">old</span><span class="p">[</span><span class="s2">&quot;status&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="n">new</span><span class="o">.</span><span class="n">status</span><span class="p">:</span>  <span class="c1"># PATCH, archive, ...</span>
+        <span class="k">if</span> <span class="n">old</span> <span class="ow">and</span> <span class="n">new</span> <span class="ow">and</span> <span class="n">old</span><span class="p">[</span><span class="s2">"status"</span><span class="p">]</span> <span class="o">!=</span> <span class="n">new</span><span class="o">.</span><span class="n">status</span><span class="p">:</span>  <span class="c1"># PATCH, archive, ...</span>
             <span class="k">await</span> <span class="n">notify_status_change</span><span class="p">(</span><span class="n">new</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">new</span><span class="o">.</span><span class="n">status</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -1200,7 +1239,7 @@ with its new timestamp. A delete that must finish outside the request can
 mark the row in <code class="docutils literal notranslate"><span class="pre">delete</span></code> in the same way. After the commit,
 <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code> starts the real delete:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">delete</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
-        <span class="n">obj</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="s2">&quot;pending_deletion&quot;</span>  <span class="c1"># no super(): the row stays</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="s2">"pending_deletion"</span>  <span class="c1"># no super(): the row stays</span>
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">after_action_commit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">,</span> <span class="n">new</span><span class="p">,</span> <span class="n">old</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">DELETE</span><span class="p">:</span>
@@ -1261,8 +1300,8 @@ an effect that may fail without harm, catch and log the error in the hook:</p>
         <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">CREATE</span><span class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="k">await</span> <span class="n">send_confirmation_email</span><span class="p">(</span><span class="n">new</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
-            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>  <span class="c1"># the order is saved; don&#39;t fail the request</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s2">&quot;Confirmation email failed for order </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">new</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>  <span class="c1"># the order is saved; don't fail the request</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s2">"Confirmation email failed for order </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">new</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>An effect that must happen belongs in an outbox row, written in
@@ -1285,11 +1324,11 @@ route decorator. Most replacements call the handler and only change the
 response:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">ProductView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
-    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/products&quot;</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">"/products"</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Product</span>
     <span class="n">schema</span> <span class="o">=</span> <span class="n">ProductSchema</span>
 
-    <span class="nd">@fr</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="s2">"/</span><span class="si">{id}</span><span class="s2">"</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">delete_endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
         <span class="n">obj</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_one</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>               <span class="c1"># load through the scope, or 404</span>
         <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_response</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>           <span class="c1"># the row as GET /{id} sends it</span>
@@ -1333,21 +1372,21 @@ header. Keep the <code class="docutils literal notranslate"><span class="pre">li
 
 <span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">ProductView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
-    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/products&quot;</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">"/products"</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Product</span>
     <span class="n">schema</span> <span class="o">=</span> <span class="n">ProductSchema</span>
 
-    <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="nb">list</span><span class="p">[</span><span class="n">ViewResponse</span><span class="p">])</span>
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/"</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="nb">list</span><span class="p">[</span><span class="n">ViewResponse</span><span class="p">])</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_many_endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">list_params</span><span class="p">):</span>
         <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_get_many</span><span class="p">(</span><span class="n">list_params</span><span class="p">)</span>
         <span class="n">serialized</span> <span class="o">=</span> <span class="p">[</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">to_response</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;json&quot;</span><span class="p">,</span> <span class="n">by_alias</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">to_response</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">"json"</span><span class="p">,</span> <span class="n">by_alias</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">obj</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">objects</span>
         <span class="p">]</span>
         <span class="k">return</span> <span class="n">fastapi</span><span class="o">.</span><span class="n">Response</span><span class="p">(</span>
             <span class="n">content</span><span class="o">=</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">serialized</span><span class="p">),</span>
-            <span class="n">media_type</span><span class="o">=</span><span class="s2">&quot;application/json&quot;</span><span class="p">,</span>
-            <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;X-Total-Count&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">total_count</span><span class="p">)},</span>
+            <span class="n">media_type</span><span class="o">=</span><span class="s2">"application/json"</span><span class="p">,</span>
+            <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">"X-Total-Count"</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">total_count</span><span class="p">)},</span>
         <span class="p">)</span>
 </pre></div>
 </div>
@@ -1366,7 +1405,7 @@ List the mixin before the view class, so Python finds its method first:</p>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">DeleteReturnsObjectMixin</span><span class="p">:</span>
-    <span class="nd">@fr</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="s2">"/</span><span class="si">{id}</span><span class="s2">"</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">delete_endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="n">ViewID</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ViewResponse</span><span class="p">:</span>
         <span class="n">obj</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_one</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
         <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_response</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
@@ -1376,7 +1415,7 @@ List the mixin before the view class, so Python finds its method first:</p>
 
 <span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">ProductView</span><span class="p">(</span><span class="n">DeleteReturnsObjectMixin</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
-    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/products&quot;</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">"/products"</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Product</span>
     <span class="n">schema</span> <span class="o">=</span> <span class="n">ProductSchema</span>
 </pre></div>
@@ -1403,7 +1442,7 @@ through the scope, but it does not call <code class="docutils literal notranslat
 <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.select" title="fastapi_restly.views.BaseRestView.select"><code class="xref py py-meth docutils literal notranslate"><span class="pre">self.select()</span></code></a>: the view’s
 model with its scope and its loader options. So the rows are the ones that
 the view shows, and each row loads what the response needs:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/recent&quot;</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/recent"</span><span class="p">)</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">recent</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">ViewResponse</span><span class="p">]:</span>
         <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">authorize</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">GET_MANY</span><span class="p">)</span>
         <span class="n">stmt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">select</span><span class="p">()</span><span class="o">.</span><span class="n">order_by</span><span class="p">(</span><span class="n">Post</span><span class="o">.</span><span class="n">created_at</span><span class="o">.</span><span class="n">desc</span><span class="p">())</span><span class="o">.</span><span class="n">limit</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
@@ -1416,9 +1455,9 @@ class. The route declares a list of it, so Restly passes each row through
 <a class="reference internal" href="responses.html#custom-route-response"><span class="std std-ref">The response of a custom route</span></a>. The route builds
 its own read, so it calls <code class="docutils literal notranslate"><span class="pre">authorize</span></code> itself.</p>
 <p>The SaaS example’s <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/users/me</span></code> returns the caller’s own row:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/me&quot;</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/me"</span><span class="p">)</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_current_user</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ViewResponse</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get current user&#39;s profile.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""Get current user's profile."""</span>
         <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_get_one</span><span class="p">(</span><span class="n">Current</span><span class="o">.</span><span class="n">user_id</span><span class="p">())</span>
 </pre></div>
 </div>
@@ -1445,7 +1484,7 @@ project’s tasks.</p>
 boolean expression in place of the id. The expression picks the row instead
 of the primary key. Everything else about the load stays the same: the view’s
 <a class="reference internal" href="scopes.html#view-scope"><span class="std std-ref">scope</span></a>, the loader options, and the 404.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/by-email/</span><span class="si">{email}</span><span class="s2">&quot;</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/by-email/</span><span class="si">{email}</span><span class="s2">"</span><span class="p">)</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_by_email</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">email</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ViewResponse</span><span class="p">:</span>
         <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_get_one</span><span class="p">(</span><span class="n">User</span><span class="o">.</span><span class="n">email</span> <span class="o">==</span> <span class="n">email</span><span class="p">)</span>
 </pre></div>
@@ -1460,7 +1499,7 @@ the value in the path:</p>
 
 <span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">RecipeView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
-    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/recipes&quot;</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">"/recipes"</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Recipe</span>
     <span class="n">schema</span> <span class="o">=</span> <span class="n">RecipeSchema</span>
     <span class="n">id_type</span> <span class="o">=</span> <span class="nb">str</span>
@@ -1475,7 +1514,7 @@ a row that does not exist, override
 <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.not_found" title="fastapi_restly.views.BaseRestView.not_found"><code class="xref py py-meth docutils literal notranslate"><span class="pre">not_found</span></code></a>. It returns
 the exception that <code class="docutils literal notranslate"><span class="pre">get_one</span></code> raises:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">def</span><span class="w"> </span><span class="nf">not_found</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="ne">Exception</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">fr</span><span class="o">.</span><span class="n">exc</span><span class="o">.</span><span class="n">NotFound</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No recipe has the slug </span><span class="si">{</span><span class="nb">id</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">fr</span><span class="o">.</span><span class="n">exc</span><span class="o">.</span><span class="n">NotFound</span><span class="p">(</span><span class="sa">f</span><span class="s2">"No recipe has the slug </span><span class="si">{</span><span class="nb">id</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
 </pre></div>
 </div>
 <div class="details admonition">
@@ -1492,12 +1531,12 @@ from the path, such as <code class="docutils literal notranslate"><span class="p
 path takes only an integer, and <code class="docutils literal notranslate"><span class="pre">/seats/3-7</span></code> is a 404 before <code class="docutils literal notranslate"><span class="pre">where_id</span></code>
 runs. Then the default item routes work for the model:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">SeatView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
-    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/seats&quot;</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">"/seats"</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Seat</span>
-    <span class="n">id_type</span> <span class="o">=</span> <span class="nb">str</span>  <span class="c1"># the id in the path is &quot;3-7&quot;</span>
+    <span class="n">id_type</span> <span class="o">=</span> <span class="nb">str</span>  <span class="c1"># the id in the path is "3-7"</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">where_id</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ColumnElement</span><span class="p">[</span><span class="nb">bool</span><span class="p">]:</span>
-        <span class="n">row</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">number</span> <span class="o">=</span> <span class="nb">id</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span><span class="s2">&quot;-&quot;</span><span class="p">)</span>
+        <span class="n">row</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">number</span> <span class="o">=</span> <span class="nb">id</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span><span class="s2">"-"</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">isdigit</span><span class="p">()</span> <span class="ow">and</span> <span class="n">number</span><span class="o">.</span><span class="n">isdigit</span><span class="p">()):</span>
             <span class="k">raise</span> <span class="bp">self</span><span class="o">.</span><span class="n">not_found</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">sqlalchemy</span><span class="o">.</span><span class="n">and_</span><span class="p">(</span><span class="n">Seat</span><span class="o">.</span><span class="n">row</span> <span class="o">==</span> <span class="nb">int</span><span class="p">(</span><span class="n">row</span><span class="p">),</span> <span class="n">Seat</span><span class="o">.</span><span class="n">number</span> <span class="o">==</span> <span class="nb">int</span><span class="p">(</span><span class="n">number</span><span class="p">))</span>
@@ -1541,14 +1580,14 @@ four forms.</p>
 name of the action. <code class="docutils literal notranslate"><span class="pre">obj</span></code> names the row that the action is about. The blog
 example publishes a post:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">class</span><span class="w"> </span><span class="nc">Action</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">Action</span><span class="p">):</span>
-        <span class="n">PUBLISH</span> <span class="o">=</span> <span class="s2">&quot;publish&quot;</span>
+        <span class="n">PUBLISH</span> <span class="o">=</span> <span class="s2">"publish"</span>
 
-    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/</span><span class="si">{id}</span><span class="s2">/publish&quot;</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">"/</span><span class="si">{id}</span><span class="s2">/publish"</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">publish</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Post</span><span class="p">:</span>
         <span class="n">post</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_one</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
         <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">write_action</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">PUBLISH</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="n">post</span><span class="p">):</span>
             <span class="k">if</span> <span class="n">post</span><span class="o">.</span><span class="n">published</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="n">fr</span><span class="o">.</span><span class="n">exc</span><span class="o">.</span><span class="n">Conflict</span><span class="p">(</span><span class="s2">&quot;Already published&quot;</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="n">fr</span><span class="o">.</span><span class="n">exc</span><span class="o">.</span><span class="n">Conflict</span><span class="p">(</span><span class="s2">"Already published"</span><span class="p">)</span>
             <span class="n">post</span><span class="o">.</span><span class="n">published</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="k">return</span> <span class="n">post</span>
 </pre></div>
@@ -1578,7 +1617,7 @@ update with another path or another body, call the handler,
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_update" title="fastapi_restly.views.RestView.handle_update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_update</span></code></a>. The
 route then runs every step of that CRUD action, with <code class="docutils literal notranslate"><span class="pre">authorize</span></code> and the
 commit. The SaaS example’s <code class="docutils literal notranslate"><span class="pre">PATCH</span> <span class="pre">/users/me</span></code> updates the caller’s own row:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="nd">@fr</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s2">&quot;/me&quot;</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="nd">@fr</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s2">"/me"</span><span class="p">)</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">update_current_user</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">UpdateMeRequest</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ViewResponse</span><span class="p">:</span>
         <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_update</span><span class="p">(</span><span class="n">Current</span><span class="o">.</span><span class="n">user_id</span><span class="p">(),</span> <span class="n">request</span><span class="p">)</span>
 </pre></div>
@@ -1590,7 +1629,7 @@ business method applies here too.</p>
 <p><strong>Create in a block of your own.</strong> Some creates need more than <code class="docutils literal notranslate"><span class="pre">create</span></code> does,
 such as a parent row and its child rows. Build the new object, and pass it to
 <code class="docutils literal notranslate"><span class="pre">write_action</span></code> as <code class="docutils literal notranslate"><span class="pre">obj</span></code>:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/with-lines&quot;</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">201</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">"/with-lines"</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">201</span><span class="p">)</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_with_lines</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">OrderWithLines</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ViewResponse</span><span class="p">:</span>
         <span class="n">order</span> <span class="o">=</span> <span class="n">Order</span><span class="p">(</span><span class="n">customer_id</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">customer_id</span><span class="p">)</span>
         <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">write_action</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">CREATE</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="n">order</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="p">):</span>
@@ -1606,17 +1645,21 @@ handler does. Then it adds the order to the session. When the block ends, it
 saves the order with the lines that its relationship holds, and the hooks
 receive the order as <code class="docutils literal notranslate"><span class="pre">new</span></code>.</p>
 <p>The route builds the order before the block, so before <code class="docutils literal notranslate"><span class="pre">authorize</span></code> and the
-reference check. That is safe, because building an object writes nothing. A
-check of the built object, such as a rule about its lines, goes inside the
-block, where <code class="docutils literal notranslate"><span class="pre">authorize</span></code> has already passed.</p>
+reference check. That is safe, because building an object writes nothing. But
+set a reference to a loaded row by its key, as <code class="docutils literal notranslate"><span class="pre">customer_id=</span></code> above, or set it
+inside the block. With <code class="docutils literal notranslate"><span class="pre">Order(customer=customer)</span></code> before the block, the loaded
+customer holds the new order in its <code class="docutils literal notranslate"><span class="pre">orders</span></code>. The action begins with a flush,
+and SQLAlchemy then warns that the order is not in the session. A check of the
+built object, such as a rule about its lines, goes inside the block, where
+<code class="docutils literal notranslate"><span class="pre">authorize</span></code> has already passed.</p>
 <p id="write-several-rows"><strong>Change several rows in one action.</strong> Pass <code class="docutils literal notranslate"><span class="pre">obj=None</span></code>: the action has no
 single row. When the block ends, Restly saves every row of the view’s model
 that the block changed. It reloads them together, with the view’s loader
 options, so each row comes back as the database has it:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">class</span><span class="w"> </span><span class="nc">Action</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">Action</span><span class="p">):</span>
-        <span class="n">REORDER</span> <span class="o">=</span> <span class="s2">&quot;reorder&quot;</span>
+        <span class="n">REORDER</span> <span class="o">=</span> <span class="s2">"reorder"</span>
 
-    <span class="nd">@fr</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="s2">&quot;/positions&quot;</span><span class="p">)</span>
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="s2">"/positions"</span><span class="p">)</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">reorder</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">items</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">CookbookPosition</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">ViewResponse</span><span class="p">]:</span>
         <span class="n">cookbooks</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">write_action</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">REORDER</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">items</span><span class="p">):</span>
@@ -1674,7 +1717,7 @@ several of them at once, put them inside a
 <a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView.shared_write_action_commit" title="fastapi_restly.views.AsyncRestView.shared_write_action_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">shared_write_action_commit()</span></code></a>
 block. The outermost block commits once. Then the queued <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code>
 hooks run:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/bulk&quot;</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">201</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">"/bulk"</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">201</span><span class="p">)</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">bulk_create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">items</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">OrderCreate</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">ViewResponse</span><span class="p">]:</span>
         <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">shared_write_action_commit</span><span class="p">():</span>
             <span class="n">orders</span> <span class="o">=</span> <span class="p">[</span><span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_create</span><span class="p">(</span><span class="n">item</span><span class="p">)</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">items</span><span class="p">]</span>
@@ -1689,46 +1732,28 @@ that needs the commit, or an after-hook that has run, goes after the block,
 or in <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code>. The route above returns the orders after the
 block, so Restly builds their responses after the commit. On <code class="docutils literal notranslate"><span class="pre">fr.RestView</span></code>, use
 <code class="docutils literal notranslate"><span class="pre">with</span></code> and the sync handlers. The method has the same name.</p>
-<div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<p>On SQLite, a <code class="docutils literal notranslate"><span class="pre">session.begin_nested()</span></code> inside the block can commit its rows
-when it ends. This happens with the default settings of Python’s <code class="docutils literal notranslate"><span class="pre">sqlite3</span></code>
-module and of <code class="docutils literal notranslate"><span class="pre">aiosqlite</span></code>. When the block then fails, these rows stay saved,
-and their after-hooks do not run. Restly’s test fixtures change these
-settings in the default <a class="reference internal" href="testing.html#cleaning-up-between-tests"><span class="std std-ref">rollback mode</span></a>, so a
-test does not show the problem.</p>
-<p>So on SQLite, prefer the loop in
-<a class="reference internal" href="#write-action-error">When a write action raises</a>: each row commits on its
-own, without a shared block. SQLAlchemy shows how to change the settings for
-<a class="reference external" href="https://docs.sqlalchemy.org/en/20/dialects/sqlite.html#pysqlite-serializable"><code class="docutils literal notranslate"><span class="pre">sqlite3</span></code></a>
-and for
-<a class="reference external" href="https://docs.sqlalchemy.org/en/20/dialects/sqlite.html#aiosqlite-serializable"><code class="docutils literal notranslate"><span class="pre">aiosqlite</span></code></a>.
-But then the reads of a write join its transaction. So a write that overlaps
-another write can fail at once with “database is locked”, without waiting
-for the timeout.</p>
-</div>
 <div class="details admonition">
 <p class="admonition-title">Details</p>
 <p>The block can also hold the handlers of other views, for an operation on more
 than one model. Each create runs the steps of its own view: <code class="docutils literal notranslate"><span class="pre">authorize</span></code>, the
 reference checks, the save and the hooks. The SaaS example creates a label and
 attaches it to a task:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/create-and-attach&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">TaskLabelResponse</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">201</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">"/create-and-attach"</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">TaskLabelResponse</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">201</span><span class="p">)</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_and_attach</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">CreateAndAttachLabelRequest</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TaskLabel</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Sibling-creation: build a Label *and* a TaskLabel in one request.</span>
+<span class="w">        </span><span class="sd">"""Sibling-creation: build a Label *and* a TaskLabel in one request.</span>
 
 <span class="sd">        Two creates, each through the handler of its own view, inside one</span>
 <span class="sd">        ``shared_write_action_commit()``. So each runs its own steps:</span>
 <span class="sd">        ``authorize``, the reference checks, the save and the hooks. The</span>
-<span class="sd">        label&#39;s handler saves the label, so the link gets its id. The Label</span>
+<span class="sd">        label's handler saves the label, so the link gets its id. The Label</span>
 <span class="sd">        lands in the organization the request acts in: ``organization_id`` is</span>
-<span class="sd">        the model&#39;s stamp, not an argument here. The link&#39;s ``authorize``</span>
+<span class="sd">        the model's stamp, not an argument here. The link's ``authorize``</span>
 <span class="sd">        refuses a task that the member is not assigned to (403), and its</span>
 <span class="sd">        reference check refuses a foreign or deleted task (404). Then nothing</span>
 <span class="sd">        is committed, the label included.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="n">labels</span> <span class="o">=</span> <span class="n">LabelView</span><span class="p">(</span><span class="n">session</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">,</span> <span class="n">request</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="p">)</span>
         <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">shared_write_action_commit</span><span class="p">():</span>
             <span class="n">label</span> <span class="o">=</span> <span class="k">await</span> <span class="n">labels</span><span class="o">.</span><span class="n">handle_create</span><span class="p">(</span>
@@ -1754,9 +1779,10 @@ An exception that leaves a <code class="docutils literal notranslate"><span clas
 shared commit and drops the queued hooks. This also happens when an outer
 block catches the exception. For a write action that raises inside the
 block, see the savepoint below.
-Rolling back stays the job of the session’s owner. A direct <code class="docutils literal notranslate"><span class="pre">session.commit()</span></code>
-inside the block raises <code class="docutils literal notranslate"><span class="pre">RuntimeError</span></code>, because the outermost block owns the
-commit.</p>
+The outermost block runs in a savepoint of its own. When an exception leaves
+it, Restly rolls back to that savepoint: what the block changed is undone, and
+the session can write again. A direct <code class="docutils literal notranslate"><span class="pre">session.commit()</span></code> inside the block
+raises <code class="docutils literal notranslate"><span class="pre">RuntimeError</span></code>, because the outermost block owns the commit.</p>
 <p>When some rows may fail and the others must still be saved, put SQLAlchemy’s
 <code class="docutils literal notranslate"><span class="pre">session.begin_nested()</span></code> around each handler call. Catch the error outside
 that savepoint:</p>
@@ -1839,7 +1865,9 @@ bracket on a session owns the commit. So inside a <code class="docutils literal 
 <code class="docutils literal notranslate"><span class="pre">shared_write_action_commit()</span></code> block, a bracket flushes instead of
 committing and queues its after-hook for the outermost block. A handler
 hands the object that <code class="docutils literal notranslate"><span class="pre">create</span></code> or <code class="docutils literal notranslate"><span class="pre">update</span></code> returns to the bracket as the
-subject. <code class="docutils literal notranslate"><span class="pre">write_action</span></code> gets its subject from <code class="docutils literal notranslate"><span class="pre">obj</span></code>.</p>
+subject. <code class="docutils literal notranslate"><span class="pre">write_action</span></code> gets its subject from <code class="docutils literal notranslate"><span class="pre">obj</span></code>. The outermost bracket
+opens a savepoint after the snapshot, and an exception rolls back to it; see
+<a class="reference internal" href="#write-action-error">When a write action raises</a>.</p>
 </section>
 <section id="see-also">
 <h2>See also<a class="headerlink" href="#see-also" title="Link to this heading">#</a></h2>
@@ -1899,39 +1927,39 @@ signature.</p></li>
     class="page-toc tocsection onthispage">
     <i class="fa-solid fa-list"></i> On this page
   </div>
-  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
-    <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#how-a-view-handles-a-request">How a view handles a request</a><ul class="visible nav section-nav flex-column">
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#how-a-view-handles-a-request">How a view handles a request</a><ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#a-read-visibility-then-policy">A read: visibility, then policy</a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#which-method-do-i-override">Which method do I override</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#change-what-an-action-does">Change what an action does</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#change-what-an-action-does">Change what an action does</a><ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#hash-a-password-in-create">Hash a password in <code class="docutils literal notranslate"><span class="pre">create</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#the-new-object-has-no-id-in-create">The new object has no id in <code class="docutils literal notranslate"><span class="pre">create</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#refuse-a-change-in-update">Refuse a change in <code class="docutils literal notranslate"><span class="pre">update</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#add-a-value-to-each-row">Add a value to each row</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#build-and-save-objects">Build and save objects</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#build-and-save-objects">Build and save objects</a><ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#run-the-same-logic-in-a-script-or-a-worker">Run the same logic in a script or a worker</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#what-commits-and-when">What commits, and when</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#what-commits-and-when">What commits, and when</a><ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#when-a-write-action-raises">When a write action raises</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#run-code-before-or-after-the-commit">Run code before or after the commit</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#run-code-before-or-after-the-commit">Run code before or after the commit</a><ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#run-the-work-after-the-response">Run the work after the response</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#when-after-action-commit-raises">When <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code> raises</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#change-the-status-code-or-headers-of-one-route">Change the status code or headers of one route</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#change-the-status-code-or-headers-of-one-route">Change the status code or headers of one route</a><ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#change-the-list-route">Change the list route</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#share-a-changed-route-across-views">Share a changed route across views</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#add-a-custom-read-route">Add a custom read route</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#add-a-custom-read-route">Add a custom read route</a><ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#look-a-row-up-by-another-key">Look a row up by another key</a></li>
 </ul>
 </li>
@@ -1961,8 +1989,8 @@ signature.</p></li>
   </div>
   
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
-<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+  <script defer src="_static/scripts/bootstrap.js?digest=18bd87630a240e9c25be"></script>
+<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=18bd87630a240e9c25be"></script>
 
   <footer class="bd-footer">
 <div class="bd-footer__inner bd-page-width">
@@ -1983,7 +2011,6 @@ signature.</p></li>
 
   <p class="sphinx-version">
     Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
-    <br/>
   </p>
 </div>
       
@@ -1996,7 +2023,7 @@ signature.</p></li>
         <div class="footer-item">
 <p class="theme-version">
   <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
-  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.23.0.
 </p></div>
       
     </div>

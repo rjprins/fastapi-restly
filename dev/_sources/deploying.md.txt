@@ -16,7 +16,7 @@ production, Alembic creates and changes the tables, not the application. Its
 The sections below follow that order: the settings, the factory, the command
 that runs it, the migrations, and a health check. The last section lists the
 view settings to check before an API goes public.
-[New & Existing Projects](#compose-in-one-place) shows where these files sit
+[New Projects](#compose-in-one-place) shows where these files sit
 in the project.
 
 (production-settings)=
@@ -344,8 +344,7 @@ on its view:
 
 - [Database & Configuration](database.md): engines, sessions and
   `fr.configure()`.
-- [New & Existing Projects](projects.md): the project layout,
-  and Restly next to an existing app.
+- [New Projects](new_projects.md): the project layout.
 - The [SaaS example](https://github.com/rjprins/fastapi-restly/tree/main/example-projects/saas):
   an example in production shape. It has PostgreSQL services in Compose,
   validated settings, an async engine that the application owns, migrations,

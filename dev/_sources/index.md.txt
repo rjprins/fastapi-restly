@@ -20,8 +20,8 @@ Restly is for REST resources, not for your whole app. It works inside the
 FastAPI app that you already have, and you add it one resource at a time;
 see [Use Restly in an existing project](#add-to-existing-app).
 
-> **Status:** {{ release }}, a beta. Restly ran in production for
-> [four years](about.md) before it became public. Until 1.0, a minor release
+> **Status:** {{ release }}, a beta. Restly ran in production at
+> [two companies](about.md) before it became public. Until 1.0, a minor release
 > can have breaking changes, and the [changelog](changelog.md) says what to
 > change in your code. Subscribe to the [newsletter](#newsletter-signup) to
 > get an email when 1.0 is released. If something is broken or missing,
@@ -184,7 +184,7 @@ class CustomerView(fr.AsyncRestView):
     model = Customer  # a model on your own Base
 ```
 
-See [New & Existing Projects](projects.md).
+See [Existing Projects](existing_projects.md).
 
 ## Also in Restly
 
@@ -198,7 +198,7 @@ See [New & Existing Projects](projects.md).
   test runs in a transaction that rolls back, so a test needs no cleanup code.
   See [Testing](testing.md).
 - A new project: `restly new myapp` writes a complete project, with a `users`
-  resource and its tests. See [New & Existing Projects](projects.md).
+  resource and its tests. See [New Projects](new_projects.md).
 - Database conflicts: a duplicate unique value in a CRUD write or a
   `write_action` block is a 409, not a 500. See [Errors](errors.md).
 - React Admin:

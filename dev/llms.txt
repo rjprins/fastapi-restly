@@ -83,7 +83,8 @@ These are the parts, and the page that explains each one:
 
 ## Setup
 
-- [New & Existing Projects](https://www.fastapi-restly.org/dev/projects.html): add Restly to an app that you already have, start a new project with `restly new`, lay out a project as it grows, and serve more than one API version.
+- [New Projects](https://www.fastapi-restly.org/dev/new_projects.html): start a project with `restly new`, lay it out as it grows, and serve more than one API version.
+- [Existing Projects](https://www.fastapi-restly.org/dev/existing_projects.html): add Restly to an app that you already have, share its login check and its `get_db`, keep its engine and models, and replace a hand-written router with a view.
 - [Database & Configuration](https://www.fastapi-restly.org/dev/database.html): tell Restly where its database is, reuse the engine, sessionmaker or session generator that your app already has, use another database on one view, such as a read replica, and open a session outside a request.
 - [Models](https://www.fastapi-restly.org/dev/models.html): add Restly's defaults and common columns to your models, and set the values that every write needs, such as the author or a slug.
 

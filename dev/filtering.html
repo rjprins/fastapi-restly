@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 
 
@@ -28,8 +27,8 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
-<link href="_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+  <link href="_static/styles/theme.css?digest=18bd87630a240e9c25be" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=18bd87630a240e9c25be" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
@@ -37,10 +36,10 @@
     <link rel="stylesheet" type="text/css" href="_static/custom.css?v=643d5ecc" />
   
   <!-- So that users can add custom icons -->
-  <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <script defer src="_static/scripts/fontawesome.js?digest=18bd87630a240e9c25be"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
-<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=18bd87630a240e9c25be" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=18bd87630a240e9c25be" />
 
     <script src="_static/documentation_options.js?v=61ccb1f1"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
@@ -50,12 +49,13 @@
     <script src="_static/design-tabs.js?v=f930bc37"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'filtering';</script>
     <script>
-        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_version = '0.23.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://www.fastapi-restly.org/switcher.json';
         DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'dev';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             false;
         </script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
     <script src="_static/newsletter.js?v=7326e93d"></script>
     <link rel="canonical" href="https://www.fastapi-restly.org/dev/filtering.html" />
     <link rel="icon" href="_static/favicon.svg"/>
@@ -66,8 +66,15 @@
     <link rel="prev" title="Responses" href="responses.html" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="color-scheme" content="light dark"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="0.12" />
+  
+    
+    <script src="_static/searchtools.js"></script>
+    <script src="_static/language_data.js"></script>
+    <script src="searchindex.js"></script>
+  
 <meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -78,19 +85,19 @@
         async src="//gc.zgo.at/count.js"></script>
 
   </head>
-  
-  
-  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="auto">
-
+  <body data-default-mode="auto">
   
   
   <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
   
   <div id="pst-scroll-pixel-helper"></div>
   
   <button type="button" class="btn rounded-pill" id="pst-back-to-top">
     <i class="fa-solid fa-arrow-up"></i>Back to top</button>
-
+  
+  
+  
   
   <dialog id="pst-search-dialog">
     
@@ -116,9 +123,9 @@
 </div>
 
   
-    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
 <div class="bd-header__inner bd-page-width">
-  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+  <button type="button" class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
     <span class="fa-solid fa-bars"></span>
   </button>
   
@@ -187,23 +194,13 @@
   </a>
 </li>
 
-            <li class="nav-item dropdown">
-                <button class="btn dropdown-toggle nav-item" type="button"
-                data-bs-toggle="dropdown" aria-expanded="false"
-                aria-controls="pst-nav-more-links">
-                    More
-                </button>
-                <ul id="pst-nav-more-links" class="dropdown-menu">
-                    
-<li class=" ">
-  <a class="nav-link dropdown-item nav-internal" href="about.html">
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="about.html">
     About
   </a>
 </li>
 
-                </ul>
-            </li>
-            
   </ul>
 </nav></div>
       
@@ -215,7 +212,7 @@
         <div class="navbar-item navbar-persistent--container">
           
 
-<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+<button type="button" class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
  <i class="fa-solid fa-magnifying-glass"></i>
  <span class="search-button__default-text">Search</span>
  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
@@ -245,11 +242,18 @@
       
         <div class="navbar-item">
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button></div>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button type="button" class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
       
         <div class="navbar-item"><ul class="navbar-icon-links"
     aria-label="Icon Links">
@@ -262,8 +266,7 @@
           
           
           
-          <a href="https://github.com/rjprins/fastapi-restly" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">GitHub</span></a>
+          <a href="https://github.com/rjprins/fastapi-restly" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
         </li>
 </ul></div>
       
@@ -274,7 +277,7 @@
   
     <div class="navbar-persistent--mobile">
 
-<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+<button type="button" class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
  <i class="fa-solid fa-magnifying-glass"></i>
  <span class="search-button__default-text">Search</span>
  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
@@ -283,7 +286,7 @@
   
 
   
-    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+    <button type="button" class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
       <span class="fa-solid fa-outdent"></span>
     </button>
   
@@ -379,11 +382,18 @@
         
           <div class="navbar-item">
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button></div>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button type="button" class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
         
           <div class="navbar-item"><ul class="navbar-icon-links"
     aria-label="Icon Links">
@@ -396,8 +406,7 @@
           
           
           
-          <a href="https://github.com/rjprins/fastapi-restly" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">GitHub</span></a>
+          <a href="https://github.com/rjprins/fastapi-restly" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
         </li>
 </ul></div>
         
@@ -406,13 +415,22 @@
   </div>
   
     <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item pst-sidebar-collapse"><button type="button" id="pst-collapse-sidebar-button" aria-expanded="true" aria-controls="pst-primary-sidebar">
+  <svg class="pst-icon" role="img" aria-hidden="true" focusable="false" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+    <path fill="currentColor" d="M3 15.5C2.36232 15.5 1.74874 15.2564 1.28478 14.8189C0.820828 14.3815 0.541576 13.7832 0.504167 13.1467L0.5 13L0.5 3C0.499965 2.36232 0.743605 1.74874 1.18107 1.28478C1.61854 0.820828 2.21676 0.541576 2.85333 0.504167L3 0.5L13 0.5C13.6377 0.499965 14.2513 0.743605 14.7152 1.18107C15.1792 1.61854 15.4584 2.21676 15.4958 2.85333L15.5 3L15.5 13C15.5 13.6377 15.2564 14.2513 14.8189 14.7152C14.3815 15.1792 13.7832 15.4584 13.1467 15.4958L13 15.5L3 15.5ZM3 13.8333L10.5 13.8333L10.5 2.16667L3 2.16667C2.79589 2.16669 2.59889 2.24163 2.44636 2.37726C2.29383 2.5129 2.19638 2.69979 2.1725 2.9025L2.16667 3L2.16667 13C2.16669 13.2041 2.24163 13.4011 2.37726 13.5536C2.5129 13.7062 2.69979 13.8036 2.9025 13.8275L3 13.8333ZM6.65583 10.325L6.5775 10.2558L4.91083 8.58917C4.76735 8.44567 4.68116 8.25476 4.66843 8.05223C4.65569 7.84971 4.71729 7.6495 4.84167 7.48917L4.91083 7.41083L6.5775 5.74417C6.72747 5.59471 6.9287 5.50794 7.14032 5.50148C7.35194 5.49502 7.55809 5.56935 7.7169 5.70937C7.8757 5.8494 7.97525 6.04463 7.99533 6.25539C8.01541 6.46616 7.95451 6.67667 7.825 6.84417L7.75583 6.9225L6.67917 8L7.75583 9.0775C7.89931 9.22099 7.98551 9.41191 7.99824 9.61443C8.01097 9.81695 7.94938 10.0172 7.825 10.1775L7.75583 10.2558C7.61234 10.3993 7.42142 10.4855 7.2189 10.4982C7.01638 10.511 6.81617 10.4494 6.65583 10.325Z"/>
+  </svg>
+  <span class="pst-collapse-sidebar-label">Collapse Sidebar</span>
+  <span class="pst-expand-sidebar-label">Expand Sidebar</span>
+</button></div>
         <div class="sidebar-primary-item">
+
 <nav class="bd-docs-nav bd-links"
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Setup</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="projects.html">New &amp; Existing Projects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="new_projects.html">New Projects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="existing_projects.html">Existing Projects</a></li>
 <li class="toctree-l1"><a class="reference internal" href="database.html">Database &amp; Configuration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="models.html">Models</a></li>
 </ul>
@@ -429,7 +447,7 @@
 <li class="toctree-l1"><a class="reference internal" href="schemas.html">Schemas &amp; Validation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="relationships.html">Relationships</a></li>
 <li class="toctree-l1"><a class="reference internal" href="responses.html">Responses</a></li>
-<li class="toctree-l1 current active"><a class="current reference internal" href="#">Filtering, Sorting &amp; Pagination</a></li>
+<li class="toctree-l1 current active"><a aria-current="page" class="current reference internal" href="#">Filtering, Sorting &amp; Pagination</a></li>
 <li class="toctree-l1"><a class="reference internal" href="errors.html">Errors</a></li>
 <li class="toctree-l1"><a class="reference internal" href="openapi.html">OpenAPI</a></li>
 </ul>
@@ -739,7 +757,7 @@ client sends no <code class="docutils literal notranslate"><span class="pre">sor
 written as the client writes <code class="docutils literal notranslate"><span class="pre">sort</span></code>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="o">...</span>
-    <span class="n">default_sort</span> <span class="o">=</span> <span class="s2">&quot;-created_at&quot;</span>
+    <span class="n">default_sort</span> <span class="o">=</span> <span class="s2">"-created_at"</span>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/users</span></code> is then newest first, and <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/users?sort=name</span></code> is sorted by
@@ -806,7 +824,7 @@ give the column an index in that order. Keep the plain index for
 <code class="docutils literal notranslate"><span class="pre">?sort=last_login</span></code>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="kn">import</span> <span class="n">Index</span>
 
-<span class="n">Index</span><span class="p">(</span><span class="s2">&quot;ix_user_last_login_desc&quot;</span><span class="p">,</span> <span class="n">User</span><span class="o">.</span><span class="n">last_login</span><span class="o">.</span><span class="n">desc</span><span class="p">()</span><span class="o">.</span><span class="n">nulls_last</span><span class="p">())</span>
+<span class="n">Index</span><span class="p">(</span><span class="s2">"ix_user_last_login_desc"</span><span class="p">,</span> <span class="n">User</span><span class="o">.</span><span class="n">last_login</span><span class="o">.</span><span class="n">desc</span><span class="p">()</span><span class="o">.</span><span class="n">nulls_last</span><span class="p">())</span>
 </pre></div>
 </div>
 </li>
@@ -823,7 +841,7 @@ in either direction, so they sort the rows themselves.</p></li>
 such as <code class="docutils literal notranslate"><span class="pre">&quot;ordering&quot;</span></code> for Django REST framework or <code class="docutils literal notranslate"><span class="pre">&quot;order_by&quot;</span></code> for
 fastapi-filter:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
-    <span class="n">sort_query_param</span> <span class="o">=</span> <span class="s2">&quot;order_by&quot;</span>
+    <span class="n">sort_query_param</span> <span class="o">=</span> <span class="s2">"order_by"</span>
 </pre></div>
 </div>
 <p>Clients then send <code class="docutils literal notranslate"><span class="pre">?order_by=-created_at</span></code>, and <code class="docutils literal notranslate"><span class="pre">sort</span></code> becomes an unknown key.
@@ -860,7 +878,7 @@ view class. On a public endpoint, use a smaller page size and maximum.
 <code class="docutils literal notranslate"><span class="pre">page_size_query_param</span></code>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">pagination</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">NumberedPagination</span><span class="p">(</span>
-        <span class="n">page_query_param</span><span class="o">=</span><span class="s2">&quot;p&quot;</span><span class="p">,</span> <span class="n">page_size_query_param</span><span class="o">=</span><span class="s2">&quot;size&quot;</span>
+        <span class="n">page_query_param</span><span class="o">=</span><span class="s2">"p"</span><span class="p">,</span> <span class="n">page_size_query_param</span><span class="o">=</span><span class="s2">"size"</span>
     <span class="p">)</span>
 </pre></div>
 </div>
@@ -877,7 +895,7 @@ field called <code class="docutils literal notranslate"><span class="pre">page</
 <p>Views inherit <code class="docutils literal notranslate"><span class="pre">pagination</span></code>, so a project base view sets it once. A view that
 differs changes one setting with <code class="docutils literal notranslate"><span class="pre">replace()</span></code>, which returns a checked copy:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">APP_PAGINATION</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">NumberedPagination</span><span class="p">(</span>
-    <span class="n">page_size_query_param</span><span class="o">=</span><span class="s2">&quot;size&quot;</span><span class="p">,</span> <span class="n">max_page_size</span><span class="o">=</span><span class="mi">100</span>
+    <span class="n">page_size_query_param</span><span class="o">=</span><span class="s2">"size"</span><span class="p">,</span> <span class="n">max_page_size</span><span class="o">=</span><span class="mi">100</span>
 <span class="p">)</span>
 
 
@@ -895,11 +913,11 @@ differs changes one setting with <code class="docutils literal notranslate"><spa
 <p>Set <code class="docutils literal notranslate"><span class="pre">pagination</span> <span class="pre">=</span> <span class="pre">None</span></code> to return every matching row:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">TagView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
-    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/tags&quot;</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">"/tags"</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Tag</span>
     <span class="n">schema</span> <span class="o">=</span> <span class="n">TagSchema</span>
     <span class="n">pagination</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="c1"># Response: {&quot;data&quot;: [ /* every tag */ ]}</span>
+    <span class="c1"># Response: {"data": [ /* every tag */ ]}</span>
 </pre></div>
 </div>
 <p>The list has no <code class="docutils literal notranslate"><span class="pre">page</span></code> and <code class="docutils literal notranslate"><span class="pre">page_size</span></code> parameters, and Restly runs no count
@@ -925,20 +943,20 @@ envelope:</p>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">pydantic</span>
 
-<span class="n">T</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s2">&quot;T&quot;</span><span class="p">)</span>
+<span class="n">T</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s2">"T"</span><span class="p">)</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">Page</span><span class="p">(</span><span class="n">pydantic</span><span class="o">.</span><span class="n">BaseModel</span><span class="p">,</span> <span class="n">Generic</span><span class="p">[</span><span class="n">T</span><span class="p">]):</span>
-    <span class="n">data</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">T</span><span class="p">]</span> <span class="o">=</span> <span class="n">pydantic</span><span class="o">.</span><span class="n">Field</span><span class="p">(</span><span class="n">alias</span><span class="o">=</span><span class="s2">&quot;items&quot;</span><span class="p">)</span>
-    <span class="n">total_count</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">pydantic</span><span class="o">.</span><span class="n">Field</span><span class="p">(</span><span class="n">alias</span><span class="o">=</span><span class="s2">&quot;total&quot;</span><span class="p">)</span>
+    <span class="n">data</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">T</span><span class="p">]</span> <span class="o">=</span> <span class="n">pydantic</span><span class="o">.</span><span class="n">Field</span><span class="p">(</span><span class="n">alias</span><span class="o">=</span><span class="s2">"items"</span><span class="p">)</span>
+    <span class="n">total_count</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">pydantic</span><span class="o">.</span><span class="n">Field</span><span class="p">(</span><span class="n">alias</span><span class="o">=</span><span class="s2">"total"</span><span class="p">)</span>
     <span class="n">page</span><span class="p">:</span> <span class="nb">int</span>
-    <span class="n">page_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">pydantic</span><span class="o">.</span><span class="n">Field</span><span class="p">(</span><span class="n">alias</span><span class="o">=</span><span class="s2">&quot;size&quot;</span><span class="p">)</span>
-    <span class="n">total_pages</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">pydantic</span><span class="o">.</span><span class="n">Field</span><span class="p">(</span><span class="n">alias</span><span class="o">=</span><span class="s2">&quot;pages&quot;</span><span class="p">)</span>
+    <span class="n">page_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">pydantic</span><span class="o">.</span><span class="n">Field</span><span class="p">(</span><span class="n">alias</span><span class="o">=</span><span class="s2">"size"</span><span class="p">)</span>
+    <span class="n">total_pages</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">pydantic</span><span class="o">.</span><span class="n">Field</span><span class="p">(</span><span class="n">alias</span><span class="o">=</span><span class="s2">"pages"</span><span class="p">)</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">AppView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">pagination</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">NumberedPagination</span><span class="p">(</span>
-        <span class="n">page_size_query_param</span><span class="o">=</span><span class="s2">&quot;size&quot;</span><span class="p">,</span> <span class="n">max_page_size</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">envelope</span><span class="o">=</span><span class="n">Page</span>
+        <span class="n">page_size_query_param</span><span class="o">=</span><span class="s2">"size"</span><span class="p">,</span> <span class="n">max_page_size</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">envelope</span><span class="o">=</span><span class="n">Page</span>
     <span class="p">)</span>
 </pre></div>
 </div>
@@ -955,8 +973,8 @@ and
 <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.include_sort_keys" title="fastapi_restly.views.BaseRestView.include_sort_keys"><code class="xref py py-attr docutils literal notranslate"><span class="pre">include_sort_keys</span></code></a>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ItemView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="o">...</span>
-    <span class="n">include_filters</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;status&quot;</span><span class="p">,</span> <span class="s2">&quot;category_id&quot;</span><span class="p">,</span> <span class="s2">&quot;name__icontains&quot;</span><span class="p">,</span> <span class="s2">&quot;created_at__*&quot;</span><span class="p">)</span>
-    <span class="n">include_sort_keys</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;created_at&quot;</span><span class="p">)</span>
+    <span class="n">include_filters</span> <span class="o">=</span> <span class="p">(</span><span class="s2">"status"</span><span class="p">,</span> <span class="s2">"category_id"</span><span class="p">,</span> <span class="s2">"name__icontains"</span><span class="p">,</span> <span class="s2">"created_at__*"</span><span class="p">)</span>
+    <span class="n">include_sort_keys</span> <span class="o">=</span> <span class="p">(</span><span class="s2">"name"</span><span class="p">,</span> <span class="s2">"created_at"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>An entry is a key as the client sends it, such as <code class="docutils literal notranslate"><span class="pre">name__icontains</span></code>, or a
@@ -971,7 +989,7 @@ and
 Restly applies them after the include settings:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ItemView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="o">...</span>
-    <span class="n">exclude_filters</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;internal_note&quot;</span><span class="p">,</span> <span class="s2">&quot;internal_note__*&quot;</span><span class="p">,</span> <span class="s2">&quot;*__icontains&quot;</span><span class="p">)</span>
+    <span class="n">exclude_filters</span> <span class="o">=</span> <span class="p">(</span><span class="s2">"internal_note"</span><span class="p">,</span> <span class="s2">"internal_note__*"</span><span class="p">,</span> <span class="s2">"*__icontains"</span><span class="p">)</span>
 </pre></div>
 </div>
 <div class="details admonition">
@@ -990,8 +1008,8 @@ are not filters, and they always stay.</p>
 a new field on a nested schema would add keys to every list that nests it.</p>
 <p>An entry that a view sets and that matches no key fails when the view
 registers. The message lists the keys of the field:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>ItemView.include_filters: &#39;price__icontains&#39; matches no filter key of
-ItemSchema. The filter keys of &#39;price&#39; are: price, price__in, price__ne,
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>ItemView.include_filters: 'price__icontains' matches no filter key of
+ItemSchema. The filter keys of 'price' are: price, price__in, price__ne,
 price__isnull, price__gte, price__lte, price__gt, price__lt. Only text fields
 have __contains and __icontains.
 </pre></div>
@@ -1029,7 +1047,7 @@ them on with
 see <a class="reference internal" href="#choose-list-keys">Choose the keys of a list</a>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">OrderView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="o">...</span>
-    <span class="n">include_filters</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;*&quot;</span><span class="p">,</span> <span class="s2">&quot;user.*&quot;</span><span class="p">)</span>
+    <span class="n">include_filters</span> <span class="o">=</span> <span class="p">(</span><span class="s2">"*"</span><span class="p">,</span> <span class="s2">"user.*"</span><span class="p">)</span>
 </pre></div>
 </div>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET /orders?user.name=Alice
@@ -1085,11 +1103,11 @@ class:</p>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">AuthorSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
-    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">alias</span><span class="o">=</span><span class="s2">&quot;authorName&quot;</span><span class="p">)</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">alias</span><span class="o">=</span><span class="s2">"authorName"</span><span class="p">)</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">ArticleSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
-    <span class="n">author</span><span class="p">:</span> <span class="n">AuthorSchema</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">alias</span><span class="o">=</span><span class="s2">&quot;writer&quot;</span><span class="p">)</span>
+    <span class="n">author</span><span class="p">:</span> <span class="n">AuthorSchema</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">alias</span><span class="o">=</span><span class="s2">"writer"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>The URL must then use the aliases:</p>
@@ -1144,7 +1162,7 @@ does not add the Python names to the URL.</p>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">UserSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
-    <span class="n">user_name</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Field</span><span class="p">(</span><span class="n">alias</span><span class="o">=</span><span class="s2">&quot;userName&quot;</span><span class="p">)]</span>
+    <span class="n">user_name</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Field</span><span class="p">(</span><span class="n">alias</span><span class="o">=</span><span class="s2">"userName"</span><span class="p">)]</span>
 </pre></div>
 </div>
 <p>The URL accepts only the alias:</p>
@@ -1164,9 +1182,9 @@ with <a class="reference internal" href="api/views.html#fastapi_restly.views.lis
 <span class="k">class</span><span class="w"> </span><span class="nc">ItemView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="o">...</span>
 
-    <span class="nd">@fr</span><span class="o">.</span><span class="n">list_filter</span><span class="p">(</span><span class="s2">&quot;popular&quot;</span><span class="p">)</span>
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">list_filter</span><span class="p">(</span><span class="s2">"popular"</span><span class="p">)</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">filter_popular</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ColumnElement</span><span class="p">[</span><span class="nb">bool</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Items with more than 1000 views, or with false the other items.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">"""Items with more than 1000 views, or with false the other items."""</span>
         <span class="n">popular</span> <span class="o">=</span> <span class="n">Item</span><span class="o">.</span><span class="n">view_count</span> <span class="o">&gt;</span> <span class="mi">1000</span>
         <span class="k">return</span> <span class="n">popular</span> <span class="k">if</span> <span class="n">value</span> <span class="k">else</span> <span class="o">~</span><span class="n">popular</span>
 </pre></div>
@@ -1182,7 +1200,7 @@ scope, after the generated filters.</p>
 <code class="docutils literal notranslate"><span class="pre">value</span></code>, it calls the method on every list request, with the default when the
 key is missing. This list hides archived items, unless the client asks for
 them:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">list_filter</span><span class="p">(</span><span class="s2">&quot;allow_archived&quot;</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">list_filter</span><span class="p">(</span><span class="s2">"allow_archived"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">filter_allow_archived</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ColumnElement</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
     <span class="k">return</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">value</span> <span class="k">else</span> <span class="o">~</span><span class="n">Item</span><span class="o">.</span><span class="n">archived</span>
 </pre></div>
@@ -1192,9 +1210,9 @@ operator can be a new one:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="kn">import</span> <span class="n">func</span>
 
 
-<span class="nd">@fr</span><span class="o">.</span><span class="n">list_filter</span><span class="p">(</span><span class="s2">&quot;name__length&quot;</span><span class="p">)</span>
+<span class="nd">@fr</span><span class="o">.</span><span class="n">list_filter</span><span class="p">(</span><span class="s2">"name__length"</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">filter_name_length</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ColumnElement</span><span class="p">[</span><span class="nb">bool</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Items whose name has this many characters.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Items whose name has this many characters."""</span>
     <span class="k">return</span> <span class="n">func</span><span class="o">.</span><span class="n">length</span><span class="p">(</span><span class="n">Item</span><span class="o">.</span><span class="n">name</span><span class="p">)</span> <span class="o">==</span> <span class="n">value</span>
 </pre></div>
 </div>
@@ -1257,12 +1275,12 @@ response is a parameter of the endpoint method:</p>
 <span class="k">class</span><span class="w"> </span><span class="nc">ItemView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="o">...</span>
 
-    <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/"</span><span class="p">)</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_many_endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">list_params</span><span class="p">,</span> <span class="n">as_text</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">as_text</span><span class="p">:</span>
             <span class="k">return</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">get_many_endpoint</span><span class="p">(</span><span class="n">list_params</span><span class="p">)</span>
         <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_get_many</span><span class="p">(</span><span class="n">list_params</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">PlainTextResponse</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">objects</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">PlainTextResponse</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">objects</span><span class="p">))</span>
 </pre></div>
 </div>
 <p>The client sends <code class="docutils literal notranslate"><span class="pre">?as_text=true</span></code>, and <code class="docutils literal notranslate"><span class="pre">?as_text=maybe</span></code> gets <code class="docutils literal notranslate"><span class="pre">422</span></code>. A key
@@ -1280,7 +1298,7 @@ to <code class="docutils literal notranslate"><span class="pre">&quot;ignore&quo
 and leaves it out, as FastAPI does:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ItemView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="o">...</span>
-    <span class="n">unknown_query_params</span> <span class="o">=</span> <span class="s2">&quot;ignore&quot;</span>
+    <span class="n">unknown_query_params</span> <span class="o">=</span> <span class="s2">"ignore"</span>
 </pre></div>
 </div>
 <p>Then a mistyped filter key is not an error, and the client gets more rows
@@ -1299,12 +1317,12 @@ view can set <code class="docutils literal notranslate"><span class="pre">unknow
 <p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.apply_filters" title="fastapi_restly.views.RestView.apply_filters"><code class="xref py py-meth docutils literal notranslate"><span class="pre">apply_filters</span></code></a> applies
 the client’s filters to a statement, without the sort and the page. This
 route counts the items per category, under the client’s other filters:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/category-counts&quot;</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/category-counts"</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">category_counts</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">list_params</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
     <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">authorize</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">GET_MANY</span><span class="p">)</span>
     <span class="n">stmt</span> <span class="o">=</span> <span class="n">sa</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">Item</span><span class="o">.</span><span class="n">category</span><span class="p">,</span> <span class="n">sa</span><span class="o">.</span><span class="n">func</span><span class="o">.</span><span class="n">count</span><span class="p">())</span><span class="o">.</span><span class="n">group_by</span><span class="p">(</span><span class="n">Item</span><span class="o">.</span><span class="n">category</span><span class="p">)</span>
     <span class="n">stmt</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">apply_clauses</span><span class="p">(</span><span class="n">stmt</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">resolve_scope</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
-    <span class="n">others</span> <span class="o">=</span> <span class="n">list_params</span><span class="o">.</span><span class="n">model_copy</span><span class="p">(</span><span class="n">update</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;category&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">})</span>
+    <span class="n">others</span> <span class="o">=</span> <span class="n">list_params</span><span class="o">.</span><span class="n">model_copy</span><span class="p">(</span><span class="n">update</span><span class="o">=</span><span class="p">{</span><span class="s2">"category"</span><span class="p">:</span> <span class="kc">None</span><span class="p">})</span>
     <span class="n">stmt</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">apply_filters</span><span class="p">(</span><span class="n">stmt</span><span class="p">,</span> <span class="n">others</span><span class="p">)</span>
     <span class="k">return</span> <span class="nb">dict</span><span class="p">((</span><span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">stmt</span><span class="p">))</span><span class="o">.</span><span class="n">all</span><span class="p">())</span>
 </pre></div>
@@ -1362,11 +1380,11 @@ and apply it to the statement in
 
 <span class="k">class</span><span class="w"> </span><span class="nc">ItemSearch</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">PagedListParams</span><span class="p">):</span>
     <span class="n">q</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">order</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;-name&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;name&quot;</span>
+    <span class="n">order</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">"name"</span><span class="p">,</span> <span class="s2">"-name"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"name"</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">ItemView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
-    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/items&quot;</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">"/items"</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Item</span>
     <span class="n">schema</span> <span class="o">=</span> <span class="n">ItemSchema</span>
     <span class="n">schema_list_params</span> <span class="o">=</span> <span class="n">ItemSearch</span>
@@ -1378,7 +1396,7 @@ and apply it to the statement in
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">apply_list_params</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">stmt</span><span class="p">,</span> <span class="n">list_params</span><span class="p">:</span> <span class="n">ItemSearch</span><span class="p">):</span>
         <span class="n">stmt</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">apply_filters</span><span class="p">(</span><span class="n">stmt</span><span class="p">,</span> <span class="n">list_params</span><span class="p">)</span>
-        <span class="n">name</span> <span class="o">=</span> <span class="n">Item</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">desc</span><span class="p">()</span> <span class="k">if</span> <span class="n">list_params</span><span class="o">.</span><span class="n">order</span> <span class="o">==</span> <span class="s2">&quot;-name&quot;</span> <span class="k">else</span> <span class="n">Item</span><span class="o">.</span><span class="n">name</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="n">Item</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">desc</span><span class="p">()</span> <span class="k">if</span> <span class="n">list_params</span><span class="o">.</span><span class="n">order</span> <span class="o">==</span> <span class="s2">"-name"</span> <span class="k">else</span> <span class="n">Item</span><span class="o">.</span><span class="n">name</span>
         <span class="n">offset</span> <span class="o">=</span> <span class="p">(</span><span class="n">list_params</span><span class="o">.</span><span class="n">page</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">list_params</span><span class="o">.</span><span class="n">page_size</span>
         <span class="k">return</span> <span class="n">stmt</span><span class="o">.</span><span class="n">order_by</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">Item</span><span class="o">.</span><span class="n">id</span><span class="p">)</span><span class="o">.</span><span class="n">limit</span><span class="p">(</span><span class="n">list_params</span><span class="o">.</span><span class="n">page_size</span><span class="p">)</span><span class="o">.</span><span class="n">offset</span><span class="p">(</span><span class="n">offset</span><span class="p">)</span>
 </pre></div>
@@ -1443,7 +1461,7 @@ for a sort key:</p>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">ItemView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
-    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;/items&quot;</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">"/items"</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Item</span>
     <span class="n">schema</span> <span class="o">=</span> <span class="n">ItemSchema</span>
     <span class="n">schema_list_params</span> <span class="o">=</span> <span class="n">ItemListParams</span>
@@ -1458,9 +1476,9 @@ for a sort key:</p>
         <span class="n">stmt</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">apply_filters</span><span class="p">(</span><span class="n">stmt</span><span class="p">,</span> <span class="n">list_params</span><span class="p">)</span>
         <span class="n">sorted_on</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">if</span> <span class="n">list_params</span><span class="o">.</span><span class="n">sort</span><span class="p">:</span>
-            <span class="n">name</span> <span class="o">=</span> <span class="n">list_params</span><span class="o">.</span><span class="n">sort</span><span class="o">.</span><span class="n">removeprefix</span><span class="p">(</span><span class="s2">&quot;-&quot;</span><span class="p">)</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="n">list_params</span><span class="o">.</span><span class="n">sort</span><span class="o">.</span><span class="n">removeprefix</span><span class="p">(</span><span class="s2">"-"</span><span class="p">)</span>
             <span class="n">key</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">SortKey</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">schema_response</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
-            <span class="n">descending</span> <span class="o">=</span> <span class="n">list_params</span><span class="o">.</span><span class="n">sort</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;-&quot;</span><span class="p">)</span>
+            <span class="n">descending</span> <span class="o">=</span> <span class="n">list_params</span><span class="o">.</span><span class="n">sort</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"-"</span><span class="p">)</span>
             <span class="n">stmt</span> <span class="o">=</span> <span class="n">stmt</span><span class="o">.</span><span class="n">order_by</span><span class="p">(</span>
                 <span class="n">key</span><span class="o">.</span><span class="n">term</span><span class="p">(</span><span class="n">descending</span><span class="o">=</span><span class="n">descending</span><span class="p">,</span> <span class="n">sort_nulls</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sort_nulls</span><span class="p">)</span>
             <span class="p">)</span>
@@ -1584,9 +1602,9 @@ such as <code class="docutils literal notranslate"><span class="pre">/projects/{
     class="page-toc tocsection onthispage">
     <i class="fa-solid fa-list"></i> On this page
   </div>
-  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
-    <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#filter-a-list">Filter a list</a><ul class="visible nav section-nav flex-column">
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#filter-a-list">Filter a list</a><ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#filter-values-go-through-the-field-s-validation">Filter values go through the field’s validation</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#match-one-of-several-values">Match one of several values</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#exclude-several-values">Exclude several values</a></li>
@@ -1594,12 +1612,12 @@ such as <code class="docutils literal notranslate"><span class="pre">/projects/{
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#combine-filters-on-one-field">Combine filters on one field</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#sort-a-list">Sort a list</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#sort-a-list">Sort a list</a><ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#where-nulls-go">Where NULLs go</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#rename-the-sort-parameter">Rename the sort parameter</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#page-through-a-list">Page through a list</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#page-through-a-list">Page through a list</a><ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#rename-the-page-parameters">Rename the page parameters</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#set-the-pagination-once-for-every-view">Set the pagination once for every view</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#return-every-row-without-pagination">Return every row without pagination</a></li>
@@ -1613,11 +1631,11 @@ such as <code class="docutils literal notranslate"><span class="pre">/projects/{
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#add-a-filter-of-your-own">Add a filter of your own</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#accept-extra-query-parameters">Accept extra query parameters</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#use-the-filters-in-a-route-of-your-own">Use the filters in a route of your own</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#write-the-list-params-yourself">Write the list params yourself</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#write-the-list-params-yourself">Write the list params yourself</a><ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#filter-and-sort-on-the-fields-of-the-response">Filter and sort on the fields of the response</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#internals">Internals</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#internals">Internals</a><ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#how-restly-builds-the-list-params">How Restly builds the list params</a></li>
 </ul>
 </li>
@@ -1643,8 +1661,8 @@ such as <code class="docutils literal notranslate"><span class="pre">/projects/{
   </div>
   
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
-<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+  <script defer src="_static/scripts/bootstrap.js?digest=18bd87630a240e9c25be"></script>
+<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=18bd87630a240e9c25be"></script>
 
   <footer class="bd-footer">
 <div class="bd-footer__inner bd-page-width">
@@ -1665,7 +1683,6 @@ such as <code class="docutils literal notranslate"><span class="pre">/projects/{
 
   <p class="sphinx-version">
     Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
-    <br/>
   </p>
 </div>
       
@@ -1678,7 +1695,7 @@ such as <code class="docutils literal notranslate"><span class="pre">/projects/{
         <div class="footer-item">
 <p class="theme-version">
   <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
-  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.23.0.
 </p></div>
       
     </div>
