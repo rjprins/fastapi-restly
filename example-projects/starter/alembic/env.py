@@ -6,6 +6,7 @@ import fastapi_restly as fr
 from alembic import context
 from alembic.autogenerate.api import AutogenContext
 from sqlalchemy import pool
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
@@ -39,17 +40,17 @@ def render_item(
     type_: str, obj: object, autogen_context: AutogenContext
 ) -> str | Literal[False]:
     """Write a column of fr.PydanticJSON or fr.PydanticJSONB as the JSON type
-    it has in the database.
+    it has in the database: JSONB if its impl is JSONB, else JSON.
 
     Without this, a migration would have PydanticJSON(Address) in it, and it
     could not run: it imports neither the type nor your model. A migration
     must not depend on your models anyway, because they change later.
     Alembic writes everything else itself.
     """
-    if type_ == "type" and isinstance(obj, fr.PydanticJSONB):
-        autogen_context.imports.add("from sqlalchemy.dialects import postgresql")
-        return "postgresql.JSONB()"
     if type_ == "type" and isinstance(obj, fr.PydanticJSON):
+        if isinstance(obj.impl, postgresql.JSONB):
+            autogen_context.imports.add("from sqlalchemy.dialects import postgresql")
+            return "postgresql.JSONB()"
         return "sa.JSON()"
     return False
 

@@ -5,19 +5,29 @@ them to ``_plan`` / ``generate`` as the template root, so compositing, renaming
 and dotfile restoration are pinned independently of what the bundled templates
 happen to contain. The shipped templates are exercised end to end by
 ``scripts/scaffold_matrix.sh``; one loose smoke test here checks that a real
-generated tree looks like a project.
+generated tree looks like a project, and the migration hook of the Alembic
+templates runs on its own.
 """
 
 from __future__ import annotations
 
+import ast
 import io
 import re
 from pathlib import Path
-from typing import Any
+from types import SimpleNamespace
+from typing import Any, Literal
 
+import pydantic
 import pytest
+import sqlalchemy
+from alembic.autogenerate import render_python_code
+from alembic.autogenerate.api import AutogenContext
+from alembic.operations import ops
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.engine import make_url
 
+import fastapi_restly as fr
 from fastapi_restly._scaffold import _cli
 from fastapi_restly._scaffold._generate import (
     DOTFILE_NAMES,
@@ -1428,3 +1438,67 @@ def test_the_generated_imports_no_longer_depend_on_the_name(tmp_path):
     assert max(len(line) for line in short.splitlines()) == max(
         len(line) for line in long.splitlines()
     )
+
+
+_TEMPLATES = Path(fr.__file__).parent / "_scaffold" / "templates"
+
+
+def _render_item(template: str) -> Any:
+    """The render_item hook of the env.py of a template. The rest of the file
+    needs a generated project, so only the hook runs."""
+    path = _TEMPLATES / template / "alembic" / "env.py"
+    tree = ast.parse(path.read_text())
+    hook = next(
+        node
+        for node in tree.body
+        if isinstance(node, ast.FunctionDef) and node.name == "render_item"
+    )
+    namespace: dict[str, Any] = {
+        "fr": fr,
+        "postgresql": postgresql,
+        "Literal": Literal,
+        "AutogenContext": AutogenContext,
+    }
+    exec(
+        compile(ast.Module(body=[hook], type_ignores=[]), str(path), "exec"), namespace
+    )
+    return namespace["render_item"]
+
+
+class _Address(pydantic.BaseModel):
+    street: str
+
+
+class _JSONBDocument(fr.PydanticJSON):
+    impl = postgresql.JSONB
+    cache_ok = True
+
+
+@pytest.mark.parametrize("template", ["alembic_sync", "alembic_async"])
+@pytest.mark.parametrize(
+    ("column_type", "expected"),
+    [
+        (fr.PydanticJSON(_Address), "sa.JSON()"),
+        (fr.PydanticJSONB(_Address), "postgresql.JSONB()"),
+        (_JSONBDocument(_Address), "postgresql.JSONB()"),
+        (sqlalchemy.String(10), "sa.String(length=10)"),
+    ],
+)
+def test_a_migration_gets_the_json_type_of_a_document_column(
+    template, column_type, expected
+):
+    """A migration must not import the model of the document, so the hook
+    writes the type that the column has in the database."""
+    render_item = _render_item(template)
+    column = sqlalchemy.Column("address", column_type)
+    upgrade = ops.UpgradeOps(ops=[ops.AddColumnOp("shop", column)])
+
+    code = render_python_code(upgrade, render_item=render_item)
+
+    assert f"sa.Column('address', {expected}" in code
+    imports: set[str] = set()
+    render_item("type", column_type, SimpleNamespace(imports=imports))
+    if expected.startswith("postgresql."):
+        assert imports == {"from sqlalchemy.dialects import postgresql"}
+    else:
+        assert imports == set()

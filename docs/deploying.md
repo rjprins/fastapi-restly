@@ -284,15 +284,16 @@ from typing import Literal
 
 import fastapi_restly as fr
 from alembic.autogenerate.api import AutogenContext
+from sqlalchemy.dialects import postgresql
 
 
 def render_item(
     type_: str, obj: object, autogen_context: AutogenContext
 ) -> str | Literal[False]:
-    if type_ == "type" and isinstance(obj, fr.PydanticJSONB):
-        autogen_context.imports.add("from sqlalchemy.dialects import postgresql")
-        return "postgresql.JSONB()"
     if type_ == "type" and isinstance(obj, fr.PydanticJSON):
+        if isinstance(obj.impl, postgresql.JSONB):
+            autogen_context.imports.add("from sqlalchemy.dialects import postgresql")
+            return "postgresql.JSONB()"
         return "sa.JSON()"
     return False
 ```
@@ -302,6 +303,11 @@ the offline one and the online one. The `env.py` that `restly new` generates
 has this function. A migration should not import your models anyway, because
 the models change later. The database stores the same JSON, so
 `alembic check` finds no change.
+
+The function writes `JSONB` for `fr.PydanticJSONB`, and for your own
+subclass with `impl = JSONB`. It writes only the main type of a column with
+`with_variant()`. For such a column, write the variant into the migration
+yourself.
 
 (health-checks)=
 
