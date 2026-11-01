@@ -16,7 +16,7 @@ production, Alembic creates and changes the tables, not the application. Its
 The sections below follow that order: the settings, the factory, the command
 that runs it, the migrations, and a health check. The last section lists the
 view settings to check before an API goes public.
-[New & Existing Projects](#compose-in-one-place) shows where these files sit
+[New Projects](#compose-in-one-place) shows where these files sit
 in the project.
 
 (production-settings)=
@@ -268,6 +268,47 @@ of the database session that runs the migration. The `env.py` that
 zone on purpose. Such a column holds UTC without the offset; see
 [Keep times in UTC](#utc-times).
 
+(pydantic-json-migration)=
+
+### Write a `PydanticJSON` column into a migration
+
+Alembic writes the type of each column into the migration. For a
+{class}`fr.models.PydanticJSON <fastapi_restly.models.PydanticJSON>` column, it
+writes `PydanticJSON(Address)`, and that migration cannot run: it imports
+neither the type nor your model. So give Alembic a `render_item` function
+that writes the JSON type of the database instead:
+
+```python
+# alembic/env.py
+from typing import Literal
+
+import fastapi_restly as fr
+from alembic.autogenerate.api import AutogenContext
+from sqlalchemy.dialects import postgresql
+
+
+def render_item(
+    type_: str, obj: object, autogen_context: AutogenContext
+) -> str | Literal[False]:
+    if type_ == "type" and isinstance(obj, fr.models.PydanticJSON):
+        if isinstance(obj.impl, postgresql.JSONB):
+            autogen_context.imports.add("from sqlalchemy.dialects import postgresql")
+            return "postgresql.JSONB()"
+        return "sa.JSON()"
+    return False
+```
+
+Pass it as `render_item=render_item` in both calls of `context.configure()`,
+the offline one and the online one. The `env.py` that `restly new` generates
+has this function. A migration should not import your models anyway, because
+the models change later. The database stores the same JSON, so
+`alembic check` finds no change.
+
+The function writes `JSONB` for `fr.models.PydanticJSONB`, and for your own
+subclass with `impl = JSONB`. It writes only the main type of a column with
+`with_variant()`. For such a column, write the variant into the migration
+yourself.
+
 (health-checks)=
 
 ## Add a health check
@@ -344,8 +385,7 @@ on its view:
 
 - [Database & Configuration](database.md): engines, sessions and
   `fr.configure()`.
-- [New & Existing Projects](projects.md): the project layout,
-  and Restly next to an existing app.
+- [New Projects](new_projects.md): the project layout.
 - The [SaaS example](https://github.com/rjprins/fastapi-restly/tree/main/example-projects/saas):
   an example in production shape. It has PostgreSQL services in Compose,
   validated settings, an async engine that the application owns, migrations,

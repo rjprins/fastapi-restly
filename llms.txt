@@ -83,7 +83,8 @@ These are the parts, and the page that explains each one:
 
 ## Setup
 
-- [New & Existing Projects](https://www.fastapi-restly.org/projects.html): add Restly to an app that you already have, start a new project with `restly new`, lay out a project as it grows, and serve more than one API version.
+- [New Projects](https://www.fastapi-restly.org/new_projects.html): start a project with `restly new`, lay it out as it grows, and serve more than one API version.
+- [Existing Projects](https://www.fastapi-restly.org/existing_projects.html): add Restly to an app that you already have, share its login check and its `get_db`, keep its engine and models, and replace a hand-written router with a view.
 - [Database & Configuration](https://www.fastapi-restly.org/database.html): tell Restly where its database is, reuse the engine, sessionmaker or session generator that your app already has, use another database on one view, such as a read replica, and open a session outside a request.
 - [Models](https://www.fastapi-restly.org/models.html): add Restly's defaults and common columns to your models, and set the values that every write needs, such as the author or a slug.
 
@@ -97,7 +98,7 @@ These are the parts, and the page that explains each one:
 
 ## Requests & Responses
 
-- [Schemas & Validation](https://www.fastapi-restly.org/schemas.html): generate the schema or write it, keep a field out of the requests or the responses, validate input, keep times in UTC, and use other field names in JSON, such as camelCase.
+- [Schemas & Validation](https://www.fastapi-restly.org/schemas.html): generate the schema or write it, keep a field out of the requests or the responses, validate input, keep times in UTC, keep NaN and infinity, store a Pydantic model in a JSON column, and use other field names in JSON, such as camelCase.
 - [Relationships](https://www.fastapi-restly.org/relationships.html): accept the id of another row, check that the row exists, link many rows to many rows, return related objects, and fix `MissingGreenlet`.
 - [Responses](https://www.fastapi-restly.org/responses.html): what each route returns, the list envelope, the response of a custom route, and how to change the shape of one route or of all routes.
 - [Filtering, Sorting & Pagination](https://www.fastapi-restly.org/filtering.html): the filters, the sort order and the pages that a client can use on a list, the keys that a view chooses, filters of your own, and list params that you write yourself.

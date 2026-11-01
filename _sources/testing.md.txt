@@ -573,9 +573,9 @@ savepoint (SQLAlchemy's `create_savepoint` mode). So `commit()` and
 `rollback()` work as in production, but nothing stays after the test. The
 fixture skips the test if no sync session source is configured.
 
-In a suite that called `configure_tests()`, a custom `sync_session_generator`
+In a suite that called `configure_tests()`, a custom `session_generator`
 follows these rules. The same table applies to the async
-`session_generator` and the async sessionmaker.
+`async_session_generator` and the async sessionmaker.
 
 | Cleanup mode | What happens to the generator |
 |---|---|
@@ -626,7 +626,7 @@ The async version of `restly_session`. To await it in a test body, you
 [write an async test](#writing-async-tests). In an async-only project it
 needs only `fr.configure(async_database_url=...)`. It skips the test if no
 async session source is configured. It treats a configured
-`session_generator` (and `fr.open_async_session()`) as the generator table
+`async_session_generator` (and `fr.open_async_session()`) as the generator table
 above says, with the async sessionmaker where the sync fixture uses the sync
 one.
 

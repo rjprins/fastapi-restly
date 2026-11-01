@@ -23,7 +23,7 @@ argument:
 | A URL | `async_database_url` | `database_url` | Builds the engine and a sessionmaker |
 | An engine | `async_engine` | `engine` | Builds a sessionmaker on your engine |
 | A sessionmaker | `async_make_session` | `make_session` | Uses it as it is |
-| A session generator | `session_generator` | `sync_session_generator` | Calls it for each request |
+| A session generator | `async_session_generator` | `session_generator` | Calls it for each request |
 
 Pass a URL when Restly may own the engine. Pass your engine or your
 sessionmaker when your application already builds one. Pass a generator when
@@ -120,7 +120,7 @@ async def my_get_db() -> AsyncIterator[AsyncSession]:
 
 
 # Before you register views or routes.
-fr.configure(session_generator=my_get_db)
+fr.configure(async_session_generator=my_get_db)
 ```
 
 For sync views, pass a sync generator:
@@ -139,7 +139,7 @@ def my_get_db() -> Iterator[Session]:
 
 
 # Before you register views or routes.
-fr.configure(sync_session_generator=my_get_db)
+fr.configure(session_generator=my_get_db)
 ```
 
 Many `get_db` generators commit after the `yield`. Such a commit saves
@@ -378,6 +378,14 @@ Because you build the engine here, Restly does not add its
 WAL adds `-wal` and `-shm` files next to the database. A clean shutdown
 removes them, but they stay after the process is killed. WAL does not work on
 a network file system.
+
+Each outermost write action runs in a savepoint; see
+[When a write action raises](#write-action-error). So on SQLite, a query in
+the change of an action, such as in a business method, keeps a read lock until
+the commit. When another request writes at that moment, the action cannot get
+the write lock. It then fails at once with `database is locked`, without
+waiting, also with WAL. A create or an update without a query of your own
+reads nothing there.
 
 ## Internals
 
