@@ -22,6 +22,7 @@ from enum import Enum, IntEnum
 from typing import Any
 from uuid import UUID
 
+import fastapi
 import pydantic
 import pytest
 import sqlalchemy
@@ -385,6 +386,11 @@ def test_a_value_inside_a_container_is_stored_as_json_data(
     assert _stored(stmt, asynchronous=asynchronous) == [stored, stored]
 
 
+@pytest.mark.skipif(
+    tuple(map(int, fastapi.__version__.split(".")[:2])) < (0, 130),
+    reason="FastAPI before 0.130 writes a response with Starlette's "
+    "JSONResponse, which refuses NaN, also for a field of type float",
+)
 @pytest.mark.parametrize("asynchronous", [True, False], ids=["async", "sync"])
 def test_a_nan_in_a_container_is_stored_as_a_nan(request, asynchronous):
     """Python's ``json`` reads ``NaN``, so a body can hold it. The dump keeps
