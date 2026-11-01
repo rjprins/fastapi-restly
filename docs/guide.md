@@ -133,8 +133,8 @@ filter, sort and page parameters to the URL.
 
 - [Schemas & Validation](schemas.md): generate the schema or write it, keep
   a field out of the requests or the responses, validate input, keep times
-  in UTC, store a Pydantic model in a JSON column, and use other field names
-  in JSON, such as camelCase.
+  in UTC, keep NaN and infinity, store a Pydantic model in a JSON column, and
+  use other field names in JSON, such as camelCase.
 - [Relationships](relationships.md): accept the id of another row, check
   that the row exists, link many rows to many rows, return related objects,
   and fix `MissingGreenlet`.

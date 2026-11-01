@@ -14,7 +14,6 @@ processor, and may well want the object as it stands.
 import asyncio
 import dataclasses
 import json
-import math
 from collections import deque
 from collections.abc import Iterable, Iterator
 from datetime import datetime
@@ -22,7 +21,6 @@ from enum import Enum, IntEnum
 from typing import Any
 from uuid import UUID
 
-import fastapi
 import pydantic
 import pytest
 import sqlalchemy
@@ -34,7 +32,7 @@ from fastapi_restly.db._config import _fr_config
 from fastapi_restly.testing._client import RestlyTestClient
 
 from ._models import SharedBase
-from .conftest import create_tables
+from .conftest import create_tables, needs_nan_in_responses
 
 
 @pytest.fixture
@@ -446,16 +444,14 @@ def test_a_value_inside_a_container_is_stored_as_json_data(
     assert _stored(stmt, asynchronous=asynchronous) == [stored, stored]
 
 
-@pytest.mark.skipif(
-    tuple(map(int, fastapi.__version__.split(".")[:2])) < (0, 130),
-    reason="FastAPI before 0.130 writes a response with Starlette's "
-    "JSONResponse, which refuses NaN, also for a field of type float",
-)
+@needs_nan_in_responses
 @pytest.mark.parametrize("asynchronous", [True, False], ids=["async", "sync"])
-def test_a_nan_in_a_container_is_stored_as_a_nan(request, asynchronous):
-    """Python's ``json`` reads ``NaN``, so a body can hold it. The dump keeps
-    it, as for a field of type ``float``: the row then reads back as it was
-    written. A dump to ``null`` would store a row that its schema cannot
+def test_a_nan_in_a_container_makes_the_round_trip_as_text(request, asynchronous):
+    """Python's ``json`` reads ``NaN``, so a body can hold it. JSON has no
+    number for it, so the column stores the text that PostgreSQL's
+    ``to_jsonb()`` writes, and ``fr.BaseSchema`` writes the same text in a
+    response. The schema reads the text back as a ``float``, so a client can
+    send it back. A dump to ``null`` would store a row that its schema cannot
     read."""
     client = request.getfixturevalue("client" if asynchronous else "sync_client")
 
@@ -478,17 +474,59 @@ def test_a_nan_in_a_container_is_stored_as_a_nan(request, asynchronous):
     # httpx refuses to encode NaN, so the body is sent as text.
     response = client.post(
         "/series",
-        content='{"points": [1.0, NaN, Infinity]}',
+        content='{"points": [1.0, NaN, Infinity, -Infinity]}',
         headers={"content-type": "application/json"},
     )
     assert response.status_code == 201, response.text
-
-    client.get("/series/1").raise_for_status()
+    as_text = [1.0, "NaN", "Infinity", "-Infinity"]
+    assert response.json()["points"] == as_text
+    assert client.get("/series/1").json()["points"] == as_text
+    assert client.get("/series").json()["data"][0]["points"] == as_text
     stmt = sqlalchemy.select(Series.points)
-    [points] = _stored(stmt, asynchronous=asynchronous)
-    assert points[0] == 1.0
-    assert math.isnan(points[1])
-    assert points[2] == math.inf
+    assert _stored(stmt, asynchronous=asynchronous) == [as_text]
+
+    sent_back = client.patch("/series/1", json={"points": ["NaN", 2.0]})
+    assert sent_back.json()["points"] == ["NaN", 2.0]
+    assert _stored(stmt, asynchronous=asynchronous) == [["NaN", 2.0]]
+
+
+@needs_nan_in_responses
+@pytest.mark.parametrize("asynchronous", [True, False], ids=["async", "sync"])
+def test_a_strict_schema_reads_a_nan_back_from_a_json_column(request, asynchronous):
+    """A strict ``float`` field takes a NaN from Python's ``json``, but it
+    refuses the text that the column stores. Restly reads a row in lax mode,
+    as a ``PydanticJSON`` column reads its document. In strict mode, the row
+    made each response with it an error 500, also the list."""
+    client = request.getfixturevalue("client" if asynchronous else "sync_client")
+
+    class StrictSeries(fr.IDMixin, SharedBase):
+        points: Mapped[Any] = mapped_column(sqlalchemy.JSON)
+
+    class StrictSeriesSchema(fr.IDSchema):
+        model_config = pydantic.ConfigDict(strict=True)
+
+        points: list[float]
+
+    @fr.include_view(client.app)
+    class StrictSeriesView(fr.AsyncRestView if asynchronous else fr.RestView):
+        prefix = "/strict-series"
+        model = StrictSeries
+        schema = StrictSeriesSchema
+
+    if asynchronous:
+        create_tables()
+    else:
+        SharedBase.metadata.create_all(_fr_config.make_session.kw["bind"])
+    response = client.post(
+        "/strict-series",
+        content='{"points": [1.0, NaN]}',
+        headers={"content-type": "application/json"},
+    )
+    assert response.status_code == 201, response.text
+    assert response.json()["points"] == [1.0, "NaN"]
+    assert client.get("/strict-series/1").json()["points"] == [1.0, "NaN"]
+    listed = client.get("/strict-series").json()["data"]
+    assert [row["points"] for row in listed] == [[1.0, "NaN"]]
 
 
 def test_json_null_and_an_sql_expression_go_to_the_column_as_they_are(sync_db):

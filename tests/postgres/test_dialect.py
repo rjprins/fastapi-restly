@@ -30,11 +30,14 @@ at PostgreSQL (see ``conftest.py``). Eight things are covered:
   PostgreSQL, which reads such a time in the time zone of the session, so
   these tests give the session another time zone.
 * ``fr.PydanticJSON`` and ``fr.PydanticJSONB``: the document reads back as its
-  type, and the ``jsonb`` operators, such as ``contains``, work on it.
+  type, and the ``jsonb`` operators, such as ``contains``, work on it. A NaN
+  is stored as the text ``"NaN"``, in such a column and in a plain ``json``
+  column that a view writes. PostgreSQL refuses NaN as a number in JSON.
 """
 
 import asyncio
 import json
+import math
 import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
@@ -54,6 +57,7 @@ from sqlalchemy import (
     create_engine,
     select,
     text,
+    type_coerce,
 )
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.exc import IntegrityError
@@ -238,6 +242,10 @@ class PgShop(fr.IDMixin, SharedBase):
     )
 
 
+class PgSeries(fr.IDMixin, SharedBase):
+    points: Mapped[list[float]] = mapped_column(fr.PydanticJSONB(list[float]))
+
+
 @fr.include_view(_app)
 class PgWordView(fr.AsyncRestView):
     prefix = "/words"
@@ -394,6 +402,7 @@ _MODELS = [
     PgShelved,
     PgKeyed,
     PgShop,
+    PgSeries,
 ]
 
 
@@ -981,6 +990,40 @@ async def test_a_json_document_reads_back_as_its_type_on_psycopg(restly_async_se
     # none_as_null: None is SQL NULL, not JSON null.
     stmt = select(PgShop.name).where(PgShop.old_address.is_(None))
     assert (await restly_async_session.scalars(stmt)).all() == ["one"]
+
+
+def test_a_nan_in_a_json_document_is_stored_as_text(restly_session):
+    """PostgreSQL refuses NaN and infinity as numbers in ``json`` and
+    ``jsonb``. The column stores the text that ``to_jsonb()`` writes, and a
+    ``float`` field reads it back as a number."""
+    restly_session.add(PgSeries(points=[1.0, math.nan, math.inf, -math.inf]))
+    restly_session.flush()
+    restly_session.expire_all()
+
+    stored = restly_session.scalars(select(type_coerce(PgSeries.points, JSON)))
+    assert stored.one() == [1.0, "NaN", "Infinity", "-Infinity"]
+    to_jsonb = restly_session.scalar(text("SELECT to_jsonb('NaN'::float8)"))
+    assert to_jsonb == "NaN"
+    points = restly_session.scalars(select(PgSeries.points)).one()
+    assert points[0] == 1.0
+    assert math.isnan(points[1])
+    assert points[2:] == [math.inf, -math.inf]
+
+
+@pytest.mark.asyncio
+async def test_a_nan_in_a_plain_json_column_is_stored_as_text(restly_async_session):
+    """A view stores a NaN in a plain ``json`` column as text too, so
+    PostgreSQL does not refuse the row."""
+    async with _async_client() as client:
+        # httpx refuses to encode NaN, so the body is sent as text.
+        created = await client.post(
+            "/docs/",
+            content='{"title": "nan", "data": {"x": NaN}}',
+            headers={"content-type": "application/json"},
+        )
+    assert created.status_code == 201, created.text
+    stmt = select(PgDoc.data).where(PgDoc.title == "nan")
+    assert (await restly_async_session.scalars(stmt)).one() == {"x": "NaN"}
 
 
 def test_the_jsonb_operators_work_on_a_json_document(restly_session):

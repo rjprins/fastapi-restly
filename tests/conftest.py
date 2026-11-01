@@ -3,6 +3,7 @@
 import asyncio
 from collections.abc import Iterator
 
+import fastapi
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
@@ -15,6 +16,14 @@ from fastapi_restly.db._config import _fr_config
 from fastapi_restly.pytest_fixtures import restly_client as restly_client
 
 from ._models import SharedBase
+
+#: A response with a NaN needs FastAPI 0.130. Before it, FastAPI writes a
+#: response with Starlette's JSONResponse, which refuses NaN, also for a field
+#: of type float.
+needs_nan_in_responses = pytest.mark.skipif(
+    tuple(map(int, fastapi.__version__.split(".")[:2])) < (0, 130),
+    reason="FastAPI before 0.130 cannot write a NaN in a response",
+)
 
 # _cleanup_registry below scrubs SQLAlchemy's private declarative registry
 # between tests (its docstring says why the suite depends on these internals).

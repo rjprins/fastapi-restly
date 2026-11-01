@@ -13,7 +13,6 @@ the public API, as a view of yours would. A comment names the ticket of each
 private name that has no public form yet.
 """
 
-import json
 from typing import Any, ClassVar, Literal, Protocol, cast
 
 import fastapi
@@ -380,7 +379,10 @@ class _ReactAdminMixin:
         # The standard list response holds each row as the response class
         # sends it, also when to_single_response returns another model.
         rows = cast(Any, super()).to_list_response(list_result).data
-        serialized = [row.model_dump(mode="json", by_alias=True) for row in rows]
+        # Each row as its class writes it, as in the other responses: a NaN
+        # becomes the text "NaN". json.dumps would write NaN without quotes,
+        # which is not JSON.
+        serialized = [row.model_dump_json(by_alias=True) for row in rows]
         params = self._react_admin_list_params(list_result.list_params)
         start, _ = self._react_admin_range(params)
         view = cast(_ReactAdminViewProtocol, self)
@@ -388,7 +390,7 @@ class _ReactAdminMixin:
         last = start + len(serialized) - 1 if serialized else start
         total = list_result.total_count or 0
         return fastapi.Response(
-            content=json.dumps(serialized),
+            content="[" + ",".join(serialized) + "]",
             media_type="application/json",
             headers={
                 "Content-Range": f"{unit} {start}-{last}/{total}",

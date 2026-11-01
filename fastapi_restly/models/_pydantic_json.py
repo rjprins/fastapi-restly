@@ -15,7 +15,28 @@ from ..schemas._base import (
     _reject_excluded_json_fields,
     _reject_excluded_json_type,
     _type_label,
+    _with_non_finite_as_text,
 )
+
+
+def _adapter_that_keeps_nan(type_: Any) -> pydantic.TypeAdapter[Any]:
+    """A ``TypeAdapter`` for ``type_`` whose parts of type ``Any`` keep a NaN
+    or an infinity in a dump, as a field of type ``float`` does. By default,
+    Pydantic dumps such a value in an ``Any`` part as ``None``.
+
+    A model, a dataclass or a ``TypedDict`` has its own config, and Pydantic
+    refuses another one. Its ``Any`` fields follow its own
+    ``ser_json_inf_nan``. A model inside another type, as in
+    ``list[Address]``, follows the config of this adapter.
+    """
+    try:
+        return pydantic.TypeAdapter(
+            type_, config=pydantic.ConfigDict(ser_json_inf_nan="constants")
+        )
+    except pydantic.PydanticUserError as error:
+        if error.code != "type-adapter-config-unused":
+            raise
+        return pydantic.TypeAdapter(type_)
 
 
 class PydanticJSON(TypeDecorator[Any]):
@@ -43,9 +64,12 @@ class PydanticJSON(TypeDecorator[Any]):
     ``shop.address`` is an ``Address``. A write validates the value too, so a
     dict works as well, and so does another model with the same fields. Then
     it dumps the value as ``TypeAdapter(type_)`` dumps it in JSON mode: a
-    nested model becomes a dict, and a ``datetime`` becomes text. The keys
-    are the names of the fields, not their aliases. A load reads the stored
-    JSON data in lax mode, so a strict model reads it back too.
+    nested model becomes a dict, and a ``datetime`` becomes text. A NaN or
+    an infinity becomes the text ``"NaN"``, ``"Infinity"`` or
+    ``"-Infinity"``, because JSON has no number for it. The keys are the
+    names of the fields, not their aliases. A load reads the stored JSON data
+    in lax mode, so a strict model reads it back too, and a ``float`` field
+    reads that text as a number.
 
     The column refuses a type with a secret, such as ``SecretStr``, or with a
     field that a dump leaves out, such as a ``WriteOnly`` field. The column
@@ -97,7 +121,7 @@ class PydanticJSON(TypeDecorator[Any]):
                 "Annotated[...] has no hash. Use Field(...) instead, as in "
                 "Annotated[str, Field(max_length=10)]."
             ) from None
-        self._adapter: pydantic.TypeAdapter[Any] = pydantic.TypeAdapter(type_)
+        self._adapter: pydantic.TypeAdapter[Any] = _adapter_that_keeps_nan(type_)
         _reject_excluded_json_type(type_, self._label)
         # A TypeDecorator does not take this from its impl. JSON puts a None
         # into the INSERT, as JSON null, unless none_as_null is set.
@@ -147,8 +171,10 @@ class PydanticJSON(TypeDecorator[Any]):
         # The type was checked when the column was defined. A part of type
         # Any can still hold a secret.
         _reject_excluded_json_fields(document, self._label)
-        return self._adapter.dump_python(
-            document, mode="json", round_trip=True, by_alias=False
+        return _with_non_finite_as_text(
+            self._adapter.dump_python(
+                document, mode="json", round_trip=True, by_alias=False
+            )
         )
 
     def process_result_value(self, value: Any, dialect: Dialect) -> Any:

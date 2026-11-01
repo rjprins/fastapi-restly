@@ -2,6 +2,7 @@ import contextlib
 import dataclasses
 import functools
 import inspect
+import math
 import re
 import sys
 import types
@@ -59,6 +60,13 @@ class BaseSchema(pydantic.BaseModel):
     ``from_attributes=True``, so it can read a SQLAlchemy object by its
     attributes.
 
+    It also has ``ser_json_inf_nan="strings"``, so a response writes a NaN or
+    an infinity as the text ``"NaN"``, ``"Infinity"`` or ``"-Infinity"``.
+    JSON has no number for these values, and Pydantic's default writes
+    ``null``, which loses the value. A ``float`` field reads the text back.
+    This needs FastAPI 0.130 or later, with its default response class. A
+    Pydantic model of your own in a field follows its own setting.
+
     It also checks where the ``ReadOnly``, ``WriteOnly`` and ``MustExist``
     markers are placed. A marker deep inside the type of a field, such as
     ``ReadOnly[int] | None``, would have no effect. So the class raises
@@ -66,7 +74,7 @@ class BaseSchema(pydantic.BaseModel):
     it. Put the marker around the whole type: ``ReadOnly[int | None]``.
     """
 
-    model_config = pydantic.ConfigDict(from_attributes=True)
+    model_config = pydantic.ConfigDict(from_attributes=True, ser_json_inf_nan="strings")
 
     @classmethod
     def __pydantic_init_subclass__(cls, **kwargs: Any) -> None:
@@ -1326,7 +1334,7 @@ _SECRET_TYPES: tuple[type, ...] = (
 
 #: Dumps a value by its own type, as ``model_dump(mode="json")`` dumps a
 #: field of type ``Any``. A float such as ``nan`` stays a float, as in a field
-#: of type ``float``: ``json.dumps`` writes it, or the database refuses it.
+#: of type ``float``, so that ``_with_non_finite_as_text`` finds it.
 _ANY_VALUE = pydantic.TypeAdapter(
     Any, config=pydantic.ConfigDict(ser_json_inf_nan="constants")
 )
@@ -1371,9 +1379,52 @@ def _json_data(
     if value is sqlalchemy.JSON.NULL or isinstance(value, ClauseElement):
         return value
     _reject_excluded_json_fields(value, column)
-    return adapter.dump_python(
-        value, mode="json", round_trip=True, by_alias=False, warnings=False
+    return _with_non_finite_as_text(
+        adapter.dump_python(
+            value, mode="json", round_trip=True, by_alias=False, warnings=False
+        )
     )
+
+
+def _with_non_finite_as_text(data: Any) -> Any:
+    """``data``, JSON data from a dump, with each NaN or infinity as the text
+    ``"NaN"``, ``"Infinity"`` or ``"-Infinity"``.
+
+    JSON has no number for them, so PostgreSQL and MySQL refuse them in a
+    ``JSON`` column. PostgreSQL's ``to_jsonb()`` writes this text, and so does
+    Pydantic's ``dump_json()`` with ``ser_json_inf_nan="strings"``. A
+    ``float`` field reads the text back as a number in lax mode. The dump
+    itself cannot write the text: Pydantic applies ``ser_json_inf_nan`` to a
+    field of type ``float`` only in ``dump_json()``.
+
+    ``data`` comes back as it is when it holds no such float, which is the
+    common case. Otherwise the containers are copied, not changed.
+    """
+    pending = [data]
+    while pending:
+        item = pending.pop()
+        kind = type(item)
+        if kind is float:
+            if not math.isfinite(item):
+                return _replace_non_finite(data)
+        elif kind is list:
+            pending.extend(item)
+        elif kind is dict:
+            pending.extend(item.values())
+    return data
+
+
+def _replace_non_finite(data: Any) -> Any:
+    kind = type(data)
+    if kind is float and not math.isfinite(data):
+        if math.isnan(data):
+            return "NaN"
+        return "Infinity" if data > 0 else "-Infinity"
+    if kind is list:
+        return [_replace_non_finite(item) for item in data]
+    if kind is dict:
+        return {key: _replace_non_finite(item) for key, item in data.items()}
+    return data
 
 
 def _secret_error(column: str, where: str) -> RestlyConfigurationError:

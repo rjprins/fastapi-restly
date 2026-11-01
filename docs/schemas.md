@@ -116,8 +116,10 @@ class UserSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
 :class: details
 
 `BaseSchema` is a Pydantic `BaseModel` with `from_attributes=True`, so it can
-read the attributes of an ORM object. It also checks that the markers are
-used in the right place; see [the next section](#readonly-and-writeonly).
+read the attributes of an ORM object. It writes a NaN or an infinity in a
+response as text; see [Keep NaN and infinity](#nan-and-infinity). It also
+checks that the markers are used in the right place; see
+[the next section](#readonly-and-writeonly).
 
 A request body that you set on the view, such as `schema_create`, can also be
 a plain `pydantic.BaseModel`. Its fields can still use `ReadOnly`,
@@ -530,6 +532,83 @@ a time zone keeps the clock time of a value and drops its offset:
 `09:00:00+02:00` becomes `09:00:00`.
 :::
 
+(nan-and-infinity)=
+## Keep NaN and infinity
+
+JSON has no number for NaN or infinity. So Restly writes them as the text
+`"NaN"`, `"Infinity"` and `"-Infinity"`, in a response and in a JSON column. A
+`float` field reads the text back as a number, so a client can send back the
+values that it got:
+
+```python
+class Series(fr.IDMixin, Base):
+    points: Mapped[list[float]] = mapped_column(fr.PydanticJSON(list[float]))
+```
+
+A client that sends `{"points": [1.5, "NaN", "Infinity"]}` gets
+`{"id": 1, "points": [1.5, "NaN", "Infinity"]}` back, and the column stores
+`[1.5, "NaN", "Infinity"]`. OpenAPI still shows a number for the field, so a
+client must accept these three texts in a number field.
+
+A Pydantic model of your own, such as the model of a
+{class}`fr.PydanticJSON <fastapi_restly.models.PydanticJSON>` column, follows
+its own setting: in a response, and for its fields of type `Any` in a JSON
+column. Pydantic's default writes `null` there, which loses the value. Give
+your models the setting that
+{class}`fr.BaseSchema <fastapi_restly.schemas.BaseSchema>` has:
+
+```python
+import pydantic
+
+
+class Point(pydantic.BaseModel):
+    model_config = pydantic.ConfigDict(ser_json_inf_nan="strings")
+
+    lat: float
+    lon: float
+```
+
+To give the setting to all of your models, put it in a base class of your
+own.
+
+Restly cannot keep the value in these cases:
+
+- On SQLite, a `Float` column stores NaN as `NULL`, and a column that is not
+  nullable refuses the row. PostgreSQL stores NaN and infinity as numbers.
+- A plain `JSON` column gets the text only when Restly copies a request body
+  onto the model. Your own code that writes the column goes through
+  SQLAlchemy. SQLite then stores NaN as a number, and PostgreSQL refuses the
+  row. In a part of type `Any`, a response shows such a number as `null`. For
+  a free-form document that your own code writes, use
+  `fr.PydanticJSON(dict[str, Any])`, which writes the text on each write.
+- The text in a response needs FastAPI 0.130 or later, with its default
+  response class. An older FastAPI, or `JSONResponse` as the response class,
+  gives an error 500.
+
+:::{admonition} Details
+:class: details
+
+A request body can hold the text, or `NaN` and `Infinity` without quotes, as
+Python's `json` module writes them. A `float` field reads both. Send the
+text: FastAPI cannot write an error message that holds `NaN` without quotes,
+so such a body can get an error 500 instead of 422. A strict field, with
+`strict=True`, refuses the text in a request.
+
+Restly reads a row into the response class in lax mode, also for a strict
+class, as a `PydanticJSON` column reads its document. So a strict `float`
+field reads the stored text back.
+
+A part of type `Any`, such as a value in `dict[str, Any]`, reads the text back
+as text, not as a number. So does a union with `str`, such as `float | str`.
+
+For Pydantic's default in a response, set `ser_json_inf_nan="null"` in the
+`model_config` of your schema.
+
+PostgreSQL and MySQL refuse NaN as a number in a JSON column, because JSON has
+no number for it. PostgreSQL's `to_jsonb('NaN'::float8)` gives the text
+`"NaN"`, and Restly writes the same text.
+:::
+
 (field-aliases)=
 ## Use other field names in JSON
 
@@ -882,8 +961,9 @@ dict works too, and so does another model with the same fields, such as a
 schema class of your view. A value that does not fit fails at the flush.
 Then the column dumps the value as `TypeAdapter(Address)` does in JSON mode,
 with `round_trip=True`. A `datetime`, a `UUID` or a `Decimal` becomes text,
-and a set becomes a list. A serializer in the type, such as a
-`PlainSerializer`, runs, and the column stores what it returns. A subclass of
+and a set becomes a list. A NaN or an infinity becomes text; see
+[Keep NaN and infinity](#nan-and-infinity). A serializer in the type, such as
+a `PlainSerializer`, runs, and the column stores what it returns. A subclass of
 `Address` is stored as an `Address`, without its own fields, as a field of
 type `Address` is in `model_dump()`. The keys are the names of the fields,
 not their aliases, also with `serialize_by_alias=True`. A response reads the
@@ -891,7 +971,7 @@ document by the names, as it reads the columns. A computed field is not
 stored, so a model with `extra="forbid"` accepts the document. A `Json[T]`
 field is stored as text, as its validation reads it. A load reads the stored
 document in lax mode, also for a strict model. So it reads a `datetime` from
-text, and a tuple from a list.
+text, a tuple from a list, and a `float` from `"NaN"`.
 
 **Refused types.** Some types raise
 {class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`
@@ -946,9 +1026,10 @@ of a `NamedTuple`, because by then the value is a plain dict or tuple. The
 column has no type of its own, so this dump goes by
 the type of the value: a subclass keeps its own fields, and a serializer of
 the field type, such as a `PlainSerializer`, does not run. A serializer in a
-model does. The model attribute then holds a dict, not a model. A
-`PydanticJSON` column says the shape once, on the model, and holds the model
-in all of your code.
+model does. A NaN or an infinity becomes text, as in a `PydanticJSON`
+column; see [Keep NaN and infinity](#nan-and-infinity). The model attribute
+then holds a dict, not a model. A `PydanticJSON` column says the shape once,
+on the model, and holds the model in all of your code.
 :::
 
 ## Internals

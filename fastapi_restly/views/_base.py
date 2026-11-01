@@ -989,7 +989,9 @@ class BaseRestView(
         The ORM path below validates through the response class, so a view's
         schema that declares a WriteOnly field the ORM object doesn't carry
         (e.g. ``password`` backed by a ``password_hash`` column) doesn't fail
-        response validation.
+        response validation. It validates in lax mode, also for a strict
+        class, so a strict ``float`` field reads the text ``"NaN"`` that a
+        JSON column stores.
         """
         schema_response = _schema_response(type(self))
         response = _as_response(schema_response, obj)
@@ -1009,10 +1011,14 @@ class BaseRestView(
             elif field_info.alias and hasattr(obj, field_info.alias):
                 payload[field_name] = getattr(obj, field_info.alias)
 
+        # Lax mode, also for a strict class, as a PydanticJSON column reads
+        # its document: a JSON column holds the text "NaN" for a float.
         adapter = _response_adapter(schema_response)
         return cast(
             ResponseSchemaT,
-            adapter.validate_python(payload, by_alias=False, by_name=True),
+            adapter.validate_python(
+                payload, by_alias=False, by_name=True, strict=False
+            ),
         )
 
     def _single_response(self, obj: Any) -> pydantic.BaseModel:

@@ -10,7 +10,7 @@ through :mod:`fastapi_restly.views`, and the page-size constants through
 
 import dataclasses
 from math import ceil
-from typing import Any, Generic, Self, Sequence
+from typing import Any, Generic, Self
 
 import pydantic
 from typing_extensions import TypeVar
@@ -46,8 +46,10 @@ class Envelope(pydantic.BaseModel, Generic[DataT]):
     """
 
     #: The rows of the list, each as an instance of the view's response
-    #: class.
-    data: Sequence[DataT]
+    #: class. A list, not a ``Sequence``: Pydantic writes the rows of a
+    #: ``Sequence`` field with the settings of the envelope, not with the
+    #: settings of the response class, such as ``ser_json_inf_nan``.
+    data: list[DataT]
 
 
 class PaginatedEnvelope(Envelope[DataT]):

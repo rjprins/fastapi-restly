@@ -34,7 +34,7 @@ from fastapi_restly.testing._client import RestlyTestClient
 from fastapi_restly.views._react_admin import DEFAULT_REACT_ADMIN_PAGE_SIZE
 
 from ._models import SharedBase
-from .conftest import create_tables
+from .conftest import create_tables, needs_nan_in_responses
 
 # ---------------------------------------------------------------------------
 # Async setup helper (shared by the async-variant tests)
@@ -213,6 +213,31 @@ def test_react_admin_list_returns_plain_array_body(client):
     data = client.get("/items/").json()
     assert isinstance(data, list)
     assert len(data) == 2
+
+
+def _refuse(token: str) -> Any:
+    raise ValueError(f"{token} without quotes is not JSON")
+
+
+@needs_nan_in_responses
+def test_react_admin_list_writes_a_nan_as_text(client):
+    """The list writes each row as its class writes it, as the other
+    responses do. ``json.dumps`` wrote ``NaN`` without quotes, which is not
+    JSON, so the browser could not read the list."""
+
+    class RaSeries(fr.IDMixin, SharedBase):
+        points: Mapped[list[float]] = mapped_column(fr.PydanticJSON(list[float]))
+
+    @fr.include_view(client.app)
+    class RaSeriesView(fr.AsyncReactAdminView):
+        prefix = "/series"
+        model = RaSeries
+
+    create_tables()
+    client.post("/series/", json={"points": [1.5, "NaN", "-Infinity"]})
+    response = client.get("/series/")
+    rows = json.loads(response.text, parse_constant=_refuse)
+    assert rows == [{"id": 1, "points": [1.5, "NaN", "-Infinity"]}]
 
 
 def test_react_admin_list_returns_zero_total_in_content_range_for_empty_result(client):

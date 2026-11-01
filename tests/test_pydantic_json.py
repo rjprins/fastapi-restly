@@ -31,7 +31,7 @@ from fastapi_restly.schemas import derive_schema
 from fastapi_restly.testing._client import RestlyTestClient
 
 from ._models import SharedBase
-from .conftest import create_tables
+from .conftest import create_tables, needs_nan_in_responses
 
 
 class Address(pydantic.BaseModel):
@@ -310,19 +310,66 @@ def test_a_model_that_dumps_by_alias_is_stored_by_names(engine):
         assert _stored(session, "shop", "address") == ['{"street_name": "Main"}']
 
 
-def test_a_nan_reads_back_as_a_nan(engine):
+def test_a_nan_is_stored_as_text_and_reads_back_as_a_nan(engine):
+    """JSON has no number for NaN or infinity, so the column stores the text
+    that PostgreSQL's ``to_jsonb()`` writes. A ``float`` reads it back."""
+
     class Series(fr.IDMixin, SharedBase):
         points: Mapped[list[float]] = mapped_column(fr.PydanticJSON(list[float]))
 
     SharedBase.metadata.create_all(engine)
     with Session(engine) as session:
-        session.add(Series(points=[1.0, math.nan, math.inf]))
+        session.add(Series(points=[1.0, math.nan, math.inf, -math.inf]))
         session.commit()
+        assert _stored(session, "series", "points") == [
+            '[1.0, "NaN", "Infinity", "-Infinity"]'
+        ]
     with Session(engine) as session:
         points = session.scalars(sqlalchemy.select(Series.points)).one()
     assert points[0] == 1.0
     assert math.isnan(points[1])
-    assert points[2] == math.inf
+    assert points[2:] == [math.inf, -math.inf]
+
+
+def test_a_text_nan_in_an_untyped_part_stays_text(engine):
+    """A part of type ``Any`` reads the stored text back as it is: only a
+    ``float`` field turns it into a number."""
+
+    class Reading(fr.IDMixin, SharedBase):
+        values: Mapped[dict[str, Any]] = mapped_column(fr.PydanticJSON(dict[str, Any]))
+
+    SharedBase.metadata.create_all(engine)
+    with Session(engine) as session:
+        session.add(Reading(values={"x": math.nan, "y": 1.5}))
+        session.commit()
+    with Session(engine) as session:
+        values = session.scalars(sqlalchemy.select(Reading.values)).one()
+    assert values == {"x": "NaN", "y": 1.5}
+
+
+class _Reading(pydantic.BaseModel):
+    model_config = pydantic.ConfigDict(ser_json_inf_nan="strings")
+
+    value: float
+    extra: dict[str, Any] = {}
+
+
+def test_a_model_with_the_strings_setting_keeps_a_nan_in_an_untyped_part(engine):
+    """A model dumps a NaN in a part of type ``Any`` by its own
+    ``ser_json_inf_nan``, and Pydantic's default writes ``None``. With
+    ``"strings"``, as the docs advise for a model of your own, the column
+    stores the text."""
+
+    class Sensor(fr.IDMixin, SharedBase):
+        reading: Mapped[_Reading]
+
+    SharedBase.metadata.create_all(engine)
+    with Session(engine) as session:
+        session.add(Sensor(reading=_Reading(value=math.inf, extra={"x": math.nan})))
+        session.commit()
+        assert _stored(session, "sensor", "reading") == [
+            '{"value": "Infinity", "extra": {"x": "NaN"}}'
+        ]
 
 
 class _WithSecret(pydantic.BaseModel):
@@ -859,6 +906,33 @@ def test_a_view_schema_can_have_its_own_document_class(sync_client):
     created = sync_client.post("/shops", json={"address": {"street": "Main"}}).json()
     assert created == {"id": 1, "address": {"street": "Main", "number": 0}}
     assert sync_client.get("/shops/1").json() == created
+
+
+class _Point(pydantic.BaseModel):
+    model_config = pydantic.ConfigDict(ser_json_inf_nan="strings")
+
+    lat: float
+
+
+@needs_nan_in_responses
+def test_a_nan_in_a_document_makes_the_round_trip_as_text(sync_client):
+    """A response writes a document by the setting of its own class, not by
+    the setting of ``fr.BaseSchema``. With ``ser_json_inf_nan="strings"``, as
+    the docs advise, the response shows the text, and a ``float`` field reads
+    the text from the request."""
+
+    class Place(fr.IDMixin, SharedBase):
+        point: Mapped[_Point]
+
+    @fr.include_view(sync_client.app)
+    class PlaceView(fr.RestView):
+        prefix = "/places"
+        model = Place
+
+    SharedBase.metadata.create_all(_fr_config.make_session.kw["bind"])
+    created = sync_client.post("/places", json={"point": {"lat": "Infinity"}})
+    assert created.json() == {"id": 1, "point": {"lat": "Infinity"}}
+    assert sync_client.get("/places/1").json() == created.json()
 
 
 def test_the_whole_column_can_be_readonly(sync_client):

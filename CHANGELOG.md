@@ -58,9 +58,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   asks, set it back to its default, and the value that the server set was
   lost. Keep such a value in a column of its own. The `id` of a reference,
   such as `fr.IDRef[User]`, does not count, because the client sends it.
+- A response writes a NaN or an infinity as the text `"NaN"`, `"Infinity"`
+  or `"-Infinity"`, not as `null`, which lost the value. A JSON column stores
+  the same text, and a `float` field reads it back. The setting is
+  `ser_json_inf_nan="strings"` on `fr.BaseSchema`. For Pydantic's default,
+  set `ser_json_inf_nan="null"` in your schema. With FastAPI before 0.130,
+  such a response is still an error 500. OpenAPI still shows a number for
+  the field. See "Keep NaN and infinity" in the guide.
+- A list response holds its rows in `Envelope.data` as a `list`, not as a
+  `Sequence`. Pydantic wrote a NaN in the rows of a `Sequence` by the setting
+  of the envelope, so a list showed it as `null`.
+- Restly reads a row into the response class in lax mode, also when the class
+  is strict, as a `PydanticJSON` column reads its document. A strict `float`
+  field then reads the text `"NaN"` from a JSON column.
 
 ### Fixed
 
+- The react-admin list wrote a NaN or an infinity without quotes, as `NaN`.
+  That is not JSON, so the browser could not read the list. It now writes
+  the text, as the other responses do.
 - A write that raised is no longer committed by the next write, and a caught
   `Conflict` no longer breaks the session. A route can catch the error of one
   write action and go on, without `session.begin_nested()`. Inside a
@@ -76,7 +92,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   no longer gives a 500 error on each write. Restly dumps the whole value as
   Pydantic does in JSON mode. A secret in a dict or a list raises
   `RestlyConfigurationError`, as a secret in a model does. A `NaN` or an
-  infinity in a dict or a list stays as it is.
+  infinity becomes the text `"NaN"`, `"Infinity"` or `"-Infinity"`, as
+  PostgreSQL's `to_jsonb()` writes it. JSON has no number for these values,
+  so PostgreSQL refused the row before. A `float` field reads the text back
+  as a number.
   `sqlalchemy.JSON.NULL` and an SQL expression go to the column as they are.
 - A JSON column no longer stores a computed field of a model. A model with
   `extra="forbid"` refused it when the row was read, so each response with
