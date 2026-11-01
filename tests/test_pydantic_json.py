@@ -1,16 +1,18 @@
 """fr.PydanticJSON: a JSON column that holds a Pydantic type.
 
 The column validates the document when it loads a row, and validates and
-dumps it on a write, with the dump that Restly uses for a plain JSON column.
-In all else it works as SQLAlchemy's JSON.
+dumps it by its type on a write. In all else it works as SQLAlchemy's JSON.
 """
 
 import asyncio
 import dataclasses
 import math
+import pickle
 from collections.abc import Iterable, Iterator
 from datetime import datetime, timezone
-from typing import Any, NamedTuple, Optional
+from decimal import Decimal
+from typing import Annotated, Any, Literal, NamedTuple, Optional
+from uuid import UUID, uuid4
 
 import pydantic
 import pytest
@@ -176,20 +178,110 @@ def test_a_document_with_aliases_reads_back(engine):
         ]
 
 
-def test_a_subclass_keeps_its_fields_in_the_column(engine):
-    """The dump goes by the type of the value, as for a plain JSON column.
-    The load gives the type of the column."""
+def test_a_subclass_is_stored_as_the_type_of_the_column(engine):
+    """The dump goes by the type of the column, as a field of that type does
+    in ``model_dump()``. So a model with ``extra="forbid"`` reads it back."""
+
+    class Strict(pydantic.BaseModel):
+        model_config = pydantic.ConfigDict(extra="forbid")
+        street: str
+
+    class StrictHome(Strict):
+        rooms: int = 1
 
     class Shop(fr.IDMixin, SharedBase):
-        address: Mapped[Address] = mapped_column(fr.PydanticJSON(Address))
+        address: Mapped[Strict] = mapped_column(fr.PydanticJSON(Strict))
 
     SharedBase.metadata.create_all(engine)
     with Session(engine) as session:
-        session.add(Shop(address=Home(street="Main", rooms=3)))
+        session.add(Shop(address=StrictHome(street="Main", rooms=3)))
         session.commit()
-        assert '"rooms": 3' in _stored(session, "shop", "address")[0]
+        assert _stored(session, "shop", "address") == ['{"street": "Main"}']
     with Session(engine) as session:
-        assert type(session.scalars(sqlalchemy.select(Shop)).one().address) is Address
+        address = session.scalars(sqlalchemy.select(Shop)).one().address
+        assert address == Strict(street="Main")
+
+
+def test_a_serializer_in_the_type_runs(engine):
+    """The dump goes by the type of the column, so a serializer that the type
+    declares runs, as in ``TypeAdapter(type_).dump_python()``."""
+    Money = Annotated[Decimal, pydantic.PlainSerializer(float, when_used="json")]
+
+    class Prices(fr.IDMixin, SharedBase):
+        prices: Mapped[dict[str, Decimal]] = mapped_column(
+            fr.PydanticJSON(dict[str, Money])
+        )
+
+    SharedBase.metadata.create_all(engine)
+    with Session(engine) as session:
+        session.add(Prices(prices={"tea": Decimal("1.50")}))
+        session.commit()
+        assert _stored(session, "prices", "prices") == ['{"tea": 1.5}']
+
+
+def test_a_strict_model_reads_back(engine):
+    """The stored document is JSON data, and the column reads it as Pydantic
+    reads JSON. So a strict model takes text for a datetime, a UUID or a
+    Decimal, and a list for a tuple."""
+
+    class Entry(pydantic.BaseModel):
+        model_config = pydantic.ConfigDict(strict=True)
+        at: datetime
+        ref: UUID
+        amount: Decimal = pydantic.Field(strict=True)
+        tags: tuple[str, ...]
+
+    class Ledger(fr.IDMixin, SharedBase):
+        entry: Mapped[Entry]
+
+    entry = Entry(
+        at=datetime(2026, 1, 2, tzinfo=timezone.utc),
+        ref=uuid4(),
+        amount=Decimal("1.50"),
+        tags=("a", "b"),
+    )
+    SharedBase.metadata.create_all(engine)
+    with Session(engine) as session:
+        session.add(Ledger(entry=entry))
+        session.commit()
+    with Session(engine) as session:
+        assert session.scalars(sqlalchemy.select(Ledger)).one().entry == entry
+
+
+def test_a_model_with_the_same_fields_is_written_by_its_attributes(engine):
+    """A schema of a view can have a class of its own for the document. The
+    column reads such a value by its attributes."""
+
+    class AddressSchema(fr.BaseSchema):
+        street: str
+
+    class Shop(fr.IDMixin, SharedBase):
+        address: Mapped[Address]
+
+    SharedBase.metadata.create_all(engine)
+    with Session(engine) as session:
+        session.add(Shop(address=AddressSchema(street="Main")))
+        session.commit()
+    with Session(engine) as session:
+        address = session.scalars(sqlalchemy.select(Shop)).one().address
+        assert address == Address(street="Main")
+
+
+def test_a_model_that_dumps_by_alias_is_stored_by_names(engine):
+    """``serialize_by_alias=True`` does not change the keys in the column."""
+
+    class Camel(pydantic.BaseModel):
+        model_config = pydantic.ConfigDict(serialize_by_alias=True)
+        street_name: str = pydantic.Field(alias="streetName")
+
+    class Shop(fr.IDMixin, SharedBase):
+        address: Mapped[Camel]
+
+    SharedBase.metadata.create_all(engine)
+    with Session(engine) as session:
+        session.add(Shop(address=Camel(streetName="Main")))
+        session.commit()
+        assert _stored(session, "shop", "address") == ['{"street_name": "Main"}']
 
 
 def test_a_nan_reads_back_as_a_nan(engine):
@@ -384,18 +476,22 @@ def test_mutable_dict_tracks_a_new_key(engine):
     with Session(engine) as session:
         shop = session.scalars(sqlalchemy.select(Shop)).one()
         assert isinstance(shop.branches, MutableDict)
+        shop.branches["north"].street = "Harbour"
+        assert shop not in session.dirty
         shop.branches["south"] = Address(street="Dock")
         assert shop in session.dirty
         session.commit()
     with Session(engine) as session:
         shop = session.scalars(sqlalchemy.select(Shop)).one()
+        # The new street of "north" was saved only because the commit wrote
+        # the whole dict.
         assert shop.branches == {
-            "north": Address(street="Main"),
+            "north": Address(street="Harbour"),
             "south": Address(street="Dock"),
         }
 
 
-def test_each_type_has_its_own_cache_key():
+def test_each_type_has_its_own_cache_key(engine):
     assert (
         fr.PydanticJSON(Address)._static_cache_key
         != fr.PydanticJSON(Home)._static_cache_key
@@ -404,6 +500,86 @@ def test_each_type_has_its_own_cache_key():
         fr.PydanticJSON(Address)._static_cache_key
         == fr.PydanticJSON(Address)._static_cache_key
     )
+    # none_as_null is in the key too, as in JSON. Without it, the second
+    # statement would reuse the SQL of the first.
+    with Session(engine) as session:
+        for none_as_null in (False, True):
+            column_type = fr.PydanticJSON(Address, none_as_null=none_as_null)
+            stmt = sqlalchemy.select(sqlalchemy.literal(None, column_type).is_(None))
+            assert session.scalar(stmt) is none_as_null
+    adapted = fr.PydanticJSON(Address, none_as_null=True).adapt(fr.PydanticJSON)
+    assert adapted.none_as_null
+
+
+def test_the_type_must_be_hashable():
+    with pytest.raises(RestlyConfigurationError, match="is not hashable"):
+        fr.PydanticJSON(Annotated[list[int], {"unit": "cm"}])
+
+
+def test_a_model_is_needed_in_the_annotation():
+    with pytest.raises(RestlyConfigurationError, match="names no model"):
+
+        class Shop(fr.IDMixin, SharedBase):
+            address: Mapped[pydantic.BaseModel]
+
+
+def test_the_label_keeps_text_in_quotes():
+    column_type = fr.PydanticJSON(Literal["v1.2", 1.5])
+    assert repr(column_type) == "PydanticJSON(Literal['v1.2', 1.5])"
+
+
+def test_a_document_is_not_hashable_for_unique(engine):
+    """As for JSON, SQLAlchemy cannot make the rows unique by a hash."""
+
+    class Shop(fr.IDMixin, SharedBase):
+        address: Mapped[Address]
+
+    SharedBase.metadata.create_all(engine)
+    with Session(engine) as session:
+        session.add(Shop(address=Address(street="Main")))
+        session.commit()
+        result = session.scalars(sqlalchemy.select(Shop.address)).unique()
+        with pytest.raises(sqlalchemy.exc.InvalidRequestError, match="non-hashable"):
+            result.all()
+
+
+def test_a_subclass_can_use_a_type_decorator_as_its_impl(engine):
+    class TextJSON(sqlalchemy.TypeDecorator):
+        impl = sqlalchemy.JSON
+        cache_ok = True
+
+    class TextDocument(fr.PydanticJSON):
+        impl = TextJSON
+        cache_ok = True
+
+    class Shop(fr.IDMixin, SharedBase):
+        address: Mapped[Address] = mapped_column(TextDocument(Address))
+
+    SharedBase.metadata.create_all(engine)
+    with Session(engine) as session:
+        session.add(Shop(address=Address(street="Main")))
+        session.commit()
+        stmt = sqlalchemy.select(Shop.id).where(
+            Shop.address["street"].as_string() == "Main"
+        )
+        assert session.scalars(stmt).all() == [1]
+
+
+def test_the_metadata_pickles_after_a_comparison():
+    """A comparison keeps the comparator on the column. Pickling the
+    metadata then pickles the comparator too."""
+
+    class Base(DeclarativeBase):
+        pass
+
+    class Shop(Base):
+        __tablename__ = "shop"
+        id: Mapped[int] = mapped_column(primary_key=True)
+        address: Mapped[Address] = mapped_column(fr.PydanticJSON(Address))
+
+    Shop.__table__.c.address.comparator  # noqa: B018
+    metadata = pickle.loads(pickle.dumps(Base.metadata))
+    assert repr(metadata.tables["shop"].c.address.type) == "PydanticJSON(Address)"
 
 
 def test_pydantic_jsonb_is_a_jsonb_column():
@@ -431,16 +607,59 @@ def test_pydantic_jsonb_is_a_jsonb_column():
 def test_python_type_is_the_class_of_the_document():
     assert fr.PydanticJSON(Address).python_type is Address
     assert fr.PydanticJSON(dict[str, Address]).python_type is dict
+    short = Annotated[list[int], pydantic.Field(max_length=3)]
+    assert fr.PydanticJSON(short).python_type is list
     with pytest.raises(NotImplementedError):
         fr.PydanticJSON(Address | None).python_type
+    with pytest.raises(NotImplementedError):
+        fr.PydanticJSON(Any).python_type
 
 
 def test_a_column_without_annotation_gives_the_field_the_document_type():
     class Shop(fr.IDMixin, SharedBase):
         branches = mapped_column(fr.PydanticJSON(dict[str, Address]), nullable=False)
 
-    schema = derive_schema(Shop)
-    assert schema.model_fields["branches"].annotation == dict[str, Address]
+    fields = derive_schema(Shop).model_fields
+    assert fields["branches"].annotation == dict[str, Address]
+
+
+def test_a_filter_on_a_document_of_any_type_works(sync_client):
+    """A field of type Any gets the filter of a plain JSON column."""
+
+    class Item(fr.IDMixin, SharedBase):
+        doc: Mapped[Any] = mapped_column(fr.PydanticJSON(Any))
+
+    @fr.include_view(sync_client.app)
+    class ItemView(fr.RestView):
+        prefix = "/items"
+        model = Item
+
+    SharedBase.metadata.create_all(_fr_config.make_session.kw["bind"])
+    sync_client.post("/items", json={"doc": 5})
+    assert sync_client.get("/items?doc=5").json()["data"] == [{"id": 1, "doc": 5}]
+
+
+def test_a_view_schema_can_have_its_own_document_class(sync_client):
+    class Shop(fr.IDMixin, SharedBase):
+        address: Mapped[Address]
+
+    class AddressSchema(fr.BaseSchema):
+        street: str
+        number: int = 0
+
+    class ShopSchema(fr.IDSchema):
+        address: AddressSchema
+
+    @fr.include_view(sync_client.app)
+    class ShopView(fr.RestView):
+        prefix = "/shops"
+        model = Shop
+        schema = ShopSchema
+
+    SharedBase.metadata.create_all(_fr_config.make_session.kw["bind"])
+    created = sync_client.post("/shops", json={"address": {"street": "Main"}}).json()
+    assert created == {"id": 1, "address": {"street": "Main", "number": 0}}
+    assert sync_client.get("/shops/1").json() == created
 
 
 @pytest.mark.parametrize("asynchronous", [True, False], ids=["async", "sync"])
