@@ -35,7 +35,7 @@ def make_new_object(
     declares, except those it marks ``ReadOnly``. A time gets the form of its
     column; see :ref:`utc-times`.
     """
-    from .views._base import (
+    from .views._schema_to_model import (
         apply_create_assignments,
         build_create_plan,
         validate_resolved_reference_consistency,
@@ -60,7 +60,7 @@ def update_object(session: _Session, obj: _T, data: _pydantic.BaseModel) -> _T:
     its column, as in :func:`make_new_object`. It does not flush. The default
     ``update`` of a view calls this.
     """
-    from .views._base import (
+    from .views._schema_to_model import (
         apply_update_to_object,
         validate_resolved_reference_consistency,
     )
@@ -155,7 +155,7 @@ async def async_make_new_object(
     session: _AsyncSession, model: type[_T], data: _pydantic.BaseModel
 ) -> _T:
     """Async equivalent of :func:`make_new_object`."""
-    from .views._base import (
+    from .views._schema_to_model import (
         apply_create_assignments,
         build_create_plan,
         validate_resolved_reference_consistency,
@@ -175,7 +175,7 @@ async def async_update_object(
     session: _AsyncSession, obj: _T, data: _pydantic.BaseModel
 ) -> _T:
     """Async equivalent of :func:`update_object`."""
-    from .views._base import (
+    from .views._schema_to_model import (
         apply_update_to_object,
         validate_resolved_reference_consistency,
     )

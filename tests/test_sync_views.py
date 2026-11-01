@@ -7,7 +7,7 @@ import fastapi_restly as fr
 from fastapi_restly.objects import make_new_object, save_object, update_object
 from fastapi_restly.schemas._base import create_model_with_optional_fields
 from fastapi_restly.testing import RestlyTestClient
-from fastapi_restly.views._base import (
+from fastapi_restly.views._schema_to_model import (
     build_create_plan,
     validate_resolved_reference_consistency,
 )

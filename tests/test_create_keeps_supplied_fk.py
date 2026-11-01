@@ -22,7 +22,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 import fastapi_restly as fr
 from fastapi_restly.objects import async_make_new_object, make_new_object
 from fastapi_restly.testing import RestlyTestClient
-from fastapi_restly.views._base import build_create_plan
+from fastapi_restly.views._schema_to_model import build_create_plan
 
 from ._models import SharedBase
 from .conftest import create_tables

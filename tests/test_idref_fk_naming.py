@@ -25,7 +25,7 @@ from fastapi_restly.objects import (
     make_new_object,
     update_object,
 )
-from fastapi_restly.views._base import (
+from fastapi_restly.views._schema_to_model import (
     build_create_plan,
     validate_resolved_reference_consistency,
 )
