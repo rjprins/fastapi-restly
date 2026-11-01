@@ -39,11 +39,13 @@ from ._base import (
     ListResult,
     ResponseShape,
     View,
+    _serves_route,
+    _warn_on_misuse,
+)
+from ._class_based_view import (
     _copy_all_parent_class_endpoints_into_this_subclass,
     _init_all_endpoints,
     _init_class_based_view,
-    _serves_route,
-    _warn_on_misuse,
 )
 from ._generated import _schema_list_params
 from ._guards import _check_removed_settings
