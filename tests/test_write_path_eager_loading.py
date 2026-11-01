@@ -35,7 +35,7 @@ from sqlalchemy.orm.attributes import set_committed_value
 import fastapi_restly as fr
 from fastapi_restly.db._config import _fr_config
 from fastapi_restly.testing._client import RestlyTestClient
-from fastapi_restly.views._base import _rows_reload_statements
+from fastapi_restly.views._reads import _rows_reload_statements
 
 from ._models import SharedBase
 from .conftest import create_tables

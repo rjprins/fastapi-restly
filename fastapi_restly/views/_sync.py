@@ -24,7 +24,6 @@ from ._base import (
     _apply_own_filters,
     _check_action_name,
     _check_list_methods,
-    _count_statement,
     _ReadWhere,
     _schema_response,
     delete,
@@ -38,6 +37,7 @@ from ._lifecycle import (
     _shared_write_action_commit,
     sync_write_action,
 )
+from ._reads import _count_statement
 from ._view_types import ViewCreate, ViewID, ViewListResponse, ViewResponse, ViewUpdate
 
 
