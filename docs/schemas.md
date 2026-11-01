@@ -861,6 +861,11 @@ branches: Mapped[dict[str, Address]] = mapped_column(
 )
 ```
 
+The column validates the document each time it loads a row, also outside a
+view. So when you change the model, a stored document that no longer fits it
+makes each load of its row fail. A new field with a default is safe. For
+other changes, update the stored documents in a migration.
+
 Use a `PydanticJSON` column for a document with a fixed shape. For a
 free-form document, use a plain `JSON` column, as in
 `Mapped[dict[str, Any]] = mapped_column(JSON)`. For a document with a secret,
@@ -871,17 +876,20 @@ because the JSON dump masks the secret.
 :class: details
 
 **Writes and reads.** The column validates a value when it writes it. So a
-dict works too, and a dict that does not fit fails at the flush. Then the
-column dumps the value as Pydantic does in JSON mode, with
-`round_trip=True`. A `datetime`, a `UUID` or a `Decimal` becomes text, and a
-set becomes a list. The keys are the names of the fields, not their aliases,
-because a response reads the document by the names, as it reads the columns.
-A computed field is not stored, so a model with `extra="forbid"` accepts the
-document. A `Json[T]` field is stored as text, as its validation reads it.
-The column validates the document again when it loads the row. So a stored
-document that no longer fits the model fails when the row loads, also
-outside a view. An old document still loads when the model gets a new
-field with a default.
+dict works too, and so does another model with the same fields, such as a
+schema class of your view. A value that does not fit fails at the flush.
+Then the column dumps the value as `TypeAdapter(Address)` does in JSON mode,
+with `round_trip=True`. A `datetime`, a `UUID` or a `Decimal` becomes text,
+and a set becomes a list. A serializer in the type, such as a
+`PlainSerializer`, runs, and the column stores what it returns. A subclass of
+`Address` is stored as an `Address`, without its own fields, as a field of
+type `Address` is in `model_dump()`. The keys are the names of the fields,
+not their aliases, also with `serialize_by_alias=True`. A response reads the
+document by the names, as it reads the columns. A computed field is not
+stored, so a model with `extra="forbid"` accepts the document. A `Json[T]`
+field is stored as text, as its validation reads it. A load reads the stored
+document as Pydantic reads JSON. So a strict model reads a `datetime` from
+text, and a tuple from a list.
 
 **Refused types.** Some types raise
 {class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`
@@ -891,8 +899,9 @@ value:
 - A {data}`WriteOnly <fastapi_restly.schemas.WriteOnly>`,
   `Field(exclude=True)` or `Field(exclude_if=...)` field, also in a nested
   model. The dump leaves the field out.
-- A field of Pydantic's secret types, such as `SecretStr`. The dump masks it,
-  so the column would store `**********`.
+- A field of Pydantic's secret types, such as `SecretStr`, also in a nested
+  model, a `TypedDict` or a `NamedTuple`. The dump masks it, so the column
+  would store `**********`.
 - A dataclass, and an iterator type, such as `Iterable`.
 
 A part typed `Any` is checked when you write it. For such documents, write a
@@ -904,8 +913,8 @@ keeps all its fields.
 **The same as `JSON`.** `None` is stored as JSON `null`, and
 `fr.PydanticJSON(Address, none_as_null=True)` stores SQL `NULL`. A query
 reads a part of the document as with `JSON`, as in
-`Shop.address["city"].as_string() == "Utrecht"`. A value in a query is
-dumped, but not validated, because it can be a part of a document.
+`Shop.address["city"].as_string() == "Utrecht"`. A dict or a model in a
+query is dumped, but not validated, because it can be a part of a document.
 
 **`JSONB` for each model.** The `type_annotation_map` of `fr.ModelDefaults`
 has `pydantic.BaseModel: fr.PydanticJSON(pydantic.BaseModel)`, as SQLAlchemy
@@ -918,9 +927,12 @@ base, and each model gets a `JSONB` column. Your own entry wins; see
 `Mapped[dict[str, Any]]` column gets the field type `dict[str, Any]` in a
 generated schema, which does not check the document. To check it only in the
 view, write the schema yourself and give the field a Pydantic model as its
-type, such as `Address` or `dict[str, Address]`. Restly dumps the value as
-above before it assigns it to the column, and it refuses the same types when
-it writes the value. The model attribute then holds a dict, not a model. A
+type, such as `Address` or `dict[str, Address]`. Restly dumps the value
+before it assigns it to the column, and it refuses the same types when it
+writes the value. The column has no type of its own, so this dump goes by
+the type of the value: a subclass keeps its own fields, and a serializer of
+the field type, such as a `PlainSerializer`, does not run. A serializer in a
+model does. The model attribute then holds a dict, not a model. A
 `PydanticJSON` column says the shape once, on the model, and holds the model
 in all of your code.
 :::
@@ -1107,8 +1119,9 @@ table. A type keeps its name, except a time: it gets
 | SQLAlchemy `Interval` | `timedelta` |
 
 `Any` and other generic types, such as `tuple[int, int]`, also stay as they
-are. Any other type raises `TypeError` when Restly generates the schema. For a
-custom column type, write the schema yourself.
+are, and so does a union, such as `Cat | Dog`. Any other type raises
+`TypeError` when Restly generates the schema. For a custom column type, write
+the schema yourself.
 
 ## See also
 

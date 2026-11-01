@@ -4,8 +4,8 @@ Models API
 ``fastapi_restly.models`` provides ``ModelDefaults``, which adds Restly's
 defaults to your own declarative base, and the model mixins ``IDMixin`` and
 ``TimestampsMixin``. :doc:`/models` shows how to use them. It provides
-``PydanticJSON`` and ``PydanticJSONB``, JSON columns that hold a Pydantic
-model. It also provides two cascades for relationships on an async session,
+``PydanticJSON`` and ``PydanticJSONB``, JSON columns that hold a document of
+a type that Pydantic validates, such as a model. It also provides two cascades for relationships on an async session,
 ``CASCADE_ALL_ASYNC`` and ``CASCADE_ALL_DELETE_ORPHAN_ASYNC``.
 
 .. automodule:: fastapi_restly.models

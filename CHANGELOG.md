@@ -10,8 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `derive_schema` accepts a Pydantic model as the type of a column, as in
-  `Mapped[Address]`. The field gets the type `Address`. Before, this raised
-  `TypeError`.
+  `address: Mapped[Address] = mapped_column(JSON)`. The field gets the type
+  `Address`. Before, this raised `TypeError`.
 - `fr.PydanticJSON(T)`, a JSON column that holds a Pydantic type, such as a
   model or `dict[str, Address]`. It validates the document when it writes it
   and when it loads a row, so `shop.address` is an `Address`.
@@ -20,7 +20,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `PydanticJSON(Address)` column.
 - The `env.py` that `restly new` generates writes a `PydanticJSON` column into
   a migration as `sa.JSON()`, and a `PydanticJSONB` column as
-  `postgresql.JSONB()`. Without this, the migration could not run.
+  `postgresql.JSONB()`. Without this, the migration could not run. If your
+  `env.py` is older, or your own, copy its `render_item` function from
+  "Write a `PydanticJSON` column into a migration" in the guide.
 
 ### Changed
 
@@ -82,6 +84,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A plain `View` that sets a `model` no longer fails when you register it.
   It is not a resource, so a foreign key to its model gets no
   `x-resource-ref` in OpenAPI.
+- A JSON column now stores the names of the fields also for a model with
+  `serialize_by_alias=True`. Before, it stored the aliases, and each response
+  with the row was a 500 error.
+- `derive_schema` keeps each member of a union, as in
+  `Mapped[Cat | Dog | None]`. Before, the field got `Cat | None`, so a `Dog`
+  was refused, and `Mapped[Cat | Dog]` raised `TypeError`.
 
 ## [0.12.0] - 2026-10-27
 
