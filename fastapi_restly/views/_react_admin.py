@@ -39,7 +39,8 @@ from fastapi_restly.views import (
 )
 
 # Private names without a public form yet.
-from ._base import _how_set, _list_filter_methods, _list_setting, _owner, _set_by
+from ._base import _how_set, _list_filter_methods, _list_setting
+from ._guards import _owner, _set_by
 
 #: Default page size used when the react-admin client does not send a `range`
 #: query parameter. Override per view with

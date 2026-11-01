@@ -14,8 +14,8 @@ PRIVATE_IMPORTS = {
     "._base._how_set",
     "._base._list_filter_methods",
     "._base._list_setting",
-    "._base._owner",
-    "._base._set_by",
+    "._guards._owner",
+    "._guards._set_by",
 }
 
 
