@@ -1557,10 +1557,18 @@ def _reject_excluded_json_type(type_: Any, column: str) -> None:
                 # A forward reference that does not resolve yet. Each write
                 # checks the value.
                 continue
-            pending.extend(
-                (hint, f"{origin.__name__}.{name}", False)
-                for name, hint in hints.items()
-            )
+            for name, hint in hints.items():
+                hint_where = f"{origin.__name__}.{name}"
+                if is_typeddict(origin):
+                    # A dump leaves out an excluded key of a TypedDict, as
+                    # it leaves out such a field of a model. A NamedTuple
+                    # keeps it.
+                    field = FieldInfo.from_annotation(hint)
+                    if field.exclude is True:
+                        raise _excluded_error(column, hint_where)
+                    if _excluded_if(field):
+                        raise _excluded_if_error(column, hint_where)
+                pending.append((hint, hint_where, False))
             continue
         pending.extend((arg, where, True) for arg in get_args(part))
 

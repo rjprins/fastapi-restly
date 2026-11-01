@@ -334,6 +334,14 @@ class _SecretTuple(NamedTuple):
     password: pydantic.SecretStr
 
 
+class _WriteOnlyDict(TypedDict):
+    token: fr.WriteOnly[str]
+
+
+class _OptionalExcludedDict(TypedDict, total=False):
+    note: Annotated[str, pydantic.Field(exclude=True)]
+
+
 @pytest.mark.parametrize(
     "type_, message",
     [
@@ -346,6 +354,11 @@ class _SecretTuple(NamedTuple):
         (_SecretTuple, "_SecretTuple.password is a secret"),
         (list[_WithWriteOnly | None], "_WithWriteOnly.token is left out of the dump"),
         (_WithExcluded, "_WithExcluded.note is left out of the dump"),
+        (_WriteOnlyDict, "_WriteOnlyDict.token is left out of the dump"),
+        (
+            list[_OptionalExcludedDict],
+            "_OptionalExcludedDict.note is left out of the dump",
+        ),
         (list[_Point], "_Point in list[_Point] is a dataclass"),
         (_Polygon, "_Point in _Polygon.points is a dataclass"),
         (Iterable[int], "Pydantic validates Iterable[int] to an iterator"),
@@ -366,8 +379,24 @@ def test_a_field_with_exclude_if_is_refused():
     class Note(pydantic.BaseModel):
         text: str = pydantic.Field("", exclude_if=lambda value: value == "")
 
+    class Tags(TypedDict):
+        main: Annotated[str, pydantic.Field(exclude_if=lambda value: value == "")]
+
     with pytest.raises(RestlyConfigurationError, match=r"Note.text has exclude_if"):
         fr.PydanticJSON(list[Note])
+    with pytest.raises(RestlyConfigurationError, match=r"Tags.main has exclude_if"):
+        fr.PydanticJSON(Tags)
+
+
+def test_an_excluded_field_in_a_named_tuple_is_accepted():
+    """A dump keeps every field of a NamedTuple, also an excluded one."""
+
+    class Pair(NamedTuple):
+        left: int
+        right: Annotated[int, pydantic.Field(exclude=True)]
+
+    column_type = fr.PydanticJSON(Pair)
+    assert column_type.process_bind_param(Pair(1, 2), None) == [1, 2]
 
 
 def test_a_recursive_model_without_secrets_is_accepted():

@@ -898,7 +898,7 @@ value:
 
 - A {data}`WriteOnly <fastapi_restly.schemas.WriteOnly>`,
   `Field(exclude=True)` or `Field(exclude_if=...)` field, also in a nested
-  model. The dump leaves the field out.
+  model or a `TypedDict`. The dump leaves the field out.
 - A field of Pydantic's secret types, such as `SecretStr`, also in a nested
   model, a `TypedDict` or a `NamedTuple`. The dump masks it, so the column
   would store `**********`.
