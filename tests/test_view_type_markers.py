@@ -380,9 +380,7 @@ def test_a_marker_inside_a_type_inside_a_generic_class_is_filled(env):
     fr.include_view(env.client.app, _generic_view(env))
     client = env.client
 
-    assert client.get("/products/many").json() == {
-        "data": [{"id": 1, "name": "Lamp"}]
-    }
+    assert client.get("/products/many").json() == {"data": [{"id": 1, "name": "Lamp"}]}
     spec = client.app.openapi()
     name = _ref(_json_schema(spec["paths"]["/products/many"]["get"]))
     data = spec["components"]["schemas"][name]["properties"]["data"]

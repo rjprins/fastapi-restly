@@ -1790,17 +1790,17 @@ class OmitReadOnlyMixin(pydantic.BaseModel):
     def __pydantic_init_subclass__(cls, **kwargs: Any) -> None:
         super().__pydantic_init_subclass__(**kwargs)
 
-        # Collect readonly fields to delete first
-        omit = getattr(cls, "__restly_omit_fields__", ())
-        readonly_fields = []
-        for name, field_info in cls.model_fields.items():
-            if _is_readonly(field_info) or name in omit:
-                readonly_fields.append(name)
-
-        # Delete readonly fields after iteration is complete
-        for name in readonly_fields:
-            del cls.model_fields[name]
-        _skip_field_checks(cls, set(readonly_fields))
+        # Only this class's own omit: a subclass may declare such a field again.
+        omit = cls.__dict__.get("__restly_omit_fields__", ())
+        _drop_fields(
+            cls,
+            _brought_back_fields(cls)
+            | {
+                name
+                for name, field_info in cls.model_fields.items()
+                if _is_readonly(field_info) or name in omit
+            },
+        )
 
         cls.model_rebuild(force=True)
 
@@ -1820,20 +1820,28 @@ class _OmitWriteOnlyMixin(pydantic.BaseModel):
             for name, field_info in cls.model_fields.items()
             if _is_writeonly(field_info)
         }
-        if not writeonly_fields:
-            return
-        cls.__restly_writeonly_keys__ = frozenset(
+        new_keys = frozenset(
             key
             for name, field_info in writeonly_fields.items()
             for key in _input_keys(name, field_info)
         )
-        for name in writeonly_fields:
-            del cls.model_fields[name]
-        _skip_field_checks(cls, set(writeonly_fields))
+        removed = _brought_back_fields(cls) | set(writeonly_fields)
+        _drop_fields(cls, removed)
+        # A field that this class declares again goes out, so its keys stay.
+        declared_again = frozenset(
+            key
+            for name, field_info in cls.model_fields.items()
+            if name in cls.__restly_dropped_fields__
+            for key in _input_keys(name, field_info)
+        )
+        cls.__restly_writeonly_keys__ = (
+            cls.__restly_writeonly_keys__ - declared_again
+        ) | new_keys
 
-        # A forward reference that is not defined yet does not fail here:
-        # pydantic builds the class again when it is first used.
-        cls.model_rebuild(force=True, raise_errors=False)
+        if removed:
+            # A forward reference that is not defined yet does not fail here:
+            # pydantic builds the class again when it is first used.
+            cls.model_rebuild(force=True, raise_errors=False)
 
     # "before", not "wrap": pydantic does not pass ``by_name`` through a wrap
     # validator to the nested models.
@@ -1861,6 +1869,44 @@ def _input_keys(name: str, field_info: FieldInfo) -> set[str]:
             choice for choice in validation_alias.choices if isinstance(choice, str)
         )
     return keys
+
+
+def _drop_fields(cls: type[pydantic.BaseModel], names: set[str]) -> None:
+    """Remove the fields ``names`` from ``cls``, and remember them for its
+    subclasses: see :func:`_brought_back_fields`."""
+    for name in names:
+        del cls.model_fields[name]
+    _skip_field_checks(cls, names)
+    inherited = getattr(cls, "__restly_dropped_fields__", frozenset())
+    cls.__restly_dropped_fields__ = inherited | names  # type: ignore[attr-defined]
+
+
+def _brought_back_fields(cls: type[pydantic.BaseModel]) -> set[str]:
+    """The fields that a parent dropped and that pydantic built again for ``cls``.
+
+    Pydantic collects the fields of a class from the annotations of all its
+    parents. A field that is no longer in the fields of the parent, it builds
+    again from the annotation, without its ``ReadOnly`` or ``WriteOnly`` marker
+    and its default. So a ``ReadOnly`` field would become writable in a subclass
+    of the update class.
+
+    A field that ``cls`` declares itself, or that another parent has, is a real
+    field and stays.
+    """
+    dropped = getattr(cls, "__restly_dropped_fields__", frozenset())
+    if not dropped:
+        return set()
+    own = _own_annotations(cls)
+    in_parents = {
+        name
+        for base in cls.__bases__
+        for name in getattr(base, "__pydantic_fields__", ())
+    }
+    return {
+        name
+        for name in dropped
+        if name in cls.model_fields and name not in own and name not in in_parents
+    }
 
 
 def _skip_field_checks(cls: type[pydantic.BaseModel], removed: set[str]) -> None:
