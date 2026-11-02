@@ -1104,6 +1104,7 @@ cannot write a `ReadOnly` field by accident.
 Declare `schema_response`, `schema_create` or `schema_update` on the view class
 to use your own class instead.
 
+(subclass-new-classes)=
 ### When a subclass view gets new classes
 
 A subclass inherits the classes that its base view declares. Restly builds a

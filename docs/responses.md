@@ -62,8 +62,10 @@ A view without pagination sends only `data`; see
 the page size limits, are on
 [Filtering, Sorting & Pagination](filtering.md).
 
-The list route's `response_model` is the pagination's envelope, filled with
-the response class. By default that envelope is a
+The list route's `response_model` is the view's
+{attr}`list_response_schema <fastapi_restly.views.BaseRestView.list_response_schema>`.
+Unless the view sets another class, this is the pagination's envelope, filled
+with the response class. By default that envelope is a
 {class}`PaginatedEnvelope <fastapi_restly.views.PaginatedEnvelope>`, and a
 plain {class}`Envelope <fastapi_restly.views.Envelope>` for a view without
 pagination. OpenAPI names the filled class after the response class:
@@ -397,13 +399,14 @@ schema. Only the fields of the response class go out; see
 (list-schema)=
 ## Use a different schema for the list route
 
-There is no `schema_list` attribute. A different list shape changes the HTTP
-contract, so it belongs in the endpoint method. Replace
-{meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>`
-with your own `response_model`, and serialize through the smaller schema.
-Filtering, sorting and pagination keep working:
+Set {attr}`list_response_schema <fastapi_restly.views.BaseRestView.list_response_schema>`
+on the view. OpenAPI follows it. The other routes keep the full schema, and
+filtering, sorting and pagination keep working:
 
 ```python
+from fastapi_restly.views import PaginatedEnvelope
+
+
 class UserSummary(fr.IDSchema):
     name: str
 
@@ -411,19 +414,52 @@ class UserSummary(fr.IDSchema):
 class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
-    schema = UserSchema  # the other routes keep the full schema
-
-    @fr.get("/", response_model=list[UserSummary])
-    async def get_many_endpoint(self, list_params):
-        result = await self.handle_get_many(list_params)
-        return [
-            UserSummary.model_validate(u, from_attributes=True)
-            for u in result.objects
-        ]
+    schema = UserSchema
+    list_response_schema = PaginatedEnvelope[UserSummary]
 ```
 
-This route returns a bare list. The filters and sort keys still follow the
-view's response class, not `UserSummary`.
+:::{admonition} Details
+:class: details
+
+Restly fills this class as it fills an
+[envelope](#change-list-envelope): by field name, from `data`, `total_count`,
+`page`, `page_size` and `total_pages`. An alias renames a key in the JSON.
+Registration raises for a class that `GET /` cannot fill, such as a class with
+page fields on a view without pagination.
+
+Restly fills the items from the response class, so an item can have fewer
+fields than the response class. Registration raises for a field without a
+default that the response class does not have. The filters and sort keys
+follow the response class, not `UserSummary`.
+
+A subclass of the view keeps the class. A subclass that sets a new `schema` or
+`schema_response` gets the default again, as for the
+[other classes](#subclass-new-classes).
+
+For a shape that Restly cannot fill, such as a bare list, set the type and
+replace {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>`.
+The marker {data}`ViewListResponse <fastapi_restly.views.ViewListResponse>`
+then gives the route this type:
+
+```python
+from fastapi_restly.views import ViewListResponse
+
+
+class UserView(fr.AsyncRestView):
+    prefix = "/users"
+    model = User
+    schema = UserSchema
+    list_response_schema = list[UserSummary]
+
+    @fr.get("/")
+    async def get_many_endpoint(self, list_params) -> ViewListResponse:
+        result = await self.handle_get_many(list_params)
+        return [
+            UserSummary.model_validate(user, from_attributes=True)
+            for user in result.objects
+        ]
+```
+:::
 
 ## Internals
 

@@ -33,7 +33,6 @@ from typing_extensions import TypeVar
 
 from ..db._config import _fr_config
 from ..exc import RestlyConfigurationError, RestlyMisuseWarning
-from ..schemas import derive_schema_list_response
 from ..schemas._base import _reject_buried_markers
 from ._base import BaseRestView, ListResult, ResponseShape, View, _serves_route
 from ._class_based_view import (
@@ -314,9 +313,7 @@ def _declared_view_response(
     the same schema returns that same class.
     """
     response = view_cls.schema_response
-    list_response = derive_schema_list_response(
-        response, pagination=view_cls.pagination
-    )
+    list_response = _bare(view_cls.list_response_schema)
     declared = _bare(_replace_view_types(declared, view_cls))
     if declared is response:
         return "single", None

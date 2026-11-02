@@ -32,6 +32,8 @@ from typing import (
     Sequence,
     cast,
     final,
+    get_args,
+    get_origin,
 )
 
 import fastapi
@@ -58,14 +60,16 @@ from .._pagination import (
     NoPagination,
     NumberedPagination,
     _build_envelope,
+    _check_fillable,
     _numbered_page_info,
+    _numbered_page_info_sample,
     _unpaginated_page_info,
 )
 from ..exc import NotFound, RestlyConfigurationError, RestlySkippedFilterMethodsWarning
 from ..objects import snapshot as _object_snapshot
 from ..query._impl import _OwnFilter, _query_settings, _record_of
 from ..query._shared import SortNulls
-from ..schemas import BaseSchema, derive_schema_list_response
+from ..schemas import BaseSchema
 from ..schemas._base import _as_response, _response_adapter, _schema_resource_name
 from ._generated import (
     _DEFAULT_SETTINGS,
@@ -498,6 +502,16 @@ class BaseRestView(
     schema_response: ClassVar[type[pydantic.BaseModel]] = _DEFAULT_SETTINGS[
         "schema_response"
     ]
+    #: The class of the list response: what ``GET /`` and a route that
+    #: declares :data:`~fastapi_restly.views.ViewListResponse` send. When a
+    #: view sets none, Restly builds it with
+    #: :func:`~fastapi_restly.schemas.derive_schema_list_response`: the
+    #: envelope of the view's :attr:`pagination`, with the response class as
+    #: its items, named ``<Resource>ListResponse``. Restly fills a class that
+    #: a view sets as it fills an envelope: by field name, from ``data``,
+    #: ``total_count``, ``page``, ``page_size`` and ``total_pages``. A view
+    #: that replaces ``get_many_endpoint`` can set any type here.
+    list_response_schema: ClassVar[Any] = _DEFAULT_SETTINGS["list_response_schema"]
     #: The class of the ``POST`` body. When a view sets none, Restly builds
     #: it from the view's schema without its ``ReadOnly`` fields and without
     #: a primary key that the server generates. It is named
@@ -1040,25 +1054,23 @@ class BaseRestView(
         return QueryParams(list_params)
 
     def to_list_response(self, list_result: ListResult[ModelT]) -> Any:
-        """Build the list response body: an instance of the envelope model.
+        """Build the list response body: an instance of
+        :attr:`list_response_schema`.
 
-        The view fills its :attr:`pagination`'s ``envelope``: by default a
-        :class:`PaginatedEnvelope` (``data`` plus ``total_count`` / ``page`` /
-        ``page_size`` / ``total_pages``), or an :class:`Envelope` (``data``
-        only) for a view without pagination. The route's ``response_model`` is
-        the same envelope, fixed from :attr:`pagination` at registration. To
-        change the shape, set the pagination's ``envelope``. For a
-        ``Content-Range`` header, replace ``get_many_endpoint`` with a matching
-        ``response_model`` (as :class:`AsyncReactAdminView` does), not by
-        overriding this method alone, which would fail response validation.
+        By default this class is the ``envelope`` of the view's
+        :attr:`pagination`: a :class:`PaginatedEnvelope` (``data`` plus
+        ``total_count`` / ``page`` / ``page_size`` / ``total_pages``), or an
+        :class:`Envelope` (``data`` only) for a view without pagination. To
+        change the shape, set :attr:`list_response_schema` or the pagination's
+        ``envelope``. For a ``Content-Range`` header, see
+        :class:`AsyncReactAdminView`: it overrides this method and sets
+        :attr:`list_response_schema` to match.
 
         The page and page size come from ``list_result.list_params``.
         """
         data = [self._single_response(obj) for obj in list_result.objects]
         pagination = self.pagination
-        envelope = derive_schema_list_response(
-            type(self).schema_response, pagination=pagination
-        )
+        envelope = type(self).list_response_schema
         if not isinstance(pagination, NumberedPagination):
             return _build_envelope(envelope, _unpaginated_page_info(data))
         params = self._to_query_params(list_result.list_params)
@@ -1108,6 +1120,8 @@ class BaseRestView(
         """Each schema setting holds a Pydantic class, or a function that gives
         one. Another value would fail only on a request, or not at all."""
         for name in _DEFAULT_SETTINGS:
+            if name == "list_response_schema":
+                continue  # any type, see _check_list_response_schema
             value = getattr(cls, name)
             if isinstance(value, type) and issubclass(value, pydantic.BaseModel):
                 continue
@@ -1121,6 +1135,43 @@ class BaseRestView(
             raise RestlyConfigurationError(
                 f"{cls.__name__}.{name} must be a Pydantic class or a "
                 f"fastapi_restly.views.SchemaType, got {value!r}."
+            )
+
+    @classmethod
+    def _check_list_response_schema(cls) -> None:
+        """A class that the default ``GET /`` cannot fill fails here, and not
+        on the first request."""
+        if _uses_default(cls, "list_response_schema"):
+            return
+        if cls.to_list_response is not BaseRestView.to_list_response:
+            return
+        endpoint = getattr(cls, "get_many_endpoint", None)
+        if endpoint is None or not endpoint.__module__.startswith("fastapi_restly."):
+            return
+        if not _serves_route(cls, "get_many_endpoint"):
+            return
+        label = f"{cls.__name__}.list_response_schema"
+        other_shape = " For another shape, replace get_many_endpoint."
+        value = cls.list_response_schema
+        if not (isinstance(value, type) and issubclass(value, pydantic.BaseModel)):
+            raise RestlyConfigurationError(
+                f"{label} must be a Pydantic class for the default GET /, got "
+                f"{value!r}.{other_shape}"
+            )
+        sample = (
+            _numbered_page_info_sample()
+            if isinstance(cls.pagination, NumberedPagination)
+            else _unpaginated_page_info([])
+        )
+        _check_fillable(label, value, sample, other_shape)
+        response = cls.schema_response
+        lacking = _fields_the_items_lack(value, response)
+        if lacking:
+            raise RestlyConfigurationError(
+                f"The items of {label} {value.__name__} have fields that "
+                f"{response.__name__} does not have: {', '.join(lacking)}. Restly "
+                "fills the items from the response class, so add these fields to "
+                f"it, or give them a default.{other_shape}"
             )
 
     @classmethod
@@ -1168,6 +1219,7 @@ class BaseRestView(
                     "generate the list params."
                 )
         cls._check_schema_settings()
+        cls._check_list_response_schema()
         if not _uses_default(cls, "schema_list_params"):
             cls._check_declared_schema_list_params()
 
@@ -1482,6 +1534,27 @@ def _route_names(view_cls: type, setting: str) -> frozenset[str]:
     return frozenset(
         route.value if isinstance(route, ViewRoute) else route for route in value
     )
+
+
+def _fields_the_items_lack(
+    list_response: type[pydantic.BaseModel], response: type[pydantic.BaseModel]
+) -> list[str]:
+    """The fields without a default of the items of ``list_response`` that
+    ``response`` has neither as a field nor as an attribute. Items that are not
+    a Pydantic class in a list are not looked at."""
+    field = list_response.model_fields.get("data")
+    if field is None or get_origin(field.annotation) is not list:
+        return []
+    item = next(iter(get_args(field.annotation)), None)
+    if not (isinstance(item, type) and issubclass(item, pydantic.BaseModel)):
+        return []
+    return [
+        name
+        for name, item_field in item.model_fields.items()
+        if item_field.is_required()
+        and name not in response.model_fields
+        and not hasattr(response, name)
+    ]
 
 
 def _serves_route(view_cls: type, method_name: str) -> bool:

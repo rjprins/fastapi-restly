@@ -19,6 +19,7 @@ from ..query._paged import PagedListParams, _completed_list_params
 from ..schemas import (
     derive_schema,
     derive_schema_create,
+    derive_schema_list_response,
     derive_schema_response,
     derive_schema_update,
 )
@@ -31,6 +32,7 @@ _BUILT_FROM = {
     "schema": "model",
     "schema_response": "schema",
     "schema_list_params": "schema_response",
+    "list_response_schema": "schema_response",
     "schema_create": "schema",
     "schema_update": "schema",
 }
@@ -121,11 +123,20 @@ def _list_settings_at(cls: type) -> int:
 
 def _drop_stale_settings(cls: type) -> None:
     """A subclass with a new ``schema`` gets new classes built from it, also when
-    a base class declares them. So it gets the default back."""
-    for name, default in _DEFAULT_SETTINGS.items():
+    a base class declares them. So it gets the nearest function back: the one of
+    a base view, or Restly's default."""
+    for name in _DEFAULT_SETTINGS:
         declared = _declared_at(cls, name)
         if declared is not None and _decided_at(cls, name) != declared:
-            setattr(cls, name, default)
+            setattr(cls, name, _nearest_function(cls, name))
+
+
+def _nearest_function(cls: type, name: str) -> SchemaType:
+    return next(
+        vars(klass)[name]
+        for klass in cls.__mro__
+        if isinstance(vars(klass).get(name), SchemaType)
+    )
 
 
 def _uses_default(cls: type, name: str) -> bool:
@@ -180,6 +191,11 @@ _DEFAULT_SETTINGS = {
     "schema": SchemaType(lambda view: derive_schema(view.model)),
     "schema_response": SchemaType(lambda view: derive_schema_response(view.schema)),
     "schema_list_params": SchemaType(_derive_view_list_params),
+    "list_response_schema": SchemaType(
+        lambda view: derive_schema_list_response(
+            view.schema_response, pagination=view.pagination
+        )
+    ),
     "schema_create": SchemaType(
         lambda view: derive_schema_create(view.schema, view.model)
     ),

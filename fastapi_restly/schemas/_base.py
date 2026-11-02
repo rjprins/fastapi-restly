@@ -2151,9 +2151,9 @@ def derive_schema_list_response(
     pagination, filled with its response class, named
     ``<Resource>ListResponse``.
 
-    ``GET /`` of a view returns this class, except on a react-admin view,
-    which returns a plain list. A custom list route names it, so OpenAPI
-    shows one type for both routes::
+    This is what a view's ``list_response_schema`` is unless it sets another
+    class. On a react-admin view it is a plain list. A route on a router, or
+    outside the view, can name it, so OpenAPI shows one type for both routes::
 
         UserResponse = fr.schemas.derive_schema_response(UserSchema)
         UserListResponse = fr.schemas.derive_schema_list_response(
@@ -2169,9 +2169,7 @@ def derive_schema_list_response(
 
     Each call with the same response class and envelope returns the same
     class. Only the envelope of the pagination matters: two paginations with
-    the same envelope give the same class. A view has no attribute for this
-    class. To change it, change the view's ``schema_response`` or the
-    envelope of its ``pagination``.
+    the same envelope give the same class.
 
     :param schema_response: The view's response class, such as the one from
         :func:`derive_schema_response`.

@@ -23,7 +23,6 @@ from starlette.routing import BaseRoute
 
 from .._routes import iter_routes, original_route
 from ..exc import RestlyDuplicateSchemaNameWarning
-from ..schemas import derive_schema_list_response
 from ._generated import _DEFAULT_SETTINGS, _uses_default
 
 _CLASHES_ATTR = "_fr_openapi_name_clashes"
@@ -162,14 +161,18 @@ def _roles_of(view: Any) -> dict[type, list[_Role]]:
         return from_schema if attribute in generated else None
 
     response = view.schema_response
-    list_response = derive_schema_list_response(response, pagination=view.pagination)
     roles: dict[type, list[_Role]] = defaultdict(list)
     roles[view.schema].append(("schema", source("schema")))
     roles[response].append(("response class", source("schema_response")))
-    # The list response comes from the response class, which can be the
-    # view's own.
-    roles[list_response].append(
-        ("list response", source("schema_response") or f"from {_path(response)}")
+    # A generated list response comes from the response class, which can be
+    # the view's own.
+    roles[view.list_response_schema].append(
+        (
+            "list response",
+            (source("schema_response") or f"from {_path(response)}")
+            if "list_response_schema" in generated
+            else None,
+        )
     )
     roles[view.schema_create].append(("create body", source("schema_create")))
     roles[view.schema_update].append(("update body", source("schema_update")))

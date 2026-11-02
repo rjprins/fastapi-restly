@@ -213,8 +213,11 @@ def _build_envelope(
     envelope: type[pydantic.BaseModel], page_info: dict[str, Any]
 ) -> pydantic.BaseModel:
     """Fill ``envelope`` from ``page_info`` by field name, never by alias, so
-    an alias only renames a field in the JSON."""
-    return envelope.model_validate(page_info, by_alias=False, by_name=True)
+    an alias only renames a field in the JSON. Items of another class take
+    their values from the attributes of the rows."""
+    return envelope.model_validate(
+        page_info, from_attributes=True, by_alias=False, by_name=True
+    )
 
 
 def _is_int(value: Any) -> bool:
@@ -267,19 +270,35 @@ def _check_envelope(owner: str, envelope: Any, page_info: dict[str, Any]) -> Non
         raise RestlyConfigurationError(
             f"{owner}.envelope must be a Pydantic model class, got {envelope!r}."
         )
-    extra = envelope.model_config.get("extra")
-    if extra in ("allow", "forbid"):
-        raise RestlyConfigurationError(
-            f"{owner}.envelope {envelope.__name__} sets extra={extra!r}. Restly "
-            "passes an envelope every page value and it keeps the fields it "
-            "declares, so leave extra at its default."
-        )
     generic = envelope.__pydantic_generic_metadata__
     if generic["origin"] is not None or len(generic["parameters"]) != 1:
         raise RestlyConfigurationError(
             f"{owner}.envelope must be a generic Pydantic model with one type "
             "parameter for the items, such as "
             f"'class Page(BaseModel, Generic[T])', got {envelope.__name__}."
+        )
+    _check_fillable(f"{owner}.envelope", envelope, page_info)
+
+
+def _check_fillable(
+    label: str,
+    envelope: type[pydantic.BaseModel],
+    page_info: dict[str, Any],
+    other_shape: str = "",
+) -> None:
+    """Raise if Restly cannot fill ``envelope`` from ``page_info``.
+
+    :param label: The setting in messages, such as
+        ``NumberedPagination.envelope``.
+    :param other_shape: The last sentence of the message, about what to do for
+        a class of another shape.
+    """
+    extra = envelope.model_config.get("extra")
+    if extra in ("allow", "forbid"):
+        raise RestlyConfigurationError(
+            f"{label} {envelope.__name__} sets extra={extra!r}. Restly passes an "
+            "envelope every page value and it keeps the fields it declares, so "
+            f"leave extra at its default.{other_shape}"
         )
     try:
         _build_envelope(envelope, page_info)
@@ -290,10 +309,10 @@ def _check_envelope(owner: str, envelope: Any, page_info: dict[str, Any]) -> Non
             for error in exc.errors(include_url=False)
         )
         raise RestlyConfigurationError(
-            f"{owner}.envelope {envelope.__name__} cannot be filled "
+            f"{label} {envelope.__name__} cannot be filled "
             f"from the page info ({', '.join(page_info)}): {problems}. Name each "
             "field after one of these values, rename it in the JSON with an "
-            "alias, or give it a default."
+            f"alias, or give it a default.{other_shape}"
         ) from None
 
 

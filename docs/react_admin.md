@@ -122,6 +122,13 @@ Content-Range: items 0-24/315
 :::{admonition} Details
 :class: details
 
+OpenAPI shows the array of the response class, and
+{attr}`list_response_schema <fastapi_restly.views.BaseRestView.list_response_schema>`
+holds this type. For smaller items, set it to another list, such as
+`list[ProductSummary]`. Restly fills the items from the response class. A value
+that is not a list raises at registration, unless the view replaces
+`get_many_endpoint`.
+
 Any other query key gets a 422, so a typo cannot return more rows than you
 asked for without notice. The `page`, `page_size` and field filters of the
 list params that Restly generates are unknown keys here too. A key that the

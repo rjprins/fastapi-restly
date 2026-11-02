@@ -25,7 +25,6 @@ from typing import (
 from sqlalchemy import inspect as sa_inspect
 
 from ..exc import RestlyConfigurationError
-from ..schemas import derive_schema_list_response
 from ..schemas._base import _model_id_type
 
 
@@ -158,13 +157,7 @@ ViewResponse: TypeAlias = Annotated[
 #: The view's list response: the envelope of the view's pagination, with
 #: items of the view's response class.
 ViewListResponse: TypeAlias = Annotated[
-    Any,
-    _marker(
-        "ViewListResponse",
-        lambda view: derive_schema_list_response(
-            view.schema_response, pagination=view.pagination
-        ),
-    ),
+    Any, _marker("ViewListResponse", lambda view: view.list_response_schema)
 ]
 
 #: The view's create body,

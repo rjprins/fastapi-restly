@@ -14,7 +14,7 @@ private name that has no public form yet.
 """
 
 import inspect
-from typing import Any, ClassVar, Literal, Protocol, cast
+from typing import Any, ClassVar, Literal, Protocol, cast, get_origin
 
 import fastapi
 import pydantic
@@ -33,6 +33,7 @@ from fastapi_restly.views import (
     RestView,
     SchemaType,
     ViewID,
+    ViewListResponse,
     ViewResponse,
     ViewUpdate,
     get,
@@ -225,6 +226,22 @@ def _check_list_params(cls: type) -> None:
         )
 
 
+def _check_list_response(cls: Any) -> None:
+    """The view sends a JSON array. A view that replaces the endpoint or
+    :meth:`to_list_response` can send anything else."""
+    if cls.to_list_response is not _ReactAdminMixin.to_list_response:
+        return
+    if not cls.get_many_endpoint.__module__.startswith("fastapi_restly."):
+        return
+    list_response = cls.list_response_schema
+    if get_origin(list_response) is not list:
+        raise RestlyConfigurationError(
+            f"{cls.__name__}.list_response_schema is {list_response!r}. A "
+            "react-admin list is a JSON array, so it must be a list type, such "
+            "as list[UserSummary]. For another shape, replace get_many_endpoint."
+        )
+
+
 def _reject_list_settings(cls: type) -> None:
     """React-admin sends its filters and sort order in its own parameters.
     So a list setting other than the default, or a filter method, would be
@@ -295,6 +312,15 @@ class _ReactAdminMixin:
     )
 
     schema_list_params: ClassVar[type[pydantic.BaseModel]] = ReactAdminListParams
+
+    #: A react-admin list is a JSON array, without an envelope.
+    list_response_schema: ClassVar[Any] = SchemaType(
+        lambda view: list[view.schema_response]
+    )
+
+    _list_adapter: ClassVar[Any] = SchemaType(
+        lambda view: pydantic.TypeAdapter(view.list_response_schema)
+    )
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
         # A class that inherits list params of its own gets generated list
@@ -383,21 +409,27 @@ class _ReactAdminMixin:
     def to_list_response(self, list_result: ListResult[Any]) -> fastapi.Response:
         """Build the react-admin list response: a JSON array with a
         ``Content-Range`` header."""
-        # The standard list response holds each row as the response class
-        # sends it, also when to_single_response returns another model.
-        rows = cast(Any, super()).to_list_response(list_result).data
-        # Each row as its class writes it, as in the other responses: a NaN
-        # becomes the text "NaN". json.dumps would write NaN without quotes,
-        # which is not JSON.
-        serialized = [row.model_dump_json(by_alias=True) for row in rows]
+        # Each row as the response class sends it, also when
+        # to_single_response returns another model. Then the items of the
+        # list response, which fills them by field name.
+        adapter = type(self)._list_adapter
+        rows = adapter.validate_python(
+            [cast(Any, self)._single_response(obj) for obj in list_result.objects],
+            from_attributes=True,
+            by_alias=False,
+            by_name=True,
+        )
         params = self._react_admin_list_params(list_result.list_params)
         start, _ = self._react_admin_range(params)
         view = cast(_ReactAdminViewProtocol, self)
         unit = view.get_react_admin_range_unit()
-        last = start + len(serialized) - 1 if serialized else start
+        last = start + len(rows) - 1 if rows else start
         total = list_result.total_count or 0
         return fastapi.Response(
-            content="[" + ",".join(serialized) + "]",
+            # As the class writes it, as in the other responses: a NaN becomes
+            # the text "NaN". json.dumps would write NaN without quotes, which
+            # is not JSON.
+            content=adapter.dump_json(rows, by_alias=True),
             media_type="application/json",
             headers={
                 "Content-Range": f"{unit} {start}-{last}/{total}",
@@ -411,6 +443,7 @@ class _ReactAdminMixin:
         # yet.
         _reject_list_settings(cls)
         _check_list_params(cls)
+        _check_list_response(cls)
         cast(Any, super()).before_include_view()
 
 
@@ -428,7 +461,7 @@ class AsyncReactAdminView(_ReactAdminMixin, AsyncRestView):
     """
 
     @get("/")
-    async def get_many_endpoint(self, list_params: Any) -> fastapi.Response:
+    async def get_many_endpoint(self, list_params: Any) -> ViewListResponse:
         result = await self.handle_get_many(list_params)
         return self.to_response(result, ResponseShape.LIST)
 
@@ -468,7 +501,7 @@ class ReactAdminView(_ReactAdminMixin, RestView):
     """
 
     @get("/")
-    def get_many_endpoint(self, list_params: Any) -> fastapi.Response:
+    def get_many_endpoint(self, list_params: Any) -> ViewListResponse:
         result = self.handle_get_many(list_params)
         return self.to_response(result, ResponseShape.LIST)
 
