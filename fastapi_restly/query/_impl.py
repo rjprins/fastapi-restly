@@ -56,7 +56,7 @@ from ._shared import (
     _sort_term,
 )
 
-SchemaType = type[pydantic.BaseModel]
+_SchemaClass = type[pydantic.BaseModel]
 _JoinAliases = dict[tuple[str, ...], AliasedClass[Any]]
 
 _AnyPagination = NumberedPagination | NoPagination | None
@@ -477,7 +477,7 @@ def _offset_validator(
 
 
 def derive_schema_list_params(
-    schema_response: SchemaType,
+    schema_response: _SchemaClass,
     model: type[Any],
     *,
     pagination: _AnyPagination = _DEFAULT_PAGINATION,
@@ -487,7 +487,7 @@ def derive_schema_list_params(
     exclude_sort_keys: _abc.Iterable[str] = (),
     sort_query_param: str = "sort",
     default_sort: str | None = None,
-) -> SchemaType:
+) -> _SchemaClass:
     """
     Build the list params: a Pydantic model that describes and validates the
     URL query parameters of a list endpoint. A view keeps it in
@@ -572,7 +572,7 @@ def derive_schema_list_params(
 
 
 def _derive_list_params(
-    schema_response: SchemaType,
+    schema_response: _SchemaClass,
     model: type[DeclarativeBase],
     *,
     pagination: _AnyPagination,
@@ -583,7 +583,7 @@ def _derive_list_params(
     sort_query_param: str = _SORT_QUERY_PARAM,
     default_sort: str | None = None,
     default_sort_from: str | None = None,
-) -> SchemaType:
+) -> _SchemaClass:
     """:func:`derive_schema_list_params`, for a view too.
 
     :param owner: The view, for the messages.
@@ -1058,7 +1058,7 @@ def apply_list_params(
     stmt: Select[Any],
     list_params: pydantic.BaseModel | QueryParams,
     model: type[Any],
-    schema_response: SchemaType,
+    schema_response: _SchemaClass,
     *,
     pagination: _AnyPagination = cast(Any, _FROM_PARAMS),
     sort_nulls: SortNulls = "last",
@@ -1218,7 +1218,7 @@ def _apply_filters(
     stmt: Select[Any],
     list_params: pydantic.BaseModel | QueryParams,
     model: type[DeclarativeBase],
-    schema_response: SchemaType,
+    schema_response: _SchemaClass,
     *,
     pagination: _AnyPagination = cast(Any, _FROM_PARAMS),
 ) -> Select[Any]:
@@ -1245,7 +1245,7 @@ def _apply_sort_and_page(
     stmt: Select[Any],
     list_params: pydantic.BaseModel | QueryParams,
     model: type[DeclarativeBase],
-    schema_response: SchemaType,
+    schema_response: _SchemaClass,
     *,
     pagination: _AnyPagination = cast(Any, _FROM_PARAMS),
     sort_nulls: SortNulls = "last",
@@ -1328,7 +1328,7 @@ def _apply_sorting(
     query_params: QueryParams,
     stmt: Select[Any],
     model: type[DeclarativeBase],
-    schema_cls: SchemaType,
+    schema_cls: _SchemaClass,
     *,
     aliases: _JoinAliases | None = None,
     sort_keys: tuple[str, ...] | None = None,
@@ -1381,16 +1381,16 @@ def _apply_sorting(
     return _append_pk_tiebreak(stmt, model, sorted_on)
 
 
-def _written_name(schema_cls: SchemaType) -> str:
+def _written_name(schema_cls: _SchemaClass) -> str:
     """The name of the class that the user wrote: for a response class that
     Restly derived, the view's schema."""
     return schema_cls.__dict__.get("__restly_response_of__", schema_cls).__name__
 
 
 def _iter_fields_including_nested(
-    schema_cls: SchemaType,
+    schema_cls: _SchemaClass,
     prefix: str = "",
-    _followed: frozenset[SchemaType] = frozenset(),
+    _followed: frozenset[_SchemaClass] = frozenset(),
 ) -> Iterator[tuple[str, FieldInfo]]:
     for name, field in schema_cls.model_fields.items():
         # A field whose value a response never shows, such as a WriteOnly
@@ -1430,7 +1430,7 @@ def _iter_fields_including_nested(
             yield full_name, field
 
 
-def _resolve_field_name(schema_cls: SchemaType, public_name: str) -> str | None:
+def _resolve_field_name(schema_cls: _SchemaClass, public_name: str) -> str | None:
     """Return the Python field name for a public URL field name.
 
     The public name is the field's alias when one is declared, otherwise the
@@ -1461,7 +1461,7 @@ def _join_column(
     stmt: Select[Any],
     model: type[DeclarativeBase],
     column_path: str,
-    schema_cls: SchemaType,
+    schema_cls: _SchemaClass,
     aliases: _JoinAliases,
     *,
     kind: str = "filter",
@@ -1495,7 +1495,7 @@ def _join_column(
 def _resolve_column(
     model: type[DeclarativeBase],
     column_path: str,
-    schema_cls: SchemaType,
+    schema_cls: _SchemaClass,
     *,
     kind: str = "filter",
 ) -> tuple[list[InstrumentedAttribute[Any]], InstrumentedAttribute[Any]]:
@@ -1517,7 +1517,7 @@ def _resolve_column(
     unknown = BadQueryParam(f"Unknown {kind} key: {column_path!r}")
     joins: list[InstrumentedAttribute[Any]] = []
     current_model = model
-    current_schema: SchemaType | None = schema_cls
+    current_schema: _SchemaClass | None = schema_cls
     name = column_path
     while "." in name:
         relation, _, name = name.partition(".")
@@ -1556,7 +1556,7 @@ def _apply_filtering(
     query_params: QueryParams,
     stmt: Select[Any],
     model: type[DeclarativeBase],
-    schema_cls: SchemaType,
+    schema_cls: _SchemaClass,
     *,
     aliases: _JoinAliases | None = None,
     pagination: _AnyPagination = _DEFAULT_PAGINATION,
@@ -1671,7 +1671,7 @@ def _enum_value(enum_type: sqlalchemy.Enum, value: Any, key: str, raw: Any) -> A
 
 
 def _filter_value_parser(
-    schema_cls: SchemaType, column_name: str, column: Any
+    schema_cls: _SchemaClass, column_name: str, column: Any
 ) -> Callable[[Any], Any]:
     """The parser of the values of a generated filter key, also a dotted one;
     see :func:`_value_parser`.
@@ -1683,7 +1683,7 @@ def _filter_value_parser(
     return _value_parser(field_schema, field_name, column, column_name)
 
 
-def _field_of(schema_cls: SchemaType, column_name: str) -> tuple[SchemaType, str]:
+def _field_of(schema_cls: _SchemaClass, column_name: str) -> tuple[_SchemaClass, str]:
     """The schema that holds the field of a filter key, also of a dotted
     one, and the Python name of the field.
 
@@ -1706,7 +1706,7 @@ def _field_of(schema_cls: SchemaType, column_name: str) -> tuple[SchemaType, str
 
 
 def _value_parser(
-    schema_cls: SchemaType, field_name: str, column: Any, key: str
+    schema_cls: _SchemaClass, field_name: str, column: Any, key: str
 ) -> Callable[[Any], Any]:
     """The parser of the values of one filter key: each value as a value for
     ``column``.
@@ -1831,7 +1831,7 @@ def _python_type_adapter(python_type: type) -> pydantic.TypeAdapter[Any]:
 
 
 @functools.cache
-def _field_validator(schema_cls: SchemaType, field_name: str) -> SchemaValidator:
+def _field_validator(schema_cls: _SchemaClass, field_name: str) -> SchemaValidator:
     """A validator for a one-field mapping, cut from the model's core schema.
 
     The named field supplies ``ValidationInfo.field_name``. No other fields
@@ -1880,7 +1880,7 @@ def _field_validator(schema_cls: SchemaType, field_name: str) -> SchemaValidator
     return SchemaValidator(field_schema, filter_config)
 
 
-def _get_nested_schema(field: FieldInfo | None) -> SchemaType | None:
+def _get_nested_schema(field: FieldInfo | None) -> _SchemaClass | None:
     if field is None:
         return None
     annotation, _ = _unwrap_type(field.annotation)

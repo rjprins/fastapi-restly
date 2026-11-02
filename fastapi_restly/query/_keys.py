@@ -13,12 +13,12 @@ from sqlalchemy.orm import (
 )
 
 from ..exc import BadQueryParam
-from ._impl import SchemaType, _is_sortable, _resolve_field_name, _value_parser
+from ._impl import _is_sortable, _resolve_field_name, _SchemaClass, _value_parser
 from ._shared import SortNulls, _append_pk_tiebreak, _class_attribute, _sort_term
 
 
 def _find_column(
-    model: type[Any], schema_response: SchemaType, key: str, kind: str
+    model: type[Any], schema_response: _SchemaClass, key: str, kind: str
 ) -> tuple[str, QueryableAttribute[Any]]:
     """The Python name of the field that ``key`` names, and the attribute of
     ``model`` with that name.
@@ -87,7 +87,9 @@ class FilterKey:
     #: ``Item.status``.
     column: QueryableAttribute[Any]
 
-    def __init__(self, model: type[Any], schema_response: SchemaType, key: str) -> None:
+    def __init__(
+        self, model: type[Any], schema_response: _SchemaClass, key: str
+    ) -> None:
         self.key = key
         self._schema = schema_response
         self._model = model
@@ -157,7 +159,9 @@ class SortKey:
     #: ``Item.name``.
     column: QueryableAttribute[Any]
 
-    def __init__(self, model: type[Any], schema_response: SchemaType, key: str) -> None:
+    def __init__(
+        self, model: type[Any], schema_response: _SchemaClass, key: str
+    ) -> None:
         self.key = key
         self._schema = schema_response
         self._model = model
