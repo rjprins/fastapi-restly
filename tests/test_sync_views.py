@@ -456,8 +456,8 @@ def test_sync_rest_view_crud_and_pagination(sync_db):
         prefix = "/sync-orders"
         model = Order
         schema = OrderSchema
-        schema_create = OrderInputSchema
-        schema_update = OrderInputSchema
+        create_schema = OrderInputSchema
+        update_schema = OrderInputSchema
 
     Base.metadata.create_all(engine)
 

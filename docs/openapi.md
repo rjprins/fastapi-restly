@@ -103,7 +103,7 @@ decorator, as in FastAPI. The method calls the method of the base class, so
 the route works as before:
 
 ```python
-from fastapi_restly.views import ViewListResponse
+from fastapi_restly.views import ListResponseSchema
 
 
 class InvoiceView(fr.AsyncRestView):
@@ -112,11 +112,11 @@ class InvoiceView(fr.AsyncRestView):
     schema = InvoiceSchema
 
     @fr.get("/", summary="List invoices", operation_id="billing_list_invoices")
-    async def get_many_endpoint(self, list_params) -> ViewListResponse:
+    async def get_many_endpoint(self, list_params) -> ListResponseSchema:
         return await super().get_many_endpoint(list_params)
 ```
 
-`ViewListResponse` keeps the view's list response as the response model; see
+`ListResponseSchema` keeps the view's list response as the response model; see
 [Name the view's classes in a custom route](#name-the-response-classes).
 Restly still fills in the rest of the route: the list params, and the name
 and the summary that you do not pass. A keyword argument
@@ -132,13 +132,13 @@ FastAPI route works. For example, `dependencies` adds a check to one route:
 
 ```python
     @fr.post("/", dependencies=[Depends(require_admin)])
-    async def create_endpoint(self, data: ViewCreate) -> ViewResponse:
+    async def create_endpoint(self, data: CreateSchema) -> ResponseSchema:
         return await super().create_endpoint(data)
 ```
 
 An item route that you declare, such as `GET /{id}`, keeps the path that you
 give it. Restly adds the `int` or `uuid` converter only to a path parameter
-annotated `ViewID`; see [Item paths and static routes](#item-route-matching).
+annotated `IDType`; see [Item paths and static routes](#item-route-matching).
 
 A subclass inherits the method and its decorator, so it also inherits an
 explicit `operation_id`. Each `operation_id` must be unique in the app's

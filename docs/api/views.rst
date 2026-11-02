@@ -10,7 +10,7 @@ either on a FastAPI app.
    :members:
    :undoc-members:
    :show-inheritance:
-   :exclude-members: ViewID, ViewResponse, ViewListResponse, ViewCreate, ViewUpdate
+   :exclude-members: IDType, ResponseSchema, ListResponseSchema, CreateSchema, UpdateSchema
 
 Markers for the view's own types
 --------------------------------
@@ -20,32 +20,32 @@ registers, Restly puts the view's class in place of each marker, so a route
 on a base view gets the classes of each subclass. A type checker reads each
 marker as ``Any``. See :ref:`name-the-response-classes`.
 
-.. py:data:: ViewID
+.. py:data:: IDType
 
    The view's id type: :attr:`~fastapi_restly.views.BaseRestView.id_type`,
    else the type of the model's primary key. A path parameter with this type
    gets the view's path converter: ``{id:int}`` for ``int`` and
    ``{id:uuid}`` for ``UUID``.
 
-.. py:data:: ViewResponse
+.. py:data:: ResponseSchema
 
    The view's response class,
-   :attr:`~fastapi_restly.views.BaseRestView.schema_response`.
+   :attr:`~fastapi_restly.views.BaseRestView.response_schema`.
 
-.. py:data:: ViewListResponse
+.. py:data:: ListResponseSchema
 
    The view's list response: the envelope of the view's pagination, with
    items of the view's response class.
 
-.. py:data:: ViewCreate
+.. py:data:: CreateSchema
 
    The view's create body,
-   :attr:`~fastapi_restly.views.BaseRestView.schema_create`.
+   :attr:`~fastapi_restly.views.BaseRestView.create_schema`.
 
-.. py:data:: ViewUpdate
+.. py:data:: UpdateSchema
 
    The view's update body,
-   :attr:`~fastapi_restly.views.BaseRestView.schema_update`.
+   :attr:`~fastapi_restly.views.BaseRestView.update_schema`.
 
 .. seealso::
 

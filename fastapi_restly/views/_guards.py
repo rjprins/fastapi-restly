@@ -343,7 +343,13 @@ def _set_by(cls: type, name: str) -> str:
 
 # Renamed before 1.0. Restly no longer reads the old names, so a definition
 # would be silently dead, or would fail only on a request.
-_RENAMED_SETTINGS = {"listing_param_schema": "schema_list_params"}
+_RENAMED_SETTINGS = {
+    "listing_param_schema": "list_params_schema",
+    "schema_list_params": "list_params_schema",
+    "schema_response": "response_schema",
+    "schema_create": "create_schema",
+    "schema_update": "update_schema",
+}
 _RENAMED_METHODS = {
     "to_listing_response": "to_list_response",
     "to_react_admin_listing_response": "to_list_response",

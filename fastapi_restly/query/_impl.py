@@ -476,8 +476,8 @@ def _offset_validator(
     return _validate_pagination_offset
 
 
-def derive_schema_list_params(
-    schema_response: _SchemaClass,
+def derive_list_params_schema(
+    response_schema: _SchemaClass,
     model: type[Any],
     *,
     pagination: _AnyPagination = _DEFAULT_PAGINATION,
@@ -491,10 +491,10 @@ def derive_schema_list_params(
     """
     Build the list params: a Pydantic model that describes and validates the
     URL query parameters of a list endpoint. A view keeps it in
-    :attr:`~fastapi_restly.views.BaseRestView.schema_list_params`.
+    :attr:`~fastapi_restly.views.BaseRestView.list_params_schema`.
 
     The generated model accepts pagination (``page``, ``page_size``), sorting
-    (``sort``), and filters. Each field of ``schema_response`` that maps to a
+    (``sort``), and filters. Each field of ``response_schema`` that maps to a
     column of ``model`` gives filter keys, and its type decides which ones.
     Every such field gives the plain key and the keys with the suffixes
     ``__in``, ``__ne`` and ``__isnull``. A type with an order, such as a
@@ -526,8 +526,8 @@ def derive_schema_list_params(
     or ``None``, no pagination parameters are emitted at all -- the endpoint
     returns every matching row -- while sorting and filtering stay available.
 
-    :param schema_response: The response class whose fields decide the
-        available filter parameters. A view passes its ``schema_response``, so
+    :param response_schema: The response class whose fields decide the
+        available filter parameters. A view passes its ``response_schema``, so
         a client can filter only on what it can see.
     :param model: The SQLAlchemy model the list endpoint queries. Used to verify
         each field resolves to a filterable column; non-column fields are
@@ -557,7 +557,7 @@ def derive_schema_list_params(
         ``default_sort`` is not a field to sort on, or appears twice.
     """
     return _derive_list_params(
-        schema_response,
+        response_schema,
         model,
         pagination=pagination,
         settings={
@@ -572,7 +572,7 @@ def derive_schema_list_params(
 
 
 def _derive_list_params(
-    schema_response: _SchemaClass,
+    response_schema: _SchemaClass,
     model: type[DeclarativeBase],
     *,
     pagination: _AnyPagination,
@@ -584,7 +584,7 @@ def _derive_list_params(
     default_sort: str | None = None,
     default_sort_from: str | None = None,
 ) -> _SchemaClass:
-    """:func:`derive_schema_list_params`, for a view too.
+    """:func:`derive_list_params_schema`, for a view too.
 
     :param owner: The view, for the messages.
     :param unchecked: The key settings whose entries may match no key: the
@@ -640,14 +640,14 @@ def _derive_list_params(
     # The filter keys of each field, for the messages.
     keys_of_field: dict[str, list[str]] = {}
     sort_keys: list[str] = []
-    for name, field in _iter_fields_including_nested(schema_response):
+    for name, field in _iter_fields_including_nested(response_schema):
         # Only emit params for fields that resolve to a filterable column on the
         # model -- using the very predicate the request path applies. A
         # relationship/collection field (e.g. ``books: list[BookRef]``) or a
         # reference traversal that does not resolve would otherwise advertise
         # filters in OpenAPI that always 400 at request time.
         try:
-            relationships, column = _resolve_column(model, name, schema_response)
+            relationships, column = _resolve_column(model, name, response_schema)
         except BadQueryParam:
             continue
         # ``sort=tags.name`` has no clear meaning when an item has several
@@ -660,7 +660,7 @@ def _derive_list_params(
         filter_fields.update(field_filters)
         keys_of_field[name] = list(field_filters)
 
-    schema_name = _written_name(schema_response)
+    schema_name = _written_name(response_schema)
     for name in ("include_filters", "exclude_filters"):
         if name not in unchecked and patterns[name] != _KEY_SETTING_DEFAULTS[name]:
             _check_filter_entries(
@@ -721,7 +721,7 @@ def _derive_list_params(
         else {}
     )
     params_model = pydantic.create_model(  # type: ignore[call-overload]
-        _schema_role_name(schema_response, "ListParams"),
+        _schema_role_name(response_schema, "ListParams"),
         __validators__=validators,
         **fields,
     )
@@ -1058,7 +1058,7 @@ def apply_list_params(
     stmt: Select[Any],
     list_params: pydantic.BaseModel | QueryParams,
     model: type[Any],
-    schema_response: _SchemaClass,
+    response_schema: _SchemaClass,
     *,
     pagination: _AnyPagination = cast(Any, _FROM_PARAMS),
     sort_nulls: SortNulls = "last",
@@ -1068,18 +1068,18 @@ def apply_list_params(
     list params.
 
     ``list_params`` is normally an instance of the model returned by
-    :func:`derive_schema_list_params`. The default list endpoints pass a
+    :func:`derive_list_params_schema`. The default list endpoints pass a
     validated instance, so the page and the page size are within their
     bounds. This function still checks each filter value itself, with the
     validation of its field.
-    ``schema_response`` decides the fields a client can filter and sort on.
+    ``response_schema`` decides the fields a client can filter and sort on.
     A view passes its response class.
 
     The arguments match the view method
     :meth:`~fastapi_restly.views.RestView.apply_list_params`, which calls this
     function with the view's model, response class and pagination.
 
-    With list params from :func:`derive_schema_list_params`, the sort
+    With list params from :func:`derive_list_params_schema`, the sort
     parameter has the name that the model was created with, and accepts only
     its sort keys. With raw ``QueryParams`` or a hand-written model, the sort
     parameter is ``sort``. List params
@@ -1092,11 +1092,11 @@ def apply_list_params(
     the list params model, so nothing checks the ``page`` and ``page_size``
     bounds, such as ``max_page_size``: the caller checks them. Each filter
     value still goes through the validation of its field. Every filter key
-    that :func:`derive_schema_list_params` can generate works, also a dotted
+    that :func:`derive_list_params_schema` can generate works, also a dotted
     one.
 
     ``pagination`` names the page and page-size parameters to read. By default
-    it is the pagination that :func:`derive_schema_list_params` created the
+    it is the pagination that :func:`derive_list_params_schema` created the
     list params model with, and ``page`` and ``page_size`` for raw
     ``QueryParams`` or a hand-written model. A ``NoPagination`` or ``None``
     applies no ``LIMIT``/``OFFSET``, and so does a missing page-size key.
@@ -1126,13 +1126,13 @@ def apply_list_params(
         )
     _reject_own_filters(list_params)
     stmt = _apply_filters(
-        stmt, list_params, model, schema_response, pagination=pagination
+        stmt, list_params, model, response_schema, pagination=pagination
     )
     return _apply_sort_and_page(
         stmt,
         list_params,
         model,
-        schema_response,
+        response_schema,
         pagination=pagination,
         sort_nulls=sort_nulls,
     )
@@ -1171,7 +1171,7 @@ def _read_list_params(
         pagination.page_query_param,
         pagination.page_size_query_param,
     ):
-        # list params from derive_schema_list_params reject this when created
+        # list params from derive_list_params_schema reject this when created
         raise RestlyConfigurationError(
             f"A page parameter of the pagination is {sort_query_param!r}, "
             "which is also the sort parameter of these list params. Give the "
@@ -1218,7 +1218,7 @@ def _apply_filters(
     stmt: Select[Any],
     list_params: pydantic.BaseModel | QueryParams,
     model: type[DeclarativeBase],
-    schema_response: _SchemaClass,
+    response_schema: _SchemaClass,
     *,
     pagination: _AnyPagination = cast(Any, _FROM_PARAMS),
 ) -> Select[Any]:
@@ -1231,7 +1231,7 @@ def _apply_filters(
         query_params,
         stmt,
         model,
-        schema_response,
+        response_schema,
         aliases=aliases,
         pagination=pagination,
         sort_query_param=sort_query_param,
@@ -1245,7 +1245,7 @@ def _apply_sort_and_page(
     stmt: Select[Any],
     list_params: pydantic.BaseModel | QueryParams,
     model: type[DeclarativeBase],
-    schema_response: _SchemaClass,
+    response_schema: _SchemaClass,
     *,
     pagination: _AnyPagination = cast(Any, _FROM_PARAMS),
     sort_nulls: SortNulls = "last",
@@ -1258,7 +1258,7 @@ def _apply_sort_and_page(
         query_params,
         stmt,
         model,
-        schema_response,
+        response_schema,
         aliases=dict(_STATEMENT_JOINS.get(stmt, {})),
         # the default is the value of the sort field, also with a key that
         # the client cannot send

@@ -1,7 +1,7 @@
 """A replaced endpoint method keeps the annotations its author wrote.
 
 Registration puts the view's types only in place of the markers of
-``fastapi_restly.views``, such as ``ViewID`` and ``ViewResponse``. A
+``fastapi_restly.views``, such as ``IDType`` and ``ResponseSchema``. A
 parameter or a return without an annotation gets none. ``list_params`` is
 the exception: it always takes the view's list params, because the
 unknown-key guard checks against them.
@@ -114,7 +114,7 @@ def test_replaced_update_endpoint_keeps_explicit_id_and_schema_obj(env):
     client = env.client
     created = client.post("/products/", json={"name": "Lamp", "price": 1.0}).json()
 
-    # schema_update would accept the partial body; ProductReplace does not
+    # update_schema would accept the partial body; ProductReplace does not
     client.patch(
         f"/products/{created['id']}", json={"name": "Desk"}, assert_status_code=422
     )
@@ -249,7 +249,7 @@ def test_replaced_delete_endpoint_keeps_explicit_id(env):
     assert _id_param(openapi, "/products/{id}", "delete")["minimum"] == 1
 
 
-def test_replaced_endpoint_with_markers_gets_the_view_types(env):
+def test_replaced_endpoint_with_markers_gets_the_schema_types(env):
     """The markers take the view's types, as on the built-in methods."""
     views = fr.views
 
@@ -261,48 +261,48 @@ def test_replaced_endpoint_with_markers_gets_the_view_types(env):
         if env.asynchronous:
 
             @fr.get("/{id}")
-            async def get_one_endpoint(self, id: views.ViewID) -> views.ViewResponse:
+            async def get_one_endpoint(self, id: views.IDType) -> views.ResponseSchema:
                 return await self.handle_get_one(id)
 
             @fr.post("/", status_code=201)
             async def create_endpoint(
-                self, schema_obj: views.ViewCreate
-            ) -> views.ViewResponse:
+                self, schema_obj: views.CreateSchema
+            ) -> views.ResponseSchema:
                 return await self.handle_create(schema_obj)
 
             @fr.patch("/{id}")
             async def update_endpoint(
-                self, id: views.ViewID, schema_obj: views.ViewUpdate
-            ) -> views.ViewResponse:
+                self, id: views.IDType, schema_obj: views.UpdateSchema
+            ) -> views.ResponseSchema:
                 return await self.handle_update(id, schema_obj)
 
         else:
 
             @fr.get("/{id}")
-            def get_one_endpoint(self, id: views.ViewID) -> views.ViewResponse:
+            def get_one_endpoint(self, id: views.IDType) -> views.ResponseSchema:
                 return self.handle_get_one(id)
 
             @fr.post("/", status_code=201)
             def create_endpoint(
-                self, schema_obj: views.ViewCreate
-            ) -> views.ViewResponse:
+                self, schema_obj: views.CreateSchema
+            ) -> views.ResponseSchema:
                 return self.handle_create(schema_obj)
 
             @fr.patch("/{id}")
             def update_endpoint(
-                self, id: views.ViewID, schema_obj: views.ViewUpdate
-            ) -> views.ViewResponse:
+                self, id: views.IDType, schema_obj: views.UpdateSchema
+            ) -> views.ResponseSchema:
                 return self.handle_update(id, schema_obj)
 
     openapi = _register(env, ProductView)
     client = env.client
 
-    # schema_create requires price; schema_update accepts a partial body
+    # create_schema requires price; update_schema accepts a partial body
     client.post("/products/", json={"name": "Lamp"}, assert_status_code=422)
     created = client.post("/products/", json={"name": "Lamp", "price": 1.0}).json()
     response = client.patch(f"/products/{created['id']}", json={"name": "Desk"})
     assert response.json() == {"id": created["id"], "name": "Desk", "price": 1.0}
-    # ViewID gives the path the converter of the id type, as on GET /{id}
+    # IDType gives the path the converter of the id type, as on GET /{id}
     client.get("/products/abc", assert_status_code=404)
     client.patch("/products/abc", json={"name": "Desk"}, assert_status_code=404)
 
@@ -321,7 +321,7 @@ def test_replaced_endpoint_with_markers_gets_the_view_types(env):
         assert _response_ref(openapi, path, method, status) == "ProductResponse"
 
 
-def test_replaced_endpoint_without_annotations_gets_no_view_types(env):
+def test_replaced_endpoint_without_annotations_gets_no_schema_types(env):
     """Registration no longer fills in types by parameter name."""
 
     class ProductView(env.base):
@@ -511,7 +511,7 @@ def test_replaced_react_admin_put_keeps_explicit_schema_obj(env):
     assert _body_ref(openapi, "/products/{id}", "put") == "ProductReplace"
 
 
-def test_default_react_admin_put_takes_schema_update(env):
+def test_default_react_admin_put_takes_update_schema(env):
     class ProductView(env.react_admin_base):
         prefix = "/products"
         model = env.Product
@@ -530,7 +530,7 @@ def test_default_react_admin_put_takes_schema_update(env):
 
 
 def test_explicit_list_params_annotation_takes_the_view_list_params(env):
-    """The unknown-key guard checks against ``schema_list_params``, so the
+    """The unknown-key guard checks against ``list_params_schema``, so the
     parameter takes them whatever its author annotated."""
 
     class ProductView(env.base):

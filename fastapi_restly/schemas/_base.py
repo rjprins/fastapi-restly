@@ -1937,7 +1937,7 @@ def _as_response(cls: type[pydantic.BaseModel], value: Any) -> Any:
 
     Restly copies the values of an instance of a subclass of ``cls``, and of
     an instance of the view's schema for a response class that
-    :func:`derive_schema_response` built. It does not validate them again:
+    :func:`derive_response_schema` built. It does not validate them again:
     they are already valid, and a validator that changes a value would
     change it twice.
 
@@ -1978,23 +1978,23 @@ def _as_response(cls: type[pydantic.BaseModel], value: Any) -> Any:
 
 @functools.cache
 def _response_adapter(
-    schema_response: type[pydantic.BaseModel],
+    response_schema: type[pydantic.BaseModel],
 ) -> pydantic.TypeAdapter[pydantic.BaseModel]:
     """Validates into a response class. Through an adapter, not
     ``model_validate``: a schema may narrow that classmethod's signature
     (SQLModel drops ``by_alias`` and ``by_name``)."""
-    return pydantic.TypeAdapter(schema_response)
+    return pydantic.TypeAdapter(response_schema)
 
 
 _SchemaT = TypeVar("_SchemaT", bound=pydantic.BaseModel)
 
 
-def derive_schema_response(schema: type[_SchemaT]) -> type[_SchemaT]:
+def derive_response_schema(schema: type[_SchemaT]) -> type[_SchemaT]:
     """Build the response class of a view's schema: the schema without its
     ``WriteOnly`` fields, named ``<Resource>Response``.
 
     A view without its own
-    :attr:`~fastapi_restly.views.BaseRestView.schema_response` gets this
+    :attr:`~fastapi_restly.views.BaseRestView.response_schema` gets this
     class. Restly builds it also when the schema has no ``WriteOnly`` fields,
     so OpenAPI shows ``UserResponse`` and not the view's schema.
 
@@ -2002,7 +2002,7 @@ def derive_schema_response(schema: type[_SchemaT]) -> type[_SchemaT]:
     returns the same class, so a custom route can name the class that the
     view uses::
 
-        UserResponse = fr.schemas.derive_schema_response(UserSchema)
+        UserResponse = fr.schemas.derive_response_schema(UserSchema)
 
 
         class UserView(fr.AsyncRestView):
@@ -2014,11 +2014,11 @@ def derive_schema_response(schema: type[_SchemaT]) -> type[_SchemaT]:
     :param schema: The view's schema.
     :returns: The response class.
     """
-    return cast(type[_SchemaT], _derive_schema_response(schema))
+    return cast(type[_SchemaT], _derive_response_schema(schema))
 
 
 @functools.cache
-def _derive_schema_response(
+def _derive_response_schema(
     schema: type[pydantic.BaseModel],
 ) -> type[pydantic.BaseModel]:
     """Cached, so a view, a custom route and every request use the same
@@ -2042,30 +2042,30 @@ def _derive_schema_response(
     return cls
 
 
-def derive_schema_create(
+def derive_create_schema(
     schema: type[_SchemaT], model: type[Any] | None = None
 ) -> type[_SchemaT]:
     """Build the create body of a view's schema: the schema without its
     ``ReadOnly`` fields, named ``<Resource>Create``.
 
     A view without its own
-    :attr:`~fastapi_restly.views.BaseRestView.schema_create` gets this class.
+    :attr:`~fastapi_restly.views.BaseRestView.create_schema` gets this class.
     The class is a subclass of ``schema``. Each call with the same arguments
     returns the same class, so a custom route can name the class that the view
     uses::
 
-        UserCreate = fr.schemas.derive_schema_create(UserSchema, User)
+        UserCreate = fr.schemas.derive_create_schema(UserSchema, User)
 
     :param schema: The view's schema.
     :param model: The view's model. With a model, the class also leaves out a
         primary key that the server generates, as a view does.
     :returns: The create body.
     """
-    return cast(type[_SchemaT], _derive_schema_create(schema, model))
+    return cast(type[_SchemaT], _derive_create_schema(schema, model))
 
 
 @functools.cache
-def _derive_schema_create(
+def _derive_create_schema(
     schema: type[pydantic.BaseModel], model: type[Any] | None
 ) -> type[pydantic.BaseModel]:
     return create_model_without_read_only_fields(
@@ -2073,7 +2073,7 @@ def _derive_schema_create(
     )
 
 
-def derive_schema_update(
+def derive_update_schema(
     schema: type[_SchemaT], model: type[Any] | None = None
 ) -> type[_SchemaT]:
     """Build the update body of a view's schema: the schema without its
@@ -2081,32 +2081,32 @@ def derive_schema_update(
     ``<Resource>Update``.
 
     A view without its own
-    :attr:`~fastapi_restly.views.BaseRestView.schema_update` gets this class.
+    :attr:`~fastapi_restly.views.BaseRestView.update_schema` gets this class.
     The class is a subclass of ``schema``. Each call with the same arguments
     returns the same class, so a custom route can name the class that the view
     uses.
 
     ``schema`` can be a class of your own, such as the create body of a view that
-    sets ``schema_create``, so that ``PATCH`` follows that body::
+    sets ``create_schema``, so that ``PATCH`` follows that body::
 
         class UserCreate(fr.BaseSchema):
             name: str
 
 
         class UserView(fr.AsyncRestView):
-            schema_create = UserCreate
-            schema_update = fr.schemas.derive_schema_update(UserCreate)
+            create_schema = UserCreate
+            update_schema = fr.schemas.derive_update_schema(UserCreate)
 
     :param schema: The view's schema, or another class to start from.
     :param model: The view's model. With a model, the class also leaves out a
         primary key that the server generates, as a view does.
     :returns: The update body.
     """
-    return cast(type[_SchemaT], _derive_schema_update(schema, model))
+    return cast(type[_SchemaT], _derive_update_schema(schema, model))
 
 
 @functools.cache
-def _derive_schema_update(
+def _derive_update_schema(
     schema: type[pydantic.BaseModel], model: type[Any] | None
 ) -> type[pydantic.BaseModel]:
     return create_model_with_optional_fields(
@@ -2142,8 +2142,8 @@ def _generated_primary_key_fields(model_cls: type[Any]) -> frozenset[str]:
     return frozenset(generated)
 
 
-def derive_schema_list_response(
-    schema_response: type[pydantic.BaseModel],
+def derive_list_response_schema(
+    response_schema: type[pydantic.BaseModel],
     *,
     pagination: NumberedPagination | NoPagination | None = _DEFAULT_PAGINATION,
 ) -> type[pydantic.BaseModel]:
@@ -2155,8 +2155,8 @@ def derive_schema_list_response(
     class. On a react-admin view it is a plain list. A route on a router, or
     outside the view, can name it, so OpenAPI shows one type for both routes::
 
-        UserResponse = fr.schemas.derive_schema_response(UserSchema)
-        UserListResponse = fr.schemas.derive_schema_list_response(
+        UserResponse = fr.schemas.derive_response_schema(UserSchema)
+        UserListResponse = fr.schemas.derive_list_response_schema(
             UserResponse, pagination=AppView.pagination
         )
 
@@ -2171,19 +2171,19 @@ def derive_schema_list_response(
     class. Only the envelope of the pagination matters: two paginations with
     the same envelope give the same class.
 
-    :param schema_response: The view's response class, such as the one from
-        :func:`derive_schema_response`.
+    :param response_schema: The view's response class, such as the one from
+        :func:`derive_response_schema`.
     :param pagination: The view's pagination. ``None`` is a view without
         pagination, as on the view. The default is the default pagination.
     :returns: The list response class.
     """
     envelope = Envelope if pagination is None else pagination.envelope
-    return _named_list_envelope(envelope, schema_response)
+    return _named_list_envelope(envelope, response_schema)
 
 
 @functools.cache
 def _named_list_envelope(
-    envelope: type[pydantic.BaseModel], schema_response: type[pydantic.BaseModel]
+    envelope: type[pydantic.BaseModel], response_schema: type[pydantic.BaseModel]
 ) -> type[pydantic.BaseModel]:
     """Cached, so the route and every request use the same class, and two
     views with the same response class and envelope share it.
@@ -2191,14 +2191,14 @@ def _named_list_envelope(
     It is a subclass, so OpenAPI shows ``UserListResponse`` and not
     ``PaginatedEnvelope_UserResponse_``.
     """
-    filled: Any = envelope[schema_response]  # type: ignore[index]
+    filled: Any = envelope[response_schema]  # type: ignore[index]
     return type(
-        _schema_role_name(schema_response, "ListResponse"),
+        _schema_role_name(response_schema, "ListResponse"),
         (filled,),
         {
-            "__module__": schema_response.__module__,
+            "__module__": response_schema.__module__,
             # For the warning about two classes with one name.
-            "__restly_list_response_of__": (envelope, schema_response),
+            "__restly_list_response_of__": (envelope, response_schema),
         },
     )
 

@@ -227,14 +227,14 @@ the fields that it does not accept, and does not reject the request.
 The `PUT` route calls the same
 {meth}`handle_update <fastapi_restly.views.RestView.handle_update>` handler
 as `PATCH`, with the view's standard
-{attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>`
+{attr}`update_schema <fastapi_restly.views.BaseRestView.update_schema>`
 payload. So an {meth}`update <fastapi_restly.views.RestView.update>` business
 method that you override changes both routes. To give `PUT` its own rules,
 [replace](#replace-endpoint-method) its endpoint method `put`. This version
 requires the complete record, while `PATCH` still accepts a part of it:
 
 ```python
-from fastapi_restly.views import ViewResponse
+from fastapi_restly.views import ResponseSchema
 
 
 class ProductReplace(fr.BaseSchema):
@@ -247,7 +247,7 @@ class ProductView(fr.AsyncReactAdminView):
     model = Product
 
     @fr.put("/{id}")
-    async def put(self, id: int, payload: ProductReplace) -> ViewResponse:
+    async def put(self, id: int, payload: ProductReplace) -> ResponseSchema:
         return await self.handle_update(id, payload)
 ```
 
@@ -412,7 +412,7 @@ class CustomerView(ReactAdminBase):
 small subclass of
 {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` with
 [list params of its own](#own-list-params). Its
-{attr}`schema_list_params <fastapi_restly.views.BaseRestView.schema_list_params>`
+{attr}`list_params_schema <fastapi_restly.views.BaseRestView.list_params_schema>`
 is {class}`ReactAdminListParams <fastapi_restly.views.ReactAdminListParams>`,
 a Pydantic model with three fields: `sort`, `range` and `filter`. React-admin
 sends each one as JSON. The fields are
@@ -438,7 +438,7 @@ list params of its own can use too; see
 [Filter and sort on the fields of the response](#own-list-params-keys).
 
 To add a query key, subclass `ReactAdminListParams` and set the subclass as
-`schema_list_params`. A subclass of the view keeps it. List params that are
+`list_params_schema`. A subclass of the view keeps it. List params that are
 not a `ReactAdminListParams` fail when Python defines the view class.
 
 The views [replace the endpoint method](#replace-endpoint-method)

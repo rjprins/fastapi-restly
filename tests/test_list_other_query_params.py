@@ -235,7 +235,7 @@ def hand_written_client(sync_db) -> RestlyTestClient:
     class ItemView(fr.RestView):
         prefix = "/items"
         model = Item
-        schema_list_params = HandWrittenParams
+        list_params_schema = HandWrittenParams
         # list params without page fields, on a list without pages
         pagination = None
 
@@ -281,7 +281,7 @@ def test_an_empty_grammar_declares_no_parameter(sync_db):
     class ItemView(fr.RestView):
         prefix = "/items"
         model = Item
-        schema_list_params = NoParams
+        list_params_schema = NoParams
         pagination = None
 
     operation = app.openapi()["paths"]["/items"]["get"]

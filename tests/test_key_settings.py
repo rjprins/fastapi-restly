@@ -20,7 +20,7 @@ from starlette.datastructures import QueryParams
 
 import fastapi_restly as fr
 from fastapi_restly.exc import BadQueryParam, RestlyConfigurationError
-from fastapi_restly.query import apply_list_params, derive_schema_list_params
+from fastapi_restly.query import apply_list_params, derive_list_params_schema
 from fastapi_restly.query._impl import _record_of
 from fastapi_restly.testing import RestlyTestClient
 from fastapi_restly.views._list_params import _LIST_SETTING_DEFAULTS
@@ -81,7 +81,7 @@ class ItemSchema(fr.IDSchema):
 
 
 def params_model(**settings: Any) -> type[pydantic.BaseModel]:
-    return derive_schema_list_params(ItemSchema, Item, pagination=None, **settings)
+    return derive_list_params_schema(ItemSchema, Item, pagination=None, **settings)
 
 
 def filter_keys(**settings: Any) -> set[str]:
@@ -196,13 +196,13 @@ def test_a_sort_key_never_goes_through_a_to_many_relationship():
         # a list, typed as one schema
         tags: TagSchema
 
-    model = derive_schema_list_params(
+    model = derive_list_params_schema(
         TaggedItemSchema, Item, include_filters=("*", "*.*")
     )
 
     assert "tags.name" in model.model_fields
     with pytest.raises(RestlyConfigurationError, match="'\\*.\\*' matches no sort key"):
-        derive_schema_list_params(TaggedItemSchema, Item, include_sort_keys=("*.*",))
+        derive_list_params_schema(TaggedItemSchema, Item, include_sort_keys=("*.*",))
     with pytest.raises(BadQueryParam, match="Unknown sort key: 'tags.name'"):
         apply_list_params(
             select(Item), QueryParams("sort=tags.name"), Item, TaggedItemSchema
@@ -425,7 +425,7 @@ def test_each_setting_is_inherited_on_its_own(app):
         include_sort_keys = ("id",)
 
     plain = fr.include_view(app, item_view(AppView))
-    assert set(plain.schema_list_params.model_fields) == {"page", "page_size", "sort"}
+    assert set(plain.list_params_schema.model_fields) == {"page", "page_size", "sort"}
 
     class ItemView(AppView):
         prefix = "/all-items"
@@ -434,9 +434,9 @@ def test_each_setting_is_inherited_on_its_own(app):
         include_filters = ("*",)
 
     fr.include_view(app, ItemView)
-    fields = set(ItemView.schema_list_params.model_fields)
+    fields = set(ItemView.list_params_schema.model_fields)
     assert {"name", "name__icontains"} <= fields
-    record = _record_of(ItemView.schema_list_params)
+    record = _record_of(ItemView.list_params_schema)
     assert record is not None
     assert record.sort_keys == ("id",)
 
@@ -460,10 +460,10 @@ def test_an_inherited_entry_may_match_no_key(app):
 
     view = fr.include_view(app, item_view(AppView))
 
-    record = _record_of(view.schema_list_params)
+    record = _record_of(view.list_params_schema)
     assert record is not None
     assert record.sort_keys == ("id",)
-    assert "name__icontains" not in view.schema_list_params.model_fields
+    assert "name__icontains" not in view.list_params_schema.model_fields
 
 
 def test_a_string_fails_when_the_class_is_defined():
@@ -480,16 +480,16 @@ def test_hand_written_list_params_cannot_follow_the_settings(app):
     class AppView(fr.AsyncRestView):
         exclude_filters = ("*__icontains",)
 
-    view = item_view(AppView, schema_list_params=ItemParams)
+    view = item_view(AppView, list_params_schema=ItemParams)
 
     with pytest.raises(RestlyConfigurationError) as exc_info:
         fr.include_view(app, view)
 
     assert str(exc_info.value) == (
         "ItemView inherits exclude_filters = ('*__icontains',) from AppView, "
-        "but its schema_list_params is written by hand, so Restly cannot "
+        "but its list_params_schema is written by hand, so Restly cannot "
         "apply the setting. Set exclude_filters = () on ItemView, or leave "
-        "schema_list_params out to have it generated."
+        "list_params_schema out to have it generated."
     )
 
 
@@ -497,66 +497,66 @@ def test_a_subclass_cannot_change_the_keys_of_hand_written_list_params(app):
     class ItemParams(pydantic.BaseModel):
         name: str | None = None
 
-    base = item_view(schema_list_params=ItemParams)
+    base = item_view(list_params_schema=ItemParams)
     view = type("UserView", (base,), {"include_filters": ("username",)})
 
     with pytest.raises(RestlyConfigurationError) as exc_info:
         fr.include_view(app, view)
 
     assert str(exc_info.value) == (
-        "UserView sets include_filters = ('username',), but its schema_list_params "
+        "UserView sets include_filters = ('username',), but its list_params_schema "
         "(from ItemView) is written by hand, so Restly cannot apply the "
-        "setting. Remove the setting, or declare schema_list_params on "
-        "UserView as well, created by fr.query.derive_schema_list_params() "
+        "setting. Remove the setting, or declare list_params_schema on "
+        "UserView as well, created by fr.query.derive_list_params_schema() "
         "with include_filters=('username',)."
     )
 
 
 def test_declared_list_params_must_have_the_settings_of_the_view(app):
-    declared = derive_schema_list_params(ItemSchema, Item, include_filters=("name",))
+    declared = derive_list_params_schema(ItemSchema, Item, include_filters=("name",))
 
-    view = item_view(schema_list_params=declared)
+    view = item_view(list_params_schema=declared)
     with pytest.raises(RestlyConfigurationError) as exc_info:
         fr.include_view(app, view)
     assert str(exc_info.value) == (
-        "ItemView has include_filters = ('*',), but its schema_list_params "
+        "ItemView has include_filters = ('*',), but its list_params_schema "
         "was created with include_filters=('name',). A view's settings must "
         "be the ones that its list params were created with. Set "
-        "include_filters = ('name',) on ItemView, or leave schema_list_params "
+        "include_filters = ('name',) on ItemView, or leave list_params_schema "
         "out to have it generated."
     )
 
-    same = item_view(schema_list_params=declared, include_filters=("name",))
+    same = item_view(list_params_schema=declared, include_filters=("name",))
     fr.include_view(app, same)
-    assert same.schema_list_params is declared
+    assert same.list_params_schema is declared
 
 
 def test_declared_list_params_cannot_hide_an_inherited_setting(app):
     class AppView(fr.AsyncRestView):
         exclude_filters = ("*__icontains",)
 
-    declared = derive_schema_list_params(ItemSchema, Item)
-    view = item_view(AppView, schema_list_params=declared)
+    declared = derive_list_params_schema(ItemSchema, Item)
+    view = item_view(AppView, list_params_schema=declared)
 
     with pytest.raises(RestlyConfigurationError) as exc_info:
         fr.include_view(app, view)
 
     assert str(exc_info.value) == (
         "ItemView inherits exclude_filters = ('*__icontains',) from AppView, "
-        "but its schema_list_params was created with exclude_filters=(). A "
+        "but its list_params_schema was created with exclude_filters=(). A "
         "view's settings must be the ones that its list params were created "
         "with. Set exclude_filters = () on ItemView, or leave "
-        "schema_list_params out to have it generated."
+        "list_params_schema out to have it generated."
     )
 
-    reset = item_view(AppView, schema_list_params=declared, exclude_filters=())
+    reset = item_view(AppView, list_params_schema=declared, exclude_filters=())
     fr.include_view(app, reset)
-    assert reset.schema_list_params is declared
+    assert reset.list_params_schema is declared
 
 
 def test_a_subclass_with_other_settings_gets_new_list_params(app):
-    declared = derive_schema_list_params(ItemSchema, Item, include_filters=("name",))
-    base = item_view(schema_list_params=declared, include_filters=("name",))
+    declared = derive_list_params_schema(ItemSchema, Item, include_filters=("name",))
+    base = item_view(list_params_schema=declared, include_filters=("name",))
 
     same = fr.include_view(app, type("SameView", (base,), {"prefix": "/same"}))
     user = fr.include_view(
@@ -566,9 +566,9 @@ def test_a_subclass_with_other_settings_gets_new_list_params(app):
         ),
     )
 
-    assert same.schema_list_params is declared
-    assert "username" in user.schema_list_params.model_fields
-    assert "name" not in user.schema_list_params.model_fields
+    assert same.list_params_schema is declared
+    assert "username" in user.list_params_schema.model_fields
+    assert "name" not in user.list_params_schema.model_fields
 
 
 @pytest.mark.parametrize("base", [fr.AsyncReactAdminView, fr.ReactAdminView])
@@ -620,9 +620,9 @@ def test_a_field_with_a_reserved_name_can_be_left_out():
         page: int
 
     with pytest.raises(ValueError, match=r"exclude_filters = \('page',\)"):
-        derive_schema_list_params(BookSchema, Book)
+        derive_list_params_schema(BookSchema, Book)
 
-    model = derive_schema_list_params(BookSchema, Book, exclude_filters=("page",))
+    model = derive_list_params_schema(BookSchema, Book, exclude_filters=("page",))
     assert model.model_fields["page"].annotation is int
     assert "page__gte" in model.model_fields
     record = _record_of(model)
@@ -652,7 +652,7 @@ def test_a_view_renames_the_sort_parameter(app):
 
 
 def test_apply_list_params_reads_the_renamed_sort_parameter():
-    model = derive_schema_list_params(ItemSchema, Item, sort_query_param="order_by")
+    model = derive_list_params_schema(ItemSchema, Item, sort_query_param="order_by")
 
     stmt = apply_list_params(
         select(Item), model.model_validate({"order_by": "-name"}), Item, ItemSchema
@@ -663,7 +663,7 @@ def test_apply_list_params_reads_the_renamed_sort_parameter():
 
 def test_the_list_settings_have_one_default():
     # the view attributes and the keywords repeat the defaults for the docs
-    keywords = inspect.signature(derive_schema_list_params).parameters
+    keywords = inspect.signature(derive_list_params_schema).parameters
     for name, default in _LIST_SETTING_DEFAULTS.items():
         assert getattr(fr.AsyncRestView, name) == default
         assert keywords[name].default == default
@@ -703,33 +703,33 @@ def test_the_sort_parameter_cannot_be_a_page_parameter(app):
         ),
     ],
 )
-def test_derive_schema_list_params_names_the_sort_parameter_once(value, message):
+def test_derive_list_params_schema_names_the_sort_parameter_once(value, message):
     with pytest.raises(RestlyConfigurationError) as exc_info:
-        derive_schema_list_params(ItemSchema, Item, sort_query_param=value)
+        derive_list_params_schema(ItemSchema, Item, sort_query_param=value)
 
     assert str(exc_info.value) == message
 
 
 def test_declared_list_params_must_have_the_sort_parameter_of_the_view(app):
-    declared = derive_schema_list_params(ItemSchema, Item)
-    view = item_view(schema_list_params=declared, sort_query_param="order_by")
+    declared = derive_list_params_schema(ItemSchema, Item)
+    view = item_view(list_params_schema=declared, sort_query_param="order_by")
 
     with pytest.raises(RestlyConfigurationError) as exc_info:
         fr.include_view(app, view)
 
     assert str(exc_info.value) == (
         "ItemView sets sort_query_param = 'order_by', but its "
-        "schema_list_params was created with sort_query_param='sort'. A view's "
+        "list_params_schema was created with sort_query_param='sort'. A view's "
         "settings must be the ones that its list params were created with. "
         "Create it with sort_query_param='order_by', or leave "
-        "schema_list_params out to have it generated."
+        "list_params_schema out to have it generated."
     )
 
-    base = item_view(schema_list_params=declared)
+    base = item_view(list_params_schema=declared)
     ordered = fr.include_view(
         app, type("OrderedView", (base,), {"prefix": "/o", "sort_query_param": "o"})
     )
-    assert "o" in ordered.schema_list_params.model_fields
+    assert "o" in ordered.list_params_schema.model_fields
 
 
 @pytest.mark.parametrize("base", [fr.AsyncReactAdminView, fr.ReactAdminView])
@@ -754,12 +754,12 @@ class NarrowSchema(fr.IDSchema):
 
 
 def test_a_subclass_keeps_list_params_from_a_narrower_schema(app):
-    declared = derive_schema_list_params(NarrowSchema, Item)
-    base = item_view(schema_list_params=declared)
+    declared = derive_list_params_schema(NarrowSchema, Item)
+    base = item_view(list_params_schema=declared)
     fr.include_view(app, base)
 
     same = type("SameView", (base,), {"pagination": fr.NumberedPagination()})
-    assert fr.include_view(app, same).schema_list_params is declared
+    assert fr.include_view(app, same).list_params_schema is declared
 
     # new list params would get the keys of every field of ItemSchema
     paged = fr.NumberedPagination(default_page_size=10)
@@ -768,16 +768,16 @@ def test_a_subclass_keeps_list_params_from_a_narrower_schema(app):
         fr.include_view(app, view)
 
     assert str(exc_info.value) == (
-        "PagedView.schema_list_params (from ItemView) was created for other "
+        "PagedView.list_params_schema (from ItemView) was created for other "
         "pagination settings than the view's. Remove the setting, or declare "
-        "schema_list_params on PagedView as well, created with its pagination."
+        "list_params_schema on PagedView as well, created with its pagination."
     )
 
 
 def test_a_subclass_keeps_list_params_with_settings_of_their_own(app):
-    declared = derive_schema_list_params(ItemSchema, Item, include_filters=("name",))
+    declared = derive_list_params_schema(ItemSchema, Item, include_filters=("name",))
     # a base that passes the setting only to the call, and is not registered
-    base = item_view(schema_list_params=declared)
+    base = item_view(list_params_schema=declared)
     paged = fr.NumberedPagination(default_page_size=10)
     view = type("PagedView", (base,), {"pagination": paged})
 
@@ -785,7 +785,7 @@ def test_a_subclass_keeps_list_params_with_settings_of_their_own(app):
         fr.include_view(app, view)
 
     assert str(exc_info.value).startswith(
-        "PagedView has include_filters = ('*',), but its schema_list_params "
+        "PagedView has include_filters = ('*',), but its list_params_schema "
         "(from ItemView) was created with include_filters=('name',)."
     )
 
@@ -813,9 +813,9 @@ def test_a_bad_setting_from_a_mixin_fails_when_the_view_registers(app):
     class KeysMixin:
         include_filters = None
 
-    declared = derive_schema_list_params(ItemSchema, Item)
+    declared = derive_list_params_schema(ItemSchema, Item)
     view = item_view(
-        type("Base", (KeysMixin, fr.AsyncRestView), {}), schema_list_params=declared
+        type("Base", (KeysMixin, fr.AsyncRestView), {}), list_params_schema=declared
     )
 
     with pytest.raises(RestlyConfigurationError, match=r"\(from KeysMixin\)"):

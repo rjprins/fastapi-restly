@@ -6,7 +6,7 @@ from fastapi import HTTPException
 from pydantic import BaseModel
 
 import fastapi_restly as fr
-from fastapi_restly.views import ViewResponse
+from fastapi_restly.views import ResponseSchema
 
 from ..auth import hash_password, verify_password
 from ..current import Current
@@ -45,7 +45,7 @@ class UserView(SoftDeleteMixin, AuthenticatedView[User]):
     on delete. This view keeps user-specific behavior: password hashing,
     field-level permissions, /me routes, and change-password.
 
-    ``schema_update`` leaves ``password`` out of the PATCH body. Otherwise a
+    ``update_schema`` leaves ``password`` out of the PATCH body. Otherwise a
     PATCH could set a password without the current-password check of
     change-password, and without a hash.
 
@@ -57,7 +57,7 @@ class UserView(SoftDeleteMixin, AuthenticatedView[User]):
     prefix = "/users"
     model = User
     schema = UserSchema
-    schema_update = UserUpdate
+    update_schema = UserUpdate
     # No scope declared: reads apply UserClauses.default_scope.
 
     class Action(fr.Action):
@@ -76,7 +76,7 @@ class UserView(SoftDeleteMixin, AuthenticatedView[User]):
     @fr.post("/{id}/change-password")
     async def change_password(
         self, id: int, request: ChangePasswordRequest
-    ) -> ViewResponse:
+    ) -> ResponseSchema:
         """Change a user's password.
 
         This is an action route because the payload differs from PATCH. The row
@@ -115,12 +115,12 @@ class UserView(SoftDeleteMixin, AuthenticatedView[User]):
         return schema.model_validate(user, from_attributes=True).model_dump()
 
     @fr.get("/me")
-    async def get_current_user(self) -> ViewResponse:
+    async def get_current_user(self) -> ResponseSchema:
         """Get current user's profile."""
         return await self.handle_get_one(Current.user_id())
 
     @fr.patch("/me")
-    async def update_current_user(self, request: UpdateMeRequest) -> ViewResponse:
+    async def update_current_user(self, request: UpdateMeRequest) -> ResponseSchema:
         """Update current user's profile.
 
         Delegates to ``handle_update`` so this action route follows the exact

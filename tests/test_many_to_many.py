@@ -83,7 +83,7 @@ def _register_tagged_posts(app, view_base):
             "/posts-with-tags",
             LinkedPost,
             PostSchema,
-            schema_response=PostResponse,
+            response_schema=PostResponse,
         ),
     ):
         fr.include_view(app, view)
@@ -159,7 +159,7 @@ def test_a_dotted_key_cannot_go_through_a_list_of_related_rows():
         "/posts",
         LinkedPost,
         PostSchema,
-        schema_response=PostResponse,
+        response_schema=PostResponse,
         include_filters=("*", "tags.*"),
     )
     with pytest.raises(RestlyConfigurationError, match="'tags.\\*' matches no"):

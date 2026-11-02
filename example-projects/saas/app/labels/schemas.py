@@ -32,4 +32,4 @@ class TaskLabelSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
 
 # The response class that the view builds from TaskLabelSchema. A custom route
 # names it, so OpenAPI shows TaskLabelResponse there, as on the CRUD routes.
-TaskLabelResponse = fr.schemas.derive_schema_response(TaskLabelSchema)
+TaskLabelResponse = fr.schemas.derive_response_schema(TaskLabelSchema)

@@ -316,7 +316,7 @@ handler, write a base view instead of a mixin. A base view subclasses the
 view class, so it has the real methods, with their types:
 
 ```python
-from fastapi_restly.views import ViewID, ViewResponse
+from fastapi_restly.views import IDType, ResponseSchema
 
 
 class ArchiveView(fr.AsyncRestView):
@@ -326,7 +326,7 @@ class ArchiveView(fr.AsyncRestView):
         ARCHIVE = "archive"
 
     @fr.post("/{id}/archive", status_code=200)
-    async def archive(self, id: ViewID) -> ViewResponse:
+    async def archive(self, id: IDType) -> ResponseSchema:
         obj = await self.get_one(id)
         async with self.write_action(self.Action.ARCHIVE, obj=obj):
             obj.archived = True
@@ -377,7 +377,7 @@ override for each change. Two shared concerns have their own sections:
 owner id, on Models, and [soft delete](#soft-delete-mixin) on Scopes.
 
 A route on a base view names the classes of each subclass with markers, such
-as `ViewResponse`; see
+as `ResponseSchema`; see
 [Name the view's classes in a custom route](#name-the-response-classes).
 
 (app-wide-base-view)=
@@ -608,7 +608,7 @@ Every registered subclass inherits the custom routes of its base:
 class FieldsRouteView(fr.AsyncRestView):
     @fr.get("/fields")
     async def fields(self) -> list[str]:
-        return list(self.schema_response.model_fields)
+        return list(self.response_schema.model_fields)
 
 
 @fr.include_view(app)
@@ -775,7 +775,7 @@ these steps:
 4. It calls
    {meth}`before_include_view() <fastapi_restly.views.BaseRestView.before_include_view>`.
    On a CRUD view, this reads the schemas and the
-   {attr}`schema_list_params <fastapi_restly.views.BaseRestView.schema_list_params>`,
+   {attr}`list_params_schema <fastapi_restly.views.BaseRestView.list_params_schema>`,
    and checks them. Restly builds a class that the view does not declare at the
    first read, also before registration. It sets the item path from `id_type`,
    fills in the types of the endpoint methods, and removes the route marker of

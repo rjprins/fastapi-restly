@@ -25,7 +25,7 @@ from sqlalchemy.orm import Mapped, column_property, mapped_column, relationship
 import fastapi_restly as fr
 from fastapi_restly.db._config import _fr_config
 from fastapi_restly.testing import RestlyTestClient
-from fastapi_restly.views import ViewListResponse, ViewResponse
+from fastapi_restly.views import ListResponseSchema, ResponseSchema
 
 from ._models import SharedBase
 from .conftest import create_tables
@@ -589,7 +589,7 @@ def _marked_book_view(client: RestlyTestClient, Book: Any, BookSchema: Any) -> A
 
 
 def test_a_route_that_declares_view_response_returns_the_row(client):
-    """``-> ViewResponse``: the row goes through ``to_single_response``. Anything
+    """``-> ResponseSchema``: the row goes through ``to_single_response``. Anything
     else, such as a response object, goes out as it is."""
     Shelf, Book, ShelfSchema, BookSchema = _models()
 
@@ -598,18 +598,18 @@ def test_a_route_that_declares_view_response_returns_the_row(client):
             TOUCH = "touch"
 
         @fr.get("/{id}/plain")
-        async def plain(self, id: int) -> ViewResponse:
+        async def plain(self, id: int) -> ResponseSchema:
             return await self.get_one(id)
 
         @fr.post("/{id}/touch", status_code=200)
-        async def touch(self, id: int) -> ViewResponse:
+        async def touch(self, id: int) -> ResponseSchema:
             book = await self.get_one(id)
             async with self.write_action("touch", obj=book):
                 book.slug = book.slug + "!"
             return book
 
         @fr.get("/{id}/teapot")
-        async def teapot(self, id: int) -> ViewResponse:
+        async def teapot(self, id: int) -> ResponseSchema:
             return JSONResponse({"teapot": id}, status_code=418)
 
     fr.include_view(client.app, BookView)
@@ -624,7 +624,7 @@ def test_a_route_that_declares_view_response_returns_the_row(client):
 
 
 def test_a_route_that_declares_a_list_of_view_response_returns_rows(sync_client):
-    """``-> list[ViewResponse]``: each row goes through
+    """``-> list[ResponseSchema]``: each row goes through
     ``to_single_response``. ``response_model=`` declares the same."""
     Shelf, Book, ShelfSchema, BookSchema = _models()
 
@@ -639,10 +639,10 @@ def test_a_route_that_declares_a_list_of_view_response_returns_rows(sync_client)
             return response.model_copy(update={"title": obj.title.upper()})
 
         @fr.get("/all")
-        def all_books(self) -> list[ViewResponse]:
+        def all_books(self) -> list[ResponseSchema]:
             return list(self.session.scalars(self.select().order_by(Book.id)))
 
-        @fr.get("/first-two", response_model=list[ViewResponse])
+        @fr.get("/first-two", response_model=list[ResponseSchema])
         def first_two(self) -> Any:
             stmt = self.select().order_by(Book.id).limit(2)
             return tuple(self.session.scalars(stmt))
@@ -658,13 +658,13 @@ def test_a_route_that_declares_a_list_of_view_response_returns_rows(sync_client)
 
 
 def test_a_route_that_declares_view_list_response_returns_the_list_result(client):
-    """``-> ViewListResponse``: a ``ListResult`` goes through
+    """``-> ListResponseSchema``: a ``ListResult`` goes through
     ``to_list_response``."""
     Shelf, Book, ShelfSchema, BookSchema = _models()
 
     class BookView(_marked_book_view(client, Book, BookSchema)):
         @fr.get("/starting/{letter}")
-        async def starting(self, letter: str, list_params) -> ViewListResponse:
+        async def starting(self, letter: str, list_params) -> ListResponseSchema:
             return await self.handle_get_many(
                 list_params, where=Book.title.startswith(letter)
             )
@@ -702,7 +702,7 @@ def test_a_route_that_returns_the_model_gets_the_view_response(client):
     assert [b["title"] for b in client.get("/books/rows").json()] == ["DUNE", "EMMA"]
 
     paths = client.app.openapi()["paths"]
-    response_name = BookView.schema_response.__name__
+    response_name = BookView.response_schema.__name__
 
     def body(path: str) -> Any:
         content = paths[path]["get"]["responses"]["200"]["content"]
@@ -713,18 +713,18 @@ def test_a_route_that_returns_the_model_gets_the_view_response(client):
 
 
 def test_a_route_may_return_the_result_of_scalars_or_none(client):
-    """``list[ViewResponse]`` takes any iterable of rows, such as the result
+    """``list[ResponseSchema]`` takes any iterable of rows, such as the result
     of ``session.scalars()``. ``| None`` keeps the wrapping, and ``None``
     goes out as ``null``."""
     Shelf, Book, ShelfSchema, BookSchema = _models()
 
     class BookView(_marked_book_view(client, Book, BookSchema)):
         @fr.get("/scalars")
-        async def scalars(self) -> list[ViewResponse]:
+        async def scalars(self) -> list[ResponseSchema]:
             return await self.session.scalars(self.select().order_by(Book.id))
 
         @fr.get("/by-slug/{slug}")
-        async def by_slug(self, slug: str) -> ViewResponse | None:
+        async def by_slug(self, slug: str) -> ResponseSchema | None:
             stmt = self.select().where(Book.slug == slug)
             return (await self.session.scalars(stmt)).one_or_none()
 
@@ -744,14 +744,14 @@ def test_a_route_may_return_the_result_of_scalars_or_none(client):
 
 
 def test_a_route_that_names_the_views_own_response_class(client):
-    """The 0.11 form ``response_model=fr.schemas.derive_schema_response(...)``
+    """The 0.11 form ``response_model=fr.schemas.derive_response_schema(...)``
     names the view's own response class: each call returns that same class.
-    So the route declares the view's response, as with ``ViewResponse``, and
+    So the route declares the view's response, as with ``ResponseSchema``, and
     ``to_single_response`` runs. The list response class works the same."""
     Shelf, Book, ShelfSchema, BookSchema = _models()
-    BookResponse = fr.schemas.derive_schema_response(BookSchema)
+    BookResponse = fr.schemas.derive_response_schema(BookSchema)
     # the view keeps the default pagination, so the default envelope
-    BookListResponse = fr.schemas.derive_schema_list_response(BookResponse)
+    BookListResponse = fr.schemas.derive_list_response_schema(BookResponse)
 
     class BookView(_marked_book_view(client, Book, BookSchema)):
         @fr.get("/{id}/named", response_model=BookResponse)
@@ -814,15 +814,15 @@ def test_a_string_annotation_declares_the_view_response(client, monkeypatch):
 
     class BookView(_marked_book_view(client, Book, BookSchema)):
         @fr.get("/{id}/plain")
-        async def plain(self, id: "int") -> "ViewResponse":
+        async def plain(self, id: "int") -> "ResponseSchema":
             return await self.get_one(id)
 
         @fr.get("/all")
-        async def all_books(self) -> "list[ViewResponse]":
+        async def all_books(self) -> "list[ResponseSchema]":
             return list(await self.session.scalars(self.select().order_by(Book.id)))
 
         @fr.get("/page")
-        async def page(self, list_params) -> "ViewListResponse":
+        async def page(self, list_params) -> "ListResponseSchema":
             return await self.handle_get_many(list_params)
 
         @fr.get("/{id}/row")

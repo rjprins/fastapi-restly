@@ -7,7 +7,7 @@ from fastapi import HTTPException
 from pydantic import BaseModel
 
 import fastapi_restly as fr
-from fastapi_restly.views import ViewResponse
+from fastapi_restly.views import ResponseSchema
 
 from ..projects.models import Project
 from ..users.models import User
@@ -19,7 +19,7 @@ from .schemas import TaskSchema
 class TaskCreate(BaseModel):
     """Schema for creating a task (no id/timestamps).
 
-    It is TaskView's ``schema_create``, so the create route, the bulk route
+    It is TaskView's ``create_schema``, so the create route, the bulk route
     and the CSV import take the same body.
     """
 
@@ -85,7 +85,7 @@ class TaskView(TrashView[Task]):
     prefix = "/tasks"
     model = Task
     schema = TaskSchema
-    schema_create = TaskCreate
+    create_schema = TaskCreate
     scope = TaskClauses.visible
     trash_scope = TaskClauses.trashed
 
@@ -312,21 +312,21 @@ class TaskView(TrashView[Task]):
         return BulkResult(success=success, failed=failed, errors=errors)
 
     @fr.post("/{id}/start")
-    async def start_task(self, id: int) -> ViewResponse:
+    async def start_task(self, id: int) -> ResponseSchema:
         """Move task from TODO to IN_PROGRESS."""
         return await self._transition_task(
             id, TaskStatus.TODO, TaskStatus.IN_PROGRESS, self.Action.START
         )
 
     @fr.post("/{id}/complete")
-    async def complete_task(self, id: int) -> ViewResponse:
+    async def complete_task(self, id: int) -> ResponseSchema:
         """Move task from IN_PROGRESS to DONE."""
         return await self._transition_task(
             id, TaskStatus.IN_PROGRESS, TaskStatus.DONE, self.Action.COMPLETE
         )
 
     @fr.post("/{id}/reopen")
-    async def reopen_task(self, id: int) -> ViewResponse:
+    async def reopen_task(self, id: int) -> ResponseSchema:
         """Reopen a completed task back to IN_PROGRESS."""
         return await self._transition_task(
             id, TaskStatus.DONE, TaskStatus.IN_PROGRESS, self.Action.REOPEN

@@ -5,12 +5,12 @@ from sqlalchemy.orm import DeclarativeBase, Mapped
 
 import fastapi_restly as fr
 from fastapi_restly.views import (
+    CreateSchema,
+    IDType,
+    ListResponseSchema,
+    ResponseSchema,
     SchemaType,
-    ViewCreate,
-    ViewID,
-    ViewListResponse,
-    ViewResponse,
-    ViewUpdate,
+    UpdateSchema,
 )
 
 app = FastAPI()
@@ -32,12 +32,12 @@ class RenameView(fr.AsyncRestView[Any]):
     """A base view: each view that subclasses it gets its own types."""
 
     @fr.post("/{id}/rename", status_code=200)
-    async def rename(self, id: ViewID, data: ViewUpdate) -> ViewResponse:
+    async def rename(self, id: IDType, data: UpdateSchema) -> ResponseSchema:
         obj = await self.handle_update(id, data)
         return obj
 
     @fr.get("/recent")
-    async def recent(self, list_params: Any) -> ViewListResponse:
+    async def recent(self, list_params: Any) -> ListResponseSchema:
         result = await self.handle_get_many(list_params)
         return result
 
@@ -57,24 +57,24 @@ class SyncTaskView(fr.RestView[Task, TaskSchema]):
     model = Task
     schema = TaskSchema
 
-    @fr.post("/import", response_model=list[ViewResponse])
-    def import_tasks(self, data: ViewCreate) -> Any:
+    @fr.post("/import", response_model=list[ResponseSchema])
+    def import_tasks(self, data: CreateSchema) -> Any:
         return [self.to_single_response(self.handle_create(data))]
 
     @fr.get("/maybe/{id}")
-    def maybe(self, id: ViewID) -> ViewResponse | None:
+    def maybe(self, id: IDType) -> ResponseSchema | None:
         return self.to_single_response(self.handle_get_one(id))
 
 
 # SchemaType: a function of the view, on a setting and in a route.
-Wrapped = Annotated[Any, SchemaType(lambda view: view.schema_response)]
+Wrapped = Annotated[Any, SchemaType(lambda view: view.response_schema)]
 
 
 class FunctionView(fr.AsyncRestView[Any]):
-    schema_create = SchemaType(lambda view: view.schema)
+    create_schema = SchemaType(lambda view: view.schema)
 
     @SchemaType
-    def schema_update(view: Any) -> Any:
+    def update_schema(view: Any) -> Any:
         return view.schema
 
     @fr.get("/wrapped")

@@ -36,8 +36,8 @@ def test_subclass_serves_the_schema_its_base_view_declares(view_base):
     fr.include_view(FastAPI(), Sub)
 
     assert Sub.schema is RecSchema
-    assert set(Sub.schema_create.model_fields) == {"name"}
-    assert set(Sub.schema_update.model_fields) == {"name"}
+    assert set(Sub.create_schema.model_fields) == {"name"}
+    assert set(Sub.update_schema.model_fields) == {"name"}
     assert "schema" not in Sub.__dict__
 
 
@@ -81,16 +81,16 @@ def test_declared_write_schemas_are_inherited():
     class Base(fr.AsyncRestView):
         model = Rec
         schema = RecSchema
-        schema_create = RecCreate
-        schema_update = RecUpdate
+        create_schema = RecCreate
+        update_schema = RecUpdate
 
     class Sub(Base):
         prefix = "/recs"
 
     fr.include_view(FastAPI(), Sub)
 
-    assert Sub.schema_create is RecCreate
-    assert Sub.schema_update is RecUpdate
+    assert Sub.create_schema is RecCreate
+    assert Sub.update_schema is RecUpdate
 
 
 def test_redeclaring_schema_rebuilds_the_write_schemas_a_parent_declared():
@@ -107,7 +107,7 @@ def test_redeclaring_schema_rebuilds_the_write_schemas_a_parent_declared():
     class Base(fr.AsyncRestView):
         model = Rec
         schema = RecSchema
-        schema_create = RecCreate
+        create_schema = RecCreate
 
     class WithNote(fr.IDSchema):
         name: str
@@ -120,8 +120,8 @@ def test_redeclaring_schema_rebuilds_the_write_schemas_a_parent_declared():
     fr.include_view(FastAPI(), Sub)
 
     assert Sub.schema is WithNote
-    assert Sub.schema_create is not RecCreate
-    assert set(Sub.schema_create.model_fields) == {"name", "note"}
+    assert Sub.create_schema is not RecCreate
+    assert set(Sub.create_schema.model_fields) == {"name", "note"}
 
 
 def test_generated_schema_of_a_registered_parent_is_rebuilt_for_the_subclass():
@@ -146,7 +146,7 @@ def test_generated_schema_of_a_registered_parent_is_rebuilt_for_the_subclass():
 
     assert set(PetView.schema.model_fields) == {"id", "name"}
     assert set(OwnerView.schema.model_fields) == {"id", "email"}
-    assert set(OwnerView.schema_create.model_fields) == {"email"}
+    assert set(OwnerView.create_schema.model_fields) == {"email"}
 
 
 def test_subclass_page_size_rebuilds_the_generated_list_params():
@@ -170,8 +170,8 @@ def test_subclass_page_size_rebuilds_the_generated_list_params():
 
     fr.include_view(app, Small)
 
-    assert Base.schema_list_params is not Small.schema_list_params
-    assert Small.schema_list_params.model_fields["page_size"].default == 5
+    assert Base.list_params_schema is not Small.list_params_schema
+    assert Small.list_params_schema.model_fields["page_size"].default == 5
 
 
 def test_declared_list_params_are_inherited(client):
@@ -189,14 +189,14 @@ def test_declared_list_params_are_inherited(client):
     class Base(fr.AsyncRestView):
         model = Rec
         schema = RecSchema
-        schema_list_params = RecListParams
+        list_params_schema = RecListParams
 
     @fr.include_view(client.app)
     class Sub(Base):
         prefix = "/recs"
 
     create_tables()
-    assert Sub.schema_list_params is RecListParams
+    assert Sub.list_params_schema is RecListParams
     client.get("/recs/?name=a", assert_status_code=422)
 
 
@@ -210,7 +210,7 @@ def test_declared_response_class_of_a_base_without_schema_is_inherited(client):
 
     class Base(fr.AsyncRestView):
         model = Vault
-        schema_response = VaultResponse
+        response_schema = VaultResponse
 
     @fr.include_view(client.app)
     class Sub(Base):
@@ -218,7 +218,7 @@ def test_declared_response_class_of_a_base_without_schema_is_inherited(client):
 
     create_tables()
     created = client.post("/vaults/", json={"name": "a", "secret": "s3"}).json()
-    assert Sub.schema_response is VaultResponse
+    assert Sub.response_schema is VaultResponse
     assert created == {"id": created["id"], "name": "a"}
     assert client.get("/vaults/").json()["data"] == [created]
 
@@ -233,14 +233,14 @@ def test_declared_create_of_a_base_without_schema_is_inherited():
 
     class Base(fr.AsyncRestView):
         model = Rec
-        schema_create = RecCreate
+        create_schema = RecCreate
 
     class Sub(Base):
         prefix = "/recs"
 
     fr.include_view(FastAPI(), Sub)
 
-    assert Sub.schema_create is RecCreate
+    assert Sub.create_schema is RecCreate
 
 
 def test_redeclaring_schema_rebuilds_the_list_params_a_parent_declared():
@@ -257,7 +257,7 @@ def test_redeclaring_schema_rebuilds_the_list_params_a_parent_declared():
     class Base(fr.AsyncRestView):
         model = Rec
         schema = RecSchema
-        schema_list_params = RecListParams
+        list_params_schema = RecListParams
 
     class WithNote(fr.IDSchema):
         name: str
@@ -269,8 +269,8 @@ def test_redeclaring_schema_rebuilds_the_list_params_a_parent_declared():
 
     fr.include_view(FastAPI(), Sub)
 
-    assert Sub.schema_list_params is not RecListParams
-    assert "note" in Sub.schema_list_params.model_fields
+    assert Sub.list_params_schema is not RecListParams
+    assert "note" in Sub.list_params_schema.model_fields
 
 
 def test_list_params_declared_next_to_a_new_schema_stay():
@@ -290,16 +290,16 @@ def test_list_params_declared_next_to_a_new_schema_stay():
 
     class Base(fr.AsyncRestView):
         model = Rec
-        schema_response = RecResponse
+        response_schema = RecResponse
 
     class Middle(Base):
         schema = RecSchema
-        schema_list_params = RecListParams
+        list_params_schema = RecListParams
 
     class Sub(Middle):
         prefix = "/recs"
 
     fr.include_view(FastAPI(), Sub)
 
-    assert Sub.schema_response is fr.schemas.derive_schema_response(RecSchema)
-    assert Sub.schema_list_params is RecListParams
+    assert Sub.response_schema is fr.schemas.derive_response_schema(RecSchema)
+    assert Sub.list_params_schema is RecListParams

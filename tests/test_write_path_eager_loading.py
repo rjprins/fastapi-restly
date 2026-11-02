@@ -112,7 +112,7 @@ def _build_nested_app(app):
         prefix = "/docs"
         model = Doc
         schema = DocSchema
-        schema_create = DocCreate
+        create_schema = DocCreate
 
         async def create(self, schema_obj) -> Any:
             obj: Any = await super().create(schema_obj)
@@ -179,7 +179,7 @@ def test_sync_create_serializes_nested_relationship(sync_client):
         prefix = "/docs"
         model = Doc
         schema = DocSchema
-        schema_create = DocCreate
+        create_schema = DocCreate
 
         def create(self, schema_obj) -> Any:
             obj: Any = super().create(schema_obj)
@@ -233,7 +233,7 @@ def test_async_create_serializes_flat_idref(client):
         prefix = "/posts"
         model = Post
         schema = PostSchema
-        schema_create = PostCreate
+        create_schema = PostCreate
 
     create_tables()
 
@@ -279,7 +279,7 @@ def test_async_create_serializes_assigned_collection(client):
         prefix = "/docs"
         model = TaggedDoc
         schema = DocSchema
-        schema_create = DocCreate
+        create_schema = DocCreate
 
         async def create(self, schema_obj) -> Any:
             obj: Any = await super().create(schema_obj)
@@ -335,7 +335,7 @@ def test_relationship_free_schema_issues_no_reload(sync_client):
         prefix = "/plain"
         model = Plain
         schema = PlainSchema
-        schema_create = PlainCreate
+        create_schema = PlainCreate
 
     _create_sync_tables()
     engine = _fr_config.make_session.kw["bind"]
@@ -432,7 +432,7 @@ def test_indirection_over_a_named_relationship_rides_along(client):
         prefix = "/docs"
         model = Doc
         schema = DocSchema
-        schema_create = DocCreate
+        create_schema = DocCreate
 
         async def create(self, schema_obj) -> Any:
             obj: Any = await super().create(schema_obj)
@@ -492,7 +492,7 @@ def test_indirection_over_an_unnamed_relationship_fails_alike_on_read_and_write(
         prefix = "/docs"
         model = Doc
         schema = DocSchema
-        schema_create = DocCreate
+        create_schema = DocCreate
 
         async def create(self, schema_obj) -> Any:
             obj: Any = await super().create(schema_obj)
@@ -549,7 +549,7 @@ def test_awaitable_attrs_reaches_a_relationship_the_schema_never_names(client):
         prefix = "/docs"
         model = NotedDoc
         schema = DocSchema
-        schema_create = DocCreate
+        create_schema = DocCreate
 
         async def after_action_commit(self, action, new: Any, old=None) -> None:
             assert "notes" in sa_inspect(new).unloaded
@@ -660,7 +660,7 @@ def test_divergent_schemas_same_instance_reload(client):
         prefix = "/docs"
         model = Doc
         schema = DocSchema
-        schema_create = DocCreate
+        create_schema = DocCreate
 
         async def create(self, schema_obj) -> Any:
             obj: Any = await super().create(schema_obj)
@@ -725,7 +725,7 @@ def test_sync_create_serializes_assigned_collection(sync_client):
         prefix = "/docs"
         model = SyncTaggedDoc
         schema = DocSchema
-        schema_create = DocCreate
+        create_schema = DocCreate
 
         def create(self, schema_obj) -> Any:
             obj: Any = super().create(schema_obj)
@@ -783,7 +783,7 @@ def test_write_reload_unique_guards_a_joinedload_collection(client):
         prefix = "/docs"
         model = JoinedDoc
         schema = DocSchema
-        schema_create = DocCreate
+        create_schema = DocCreate
 
         def get_loader_options(self) -> list[Any]:
             # a joinedload-to-many fans out rows; without .unique() the reload's

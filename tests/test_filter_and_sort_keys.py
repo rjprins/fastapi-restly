@@ -263,7 +263,7 @@ def test_generated_list_params_skip_a_hybrid_that_fails_on_the_class():
         name: str = ""
         name_length: fr.ReadOnly[int] = 0
 
-    fields = fr.query.derive_schema_list_params(GadgetSchema, Gadget).model_fields
+    fields = fr.query.derive_list_params_schema(GadgetSchema, Gadget).model_fields
     assert "name" in fields
     assert not [name for name in fields if name.startswith("name_length")]
 
@@ -492,11 +492,11 @@ def test_list_params_of_your_own_filter_and_sort_with_the_keys(client):
         prefix = "/items"
         model = Item
         schema = ItemSchema
-        schema_list_params = ItemListParams
+        list_params_schema = ItemListParams
 
         async def apply_filters(self, stmt, list_params: ItemListParams):
             for name, value in (list_params.filter or {}).items():
-                key = fr.query.FilterKey(self.model, self.schema_response, name)
+                key = fr.query.FilterKey(self.model, self.response_schema, name)
                 stmt = stmt.where(key.column == key.parse(value))
             return stmt
 
@@ -505,7 +505,7 @@ def test_list_params_of_your_own_filter_and_sort_with_the_keys(client):
             sorted_on = []
             if list_params.sort:
                 name = list_params.sort.removeprefix("-")
-                key = fr.query.SortKey(self.model, self.schema_response, name)
+                key = fr.query.SortKey(self.model, self.response_schema, name)
                 descending = list_params.sort.startswith("-")
                 stmt = stmt.order_by(
                     key.term(descending=descending, sort_nulls=self.sort_nulls)

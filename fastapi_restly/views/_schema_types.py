@@ -36,23 +36,23 @@ class SchemaType:
     view gets a create body of its own::
 
         class ApiView(fr.AsyncRestView):
-            schema_create = SchemaType(lambda view: with_tenant(view.schema))
+            create_schema = SchemaType(lambda view: with_tenant(view.schema))
 
     A setting can also use it as a decorator::
 
         class ApiView(fr.AsyncRestView):
             @SchemaType
-            def schema_create(view):
+            def create_schema(view):
                 return with_tenant(view.schema)
 
     In a route, it goes in the metadata of an annotation::
 
-        Single = Annotated[Any, SchemaType(lambda view: Data[view.schema_response])]
+        Single = Annotated[Any, SchemaType(lambda view: Data[view.response_schema])]
 
 
         class ApiView(fr.AsyncRestView):
             @fr.get("/{id}")
-            async def get_one_endpoint(self, id: ViewID) -> Single: ...
+            async def get_one_endpoint(self, id: IDType) -> Single: ...
 
     Restly calls the function once for each view class, when something first
     reads the type. It can read any setting of the view, in any order. A setting
@@ -146,34 +146,34 @@ def _view_id_type(view_cls: type) -> Any:
 #: else the type of the model's primary key. A path parameter with this type
 #: gets the view's path converter, as the CRUD item routes do: ``{id:int}``
 #: for ``int`` and ``{id:uuid}`` for ``UUID``.
-ViewID: TypeAlias = Annotated[Any, _marker("ViewID", _view_id_type)]
+IDType: TypeAlias = Annotated[Any, _marker("IDType", _view_id_type)]
 
 #: The view's response class,
-#: :attr:`~fastapi_restly.views.BaseRestView.schema_response`.
-ViewResponse: TypeAlias = Annotated[
-    Any, _marker("ViewResponse", lambda view: view.schema_response)
+#: :attr:`~fastapi_restly.views.BaseRestView.response_schema`.
+ResponseSchema: TypeAlias = Annotated[
+    Any, _marker("ResponseSchema", lambda view: view.response_schema)
 ]
 
 #: The view's list response: the envelope of the view's pagination, with
 #: items of the view's response class.
-ViewListResponse: TypeAlias = Annotated[
-    Any, _marker("ViewListResponse", lambda view: view.list_response_schema)
+ListResponseSchema: TypeAlias = Annotated[
+    Any, _marker("ListResponseSchema", lambda view: view.list_response_schema)
 ]
 
 #: The view's create body,
-#: :attr:`~fastapi_restly.views.BaseRestView.schema_create`.
-ViewCreate: TypeAlias = Annotated[
-    Any, _marker("ViewCreate", lambda view: view.schema_create)
+#: :attr:`~fastapi_restly.views.BaseRestView.create_schema`.
+CreateSchema: TypeAlias = Annotated[
+    Any, _marker("CreateSchema", lambda view: view.create_schema)
 ]
 
 #: The view's update body,
-#: :attr:`~fastapi_restly.views.BaseRestView.schema_update`.
-ViewUpdate: TypeAlias = Annotated[
-    Any, _marker("ViewUpdate", lambda view: view.schema_update)
+#: :attr:`~fastapi_restly.views.BaseRestView.update_schema`.
+UpdateSchema: TypeAlias = Annotated[
+    Any, _marker("UpdateSchema", lambda view: view.update_schema)
 ]
 
 
-def _fill_view_types(func: Callable, view_cls: type, list_params: Any) -> None:
+def _fill_schema_types(func: Callable, view_cls: type, list_params: Any) -> None:
     """Put the view's classes in place of the markers in ``func.__signature__``.
 
     A parameter named ``list_params`` always takes the view's list params,
@@ -190,21 +190,21 @@ def _fill_view_types(func: Callable, view_cls: type, list_params: Any) -> None:
         if param.name == "list_params":
             annotation = list_params
         elif param.name in written:
-            annotation = _with_view_types(written[param.name], func, view_cls)
+            annotation = _with_schema_types(written[param.name], func, view_cls)
         else:
             annotation = param.annotation
         changed = changed or annotation is not param.annotation
         params.append(param.replace(annotation=annotation))
     returns = sig.return_annotation
     if "return" in written:
-        returns = _with_view_types(written["return"], func, view_cls)
+        returns = _with_schema_types(written["return"], func, view_cls)
     if changed or returns is not sig.return_annotation:
         func.__signature__ = sig.replace(  # type: ignore[attr-defined]
             parameters=params, return_annotation=returns
         )
 
 
-def _with_view_types(annotation: Any, func: Callable, view_cls: type) -> Any:
+def _with_schema_types(annotation: Any, func: Callable, view_cls: type) -> Any:
     """``annotation`` with the view's classes in place of its markers.
 
     It is ``annotation`` itself when it holds no marker. So an annotation
@@ -212,7 +212,7 @@ def _with_view_types(annotation: Any, func: Callable, view_cls: type) -> Any:
     string for FastAPI to resolve.
     """
     evaluated = _evaluated(annotation, func)
-    filled = _replace_view_types(evaluated, view_cls)
+    filled = _replace_schema_types(evaluated, view_cls)
     return annotation if filled is evaluated else filled
 
 
@@ -231,39 +231,39 @@ def _evaluated(annotation: Any, func: Callable) -> Any:
 
 
 def _pydantic_generic_args(annotation: Any) -> tuple[Any, ...]:
-    """The arguments of a filled Pydantic generic class: ``(ViewResponse,)`` for
-    ``Data[ViewResponse]``. It is a class, so ``typing.get_args`` finds nothing."""
+    """The arguments of a filled Pydantic generic class: ``(ResponseSchema,)`` for
+    ``Data[ResponseSchema]``. It is a class, so ``typing.get_args`` finds nothing."""
     metadata = getattr(annotation, "__pydantic_generic_metadata__", None)
     return metadata["args"] if metadata is not None and metadata["origin"] else ()
 
 
-def _replace_view_types(annotation: Any, view_cls: type) -> Any:
+def _replace_schema_types(annotation: Any, view_cls: type) -> Any:
     """Replace each marker in ``annotation``, also inside a type such as
-    ``list[ViewResponse]`` or ``Data[ViewResponse]``. Returns ``annotation``
+    ``list[ResponseSchema]`` or ``Data[ResponseSchema]``. Returns ``annotation``
     itself when it holds no marker."""
     origin = get_origin(annotation)
     if origin is Annotated:
         inner, *metadata = get_args(annotation)
         marker = next((m for m in metadata if isinstance(m, SchemaType)), None)
         if marker is not None:
-            # Annotated[ViewID, Path(ge=1)] keeps the Path(ge=1)
+            # Annotated[IDType, Path(ge=1)] keeps the Path(ge=1)
             rest = [m for m in metadata if not isinstance(m, SchemaType)]
             filled = _filled(marker, view_cls)
             return Annotated[(filled, *rest)] if rest else filled
-        filled_inner = _replace_view_types(inner, view_cls)
+        filled_inner = _replace_schema_types(inner, view_cls)
         if filled_inner is inner:
             return annotation
         return Annotated[(filled_inner, *metadata)]
     generic = _pydantic_generic_args(annotation)
     if generic:
-        filled_args = tuple(_replace_view_types(arg, view_cls) for arg in generic)
+        filled_args = tuple(_replace_schema_types(arg, view_cls) for arg in generic)
         if all(new is old for new, old in zip(filled_args, generic)):
             return annotation
         return annotation.__pydantic_generic_metadata__["origin"][filled_args]
     args = get_args(annotation)
     if not args or origin is Literal:
         return annotation
-    filled_args = tuple(_replace_view_types(arg, view_cls) for arg in args)
+    filled_args = tuple(_replace_schema_types(arg, view_cls) for arg in args)
     if all(new is old for new, old in zip(filled_args, args)):
         return annotation
     if origin in (Union, types.UnionType):

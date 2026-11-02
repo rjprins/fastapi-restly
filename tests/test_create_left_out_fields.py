@@ -73,7 +73,7 @@ def test_an_init_var_still_gets_its_required_argument(client):
         prefix = "/accounts"
         model = Account
         schema = AccountSchema
-        schema_create = AccountCreate
+        create_schema = AccountCreate
 
     create_tables()
     client.post("/accounts/", json={"name": "a"})
@@ -98,7 +98,7 @@ def test_a_none_default_on_a_not_null_column_keeps_the_field_required(client):
         prefix = "/books"
         model = Book
 
-    fields = BookView.schema_create.model_fields
+    fields = BookView.create_schema.model_fields
     assert fields["pages"].is_required()
     assert fields["shelf_id"].is_required()
 
@@ -183,7 +183,7 @@ def test_a_json_field_with_default_none_is_required_on_sqlalchemy_2_0(client):
 
     create_tables()
     if sqlalchemy.__version__.startswith("2.0."):
-        assert BoardView.schema_create.model_fields["tags"].is_required()
+        assert BoardView.create_schema.model_fields["tags"].is_required()
         client.post("/boards/", json={"title": "a"}, assert_status_code=422)
     else:
         created = client.post("/boards/", json={"title": "a"}).json()

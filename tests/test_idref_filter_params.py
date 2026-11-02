@@ -25,7 +25,7 @@ from sqlalchemy import ForeignKey, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 import fastapi_restly as fr
-from fastapi_restly.query import derive_schema_list_params
+from fastapi_restly.query import derive_list_params_schema
 from fastapi_restly.testing import RestlyTestClient
 
 from ._models import SharedBase
@@ -60,7 +60,7 @@ def test_idref_fk_generates_opaque_filter_params():
         content: str
         post_id: fr.IDRef[Post]
 
-    fields = set(derive_schema_list_params(CommentSchema, Comment).model_fields)
+    fields = set(derive_list_params_schema(CommentSchema, Comment).model_fields)
 
     assert OPAQUE_SET <= fields
     assert NEVER.isdisjoint(fields)
@@ -82,7 +82,7 @@ def test_idref_fk_uuid_pk_yields_the_same_opaque_set():
         content: str
         post_id: fr.IDRef[UPost]
 
-    fields = set(derive_schema_list_params(UCommentSchema, UComment).model_fields)
+    fields = set(derive_list_params_schema(UCommentSchema, UComment).model_fields)
 
     assert OPAQUE_SET <= fields
     assert NEVER.isdisjoint(fields)
@@ -108,7 +108,7 @@ def test_idref_targeting_leaves_nested_resource_dotted_traversal_intact():
         pub: PubResource | None = None
 
     fields = set(
-        derive_schema_list_params(
+        derive_list_params_schema(
             AuthorSchema, Author, include_filters=("*", "*.*")
         ).model_fields
     )

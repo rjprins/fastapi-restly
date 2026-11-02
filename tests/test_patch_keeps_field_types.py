@@ -74,7 +74,7 @@ def test_a_generated_field_with_a_default_allows_null_only_when_nullable(client)
         prefix = "/counters"
         model = Counter
 
-    fields = CounterView.schema_create.model_fields
+    fields = CounterView.create_schema.model_fields
     assert fields["count"].annotation is int
     assert fields["label"].annotation is str
     assert fields["strict"].annotation is int
@@ -170,4 +170,4 @@ def test_a_v1_validator_with_always_does_not_validate_a_left_out_field(client):
     assert client.patch(url, json={"title": " d "}).json()["title"] == "d"
     client.patch(url, json={"title": None}, assert_status_code=422)
     # The create body still validates the default.
-    assert NoteView.schema_create.model_fields["title"].validate_default
+    assert NoteView.create_schema.model_fields["title"].validate_default

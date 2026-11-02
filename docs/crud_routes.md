@@ -55,9 +55,9 @@ For `prefix = "/users"`, `include_view` registers these routes:
 | Request | Endpoint method | Input | Response | Status |
 |---|---|---|---|---|
 | `GET /users` | {meth}`get_many_endpoint <fastapi_restly.views.AsyncRestView.get_many_endpoint>` | Filter, sort and page parameters | A page of objects in a `data` envelope | `200` |
-| `POST /users` | {meth}`create_endpoint <fastapi_restly.views.AsyncRestView.create_endpoint>` | `schema_create` | `schema_response` | `201` |
-| `GET /users/{id}` | {meth}`get_one_endpoint <fastapi_restly.views.AsyncRestView.get_one_endpoint>` | The id in the path | `schema_response` | `200` |
-| `PATCH /users/{id}` | {meth}`update_endpoint <fastapi_restly.views.AsyncRestView.update_endpoint>` | `schema_update` | `schema_response` | `200` |
+| `POST /users` | {meth}`create_endpoint <fastapi_restly.views.AsyncRestView.create_endpoint>` | `create_schema` | `response_schema` | `201` |
+| `GET /users/{id}` | {meth}`get_one_endpoint <fastapi_restly.views.AsyncRestView.get_one_endpoint>` | The id in the path | `response_schema` | `200` |
+| `PATCH /users/{id}` | {meth}`update_endpoint <fastapi_restly.views.AsyncRestView.update_endpoint>` | `update_schema` | `response_schema` | `200` |
 | `DELETE /users/{id}` | {meth}`delete_endpoint <fastapi_restly.views.AsyncRestView.delete_endpoint>` | The id in the path | Empty body | `204` |
 
 The main path of the list is `/users`, without a slash at the end. Restly
@@ -113,7 +113,7 @@ parameter.
 
 A route that you declare yourself keeps the path you give it. Restly adds
 the converter only to a path parameter annotated
-{data}`ViewID <fastapi_restly.views.ViewID>`; see
+{data}`IDType <fastapi_restly.views.IDType>`; see
 [Name the view's classes in a custom route](#name-the-response-classes). To
 accept negative integer ids, replace each item endpoint you need with an
 untyped path such as `@fr.get("/{id}")`, and annotate its `id` parameter as
@@ -139,9 +139,9 @@ If the view does not declare {attr}`schema
 <fastapi_restly.views.BaseRestView.schema>`, Restly generates the view's
 schema from `model` when you register the view. From the view's schema, it
 derives the request bodies and the response class:
-{attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>`,
-{attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>` and
-{attr}`schema_response <fastapi_restly.views.BaseRestView.schema_response>`.
+{attr}`create_schema <fastapi_restly.views.BaseRestView.create_schema>`,
+{attr}`update_schema <fastapi_restly.views.BaseRestView.update_schema>` and
+{attr}`response_schema <fastapi_restly.views.BaseRestView.response_schema>`.
 [Generate the schema or write it](#write-or-generate) shows when to write the
 schema yourself, and
 [Hide a field from requests or from responses](#readonly-and-writeonly)
@@ -155,7 +155,7 @@ This table maps each need to its setting:
 | You need | Configuration |
 |---|---|
 | Stable response fields | Declare {attr}`schema <fastapi_restly.views.BaseRestView.schema>` |
-| Other fields or validation on create or update | Declare {attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` or {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>` ([Explicit write schemas](#explicit-write-schemas)) |
+| Other fields or validation on create or update | Declare {attr}`create_schema <fastapi_restly.views.BaseRestView.create_schema>` or {attr}`update_schema <fastapi_restly.views.BaseRestView.update_schema>` ([Explicit write schemas](#explicit-write-schemas)) |
 | Another type for the `{id}` path parameter | Set {attr}`id_type <fastapi_restly.views.BaseRestView.id_type>` ([Item paths](#item-route-matching)) |
 | Fewer routes, such as a read-only view | Set {attr}`include_routes <fastapi_restly.views.BaseRestView.include_routes>` (the routes to serve) or {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>` (the routes to leave out) ([Exclude CRUD routes](#exclude-crud-routes)) |
 | Hide rows from every read | Set {attr}`scope <fastapi_restly.views.BaseRestView.scope>`, or `default_scope` on the model ([Scopes](#view-scope)) |
@@ -582,7 +582,7 @@ A model can have a flat view and nested views at the same time, such as a
   them there too, use `fr.resolve_scope(TaskView)` instead of
   `fr.resolve_scope(Task)` in the scope of `ProjectTaskView`.
 - `TaskView` cannot create tasks with `TaskSchema`, because `project_id` is
-  read-only there. Give `TaskView` its own `schema_create`, a
+  read-only there. Give `TaskView` its own `create_schema`, a
   `fr.BaseSchema` with `project_id: fr.MustExist[int, Project]`. Keep
   `project_id` read-only in `TaskSchema`; see [Create a child](#nested-create).
 - Both views appear under the "Tasks" tag in OpenAPI, unless you set

@@ -227,7 +227,7 @@ def test_each_class_gets_the_refs_of_its_own_fields():
         prefix = "/players"
         model = Player
         schema = PlayerSchema
-        schema_response = PlayerResponse
+        response_schema = PlayerResponse
 
     create_tables()
     schemas = app.openapi()["components"]["schemas"]

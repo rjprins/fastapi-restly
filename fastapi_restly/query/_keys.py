@@ -18,7 +18,7 @@ from ._shared import SortNulls, _append_pk_tiebreak, _class_attribute, _sort_ter
 
 
 def _find_column(
-    model: type[Any], schema_response: _SchemaClass, key: str, kind: str
+    model: type[Any], response_schema: _SchemaClass, key: str, kind: str
 ) -> tuple[str, QueryableAttribute[Any]]:
     """The Python name of the field that ``key`` names, and the attribute of
     ``model`` with that name.
@@ -27,7 +27,7 @@ def _find_column(
     :raises BadQueryParam: ``Unknown <kind> key``.
     """
     unknown = BadQueryParam(f"Unknown {kind} key: {key!r}")
-    field_name = _resolve_field_name(schema_response, key)
+    field_name = _resolve_field_name(response_schema, key)
     if field_name is None:
         raise unknown
     column = _class_attribute(model, field_name)
@@ -58,7 +58,7 @@ class FilterKey:
 
     .. code-block:: python
 
-        key = fr.query.FilterKey(self.model, self.schema_response, "status")
+        key = fr.query.FilterKey(self.model, self.response_schema, "status")
         stmt = stmt.where(key.column == key.parse("active"))
 
     The key is the name of a field, or its alias when the field has one, as
@@ -75,8 +75,8 @@ class FilterKey:
     react-admin views use this class for their ``filter``.
 
     :param model: The model of the rows, such as the view's ``model``.
-    :param schema_response: The response class. A view passes its
-        ``schema_response``, so a client can filter only on what it sees.
+    :param response_schema: The response class. A view passes its
+        ``response_schema``, so a client can filter only on what it sees.
     :param key: The key, as the client sends it.
     :raises fastapi_restly.exc.BadQueryParam: ``Unknown filter key``.
     """
@@ -88,13 +88,13 @@ class FilterKey:
     column: QueryableAttribute[Any]
 
     def __init__(
-        self, model: type[Any], schema_response: _SchemaClass, key: str
+        self, model: type[Any], response_schema: _SchemaClass, key: str
     ) -> None:
         self.key = key
-        self._schema = schema_response
+        self._schema = response_schema
         self._model = model
-        field_name, self.column = _find_column(model, schema_response, key, "filter")
-        self._parse = _value_parser(schema_response, field_name, self.column, key)
+        field_name, self.column = _find_column(model, response_schema, key, "filter")
+        self._parse = _value_parser(response_schema, field_name, self.column, key)
 
     def parse(self, value: Any) -> Any:
         """``value`` as the column takes it, for a condition such as
@@ -135,7 +135,7 @@ class SortKey:
 
     .. code-block:: python
 
-        key = fr.query.SortKey(self.model, self.schema_response, "name")
+        key = fr.query.SortKey(self.model, self.response_schema, "name")
         stmt = stmt.order_by(key.term(descending=True, sort_nulls=self.sort_nulls))
 
     It finds the field and the column as :class:`FilterKey` does. A field
@@ -147,8 +147,8 @@ class SortKey:
     views use this class for their ``sort``.
 
     :param model: The model of the rows, such as the view's ``model``.
-    :param schema_response: The response class. A view passes its
-        ``schema_response``, so a client can sort only on what it sees.
+    :param response_schema: The response class. A view passes its
+        ``response_schema``, so a client can sort only on what it sees.
     :param key: The key, as the client sends it.
     :raises fastapi_restly.exc.BadQueryParam: ``Unknown sort key``.
     """
@@ -160,13 +160,13 @@ class SortKey:
     column: QueryableAttribute[Any]
 
     def __init__(
-        self, model: type[Any], schema_response: _SchemaClass, key: str
+        self, model: type[Any], response_schema: _SchemaClass, key: str
     ) -> None:
         self.key = key
-        self._schema = schema_response
+        self._schema = response_schema
         self._model = model
-        field_name, self.column = _find_column(model, schema_response, key, "sort")
-        if not _is_sortable(schema_response.model_fields[field_name], self.column):
+        field_name, self.column = _find_column(model, response_schema, key, "sort")
+        if not _is_sortable(response_schema.model_fields[field_name], self.column):
             raise BadQueryParam(f"Unknown sort key: {key!r}")
 
     def term(

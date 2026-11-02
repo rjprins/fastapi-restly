@@ -1,7 +1,7 @@
 """The response class and the list response class of a view.
 
-``fr.schemas.derive_schema_response`` and
-``fr.schemas.derive_schema_list_response`` return the classes that a view
+``fr.schemas.derive_response_schema`` and
+``fr.schemas.derive_list_response_schema`` return the classes that a view
 uses, so a custom route can name them and OpenAPI shows one type for each
 resource.
 """
@@ -48,7 +48,7 @@ def _response_model(app: fastapi.FastAPI, path: str, method: str) -> Any:
     raise AssertionError(f"no route {method} {path}")
 
 
-def test_derive_schema_response_returns_the_class_the_view_uses():
+def test_derive_response_schema_returns_the_class_the_view_uses():
     class Account(fr.IDMixin, SharedBase):
         name: Mapped[str]
         password_hash: Mapped[str] = mapped_column(default="")
@@ -57,7 +57,7 @@ def test_derive_schema_response_returns_the_class_the_view_uses():
         name: str
         password: fr.WriteOnly[str]
 
-    AccountResponse = fr.schemas.derive_schema_response(AccountSchema)
+    AccountResponse = fr.schemas.derive_response_schema(AccountSchema)
 
     app = fastapi.FastAPI()
 
@@ -70,19 +70,19 @@ def test_derive_schema_response_returns_the_class_the_view_uses():
     assert AccountResponse.__name__ == "AccountResponse"
     assert issubclass(AccountResponse, AccountSchema)
     assert set(AccountResponse.model_fields) == {"id", "name"}
-    assert fr.schemas.derive_schema_response(AccountSchema) is AccountResponse
+    assert fr.schemas.derive_response_schema(AccountSchema) is AccountResponse
     assert _response_model(app, "/accounts/{id}", "get") is AccountResponse
 
 
-def test_derive_schema_list_response_returns_the_class_the_view_uses():
+def test_derive_list_response_schema_returns_the_class_the_view_uses():
     class Book(fr.IDMixin, SharedBase):
         title: Mapped[str]
 
     class BookSchema(fr.IDSchema):
         title: str
 
-    BookResponse = fr.schemas.derive_schema_response(BookSchema)
-    BookListResponse = fr.schemas.derive_schema_list_response(BookResponse)
+    BookResponse = fr.schemas.derive_response_schema(BookSchema)
+    BookListResponse = fr.schemas.derive_list_response_schema(BookResponse)
 
     app = fastapi.FastAPI()
 
@@ -101,16 +101,16 @@ def test_only_the_envelope_of_the_pagination_matters():
     class LeafSchema(fr.IDSchema):
         name: str
 
-    LeafResponse = fr.schemas.derive_schema_response(LeafSchema)
-    paginated = fr.schemas.derive_schema_list_response(LeafResponse)
-    small_pages = fr.schemas.derive_schema_list_response(
+    LeafResponse = fr.schemas.derive_response_schema(LeafSchema)
+    paginated = fr.schemas.derive_list_response_schema(LeafResponse)
+    small_pages = fr.schemas.derive_list_response_schema(
         LeafResponse, pagination=fr.NumberedPagination(default_page_size=5)
     )
-    unpaginated = fr.schemas.derive_schema_list_response(LeafResponse, pagination=None)
-    no_pagination = fr.schemas.derive_schema_list_response(
+    unpaginated = fr.schemas.derive_list_response_schema(LeafResponse, pagination=None)
+    no_pagination = fr.schemas.derive_list_response_schema(
         LeafResponse, pagination=fr.NoPagination()
     )
-    counted = fr.schemas.derive_schema_list_response(
+    counted = fr.schemas.derive_list_response_schema(
         LeafResponse, pagination=fr.NoPagination(envelope=DataCount)
     )
 
@@ -133,8 +133,8 @@ def test_a_custom_route_that_names_the_classes_shows_one_type_per_resource():
         title: str
         archived: bool = False
 
-    TaskResponse = fr.schemas.derive_schema_response(TaskSchema)
-    TaskListResponse = fr.schemas.derive_schema_list_response(
+    TaskResponse = fr.schemas.derive_response_schema(TaskSchema)
+    TaskListResponse = fr.schemas.derive_list_response_schema(
         TaskResponse, pagination=None
     )
 
@@ -177,9 +177,9 @@ def test_the_wrong_pagination_gives_a_second_class_and_a_warning():
     class ShelfSchema(fr.IDSchema):
         name: str
 
-    ShelfResponse = fr.schemas.derive_schema_response(ShelfSchema)
+    ShelfResponse = fr.schemas.derive_response_schema(ShelfSchema)
     # The view has no pagination, but the route forgets to say so.
-    ShelfListResponse = fr.schemas.derive_schema_list_response(ShelfResponse)
+    ShelfListResponse = fr.schemas.derive_list_response_schema(ShelfResponse)
 
     app = fastapi.FastAPI()
 
@@ -208,10 +208,10 @@ def test_the_wrong_pagination_gives_a_second_class_and_a_warning():
     # The class that the route built says where it comes from, and the
     # warning says how to get the view's class.
     assert "a list response with the envelope PaginatedEnvelope" in message
-    assert "passes the view's pagination to derive_schema_list_response" in message
+    assert "passes the view's pagination to derive_list_response_schema" in message
 
 
-# A view whose own schema_response differs from its schema. The schema is
+# A view whose own response_schema differs from its schema. The schema is
 # what comes in; the response class is what goes out. The response class
 # leaves out email, score and team_id, names the team relationship, and has
 # a computed field, so each test can see which class a response went through.
@@ -262,7 +262,7 @@ def _member_view(base: type) -> type:
         prefix = "/members"
         model = _Member
         schema = MemberSchema
-        schema_response = MemberResponse
+        response_schema = MemberResponse
         include_filters = ("*", "*.*")
 
     return MemberView
@@ -306,7 +306,7 @@ ANN = {"id": 1, "name": "ann", "team": {"id": 1, "name": "red"}, "label": "ann (
 def test_everything_that_goes_out_follows_the_view_s_response_class(members):
     view, client = members
 
-    assert view.schema_response is MemberResponse
+    assert view.response_schema is MemberResponse
     assert client.get("/members/1").json() == ANN
     assert client.get("/members/").json()["data"][0] == ANN
 
@@ -326,20 +326,20 @@ def test_everything_that_goes_out_follows_the_view_s_response_class(members):
 def test_the_view_s_schema_stays_what_comes_in(members):
     view, _ = members
 
-    assert set(view.schema_create.model_fields) == {"name", "email", "score", "team_id"}
-    assert view.schema_create.__name__ == "MemberCreate"
-    assert view.schema_update.__name__ == "MemberUpdate"
+    assert set(view.create_schema.model_fields) == {"name", "email", "score", "team_id"}
+    assert view.create_schema.__name__ == "MemberCreate"
+    assert view.update_schema.__name__ == "MemberUpdate"
 
 
 def test_the_list_params_follow_the_response_class(members):
     view, client = members
 
-    assert view.schema_list_params.__name__ == "MemberListParams"
-    names = set(view.schema_list_params.model_fields)
+    assert view.list_params_schema.__name__ == "MemberListParams"
+    names = set(view.list_params_schema.model_fields)
     assert "name" in names
     assert "team.name" in {
         field.alias or name
-        for name, field in view.schema_list_params.model_fields.items()
+        for name, field in view.list_params_schema.model_fields.items()
     }
     assert not names & {"email", "score", "team_id"}
 
@@ -372,7 +372,7 @@ def test_openapi_shows_the_view_s_response_class(members):
         "TeamSchema",
     }
     assert _response_model(app, "/members", "get") is (
-        fr.schemas.derive_schema_list_response(MemberResponse)
+        fr.schemas.derive_list_response_schema(MemberResponse)
     )
 
 
@@ -397,7 +397,7 @@ def test_a_subclass_keeps_or_rebuilds_the_response_class():
         schema = PlantSchema
 
     class OwnResponseView(PlantView):
-        schema_response = PlantResponse
+        response_schema = PlantResponse
 
     class InheritsOwnResponseView(OwnResponseView):
         prefix = "/inherits"
@@ -410,12 +410,12 @@ def test_a_subclass_keeps_or_rebuilds_the_response_class():
     for view in (PlantView, OwnResponseView, InheritsOwnResponseView, NewSchemaView):
         fr.include_view(app, view)
 
-    assert PlantView.schema_response is fr.schemas.derive_schema_response(PlantSchema)
-    assert OwnResponseView.schema_response is PlantResponse
-    assert InheritsOwnResponseView.schema_response is PlantResponse
+    assert PlantView.response_schema is fr.schemas.derive_response_schema(PlantSchema)
+    assert OwnResponseView.response_schema is PlantResponse
+    assert InheritsOwnResponseView.response_schema is PlantResponse
     # A schema set nearer than the response class rebuilds it, as it rebuilds
-    # schema_create and schema_update.
-    assert NewSchemaView.schema_response is fr.schemas.derive_schema_response(
+    # create_schema and update_schema.
+    assert NewSchemaView.response_schema is fr.schemas.derive_response_schema(
         SecretPlantSchema
     )
 
@@ -437,7 +437,7 @@ def test_a_react_admin_view_follows_the_response_class(client):
         prefix = "/herbs"
         model = Herb
         schema = HerbSchema
-        schema_response = HerbResponse
+        response_schema = HerbResponse
 
     create_tables()
     client.post("/herbs/", json={"name": "mint", "notes": "fresh"})
@@ -489,7 +489,7 @@ def test_an_instance_of_the_schema_goes_out_through_the_view_s_response_class(
         prefix = "/birds"
         model = Bird
         schema = BirdSchema
-        schema_response = BirdResponse
+        response_schema = BirdResponse
 
         def to_single_response(self, obj):
             return BirdSchema.model_validate(obj, from_attributes=True)
@@ -531,7 +531,7 @@ def test_an_instance_of_a_subclass_goes_out_without_its_other_fields(client, bas
         prefix = "/eels"
         model = Eel
         schema = EelSchema
-        schema_response = EelResponse
+        response_schema = EelResponse
 
         def to_single_response(self, obj):
             return EelSchema.model_validate(obj, from_attributes=True)
@@ -552,7 +552,7 @@ def test_writeonly_keys_in_the_extra_fields_do_not_go_out():
 
         password: fr.WriteOnly[str] = pydantic.Field(alias="pwd")
 
-    KeyResponse = fr.schemas.derive_schema_response(Key)
+    KeyResponse = fr.schemas.derive_response_schema(Key)
     key = Key.model_validate({"id": 1, "pwd": "p1", "password": "p2", "tag": "a"})
 
     response = fr.schemas._base._as_response(KeyResponse, key)

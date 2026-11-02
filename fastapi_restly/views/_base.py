@@ -75,7 +75,7 @@ from ._generated import (
     _DEFAULT_SETTINGS,
     _drop_stale_settings,
     _is_paged_list_params,
-    _schema_list_params,
+    _list_params_schema,
     _uses_default,
 )
 from ._guards import (
@@ -118,7 +118,7 @@ from ._reads import (
     _reject_bad_row_identity,
     _rows_reload_statements,
 )
-from ._view_types import SchemaType, _fill_view_types
+from ._schema_types import SchemaType, _fill_schema_types
 
 # Unbound: a mapped class need not subclass DeclarativeBase (a SQLModel table,
 # an imperative mapping). ``BaseRestView`` checks the mapping at class definition.
@@ -468,8 +468,8 @@ class BaseRestView(
     Action = Action
 
     #: The view's schema: the Pydantic class that lists the fields of the
-    #: resource. Restly builds :attr:`schema_response`, :attr:`schema_create`
-    #: and :attr:`schema_update` from it. When a view sets none, Restly
+    #: resource. Restly builds :attr:`response_schema`, :attr:`create_schema`
+    #: and :attr:`update_schema` from it. When a view sets none, Restly
     #: generates it from :attr:`model` with
     #: :func:`~fastapi_restly.schemas.derive_schema`.
     schema: ClassVar[type[pydantic.BaseModel]] = _DEFAULT_SETTINGS["schema"]
@@ -477,16 +477,16 @@ class BaseRestView(
     #: items of the list response, and the fields the list params filter and
     #: sort on. The relationships it names are the ones the view loads. When
     #: a view sets none, Restly builds it with
-    #: :func:`~fastapi_restly.schemas.derive_schema_response`: the view's
+    #: :func:`~fastapi_restly.schemas.derive_response_schema`: the view's
     #: schema without its ``WriteOnly`` fields, named ``<Resource>Response``.
     #: A class that a view sets is used as it is.
-    schema_response: ClassVar[type[pydantic.BaseModel]] = _DEFAULT_SETTINGS[
-        "schema_response"
+    response_schema: ClassVar[type[pydantic.BaseModel]] = _DEFAULT_SETTINGS[
+        "response_schema"
     ]
     #: The class of the list response: what ``GET /`` and a route that
-    #: declares :data:`~fastapi_restly.views.ViewListResponse` send. When a
+    #: declares :data:`~fastapi_restly.views.ListResponseSchema` send. When a
     #: view sets none, Restly builds it with
-    #: :func:`~fastapi_restly.schemas.derive_schema_list_response`: the
+    #: :func:`~fastapi_restly.schemas.derive_list_response_schema`: the
     #: envelope of the view's :attr:`pagination`, with the response class as
     #: its items, named ``<Resource>ListResponse``. Restly fills a class that
     #: a view sets as it fills an envelope: by field name, from ``data``,
@@ -497,16 +497,16 @@ class BaseRestView(
     #: it from the view's schema without its ``ReadOnly`` fields and without
     #: a primary key that the server generates. It is named
     #: ``<Resource>Create``. A class that a view sets is used as it is.
-    schema_create: ClassVar[type[pydantic.BaseModel]] = _DEFAULT_SETTINGS[
-        "schema_create"
+    create_schema: ClassVar[type[pydantic.BaseModel]] = _DEFAULT_SETTINGS[
+        "create_schema"
     ]
     #: The class of the ``PATCH`` body. When a view sets none, Restly builds
     #: it from the view's schema without its ``ReadOnly`` fields and without
     #: a primary key that the server generates, and makes every other field
     #: optional. It is named ``<Resource>Update``. A class that a view sets
     #: is used as it is.
-    schema_update: ClassVar[type[pydantic.BaseModel]] = _DEFAULT_SETTINGS[
-        "schema_update"
+    update_schema: ClassVar[type[pydantic.BaseModel]] = _DEFAULT_SETTINGS[
+        "update_schema"
     ]
     #: The SQLAlchemy model that the view serves: a mapped class. A view that
     #: you register needs it. A class that is not mapped raises
@@ -566,7 +566,7 @@ class BaseRestView(
     #: :class:`AsyncReactAdminView`).
     pagination: ClassVar[NumberedPagination | NoPagination | None] = _DEFAULT_PAGINATION
     #: The filter keys that the list params keep, from the keys that Restly
-    #: generates from :attr:`schema_response`. An entry is a key as the
+    #: generates from :attr:`response_schema`. An entry is a key as the
     #: client sends it, such as ``"name__icontains"``, or a pattern. ``*``
     #: matches any characters except ``.``, so ``"created_at__*"`` is every
     #: filter on ``created_at`` with a suffix, and ``"vendor.*"`` is every
@@ -595,7 +595,7 @@ class BaseRestView(
     #: The sort when the request has none, as a client writes it in
     #: ``?sort=``, such as ``"-created_at"``. It becomes the default of the
     #: sort parameter, so OpenAPI shows it. A key must be a field of
-    #: :attr:`schema_response` that a sort key could have, but
+    #: :attr:`response_schema` that a sort key could have, but
     #: :attr:`include_sort_keys` does not have to keep it. Use each key only
     #: once. ``None`` (the default) sorts by the primary key. The primary key
     #: is always the last term. A view that inherits it and does not have all
@@ -607,15 +607,15 @@ class BaseRestView(
     #: ascending sort, SQLite and MySQL first.
     sort_nulls: ClassVar[SortNulls] = "last"
     #: The list params (filter, sort, page) as a pydantic model, generated
-    #: from ``schema_response`` and ``model`` by
-    #: :func:`~fastapi_restly.query.derive_schema_list_params`. Any route
+    #: from ``response_schema`` and ``model`` by
+    #: :func:`~fastapi_restly.query.derive_list_params_schema`. Any route
     #: method on the view that declares a ``list_params`` parameter takes it:
     #: typed for FastAPI and OpenAPI, and guarded against unknown keys like
     #: ``GET /``, so a custom list route (a trash route naming its own scope)
     #: reads the same list params. The route can take other query parameters
     #: beside it.
-    schema_list_params: ClassVar[type[pydantic.BaseModel]] = _DEFAULT_SETTINGS[
-        "schema_list_params"
+    list_params_schema: ClassVar[type[pydantic.BaseModel]] = _DEFAULT_SETTINGS[
+        "list_params_schema"
     ]
 
     #: The ``fastapi.Request`` of the current request, which Restly sets for
@@ -826,7 +826,7 @@ class BaseRestView(
         """The loader options of every read: what each row loads.
 
         The default is a recursive ``selectinload(...)`` for each
-        relationship that :attr:`schema_response` names. :meth:`select`
+        relationship that :attr:`response_schema` names. :meth:`select`
         applies them, so ``get_one``, ``get_many`` and your routes load the
         same, and so does the reload after the save of a write. Override to
         load more: a relationship that the response class does not name, or
@@ -836,7 +836,7 @@ class BaseRestView(
         page.
         """
         return _build_relationship_loader_options(
-            self.model, type(self).schema_response
+            self.model, type(self).response_schema
         )
 
     def _get_reload_statements(self, subject: Any, others: list[Any]) -> list[Any]:
@@ -868,7 +868,7 @@ class BaseRestView(
         route reads.
 
         Runs before every route that declares ``list_params`` (see
-        :attr:`schema_list_params`).
+        :attr:`list_params_schema`).
 
         The list params dependency (:func:`_list_params_dependency`) reads
         their keys and ignores any other, which would let typoed
@@ -887,9 +887,9 @@ class BaseRestView(
         request = getattr(self, "request", None)
         if request is None:
             return
-        if getattr(self, "schema_list_params", None) is None:
+        if getattr(self, "list_params_schema", None) is None:
             return
-        params_model = _schema_list_params(type(self))
+        params_model = _list_params_schema(type(self))
         list_keys = {key for key, _, _ in _list_params_fields(params_model)}
         self._reject_unknown_keys(request.query_params, list_keys)
 
@@ -906,7 +906,7 @@ class BaseRestView(
     def _validated_list_params(self, list_params: Any) -> Any:
         """``list_params`` as the list route gives them.
 
-        A ``QueryParams`` or a mapping goes through :attr:`schema_list_params`
+        A ``QueryParams`` or a mapping goes through :attr:`list_params_schema`
         first, as on the list route. A ``QueryParams`` is the query of a
         request, so it can also hold keys that the route reads. Those are
         left out, and any other key is unknown, as on the list route (see
@@ -918,7 +918,7 @@ class BaseRestView(
         """
         if not isinstance(list_params, Mapping):
             return list_params
-        params_model = _schema_list_params(type(self))
+        params_model = _list_params_schema(type(self))
         if isinstance(list_params, QueryParams):
             keys = {key for key, _, _ in _list_params_fields(params_model)}
             self._reject_unknown_keys(list_params, keys)
@@ -939,7 +939,7 @@ class BaseRestView(
         view's filter methods do not run. A warning then names them.
         """
         record = _record_of(type(list_params))
-        params_model = _schema_list_params(type(self))
+        params_model = _list_params_schema(type(self))
         if type(list_params) is not params_model:
             own = _record_of(params_model)
             skipped = [
@@ -954,16 +954,16 @@ class BaseRestView(
                     f"{type(self).__name__} got list params of the class "
                     f"{type(list_params).__name__}, so its filter {methods} "
                     f"{', '.join(skipped)} {verb} not run. Only an instance of "
-                    "its schema_list_params runs the filter methods. Pass one, "
+                    "its list_params_schema runs the filter methods. Pass one, "
                     "or pass a dict or a QueryParams, which Restly validates "
-                    "through schema_list_params.",
+                    "through list_params_schema.",
                     RestlySkippedFilterMethodsWarning,
                     stacklevel=3,
                 )
         return record.own_filter_values(list_params) if record else []
 
     def to_single_response(self, obj: ModelT | ResponseSchemaT) -> ResponseSchemaT:
-        """Serialize one ORM object to the view's :attr:`schema_response`.
+        """Serialize one ORM object to the view's :attr:`response_schema`.
 
         By default the response class is the view's schema without its
         WriteOnly fields, named like ``UserResponse``. An override may return
@@ -988,9 +988,9 @@ class BaseRestView(
         class, so a strict ``float`` field reads the text ``"NaN"`` that a
         JSON column stores.
         """
-        schema_response = type(self).schema_response
-        response = _as_response(schema_response, obj)
-        if isinstance(response, schema_response):
+        response_schema = type(self).response_schema
+        response = _as_response(response_schema, obj)
+        if isinstance(response, response_schema):
             return cast(ResponseSchemaT, response)
 
         # Build a payload of raw attribute values keyed by schema field name;
@@ -1000,7 +1000,7 @@ class BaseRestView(
         # view-layer special-casing. Alias rendering happens when FastAPI
         # serializes the response model.
         payload: dict[str, Any] = {}
-        for field_name, field_info in schema_response.model_fields.items():
+        for field_name, field_info in response_schema.model_fields.items():
             if hasattr(obj, field_name):
                 payload[field_name] = getattr(obj, field_name)
             elif field_info.alias and hasattr(obj, field_info.alias):
@@ -1008,7 +1008,7 @@ class BaseRestView(
 
         # Lax mode, also for a strict class, as a PydanticJSON column reads
         # its document: a JSON column holds the text "NaN" for a float.
-        adapter = _response_adapter(schema_response)
+        adapter = _response_adapter(response_schema)
         return cast(
             ResponseSchemaT,
             adapter.validate_python(
@@ -1019,7 +1019,7 @@ class BaseRestView(
     def _single_response(self, obj: Any) -> pydantic.BaseModel:
         """One object as an instance of the response class. An override of
         :meth:`to_single_response` may return an instance of another model."""
-        return _as_response(type(self).schema_response, self.to_single_response(obj))
+        return _as_response(type(self).response_schema, self.to_single_response(obj))
 
     @staticmethod
     def _to_query_params(list_params: Any) -> QueryParams:
@@ -1126,7 +1126,7 @@ class BaseRestView(
             else _unpaginated_page_info([])
         )
         _check_fillable(label, value, sample, other_shape)
-        response = cls.schema_response
+        response = cls.response_schema
         lacking = _fields_the_items_lack(value, response)
         if lacking:
             raise RestlyConfigurationError(
@@ -1137,7 +1137,7 @@ class BaseRestView(
             )
 
     @classmethod
-    def _check_declared_schema_list_params(cls) -> None:
+    def _check_declared_list_params_schema(cls) -> None:
         """Reject declared list params that do not follow the view's settings.
 
         Restly generates list params from the pagination, the list settings
@@ -1145,13 +1145,13 @@ class BaseRestView(
         list params only when the declared ones are what Restly would
         generate for the class that declares them (see
         ``_generated_for``). Otherwise the declared list params stay, and
-        must fit the view. List params from ``derive_schema_list_params``
+        must fit the view. List params from ``derive_list_params_schema``
         must have the view's settings: other settings give other keys than
         the view says. Hand-written list params take no settings and no
         filter methods, and have the page fields of the view's pagination.
         """
-        declared = _DeclaredListParams(cls, _owner(cls, "schema_list_params"))
-        record = _record_of(cls.schema_list_params)
+        declared = _DeclaredListParams(cls, _owner(cls, "list_params_schema"))
+        record = _record_of(cls.list_params_schema)
         if record is None:
             declared.check_hand_written()
             declared.check_pages()
@@ -1175,24 +1175,24 @@ class BaseRestView(
                 raise ValueError(
                     f"'{cls.__name__}.model' must be specified to auto-generate schema"
                 )
-            if _uses_default(cls, "schema_list_params"):
+            if _uses_default(cls, "list_params_schema"):
                 raise ValueError(
                     f"'{cls.__name__}.model' must be specified: it is needed to "
                     "generate the list params."
                 )
         cls._check_schema_settings()
         cls._check_list_response_schema()
-        if not _uses_default(cls, "schema_list_params"):
-            cls._check_declared_schema_list_params()
+        if not _uses_default(cls, "list_params_schema"):
+            cls._check_declared_list_params_schema()
 
         # Every route that declares ``list_params`` takes the view's list
         # params: ``GET /`` and any custom list route alike, guarded the same
-        # way. The guard checks keys against ``schema_list_params`` whatever
+        # way. The guard checks keys against ``list_params_schema`` whatever
         # the annotation says, so they replace an explicit annotation too. A
         # dependency reads them rather than a FastAPI query model, which
         # collapses next to any other query parameter (see
         # :func:`_list_params_dependency`).
-        params_model = _schema_list_params(cls)
+        params_model = _list_params_schema(cls)
         list_params = Annotated[
             params_model, fastapi.Depends(_list_params_dependency(params_model))
         ]
@@ -1204,7 +1204,7 @@ class BaseRestView(
             ):
                 route = _guard_list_params(route)
                 setattr(cls, name, route)
-            _fill_view_types(route, cls, list_params)
+            _fill_schema_types(route, cls, list_params)
         _check_route_settings(cls)
         _check_composite_key(cls)
 
@@ -1227,14 +1227,14 @@ class _DeclaredListParams:
 
     @property
     def its(self) -> str:
-        return f"its schema_list_params{self.origin}"
+        return f"its list_params_schema{self.origin}"
 
     @property
     def out(self) -> str:
         """What to leave out to have the list params generated, after
         "Leave" or "leave"."""
         of = "" if self.declarer is self.cls else f" of {self.declarer.__name__}"
-        return f"schema_list_params out{of} to have it generated"
+        return f"list_params_schema out{of} to have it generated"
 
     def below(self, setter: type) -> bool:
         """Whether ``setter`` is a subclass of the declaring class."""
@@ -1268,12 +1268,12 @@ class _DeclaredListParams:
         says that it has pages. ``fr.query.PagedListParams`` gets the fields
         from the pagination. A view that builds its list response itself, as
         a react-admin view does, pages in its own way."""
-        list_params = self.cls.schema_list_params
+        list_params = self.cls.list_params_schema
         pagination = getattr(self.cls, "pagination", None)
         if not isinstance(pagination, NumberedPagination):
             if _is_paged_list_params(list_params):
                 raise RestlyConfigurationError(
-                    f"{self.cls.__name__}.schema_list_params{self.origin} is a "
+                    f"{self.cls.__name__}.list_params_schema{self.origin} is a "
                     "fr.query.PagedListParams, but the view has no pages: its "
                     f"pagination is {pagination!r}. Set a fr.NumberedPagination, "
                     "or let the list params subclass pydantic.BaseModel."
@@ -1292,7 +1292,7 @@ class _DeclaredListParams:
         if missing:
             fields = " and no ".join(repr(name) for name in missing)
             raise RestlyConfigurationError(
-                f"{self.cls.__name__}.schema_list_params{self.origin} has no "
+                f"{self.cls.__name__}.list_params_schema{self.origin} has no "
                 f"{fields} field, so the list would return every row while its "
                 "response says that it has pages. Subclass "
                 "fr.query.PagedListParams, which gets the page fields of the "
@@ -1301,7 +1301,7 @@ class _DeclaredListParams:
             )
 
     def check_derived(self, record: Any) -> None:
-        """List params from ``derive_schema_list_params`` have the view's
+        """List params from ``derive_list_params_schema`` have the view's
         filter methods, list settings and pagination: other ones give other
         keys than the view says."""
         recorded = [(own.key, own.method) for own in record.own_filters]
@@ -1316,7 +1316,7 @@ class _DeclaredListParams:
         if others:
             # the list params of another view, with its filter methods
             raise RestlyConfigurationError(
-                f"{self.cls.__name__}.schema_list_params{self.origin} has the "
+                f"{self.cls.__name__}.list_params_schema{self.origin} has the "
                 "keys of filter methods that the view does not have: "
                 f"{', '.join(others)}. Leave {self.out}."
             )
@@ -1336,7 +1336,7 @@ class _DeclaredListParams:
             if self.below(setter):
                 fix = (
                     f"{self.remove('pagination', setter)}, or declare "
-                    f"schema_list_params on {setter.__name__} as well, created "
+                    f"list_params_schema on {setter.__name__} as well, created "
                     "with its pagination"
                 )
             elif self.cls.pagination is _DEFAULT_PAGINATION:
@@ -1347,7 +1347,7 @@ class _DeclaredListParams:
                     f"leave {self.out}"
                 )
             raise RestlyConfigurationError(
-                f"{self.cls.__name__}.schema_list_params{self.origin} was "
+                f"{self.cls.__name__}.list_params_schema{self.origin} was "
                 f"created for other pagination settings than the view's. {fix}."
             )
 
@@ -1377,9 +1377,9 @@ class _DeclaredListParams:
         setter = _owner(self.cls, name)
         if self.below(setter):
             fix = (
-                f"{self.remove(name, setter)}, or declare schema_list_params on "
+                f"{self.remove(name, setter)}, or declare list_params_schema on "
                 f"{setter.__name__} as well, created by "
-                f"fr.query.derive_schema_list_params() with {name}={value!r}"
+                f"fr.query.derive_list_params_schema() with {name}={value!r}"
             )
         elif setter is self.declarer:
             fix = f"{on_declarer}, or leave {self.out}"

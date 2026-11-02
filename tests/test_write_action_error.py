@@ -85,7 +85,7 @@ async def orders_env(engine, base, *, asynchronous):
             session=session,
             make_session=make_session,
             model=Order,
-            schema=view_type.schema_create,
+            schema=view_type.create_schema,
             dialect=engine.dialect.name,
         )
 

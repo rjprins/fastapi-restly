@@ -58,7 +58,7 @@ def test_a_write_stores_the_secret_and_a_response_masks_it(sync_db):
         stored = session.execute(select(SecretHolder.token, SecretHolder.pin)).one()
     assert tuple(stored) == ("yyy", 1234)
 
-    keys = SecretHolderView.schema_list_params.model_fields
+    keys = SecretHolderView.list_params_schema.model_fields
     assert not [key for key in keys if key.startswith(("token", "pin"))]
     client.get("/holders?token=yyy", assert_status_code=422)
     client.get("/holders?pin__gte=1000", assert_status_code=422)

@@ -139,7 +139,7 @@ class RestlySkippedFilterMethodsWarning(UserWarning):
     only for its own list params: those of a list route, or a dict or a
     ``QueryParams`` that a method gets. A Pydantic model of another class,
     such as one of your own, does not run them. Then the list can have rows
-    that a method would leave out. Pass the view's ``schema_list_params``, a
+    that a method would leave out. Pass the view's ``list_params_schema``, a
     dict or a ``QueryParams`` instead. To skip the methods on purpose, turn
     the warning off with ``warnings.filterwarnings``.
     """

@@ -17,24 +17,24 @@ from ..exc import RestlyConfigurationError
 from ..query._impl import _KEY_SETTINGS, _derive_list_params, _record_of
 from ..query._paged import PagedListParams, _completed_list_params
 from ..schemas import (
+    derive_create_schema,
+    derive_list_response_schema,
+    derive_response_schema,
     derive_schema,
-    derive_schema_create,
-    derive_schema_list_response,
-    derive_schema_response,
-    derive_schema_update,
+    derive_update_schema,
 )
 from ._guards import _owner
 from ._list_params import _LIST_SETTING_DEFAULTS, _list_setting, _own_filters
-from ._view_types import SchemaType
+from ._schema_types import SchemaType
 
 #: What Restly builds each class of a view from.
 _BUILT_FROM = {
     "schema": "model",
-    "schema_response": "schema",
-    "schema_list_params": "schema_response",
-    "list_response_schema": "schema_response",
-    "schema_create": "schema",
-    "schema_update": "schema",
+    "response_schema": "schema",
+    "list_params_schema": "response_schema",
+    "list_response_schema": "response_schema",
+    "create_schema": "schema",
+    "update_schema": "schema",
 }
 
 
@@ -62,7 +62,7 @@ def _decided_at(cls: type, name: str) -> int | None:
     if source is None:
         return declared
     source_at = _decided_at(cls, source)
-    if name == "schema_list_params" and declared is not None:
+    if name == "list_params_schema" and declared is not None:
         # Declared list params that are the generated ones also follow the
         # settings and the filter methods of a subclass.
         settings_at = _list_settings_at(cls)
@@ -90,7 +90,7 @@ def _generated_for(declarer: type) -> bool:
     """
     if declarer in _GENERATED_FOR:
         return _GENERATED_FOR[declarer]
-    declared = vars(declarer)["schema_list_params"]
+    declared = vars(declarer)["list_params_schema"]
     generated: type[pydantic.BaseModel] | None = None
     if _record_of(declared) is not None:
         try:
@@ -148,7 +148,7 @@ def _derive_view_list_params(view_cls: Any) -> type[pydantic.BaseModel]:
     """The list params that Restly generates for a view: from its response
     class, its pagination, its list settings and its filter methods."""
     return _derive_list_params(
-        view_cls.schema_response,
+        view_cls.response_schema,
         view_cls.model,
         pagination=view_cls.pagination,
         settings={name: getattr(view_cls, name) for name in _KEY_SETTINGS},
@@ -166,14 +166,14 @@ def _derive_view_list_params(view_cls: Any) -> type[pydantic.BaseModel]:
     )
 
 
-def _schema_list_params(view_cls: Any) -> type[pydantic.BaseModel]:
+def _list_params_schema(view_cls: Any) -> type[pydantic.BaseModel]:
     """The list params of a view, as its list routes use them.
 
     List params from ``fr.query.PagedListParams`` get the page fields of the
     view's pagination: the attribute keeps the class that the view declares,
     and each view with other pages gets its own subclass.
     """
-    declared = view_cls.schema_list_params
+    declared = view_cls.list_params_schema
     pagination = getattr(view_cls, "pagination", None)
     if _is_paged_list_params(declared) and isinstance(pagination, NumberedPagination):
         return _completed_list_params(declared, pagination)
@@ -189,17 +189,17 @@ def _is_paged_list_params(list_params: Any) -> bool:
 #: view without a model gets ``AttributeError``, as for a setting it does not have.
 _DEFAULT_SETTINGS = {
     "schema": SchemaType(lambda view: derive_schema(view.model)),
-    "schema_response": SchemaType(lambda view: derive_schema_response(view.schema)),
-    "schema_list_params": SchemaType(_derive_view_list_params),
+    "response_schema": SchemaType(lambda view: derive_response_schema(view.schema)),
+    "list_params_schema": SchemaType(_derive_view_list_params),
     "list_response_schema": SchemaType(
-        lambda view: derive_schema_list_response(
-            view.schema_response, pagination=view.pagination
+        lambda view: derive_list_response_schema(
+            view.response_schema, pagination=view.pagination
         )
     ),
-    "schema_create": SchemaType(
-        lambda view: derive_schema_create(view.schema, view.model)
+    "create_schema": SchemaType(
+        lambda view: derive_create_schema(view.schema, view.model)
     ),
-    "schema_update": SchemaType(
-        lambda view: derive_schema_update(view.schema, view.model)
+    "update_schema": SchemaType(
+        lambda view: derive_update_schema(view.schema, view.model)
     ),
 }

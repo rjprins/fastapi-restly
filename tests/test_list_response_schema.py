@@ -18,11 +18,11 @@ import fastapi_restly as fr
 from fastapi_restly.exc import RestlyConfigurationError
 from fastapi_restly.testing._client import RestlyTestClient
 from fastapi_restly.views import (
+    ListResponseSchema,
     ListResult,
     PaginatedEnvelope,
+    ResponseSchema,
     SchemaType,
-    ViewListResponse,
-    ViewResponse,
 )
 
 from ._models import SharedBase
@@ -42,7 +42,7 @@ class PlainSummary(pydantic.BaseModel):
     name: str
 
 
-ItemResponse = fr.schemas.derive_schema_response(ItemSchema)
+ItemResponse = fr.schemas.derive_response_schema(ItemSchema)
 
 
 class ArticleList(pydantic.BaseModel):
@@ -90,12 +90,12 @@ def test_the_default_is_the_class_of_the_pagination(client, Item):
         schema = ItemSchema
 
         @fr.get("/archived")
-        async def archived(self, list_params) -> ViewListResponse:
+        async def archived(self, list_params) -> ListResponseSchema:
             return await self.handle_get_many(list_params)
 
     before = ItemView.list_response_schema
     assert before.__name__ == "ItemListResponse"
-    assert before is fr.schemas.derive_schema_list_response(ItemView.schema_response)
+    assert before is fr.schemas.derive_list_response_schema(ItemView.response_schema)
 
     fr.include_view(client.app, ItemView)
     _fill(client)
@@ -176,7 +176,7 @@ def test_a_custom_route_with_the_marker_fills_the_class_too(client, Item):
         list_response_schema = ArticleList
 
         @fr.get("/archived")
-        async def archived(self, list_params) -> ViewListResponse:
+        async def archived(self, list_params) -> ListResponseSchema:
             return await self.handle_get_many(list_params)
 
     fr.include_view(client.app, ItemView)
@@ -210,7 +210,7 @@ def _keyed_list(view):
     key = view.list_key
     return pydantic.create_model(
         f"{key.title()}List",
-        data=(list[view.schema_response], pydantic.Field(alias=key)),
+        data=(list[view.response_schema], pydantic.Field(alias=key)),
         total_count=(int, pydantic.Field(alias=f"{key}Count")),
     )
 
@@ -429,7 +429,7 @@ def test_a_replaced_endpoint_can_use_any_class(client, Item):
         list_response_schema = Rows
 
         @fr.get("/")
-        async def get_many_endpoint(self, list_params) -> ViewListResponse:
+        async def get_many_endpoint(self, list_params) -> ListResponseSchema:
             result = await self.handle_get_many(list_params)
             return Rows(rows=[self.to_single_response(row) for row in result.objects])
 
@@ -448,7 +448,7 @@ def test_a_replaced_endpoint_can_use_a_bare_list(client, Item):
         list_response_schema = list[ItemSummary]
 
         @fr.get("/")
-        async def get_many_endpoint(self, list_params) -> ViewListResponse:
+        async def get_many_endpoint(self, list_params) -> ListResponseSchema:
             result = await self.handle_get_many(list_params)
             return [
                 ItemSummary.model_validate(row, from_attributes=True)
@@ -522,7 +522,7 @@ def test_a_subclass_keeps_the_class_unless_it_has_a_new_response_class(Item):
         schema = Other
 
     class NewResponseView(ParentView):
-        schema_response = Other
+        response_schema = Other
 
     assert SameView.list_response_schema is Page
     assert PagesView.list_response_schema is Page
@@ -533,7 +533,7 @@ def test_a_subclass_keeps_the_class_unless_it_has_a_new_response_class(Item):
 
 def test_a_stale_class_gives_back_the_function_of_the_base_view(Item):
     def own(view):
-        return PaginatedEnvelope[view.schema_response]
+        return PaginatedEnvelope[view.response_schema]
 
     class ApiView(fr.AsyncRestView):
         list_response_schema = SchemaType(own)
@@ -549,7 +549,7 @@ def test_a_stale_class_gives_back_the_function_of_the_base_view(Item):
     class ItemView(ParentView):
         schema = Other
 
-    assert ItemView.list_response_schema is PaginatedEnvelope[ItemView.schema_response]
+    assert ItemView.list_response_schema is PaginatedEnvelope[ItemView.response_schema]
 
 
 # --- the names in OpenAPI -----------------------------------------------------
@@ -620,7 +620,7 @@ def react_admin(request):
 
 def _async_archived():
     @fr.get("/archived")
-    async def archived(self, list_params) -> ViewListResponse:
+    async def archived(self, list_params) -> ListResponseSchema:
         return await self.handle_get_many(list_params)
 
     return archived
@@ -628,7 +628,7 @@ def _async_archived():
 
 def _sync_archived():
     @fr.get("/archived")
-    def archived(self, list_params) -> ViewListResponse:
+    def archived(self, list_params) -> ListResponseSchema:
         return self.handle_get_many(list_params)
 
     return archived
@@ -652,7 +652,7 @@ def test_a_react_admin_list_has_the_array_in_the_spec(react_admin, Item):
     fr.include_view(client.app, ItemView)
     _fill_with(client, tables)
 
-    assert ItemView.list_response_schema == list[ItemView.schema_response]
+    assert ItemView.list_response_schema == list[ItemView.response_schema]
     for path in ("/items", "/items/archived"):
         schema = _response_schema(client, path)
         assert schema["type"] == "array"
@@ -725,7 +725,7 @@ def test_a_replaced_react_admin_endpoint_can_use_any_class(client, Item):
         list_response_schema = PaginatedEnvelope[ItemSummary]
 
         @fr.get("/")
-        async def get_many_endpoint(self, list_params) -> ViewListResponse:
+        async def get_many_endpoint(self, list_params) -> ListResponseSchema:
             result = await self.handle_get_many(list_params)
             return PaginatedEnvelope[ItemSummary](
                 data=[],
@@ -753,7 +753,7 @@ def test_a_stale_class_on_a_react_admin_view_gives_the_list_back(Item):
     class ItemView(ParentView):
         schema = Other
 
-    assert ItemView.list_response_schema == list[ItemView.schema_response]
+    assert ItemView.list_response_schema == list[ItemView.response_schema]
 
 
 def test_a_single_response_marker_still_works_next_to_the_list(client, Item):
@@ -763,7 +763,7 @@ def test_a_single_response_marker_still_works_next_to_the_list(client, Item):
         schema = ItemSchema
 
         @fr.get("/first")
-        async def first(self) -> ViewResponse:
+        async def first(self) -> ResponseSchema:
             return await self.handle_get_one(1)
 
     fr.include_view(client.app, ItemView)

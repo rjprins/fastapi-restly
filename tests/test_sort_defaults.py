@@ -26,7 +26,7 @@ from starlette.datastructures import QueryParams
 
 import fastapi_restly as fr
 from fastapi_restly.exc import RestlyConfigurationError
-from fastapi_restly.query import apply_list_params, derive_schema_list_params
+from fastapi_restly.query import apply_list_params, derive_list_params_schema
 from fastapi_restly.testing._client import RestlyTestClient
 
 from ._models import SharedBase
@@ -222,7 +222,7 @@ def test_hand_written_list_params_take_no_default_sort():
         prefix = "/spools"
         model = Spool
         schema = SpoolSchema
-        schema_list_params = SpoolParams
+        list_params_schema = SpoolParams
         default_sort = "-rank"
 
     with pytest.raises(RestlyConfigurationError, match="is written by hand"):
@@ -250,14 +250,14 @@ def test_react_admin_views_reject_the_default_sort(base):
     )
 
 
-def test_derive_schema_list_params_takes_the_default_sort():
+def test_derive_list_params_schema_takes_the_default_sort():
     class Spool(fr.IDMixin, SharedBase):
         rank: Mapped[int]
 
     class SpoolSchema(fr.IDSchema):
         rank: int
 
-    params = derive_schema_list_params(SpoolSchema, Spool, default_sort="-rank")
+    params = derive_list_params_schema(SpoolSchema, Spool, default_sort="-rank")
     stmt = apply_list_params(
         sqlalchemy.select(Spool), params(), Spool, SpoolSchema, sort_nulls=None
     )

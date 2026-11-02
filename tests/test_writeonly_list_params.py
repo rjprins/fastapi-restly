@@ -19,7 +19,7 @@ from starlette.datastructures import QueryParams
 
 import fastapi_restly as fr
 from fastapi_restly.exc import BadQueryParam
-from fastapi_restly.query import apply_list_params, derive_schema_list_params
+from fastapi_restly.query import apply_list_params, derive_list_params_schema
 from fastapi_restly.testing import RestlyTestClient
 
 
@@ -65,7 +65,7 @@ def _secret_params(names: Any) -> set[str]:
 
 
 def test_list_params_schema_has_no_writeonly_params():
-    fields = derive_schema_list_params(
+    fields = derive_list_params_schema(
         AccountSchema, Account, include_filters=("*", "*.*")
     ).model_fields
 
@@ -86,7 +86,7 @@ def test_writeonly_field_may_use_a_reserved_name():
     class TicketSchema(fr.IDSchema):
         page: fr.WriteOnly[str]
 
-    fields = derive_schema_list_params(TicketSchema, Ticket).model_fields
+    fields = derive_list_params_schema(TicketSchema, Ticket).model_fields
 
     assert "page" in fields
     assert fields["page"].annotation is int
@@ -136,7 +136,7 @@ class TokenSchema(fr.IDSchema):
 
 @pytest.mark.parametrize("query", ["token=a", "token__contains=a", "sort=-token"])
 def test_a_field_with_exclude_is_not_a_filter_or_sort_key(query):
-    fields = derive_schema_list_params(TokenSchema, Token).model_fields
+    fields = derive_list_params_schema(TokenSchema, Token).model_fields
 
     assert "name" in fields
     assert not [name for name in fields if name.startswith("token")]
@@ -273,7 +273,7 @@ def test_openapi_lists_no_writeonly_params(accounts):
 @pytest.mark.parametrize(
     ("query", "kind"), [({"pin": "1234"}, "filter"), ({"sort": "-pin"}, "sort")]
 )
-def test_custom_schema_list_params_cannot_reach_writeonly_column(
+def test_custom_list_params_schema_cannot_reach_writeonly_column(
     make_client, query, kind
 ):
     # Hand-written list params pass the unknown-key guard, so the
@@ -282,7 +282,7 @@ def test_custom_schema_list_params_cannot_reach_writeonly_column(
         pin: str | None = None
         sort: str | None = None
 
-    client = make_client(schema_list_params=LeakyParams)
+    client = make_client(list_params_schema=LeakyParams)
 
     response = client.get("/accounts/", params=query, assert_status_code=400)
     assert response.json() == {"detail": f"Unknown {kind} key: 'pin'"}

@@ -151,9 +151,11 @@ add it.
 1. Actions are verbs: `get_many`, `get_one`, `create`, `update`, `delete`.
    These names stay.
 2. "List" is what `get_many` returns: the result (`ListResult`), the list
-   response (`to_list_response`) and the list params (`schema_list_params`).
-3. An attribute puts the noun first and the role after, so it does not look
-   like a method: `schema_create`, `schema_list_params`.
+   response (`to_list_response`, `list_response_schema`) and the list params
+   (`list_params_schema`).
+3. A name ends with what it is: `response_schema` is a schema, `id_type` a
+   type, and `create_endpoint` an endpoint. A marker has the name of its
+   setting, written as a class name: `ResponseSchema`, `IDType`.
 4. A function starts with a verb. It starts with an action name only if it is
    part of that action: `update_object` is fine, `create_schema_from_model` is
    not. Getters such as `get_loader_options` are fine. Two kinds of functions
@@ -164,11 +166,10 @@ add it.
      UTC, and `key.term()` the term of a sort.
    - A decorator is named after what it declares: `@fr.get` declares a `GET`
      route, and `@fr.list_filter` a filter of the list.
-5. A function that builds one of a view's classes is named `derive_schema`
-   plus the role: `derive_schema_response` builds `schema_response`, and
-   `derive_schema_list_params` builds `schema_list_params`. A role without a
-   view attribute follows the same pattern: `derive_schema_list_response`
-   builds the list response.
+5. A function that builds one of a view's classes is named `derive_` plus the
+   name of the setting: `derive_response_schema` builds `response_schema`, and
+   `derive_list_params_schema` builds `list_params_schema`. `derive_schema`
+   builds `schema`.
 6. A class that Restly generates is named `<Resource><Role>`. Resource is the
    class name of the view's schema without a final `Schema` or `Response`.
    The list response and the list params take it from the response class,
@@ -184,20 +185,20 @@ add it.
 
 A public function takes the same argument names as the view: `schema`, not
 `schema_cls`; `stmt`, not `query` or `select_query`; `list_params`, not
-`params`. An argument that takes the response class is `schema_response`.
+`params`. An argument that takes the response class is `response_schema`.
 When a view method and a public function do the same thing, they share the
 name, and the arguments they share come in the same order: the view method
 `apply_list_params(stmt, list_params)` and the function
-`fr.query.apply_list_params(stmt, list_params, model, schema_response)`.
+`fr.query.apply_list_params(stmt, list_params, model, response_schema)`.
 
 ### The view's schema
 
 `schema` is the view's schema, next to `model`. It is not the response
 schema: it can hold `WriteOnly` fields, and those never go out. Restly
 derives the response, create and update schemas from it. Everything that
-goes out follows `schema_response`, which a view can also set itself: the
+goes out follows `response_schema`, which a view can also set itself: the
 responses, the list params and the relationships the view loads. The
-request bodies follow `schema_create` and `schema_update`.
+request bodies follow `create_schema` and `update_schema`.
 
 - In docs, call it "the view's schema". Do not call it "resource schema":
   "resource" and "response" look too much alike. Use "response schema" only
@@ -207,7 +208,7 @@ request bodies follow `schema_create` and `schema_update`.
   for the roles. A view can also use a hand-written `UserResponse` as its
   `schema`: Restly drops the final `Response` from the resource name, so the
   response class keeps that name. The docs and examples teach these names.
-- A class with a role name is set on the view, as in `schema_create`, so
+- A class with a role name is set on the view, as in `create_schema`, so
   there is only one. A class for another purpose gets a name that says what
   it is, such as `UserSummary`. OpenAPI has no modules, so each class name
   must be unique in the app.

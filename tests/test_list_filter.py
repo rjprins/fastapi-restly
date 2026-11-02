@@ -251,7 +251,7 @@ class PopularView(fr.AsyncRestView):
 
 def own_keys(view: type) -> set[str]:
     fr.include_view(FastAPI(), view)
-    return set(view.schema_list_params.model_fields) & {"popular", "hot"}
+    return set(view.list_params_schema.model_fields) & {"popular", "hot"}
 
 
 def test_a_subclass_inherits_the_key():
@@ -511,7 +511,7 @@ def test_a_key_of_a_page_parameter_fails():
         pagination = None
 
     fr.include_view(FastAPI(), UnpagedItemView)
-    assert "page" in UnpagedItemView.schema_list_params.model_fields
+    assert "page" in UnpagedItemView.list_params_schema.model_fields
 
 
 def test_the_key_of_the_sort_parameter_is_free_after_a_rename():
@@ -531,7 +531,7 @@ def test_the_key_of_the_sort_parameter_is_free_after_a_rename():
         sort_query_param = "order_by"
 
     fr.include_view(FastAPI(), OrderedItemView)
-    fields = OrderedItemView.schema_list_params.model_fields
+    fields = OrderedItemView.list_params_schema.model_fields
     assert {"sort", "order_by"} <= set(fields)
 
 
@@ -583,7 +583,7 @@ def test_a_string_annotation_is_resolved():
             return None
 
     fr.include_view(FastAPI(), ItemView)
-    field = ItemView.schema_list_params.model_fields["popular"]
+    field = ItemView.list_params_schema.model_fields["popular"]
     assert field.annotation == bool | None
 
 
@@ -720,7 +720,7 @@ def test_other_list_params_skip_the_filter_methods_with_a_warning(view_class, sy
             stmt = view.apply_filters(select(Item), Search())
         assert len(session.scalars(stmt).all()) == 4
         # its own list params run the method, without a warning
-        stmt = view.apply_filters(select(Item), ItemView.schema_list_params())
+        stmt = view.apply_filters(select(Item), ItemView.list_params_schema())
         assert sorted(item.name for item in session.scalars(stmt)) == ["Anvil", "axe"]
 
 
@@ -761,7 +761,7 @@ def test_a_route_drops_a_key_with_none(view_class):
 
 def test_the_query_function_rejects_an_own_key():
     fr.include_view(FastAPI(), PopularView)
-    params_model = PopularView.schema_list_params
+    params_model = PopularView.list_params_schema
 
     stmt = apply_list_params(
         select(Item), params_model.model_validate({}), Item, ItemSchema
@@ -787,16 +787,16 @@ def test_declared_list_params_cannot_hold_the_own_keys():
         popular: bool | None = None
 
     class ItemView(PopularView):
-        schema_list_params = ItemParams
+        list_params_schema = ItemParams
 
     with pytest.raises(RestlyConfigurationError) as exc_info:
         fr.include_view(FastAPI(), ItemView)
 
     assert str(exc_info.value) == (
         "ItemView has the filter method filter_popular (from PopularView), but "
-        "its schema_list_params is written by hand. Restly adds the key "
+        "its list_params_schema is written by hand. Restly adds the key "
         "'popular' of a filter method only to list params that it generates. "
-        "Leave schema_list_params out to have it generated, or set "
+        "Leave list_params_schema out to have it generated, or set "
         "filter_popular = None on ItemView to drop it."
     )
 
@@ -806,7 +806,7 @@ def test_a_subclass_with_a_filter_method_gets_new_list_params():
         prefix = "/items"
         model = Item
         schema = ItemSchema
-        schema_list_params = fr.query.derive_schema_list_params(ItemSchema, Item)
+        list_params_schema = fr.query.derive_list_params_schema(ItemSchema, Item)
 
     class PopularItemView(ItemView):
         @fr.list_filter("popular")
@@ -815,7 +815,7 @@ def test_a_subclass_with_a_filter_method_gets_new_list_params():
 
     fr.include_view(FastAPI(), PopularItemView)
 
-    assert "popular" in PopularItemView.schema_list_params.model_fields
+    assert "popular" in PopularItemView.list_params_schema.model_fields
 
 
 @pytest.mark.parametrize("base", [fr.AsyncReactAdminView, fr.ReactAdminView])
@@ -847,13 +847,13 @@ def test_a_view_cannot_declare_the_list_params_of_another_view():
         prefix = "/others"
         model = Item
         schema = ItemSchema
-        schema_list_params = PopularView.schema_list_params
+        list_params_schema = PopularView.list_params_schema
 
     with pytest.raises(RestlyConfigurationError) as exc_info:
         fr.include_view(FastAPI(), OtherView)
 
     assert str(exc_info.value) == (
-        "OtherView.schema_list_params has the keys of filter methods that the "
-        "view does not have: popular. Leave schema_list_params out to have it "
+        "OtherView.list_params_schema has the keys of filter methods that the "
+        "view does not have: popular. Leave list_params_schema out to have it "
         "generated."
     )

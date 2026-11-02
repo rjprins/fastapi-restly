@@ -29,7 +29,7 @@ from sqlalchemy.orm.properties import MappedColumn
 
 import fastapi_restly.db as fr_db
 from fastapi_restly.schemas._base import UTCDatetime, readonly_marker, writeonly_marker
-from fastapi_restly.views._view_types import SchemaType
+from fastapi_restly.views._schema_types import SchemaType
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information

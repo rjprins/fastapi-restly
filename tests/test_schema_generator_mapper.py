@@ -56,7 +56,7 @@ def test_unannotated_columns_get_fields(client):
     assert fields["title"].is_required() is True
     assert fields["note"].is_required() is False
     assert fields["rank"].is_required() is False
-    assert set(LegacyView.schema_create.model_fields) == {"title", "note", "rank"}
+    assert set(LegacyView.create_schema.model_fields) == {"title", "note", "rank"}
 
     async def create_legacy_table():
         async with fr.db.get_async_engine().begin() as conn:
@@ -95,8 +95,8 @@ def test_a_column_outside_the_constructor_is_read_only(client):
     for name in ("tenant_id", "status"):
         field = LedgerView.schema.model_fields[name]
         assert field.json_schema_extra["readOnly"] is True, name
-    assert set(LedgerView.schema_create.model_fields) == {"title"}
-    assert set(LedgerView.schema_update.model_fields) == {"title"}
+    assert set(LedgerView.create_schema.model_fields) == {"title"}
+    assert set(LedgerView.update_schema.model_fields) == {"title"}
 
     create_tables()
     body = {"title": "a", "tenant_id": 2, "status": "paid"}
@@ -128,7 +128,7 @@ def test_a_foreign_key_outside_the_constructor_is_read_only(client):
         model = Page
 
     assert PageView.schema.model_fields["org_id"].json_schema_extra["readOnly"]
-    assert set(PageView.schema_create.model_fields) == {"title"}
+    assert set(PageView.create_schema.model_fields) == {"title"}
 
     create_tables()
     created = client.post("/pages/", json={"title": "a", "org_id": 1}).json()

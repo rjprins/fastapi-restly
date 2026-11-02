@@ -27,7 +27,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 import fastapi_restly as fr
 from fastapi_restly.exc import BadQueryParam, RestlyConfigurationError
-from fastapi_restly.query import derive_schema_list_params
+from fastapi_restly.query import derive_list_params_schema
 
 from ._models import SharedBase
 from .conftest import create_tables
@@ -60,7 +60,7 @@ def test_dead_relationship_params_are_not_generated():
         publisher: PublisherSchema | None = None  # to-one nested -> dotted traversal
         books: list[fr.IDRef[DeadParamBook]]  # to-many relationship -> dead
 
-    fields = derive_schema_list_params(
+    fields = derive_list_params_schema(
         AuthorSchema, DeadParamAuthor, include_filters=("*", "*.*")
     ).model_fields
 
@@ -127,7 +127,7 @@ def test_collection_typed_fields_generate_only_isnull():
         clist: Optional[Annotated[list[str], pydantic.Field(min_length=1)]] = None
         wrapped: Optional[Annotated[list[str], pydantic.Field(description="x")]] = None
 
-    fields = derive_schema_list_params(RowSchema, JsonColumnRow).model_fields
+    fields = derive_list_params_schema(RowSchema, JsonColumnRow).model_fields
 
     for base in (
         "meta",
@@ -169,7 +169,7 @@ def test_collection_typed_fields_are_no_sort_keys():
         meta: dict | None = None
         tags: list[str] | None = None
 
-    params = derive_schema_list_params(RowSchema, JsonColumnRow)
+    params = derive_list_params_schema(RowSchema, JsonColumnRow)
     params.model_validate({"sort": "-name"})
     for key in ("meta", "tags"):
         with pytest.raises(pydantic.ValidationError):
@@ -192,7 +192,7 @@ def test_a_json_typed_field_keeps_its_filters_on_a_column_that_is_not_json():
         name: pydantic.Json[dict]
         jmeta: pydantic.Json[dict] | None = None
 
-    fields = derive_schema_list_params(RowSchema, JsonColumnRow).model_fields
+    fields = derive_list_params_schema(RowSchema, JsonColumnRow).model_fields
 
     for alive in ("name", "name__in", "name__ne", "name__isnull", "jmeta__isnull"):
         assert alive in fields, alive
@@ -220,7 +220,7 @@ def test_a_field_on_a_json_column_has_only_isnull(column_type):
         name: str
         tag: str | None = None
 
-    params = derive_schema_list_params(RowSchema, JsonValueRow)
+    params = derive_list_params_schema(RowSchema, JsonValueRow)
     assert [key for key in params.model_fields if key.startswith("tag")] == [
         "tag__isnull"
     ]
@@ -233,7 +233,7 @@ def test_a_field_on_a_json_column_has_only_isnull(column_type):
     assert caught.value.detail == "Unknown sort key: 'tag'"
 
     with pytest.raises(RestlyConfigurationError) as raised:
-        derive_schema_list_params(
+        derive_list_params_schema(
             RowSchema, JsonValueRow, exclude_filters=("tag__contains",)
         )
     assert str(raised.value) == (
@@ -346,7 +346,7 @@ def test_annotated_inside_optional_gets_the_filters_of_the_plain_type():
             Annotated[SpellingOwnerSchema, pydantic.Field(description="x")] | None
         ) = None
 
-    fields = derive_schema_list_params(
+    fields = derive_list_params_schema(
         SpellingSchema, SpellingRow, include_filters=("*", "*.*")
     ).model_fields
 
@@ -431,7 +431,7 @@ def test_labels_get_no_range_filters():
         priority_number: Priority
         rank: Literal[1, 2, 3]
 
-    fields = derive_schema_list_params(ArrowSchema, Arrow).model_fields
+    fields = derive_list_params_schema(ArrowSchema, Arrow).model_fields
 
     def keys(name: str) -> list[str]:
         return [key for key in fields if key == name or key.startswith(f"{name}__")]
@@ -464,7 +464,7 @@ def test_a_flag_gets_the_plain_filters_and_no_range_filters():
     class GrantSchema(fr.IDSchema):
         permission: Permission
 
-    fields = derive_schema_list_params(GrantSchema, Grant).model_fields
+    fields = derive_list_params_schema(GrantSchema, Grant).model_fields
 
     assert [key for key in fields if key.startswith("permission")] == [
         "permission",
@@ -521,7 +521,7 @@ def test_a_schema_that_names_itself_gets_one_level_of_dotted_filters():
         )
 
     for schema in (PlainCategory, AnnotatedCategory):
-        fields = derive_schema_list_params(
+        fields = derive_list_params_schema(
             schema, SpellingCategory, include_filters=("*", "*.*")
         ).model_fields
         assert "parent.name" in fields, schema
@@ -529,6 +529,6 @@ def test_a_schema_that_names_itself_gets_one_level_of_dotted_filters():
         assert not any(key.startswith("parent.parent") for key in fields), schema
         # the walk stops, not the pattern: no key is two levels down
         with pytest.raises(RestlyConfigurationError, match="matches no filter key"):
-            derive_schema_list_params(
+            derive_list_params_schema(
                 schema, SpellingCategory, include_filters=("*.*.*",)
             )

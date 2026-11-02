@@ -48,7 +48,7 @@ def test_the_view_pages_with_the_page_fields(client):
     class ItemView(fr.AsyncRestView):
         prefix = "/items"
         model = item
-        schema_list_params = Search
+        list_params_schema = Search
 
     _add_items(client, 60)
 
@@ -62,7 +62,7 @@ def test_the_view_pages_with_the_page_fields(client):
     }
     second = client.get("/items", params={"page": "2", "page_size": "25"}).json()
     assert [row["name"] for row in second["data"]][0] == "item 025"
-    assert ItemView.schema_list_params is Search
+    assert ItemView.list_params_schema is Search
 
 
 def test_the_page_fields_follow_the_pagination_of_the_view(client):
@@ -76,7 +76,7 @@ def test_the_page_fields_follow_the_pagination_of_the_view(client):
     class ItemView(fr.AsyncRestView):
         prefix = "/items"
         model = item
-        schema_list_params = Search
+        list_params_schema = Search
         pagination = fr.NumberedPagination(
             page_size_query_param="size", default_page_size=25, max_page_size=100
         )
@@ -105,7 +105,7 @@ def test_one_class_serves_views_with_other_pages(client):
 
     class BaseItemView(fr.AsyncRestView):
         model = item
-        schema_list_params = Search
+        list_params_schema = Search
 
     @fr.include_view(client.app)
     class ItemView(BaseItemView):
@@ -129,7 +129,7 @@ def test_a_page_beyond_what_a_database_takes_is_a_client_error(client):
     class ItemView(fr.AsyncRestView):
         prefix = "/items"
         model = item
-        schema_list_params = Search
+        list_params_schema = Search
         pagination = fr.NumberedPagination(page_size_query_param="size")
 
     create_tables()
@@ -160,12 +160,12 @@ def test_list_params_of_your_own_without_page_fields_fail_on_a_view_with_pages()
     class ItemView(fr.AsyncRestView):
         prefix = "/items"
         model = item
-        schema_list_params = NoPages
+        list_params_schema = NoPages
 
     with pytest.raises(RestlyConfigurationError) as caught:
         fr.include_view(FastAPI(), ItemView)
     assert str(caught.value) == (
-        "ItemView.schema_list_params has no 'page' and no 'page_size' field, "
+        "ItemView.list_params_schema has no 'page' and no 'page_size' field, "
         "so the list would return every row while its response says that it "
         "has pages. Subclass fr.query.PagedListParams, which gets the page "
         "fields of the view's pagination, or set pagination = None for a list "
@@ -183,7 +183,7 @@ def test_page_fields_written_by_hand_must_have_the_names_of_the_pagination():
     class ItemView(fr.AsyncRestView):
         prefix = "/items"
         model = item
-        schema_list_params = OwnPages
+        list_params_schema = OwnPages
 
     fr.include_view(FastAPI(), ItemView)
 
@@ -200,7 +200,7 @@ def test_paged_list_params_need_a_view_with_pages():
     class ItemView(fr.AsyncRestView):
         prefix = "/items"
         model = item
-        schema_list_params = Search
+        list_params_schema = Search
         pagination = None
 
     with pytest.raises(RestlyConfigurationError, match="the view has no pages"):
@@ -216,7 +216,7 @@ def test_an_override_reads_the_page_from_the_list_params(client):
     class ItemView(fr.AsyncRestView):
         prefix = "/items"
         model = item
-        schema_list_params = Search
+        list_params_schema = Search
 
         async def apply_list_params(self, stmt, list_params: Search):
             stmt = stmt.order_by(sqlalchemy.desc(item.name))

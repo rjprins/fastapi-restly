@@ -203,7 +203,7 @@ def _unloaded_written_collections(obj: object, data: _pydantic.BaseModel) -> lis
 
     The view loads only the relationships of its response class, and an
     update can write others: a ``WriteOnly`` field, or a field of a
-    ``schema_update`` that the response class does not have. The update
+    ``update_schema`` that the response class does not have. The update
     loads them with ``session.refresh``, which also loads a relationship with
     ``lazy="raise"``.
     """

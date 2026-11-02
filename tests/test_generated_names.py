@@ -17,7 +17,7 @@ from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
 from fastapi_restly.exc import RestlyDuplicateSchemaNameWarning
-from fastapi_restly.views import ViewResponse
+from fastapi_restly.views import ResponseSchema
 
 from ._models import SharedBase
 from ._openapi_spec import Spec
@@ -62,7 +62,7 @@ def test_openapi_shows_only_the_generated_names():
     assert _ref(app, "/users/{id}", "patch") == "UserResponse"
     assert _body_ref(app, "/users", "post") == "UserCreate"
     assert _body_ref(app, "/users/{id}", "patch") == "UserUpdate"
-    assert UserView.schema_list_params.__name__ == "UserListParams"
+    assert UserView.list_params_schema.__name__ == "UserListParams"
 
 
 def test_a_view_without_a_schema_gets_a_generated_schema():
@@ -78,7 +78,7 @@ def test_a_view_without_a_schema_gets_a_generated_schema():
         pagination = None
 
     assert ThingView.schema.__name__ == "ThingSchema"
-    assert ThingView.schema_list_params.__name__ == "ThingListParams"
+    assert ThingView.list_params_schema.__name__ == "ThingListParams"
     assert _components(app) == {
         "ThingResponse",
         "ThingCreate",
@@ -185,7 +185,7 @@ def _member_app(client, view_body):
 
 def test_a_schema_instance_from_an_endpoint_goes_out_as_the_response(client):
     @fr.get("/{id}")
-    async def get_one_endpoint(self, id: int) -> ViewResponse:
+    async def get_one_endpoint(self, id: int) -> ResponseSchema:
         return _Member(id=id, name="Ada", password="secret")
 
     _member_app(client, {"get_one_endpoint": get_one_endpoint})
@@ -356,7 +356,7 @@ def test_two_list_responses_with_one_name_warn_and_stay_in_openapi():
     assert generated.format(schema_path, "ShopView") in message
     assert generated.format(schema_path, "AllShopsView") in message
     assert "the list response after the response class" in message
-    assert "passes the view's pagination to derive_schema_list_response" in message
+    assert "passes the view's pagination to derive_list_response_schema" in message
 
 
 def test_views_on_a_router_are_checked_through_configure():
@@ -446,7 +446,7 @@ def test_only_the_routes_in_the_app_name_a_view():
 
 
 def test_a_create_body_that_a_subclass_sets_is_its_own():
-    """A subclass sets its own ``schema_create`` and generates nothing else.
+    """A subclass sets its own ``create_schema`` and generates nothing else.
     The warning does not call that class generated."""
 
     class Item(fr.IDMixin, SharedBase):
@@ -470,13 +470,13 @@ def test_a_create_body_that_a_subclass_sets_is_its_own():
         prefix = "/items"
         model = Item
         schema = ItemSchema
-        schema_update = ItemUpdate
-        schema_list_params = fr.query.derive_schema_list_params(ItemSchema, Item)
+        update_schema = ItemUpdate
+        list_params_schema = fr.query.derive_list_params_schema(ItemSchema, Item)
 
     @fr.include_view(app)
     class QuickItemView(ItemView):
         prefix = "/quick-items"
-        schema_create = ItemCreate
+        create_schema = ItemCreate
 
     with pytest.warns(RestlyDuplicateSchemaNameWarning) as record:
         app.openapi()
@@ -556,7 +556,7 @@ def _order_app(*, set_on_view: bool) -> fastapi.FastAPI:
         model = Order
         schema = OrderSchema
         if set_on_view:
-            schema_create = OrderCreate
+            create_schema = OrderCreate
 
         @fr.post("/quick")
         async def quick(self, body: OrderCreate) -> dict[str, str]:
@@ -591,7 +591,7 @@ def test_a_hand_written_class_with_a_generated_name_warns_and_stays_in_openapi()
         "tests.test_generated_names._order_app.<locals>.OrderSchema for OrderView"
     ) in message
     assert re.search(r"<locals>\.OrderCreate$", message, re.MULTILINE)
-    assert "goes on the view, for example as schema_create" in message
+    assert "goes on the view, for example as create_schema" in message
 
 
 def test_a_hand_written_class_set_on_the_view_does_not_clash():

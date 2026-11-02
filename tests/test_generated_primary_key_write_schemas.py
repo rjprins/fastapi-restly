@@ -40,8 +40,8 @@ def test_autoincrement_id_is_left_out_of_derived_write_schemas(base):
     view = _register(base, Gadget, GadgetSchema)
 
     assert set(view.schema.model_fields) == {"id", "name"}
-    assert set(view.schema_create.model_fields) == {"name"}
-    assert set(view.schema_update.model_fields) == {"name"}
+    assert set(view.create_schema.model_fields) == {"name"}
+    assert set(view.update_schema.model_fields) == {"name"}
 
 
 def test_primary_key_with_a_column_default_is_left_out(base):
@@ -57,8 +57,8 @@ def test_primary_key_with_a_column_default_is_left_out(base):
 
     view = _register(base, Token, TokenSchema)
 
-    assert set(view.schema_create.model_fields) == {"name"}
-    assert set(view.schema_update.model_fields) == {"name"}
+    assert set(view.create_schema.model_fields) == {"name"}
+    assert set(view.update_schema.model_fields) == {"name"}
 
 
 def test_dataclass_primary_key_outside_init_is_left_out(base):
@@ -74,7 +74,7 @@ def test_dataclass_primary_key_outside_init_is_left_out(base):
 
     view = _register(base, Ticket, TicketSchema)
 
-    assert set(view.schema_create.model_fields) == {"name"}
+    assert set(view.create_schema.model_fields) == {"name"}
 
 
 def test_generated_primary_key_with_another_name_is_left_out(base):
@@ -92,8 +92,8 @@ def test_generated_primary_key_with_another_name_is_left_out(base):
 
     view = _register(base, Widget, WidgetSchema)
 
-    assert set(view.schema_create.model_fields) == {"name"}
-    assert set(view.schema_update.model_fields) == {"name"}
+    assert set(view.create_schema.model_fields) == {"name"}
+    assert set(view.update_schema.model_fields) == {"name"}
 
 
 def test_natural_key_stays_in_the_derived_create_schema(base):
@@ -107,8 +107,8 @@ def test_natural_key_stays_in_the_derived_create_schema(base):
 
     view = _register(base, Country, CountrySchema)
 
-    assert set(view.schema_create.model_fields) == {"code", "name"}
-    assert view.schema_create.model_fields["code"].is_required()
+    assert set(view.create_schema.model_fields) == {"code", "name"}
+    assert view.create_schema.model_fields["code"].is_required()
 
 
 def test_composite_key_stays_in_the_derived_create_schema(base):
@@ -130,7 +130,7 @@ def test_composite_key_stays_in_the_derived_create_schema(base):
         exclude_routes=(fr.ViewRoute.GET_ONE, fr.ViewRoute.UPDATE, fr.ViewRoute.DELETE),
     )
 
-    assert set(view.schema_create.model_fields) == {"user_id", "group_id", "role"}
+    assert set(view.create_schema.model_fields) == {"user_id", "group_id", "role"}
 
 
 def test_explicit_write_schemas_are_left_alone(base):
@@ -146,11 +146,11 @@ def test_explicit_write_schemas_are_left_alone(base):
         name: str
 
     view = _register(
-        base, Device, DeviceSchema, schema_create=DeviceWrite, schema_update=DeviceWrite
+        base, Device, DeviceSchema, create_schema=DeviceWrite, update_schema=DeviceWrite
     )
 
-    assert view.schema_create is DeviceWrite
-    assert view.schema_update is DeviceWrite
+    assert view.create_schema is DeviceWrite
+    assert view.update_schema is DeviceWrite
 
 
 def test_client_cannot_choose_or_change_a_generated_id(client):
@@ -179,6 +179,6 @@ def test_client_cannot_choose_or_change_a_generated_id(client):
     assert patched.json() == {"id": created["id"], "name": "c"}
 
     create_schema = client.app.openapi()["components"]["schemas"][
-        SprocketView.schema_create.__name__
+        SprocketView.create_schema.__name__
     ]
     assert set(create_schema["properties"]) == {"name"}

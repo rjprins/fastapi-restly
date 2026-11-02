@@ -1,7 +1,7 @@
 """An update can write a relationship that the view does not load.
 
 The view loads the relationships of its response class. An update can write
-others: a ``WriteOnly`` field, or a field of a ``schema_update`` that the
+others: a ``WriteOnly`` field, or a field of a ``update_schema`` that the
 response class does not have. To replace a collection, SQLAlchemy reads the
 old one first. On an async session that fails inside the assignment, and a
 relationship with ``lazy="raise"`` refuses it on both. So the update loads
@@ -101,7 +101,7 @@ def test_an_async_update_writes_a_collection_the_response_does_not_name(client, 
             prefix = "/members"
             model = Member
             schema = MemberSchema
-            schema_update = MemberUpdate
+            update_schema = MemberUpdate
 
     create_tables()
     _insert(Member, Team)

@@ -228,9 +228,9 @@ def _warn_writable_model_set_fields(view_cls: type[View]) -> None:
     # Each write class, and whether Restly derives it from ``schema``.
     write_classes: dict[type[pydantic.BaseModel], bool] = {}
     for attr, routes in (
-        ("schema_create", (ViewRoute.CREATE.value,)),
+        ("create_schema", (ViewRoute.CREATE.value,)),
         # the PUT route of a react-admin view takes the update body too
-        ("schema_update", (ViewRoute.UPDATE.value, "put")),
+        ("update_schema", (ViewRoute.UPDATE.value, "put")),
     ):
         if not any(_serves_route(view_cls, route) for route in routes):
             continue

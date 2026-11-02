@@ -90,7 +90,7 @@ def _register(app, view_base):
         (
             "/posts",
             TextPost,
-            {"schema": TextPostSchema, "schema_response": TextPostResponse},
+            {"schema": TextPostSchema, "response_schema": TextPostResponse},
         ),
         ("/conflict-posts", TextPost, {"schema": ConflictPostSchema}),
     ):

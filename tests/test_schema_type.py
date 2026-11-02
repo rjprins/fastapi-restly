@@ -20,7 +20,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 import fastapi_restly as fr
 from fastapi_restly.exc import RestlyConfigurationError
 from fastapi_restly.testing._client import RestlyTestClient
-from fastapi_restly.views import SchemaType, ViewCreate, ViewID, ViewResponse
+from fastapi_restly.views import CreateSchema, IDType, ResponseSchema, SchemaType
 
 from ._models import SharedBase
 from .conftest import create_tables
@@ -83,7 +83,7 @@ def test_a_function_as_the_response_class(client, Lamp):
         prefix = "/lamps"
         model = Lamp
         schema = LampSchema
-        schema_response = SchemaType(lambda view: _with_note(view.schema))
+        response_schema = SchemaType(lambda view: _with_note(view.schema))
 
     fr.include_view(client.app, LampView)
     create_tables()
@@ -99,13 +99,13 @@ def test_a_function_as_the_create_body_and_the_update_body(client, Lamp):
         prefix = "/lamps"
         model = Lamp
         schema = LampSchema
-        schema_create = SchemaType(
+        create_schema = SchemaType(
             lambda view: pydantic.create_model(
                 "LampIn", name=(str, ...), __base__=pydantic.BaseModel
             )
         )
-        schema_update = SchemaType(
-            lambda view: fr.schemas.derive_schema_update(view.schema_create)
+        update_schema = SchemaType(
+            lambda view: fr.schemas.derive_update_schema(view.create_schema)
         )
 
     fr.include_view(client.app, LampView)
@@ -128,10 +128,10 @@ def test_a_function_as_the_list_params(client, Lamp):
         prefix = "/lamps"
         model = Lamp
         schema = LampSchema
-        schema_list_params = SchemaType(lambda view: LampParams)
+        list_params_schema = SchemaType(lambda view: LampParams)
 
     fr.include_view(client.app, LampView)
-    assert LampView.schema_list_params is LampParams
+    assert LampView.list_params_schema is LampParams
 
 
 def test_the_checks_of_list_params_apply_to_what_a_function_returns(client, Lamp):
@@ -142,7 +142,7 @@ def test_the_checks_of_list_params_apply_to_what_a_function_returns(client, Lamp
         prefix = "/lamps"
         model = Lamp
         schema = LampSchema
-        schema_list_params = SchemaType(lambda view: NoPages)
+        list_params_schema = SchemaType(lambda view: NoPages)
 
     with pytest.raises(RestlyConfigurationError, match="no 'page' and no 'page_size'"):
         fr.include_view(client.app, LampView)
@@ -155,7 +155,7 @@ def test_a_setting_as_a_decorator(client, Lamp):
         schema = LampSchema
 
         @SchemaType
-        def schema_response(view):
+        def response_schema(view):
             return _with_note(view.schema)
 
     fr.include_view(client.app, LampView)
@@ -167,9 +167,9 @@ def test_an_instance_reads_the_same_class(Lamp):
     class LampView(fr.AsyncRestView):
         model = Lamp
         schema = LampSchema
-        schema_response = SchemaType(lambda view: _with_note(view.schema))
+        response_schema = SchemaType(lambda view: _with_note(view.schema))
 
-    assert LampView().schema_response is LampView.schema_response
+    assert LampView().response_schema is LampView.response_schema
 
 
 # --- the route form ----------------------------------------------------------
@@ -182,11 +182,11 @@ def test_a_function_in_a_route_gets_the_view(client, Lamp):
     class BulbSchema(fr.IDSchema):
         name: str
 
-    Single = Annotated[Any, SchemaType(lambda view: Data[view.schema_response])]
+    Single = Annotated[Any, SchemaType(lambda view: Data[view.response_schema])]
 
     class ApiView(fr.AsyncRestView):
         @fr.get("/{id}/wrapped")
-        async def wrapped(self, id: ViewID) -> Single:
+        async def wrapped(self, id: IDType) -> Single:
             row = await self.handle_get_one(id)
             return {"data": self.to_single_response(row)}
 
@@ -211,7 +211,7 @@ def test_a_function_in_a_route_gets_the_view(client, Lamp):
 
 
 def test_a_function_in_a_route_can_give_any_type(client, Lamp):
-    Names = Annotated[Any, SchemaType(lambda view: list[view.schema_response])]
+    Names = Annotated[Any, SchemaType(lambda view: list[view.response_schema])]
 
     class LampView(fr.AsyncRestView):
         prefix = "/lamps"
@@ -231,7 +231,7 @@ def test_a_function_in_a_route_can_give_any_type(client, Lamp):
 
 
 def test_a_function_that_gives_the_response_class_goes_through_the_view(client, Lamp):
-    Own = Annotated[Any, SchemaType(lambda view: view.schema_response)]
+    Own = Annotated[Any, SchemaType(lambda view: view.response_schema)]
 
     class LampView(fr.AsyncRestView):
         prefix = "/lamps"
@@ -239,7 +239,7 @@ def test_a_function_that_gives_the_response_class_goes_through_the_view(client, 
         schema = LampSchema
 
         @fr.get("/{id}/own")
-        async def own(self, id: ViewID) -> Own:
+        async def own(self, id: IDType) -> Own:
             return await self.handle_get_one(id)
 
     fr.include_view(client.app, LampView)
@@ -249,7 +249,7 @@ def test_a_function_that_gives_the_response_class_goes_through_the_view(client, 
 
 
 def test_a_function_on_a_plain_view_raises():
-    Own = Annotated[Any, SchemaType(lambda view: view.schema_response)]
+    Own = Annotated[Any, SchemaType(lambda view: view.response_schema)]
 
     class PingView(fr.View):
         prefix = "/ping"
@@ -272,7 +272,7 @@ def test_the_class_definition_and_a_subclass_do_not_call_the_function(Lamp):
 
     class ApiView(fr.AsyncRestView):
         @SchemaType
-        def schema_response(view):
+        def response_schema(view):
             calls.append(view)
             return _with_note(view.schema)
 
@@ -294,7 +294,7 @@ def test_the_function_runs_once_for_each_view(client, Lamp):
         return _with_note(view.schema)
 
     class ApiView(fr.AsyncRestView):
-        schema_response = SchemaType(noted)
+        response_schema = SchemaType(noted)
 
     class LampView(ApiView):
         prefix = "/lamps"
@@ -304,12 +304,12 @@ def test_the_function_runs_once_for_each_view(client, Lamp):
     class SubView(LampView):
         prefix = "/sub-lamps"
 
-    first = LampView.schema_response
-    assert LampView.schema_response is first
+    first = LampView.response_schema
+    assert LampView.response_schema is first
     fr.include_view(client.app, LampView)
     fr.include_view(client.app, SubView)
-    assert LampView.schema_response is first
-    assert SubView.schema_response is not first
+    assert LampView.response_schema is first
+    assert SubView.response_schema is not first
     assert calls == ["LampView", "SubView"]
 
 
@@ -323,7 +323,7 @@ def test_two_objects_around_one_function_give_one_class(client, Lamp):
         prefix = "/lamps"
         model = Lamp
         schema = LampSchema
-        schema_response = SchemaType(noted)
+        response_schema = SchemaType(noted)
 
         @fr.get("/one")
         def one(self) -> Noted:
@@ -340,16 +340,16 @@ def test_a_function_reads_any_other_setting_in_any_order(Lamp):
         model = Lamp
 
         @SchemaType
-        def schema_update(view):
-            return fr.schemas.derive_schema_update(view.schema_create)
+        def update_schema(view):
+            return fr.schemas.derive_update_schema(view.create_schema)
 
         @SchemaType
-        def schema_create(view):
-            return _with_note(view.schema_response)
+        def create_schema(view):
+            return _with_note(view.response_schema)
 
-    assert issubclass(LampView.schema_update, LampView.schema_create)
-    assert issubclass(LampView.schema_create, LampView.schema_response)
-    assert issubclass(LampView.schema_response, LampView.schema)
+    assert issubclass(LampView.update_schema, LampView.create_schema)
+    assert issubclass(LampView.create_schema, LampView.response_schema)
+    assert issubclass(LampView.response_schema, LampView.schema)
 
 
 def test_a_function_that_reads_itself_raises(Lamp):
@@ -357,18 +357,18 @@ def test_a_function_that_reads_itself_raises(Lamp):
         model = Lamp
 
         @SchemaType
-        def schema_response(view):
-            return view.schema_create
+        def response_schema(view):
+            return view.create_schema
 
         @SchemaType
-        def schema_create(view):
-            return view.schema_response
+        def create_schema(view):
+            return view.response_schema
 
     with pytest.raises(RestlyConfigurationError, match="reads its own result"):
-        LampView.schema_response
+        LampView.response_schema
     # the failed read leaves nothing behind
     with pytest.raises(RestlyConfigurationError, match="reads its own result"):
-        LampView.schema_create
+        LampView.create_schema
 
 
 def test_a_function_that_fails_runs_again_on_the_next_read(Lamp):
@@ -399,13 +399,13 @@ def test_two_threads_that_read_first_get_one_class_and_no_false_cycle(Lamp):
     class LampView(fr.AsyncRestView):
         model = Lamp
         schema = LampSchema
-        schema_response = SchemaType(built)
+        response_schema = SchemaType(built)
 
     results, errors = [], []
 
     def read():
         try:
-            results.append(LampView.schema_response)
+            results.append(LampView.response_schema)
         except Exception as exc:
             errors.append(exc)
 
@@ -416,7 +416,7 @@ def test_two_threads_that_read_first_get_one_class_and_no_false_cycle(Lamp):
         thread.join()
     assert errors == []
     assert results[0] is results[1]
-    assert LampView.schema_response is results[0]
+    assert LampView.response_schema is results[0]
 
 
 # --- a read before registration ----------------------------------------------
@@ -434,13 +434,13 @@ def test_a_read_before_registration_gives_the_class_of_the_registered_view(
         name: getattr(LampView, name)
         for name in (
             "schema",
-            "schema_response",
-            "schema_create",
-            "schema_update",
-            "schema_list_params",
+            "response_schema",
+            "create_schema",
+            "update_schema",
+            "list_params_schema",
         )
     }
-    assert sorted(before["schema_create"].model_fields) == ["name"]
+    assert sorted(before["create_schema"].model_fields) == ["name"]
 
     routes = len(client.app.routes)
     assert len(client.app.routes) == routes
@@ -465,8 +465,8 @@ def test_a_read_before_registration_does_not_mount_or_prepare_the_view(Lamp):
             prepared.append(cls)
             super().before_include_view()
 
-    LampView.schema_create
-    LampView.schema_response
+    LampView.create_schema
+    LampView.response_schema
     assert prepared == []
     assert "_fr_initialised" not in vars(LampView)
 
@@ -485,9 +485,9 @@ def test_a_subclass_of_a_registered_view_has_its_own_classes(client, Lamp):
     class SubView(LampView):
         schema = OtherSchema
 
-    assert "other" in SubView.schema_response.model_fields
-    assert "other" in SubView.schema_create.model_fields
-    assert "other" not in LampView.schema_response.model_fields
+    assert "other" in SubView.response_schema.model_fields
+    assert "other" in SubView.create_schema.model_fields
+    assert "other" not in LampView.response_schema.model_fields
 
 
 def test_a_subclass_with_a_new_schema_gets_the_default_back(Lamp):
@@ -501,7 +501,7 @@ def test_a_subclass_with_a_new_schema_gets_the_default_back(Lamp):
     class LampView(fr.AsyncRestView):
         model = Lamp
         schema = LampSchema
-        schema_create = Own
+        create_schema = Own
 
     class SubView(LampView):
         schema = OtherSchema
@@ -509,8 +509,8 @@ def test_a_subclass_with_a_new_schema_gets_the_default_back(Lamp):
     class SameView(LampView):
         pass
 
-    assert SameView.schema_create is Own
-    assert "other" in SubView.schema_create.model_fields
+    assert SameView.create_schema is Own
+    assert "other" in SubView.create_schema.model_fields
 
 
 def test_a_subclass_with_a_new_schema_keeps_a_function(Lamp):
@@ -520,13 +520,13 @@ def test_a_subclass_with_a_new_schema_keeps_a_function(Lamp):
     class LampView(fr.AsyncRestView):
         model = Lamp
         schema = LampSchema
-        schema_response = SchemaType(lambda view: _with_note(view.schema))
+        response_schema = SchemaType(lambda view: _with_note(view.schema))
 
     class SubView(LampView):
         schema = OtherSchema
 
-    assert issubclass(SubView.schema_response, OtherSchema)
-    assert issubclass(LampView.schema_response, LampSchema)
+    assert issubclass(SubView.response_schema, OtherSchema)
+    assert issubclass(LampView.response_schema, LampSchema)
 
 
 def test_a_class_in_a_subclass_wins_over_a_function(Lamp):
@@ -534,14 +534,14 @@ def test_a_class_in_a_subclass_wins_over_a_function(Lamp):
         name: str
 
     class ApiView(fr.AsyncRestView):
-        schema_response = SchemaType(lambda view: _with_note(view.schema))
+        response_schema = SchemaType(lambda view: _with_note(view.schema))
 
     class LampView(ApiView):
         model = Lamp
         schema = LampSchema
-        schema_response = Own
+        response_schema = Own
 
-    assert LampView.schema_response is Own
+    assert LampView.response_schema is Own
 
 
 # --- setups that a read at class definition would break ----------------------
@@ -564,7 +564,7 @@ def test_a_model_whose_related_class_comes_later(client):
         writer: Mapped[Writer] = relationship(back_populates="novels", init=False)
 
     fr.include_view(client.app, WriterView)
-    assert "name" in WriterView.schema_response.model_fields
+    assert "name" in WriterView.response_schema.model_fields
 
 
 def test_a_schema_with_a_forward_ref_to_a_later_class(client, Lamp):
@@ -614,7 +614,7 @@ def test_a_class_decorator_that_sets_the_schema(client, Lamp):
 
     class ApiView(fr.AsyncRestView):
         schema = LampSchema
-        schema_response = LampSchema
+        response_schema = LampSchema
 
     @fr.include_view(client.app)
     @with_other_schema
@@ -630,7 +630,7 @@ def test_a_class_decorator_that_sets_the_schema(client, Lamp):
 def test_a_base_view_with_a_model_that_lacks_a_setting_its_function_reads(client, Lamp):
     class ApiView(fr.AsyncRestView):
         @SchemaType
-        def schema_response(view):
+        def response_schema(view):
             return pydantic.create_model(
                 f"{view.schema.__name__}{view.item_key}", __base__=view.schema
             )
@@ -644,8 +644,8 @@ def test_a_base_view_with_a_model_that_lacks_a_setting_its_function_reads(client
         item_key = "Keyed"
 
     fr.include_view(client.app, LampView)
-    assert LampView.schema_response.__name__ == "LampSchemaKeyed"
-    assert not hasattr(BaseLampView, "schema_response")
+    assert LampView.response_schema.__name__ == "LampSchemaKeyed"
+    assert not hasattr(BaseLampView, "response_schema")
 
 
 def test_a_view_without_a_model_has_no_generated_classes():
@@ -653,8 +653,8 @@ def test_a_view_without_a_model_has_no_generated_classes():
         pass
 
     assert not hasattr(ApiView, "schema")
-    assert not hasattr(ApiView, "schema_response")
-    assert not hasattr(ApiView, "schema_create")
+    assert not hasattr(ApiView, "response_schema")
+    assert not hasattr(ApiView, "create_schema")
 
 
 # --- wrong values ------------------------------------------------------------
@@ -670,7 +670,7 @@ class NotAModel:
     ids=["text", "plain-class", "sqlalchemy-schematype", "none"],
 )
 @pytest.mark.parametrize(
-    "setting", ["schema_response", "schema_create", "schema_update", "schema"]
+    "setting", ["response_schema", "create_schema", "update_schema", "schema"]
 )
 def test_a_wrong_value_for_a_setting_raises_at_registration(Lamp, setting, value):
     class LampView(fr.AsyncRestView):
@@ -695,11 +695,11 @@ def test_a_function_that_gives_something_else_than_a_class_raises(Lamp, result):
         prefix = "/lamps"
         model = Lamp
         schema = LampSchema
-        schema_response = SchemaType(lambda view: result)
+        response_schema = SchemaType(lambda view: result)
 
     with pytest.raises(
         RestlyConfigurationError,
-        match=r"SchemaType function of LampView\.schema_response must return",
+        match=r"SchemaType function of LampView\.response_schema must return",
     ):
         fr.include_view(FastAPI(), LampView)
 
@@ -716,11 +716,11 @@ def test_a_view_without_a_model_raises_at_registration():
 
 
 class _Wrapped(pydantic.BaseModel):
-    thing: ViewResponse
+    thing: ResponseSchema
 
 
 class _WrappedList(pydantic.BaseModel):
-    things: list[ViewResponse]
+    things: list[ResponseSchema]
 
 
 class _WrappedFunction(pydantic.BaseModel):
@@ -822,8 +822,8 @@ def test_derive_create_and_update_leave_out_the_read_only_fields():
         id: fr.ReadOnly[int]
         name: str
 
-    create = fr.schemas.derive_schema_create(Schema)
-    update = fr.schemas.derive_schema_update(Schema)
+    create = fr.schemas.derive_create_schema(Schema)
+    update = fr.schemas.derive_update_schema(Schema)
     assert list(create.model_fields) == ["name"]
     assert list(update.model_fields) == ["name"]
     assert update().model_dump() == {"name": None}
@@ -836,9 +836,9 @@ def test_derive_create_and_update_with_a_model_leave_out_a_generated_key(Lamp):
         id: int
         name: str
 
-    assert list(fr.schemas.derive_schema_create(Plain).model_fields) == ["id", "name"]
-    assert list(fr.schemas.derive_schema_create(Plain, Lamp).model_fields) == ["name"]
-    assert list(fr.schemas.derive_schema_update(Plain, Lamp).model_fields) == ["name"]
+    assert list(fr.schemas.derive_create_schema(Plain).model_fields) == ["id", "name"]
+    assert list(fr.schemas.derive_create_schema(Plain, Lamp).model_fields) == ["name"]
+    assert list(fr.schemas.derive_update_schema(Plain, Lamp).model_fields) == ["name"]
 
 
 def test_derive_gives_the_class_of_the_view(client, Lamp):
@@ -847,8 +847,8 @@ def test_derive_gives_the_class_of_the_view(client, Lamp):
         model = Lamp
         schema = LampSchema
 
-    assert fr.schemas.derive_schema_create(LampSchema, Lamp) is LampView.schema_create
-    assert fr.schemas.derive_schema_update(LampSchema, Lamp) is LampView.schema_update
+    assert fr.schemas.derive_create_schema(LampSchema, Lamp) is LampView.create_schema
+    assert fr.schemas.derive_update_schema(LampSchema, Lamp) is LampView.update_schema
 
 
 def test_derive_update_from_a_class_of_your_own(client, Lamp):
@@ -859,8 +859,8 @@ def test_derive_update_from_a_class_of_your_own(client, Lamp):
         prefix = "/lamps"
         model = Lamp
         schema = LampSchema
-        schema_create = LampIn
-        schema_update = fr.schemas.derive_schema_update(LampIn)
+        create_schema = LampIn
+        update_schema = fr.schemas.derive_update_schema(LampIn)
 
     fr.include_view(client.app, LampView)
     create_tables()
@@ -879,7 +879,7 @@ def test_a_react_admin_view_keeps_its_list_params_with_a_new_schema(Lamp):
     class SubView(LampView):
         schema = LampSchema
 
-    assert SubView.schema_list_params is fr.views.ReactAdminListParams
+    assert SubView.list_params_schema is fr.views.ReactAdminListParams
 
 
 def test_a_react_admin_view_takes_a_function_for_its_list_params(client, Lamp):
@@ -890,10 +890,10 @@ def test_a_react_admin_view_takes_a_function_for_its_list_params(client, Lamp):
         prefix = "/lamps"
         model = Lamp
         schema = LampSchema
-        schema_list_params = SchemaType(lambda view: LampParams)
+        list_params_schema = SchemaType(lambda view: LampParams)
 
     fr.include_view(client.app, LampView)
-    assert LampView.schema_list_params is LampParams
+    assert LampView.list_params_schema is LampParams
 
 
 def test_a_react_admin_view_checks_what_a_function_gives_at_registration(Lamp):
@@ -904,7 +904,7 @@ def test_a_react_admin_view_checks_what_a_function_gives_at_registration(Lamp):
         prefix = "/lamps"
         model = Lamp
         schema = LampSchema
-        schema_list_params = SchemaType(lambda view: Wrong)
+        list_params_schema = SchemaType(lambda view: Wrong)
 
     with pytest.raises(RestlyConfigurationError, match="ReactAdminListParams"):
         fr.include_view(FastAPI(), LampView)
@@ -920,7 +920,7 @@ def test_a_sync_view_takes_a_function(sync_db):
         prefix = "/lamps"
         model = SyncLamp
         schema = LampSchema
-        schema_response = SchemaType(lambda view: _with_note(view.schema))
+        response_schema = SchemaType(lambda view: _with_note(view.schema))
 
     app = FastAPI()
     fr.include_view(app, LampView)
@@ -941,12 +941,12 @@ def test_endpoints_replaced_on_a_base_view_give_each_view_its_types(client, Lamp
 
     class ApiView(fr.AsyncRestView):
         @fr.get("/{id}")
-        async def get_one_endpoint(self, id: ViewID) -> Data[ViewResponse]:
+        async def get_one_endpoint(self, id: IDType) -> Data[ResponseSchema]:
             obj = await self.handle_get_one(id)
             return {"data": self.to_single_response(obj)}
 
         @fr.post("/")
-        async def create_endpoint(self, data: ViewCreate) -> Data[ViewResponse]:
+        async def create_endpoint(self, data: CreateSchema) -> Data[ResponseSchema]:
             obj = await self.handle_create(data)
             return {"data": self.to_single_response(obj)}
 
@@ -982,7 +982,7 @@ def test_a_delete_that_sends_the_row_shows_it_in_the_spec(client, Lamp):
         schema = LampSchema
 
         @fr.delete("/{id}", status_code=200)
-        async def delete_endpoint(self, id: int) -> ViewResponse:
+        async def delete_endpoint(self, id: int) -> ResponseSchema:
             obj = await self.get_one(id)
             response = self.to_single_response(obj)
             await self.handle_delete(id)

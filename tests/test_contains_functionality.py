@@ -13,7 +13,7 @@ from fastapi_restly.query._impl import (
     _apply_filtering,
     _is_string_field,
     _make_where_clause,
-    derive_schema_list_params,
+    derive_list_params_schema,
 )
 
 from ._models import SharedBase
@@ -55,7 +55,7 @@ class UserSchema(fr.IDSchema):
 class TestContainsSchemaGeneration:
     def test_string_field_detection(self):
         """Contains operators are added for string fields, not for non-strings."""
-        schema = derive_schema_list_params(UserSchema, User)
+        schema = derive_list_params_schema(UserSchema, User)
         fields = schema.model_fields
 
         assert "name__contains" in fields
@@ -91,7 +91,7 @@ class TestContainsSchemaGeneration:
         ):
             assert _is_string_field(Schema.model_fields[field_name]) is expected
 
-        params = derive_schema_list_params(Schema, PhoneUser)
+        params = derive_list_params_schema(Schema, PhoneUser)
         assert "email__contains" in params.model_fields
         assert "email__icontains" in params.model_fields
         assert "phone__contains" in params.model_fields
@@ -108,7 +108,7 @@ class TestContainsSchemaGeneration:
             email: str = Field(alias="userEmail")
             age: int
 
-        fields = derive_schema_list_params(Schema, User).model_fields
+        fields = derive_list_params_schema(Schema, User).model_fields
         assert "userName__contains" in fields
         assert "userName__icontains" in fields
         assert "userEmail__contains" in fields
@@ -129,7 +129,7 @@ class TestContainsSchemaGeneration:
             email: str
             address: Address
 
-        fields = derive_schema_list_params(
+        fields = derive_list_params_schema(
             Schema, DotUser, include_filters=("*", "*.*")
         ).model_fields
         assert "name__contains" in fields

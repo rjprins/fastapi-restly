@@ -21,7 +21,7 @@ from sqlalchemy import ForeignKey, orm
 import fastapi_restly as fr
 from fastapi_restly.db._config import RestlyContext
 from fastapi_restly.exc import RestlyMisuseWarning
-from fastapi_restly.views import ViewCreate
+from fastapi_restly.views import CreateSchema
 
 from ._models import SharedBase
 
@@ -93,7 +93,7 @@ def test_an_override_that_keeps_the_steps_does_not_warn():
             return self.to_list_response(result)
 
         @fr.post("/", status_code=201)
-        async def create_endpoint(self, data: ViewCreate) -> Any:
+        async def create_endpoint(self, data: CreateSchema) -> Any:
             return await super().create_endpoint(data)
 
     assert _register(KeptArticleView) == []
@@ -386,7 +386,7 @@ def test_declared_write_class_with_a_model_set_column_warns():
     class DeclaredCreateView(fr.AsyncRestView):
         prefix = "/declared-create-stamps"
         model = StampedNote
-        schema_create = StampCreate
+        create_schema = StampCreate
 
     messages = _register(DeclaredCreateView)
     # The generated schema marks the column ReadOnly, so only the declared
@@ -516,7 +516,7 @@ def test_an_inherited_schema_and_a_declared_update_class_are_linted():
 
     class ChildStampView(BaseStampView):
         prefix = "/child-stamps"
-        schema_update = StampUpdate
+        update_schema = StampUpdate
 
     app = fastapi.FastAPI()
     with RestlyContext():

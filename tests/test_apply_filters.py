@@ -296,7 +296,7 @@ def test_a_view_with_list_params_of_its_own(view_class):
         prefix = "/items"
         model = Item
         schema = ItemSchema
-        schema_list_params = ItemSearch
+        list_params_schema = ItemSearch
 
         async def apply_filters(self, stmt, list_params: ItemSearch):
             if list_params.q:

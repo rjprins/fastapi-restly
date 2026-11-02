@@ -35,7 +35,7 @@ def test_view_schema_keeps_every_column(client):
     assert fields["name"].annotation is str
     assert fields["price"].annotation is float
     assert fields["note"].is_required() is False
-    assert set(ItemView.schema_create.model_fields) == {"name", "price", "note"}
+    assert set(ItemView.create_schema.model_fields) == {"name", "price", "note"}
 
     create_tables()
     created = client.post("/items/", json={"name": "Pen", "price": 1.5}).json()

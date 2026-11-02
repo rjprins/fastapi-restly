@@ -172,7 +172,7 @@ async def test_a_reference_to_a_row_that_the_outer_block_added(env):
     async with enter(session):
         cities = city_view_type(request=None, session=session)
         countries = country_view_type(request=None, session=session)
-        body = cities.schema_create(name="Utrecht", country_code="NL")
+        body = cities.create_schema(name="Utrecht", country_code="NL")
         async with enter(cities.shared_write_action_commit()):
             async with enter(countries.write_action("create", obj=Country(code="NL"))):
                 with pytest.raises(fr.exc.NotFound, match="country_code: NL"):
@@ -272,7 +272,7 @@ async def test_a_row_that_the_block_deletes_and_then_references(env):
     )
     async with enter(session):
         view = view_type(request=None, session=session)
-        schema_obj = view.schema_create(name="x", team_id=1)
+        schema_obj = view.create_schema(name="x", team_id=1)
         build = (
             fr.objects.async_make_new_object
             if env.asynchronous
@@ -312,7 +312,7 @@ async def test_an_idref_to_a_row_that_the_block_deleted(env):
     )
     async with enter(session):
         view = view_type(request=None, session=session)
-        schema_obj = view.schema_create(name="x", team={"id": 1})
+        schema_obj = view.create_schema(name="x", team={"id": 1})
         build = (
             fr.objects.async_make_new_object
             if env.asynchronous
@@ -353,7 +353,7 @@ async def test_two_actions_in_one_shared_commit_check_each_others_rows(env):
             async with enter(members.shared_write_action_commit()):
                 await call(teams.handle_delete(2))
                 await call(
-                    members.handle_create(members.schema_create(name="x", team_id=2))
+                    members.handle_create(members.create_schema(name="x", team_id=2))
                 )
 
 
@@ -391,4 +391,4 @@ async def test_a_reference_changed_after_the_check_inside_update(env):
         await call(session.commit())
         view = view_type(request=None, session=session)
         with pytest.raises(fr.exc.NotFound, match="team_id: 3"):
-            await call(view.handle_update(1, view.schema_update(name="x", team_id=2)))
+            await call(view.handle_update(1, view.update_schema(name="x", team_id=2)))

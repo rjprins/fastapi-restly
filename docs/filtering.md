@@ -561,7 +561,7 @@ moment, and look at `/docs`. Every entry must match a key, so leave out
 `"*.*"` when the schema has no nested object. Add `"*.*.*"` for keys two
 levels down.
 
-{func}`derive_schema_list_params() <fastapi_restly.query.derive_schema_list_params>`
+{func}`derive_list_params_schema() <fastapi_restly.query.derive_list_params_schema>`
 takes the four settings and `sort_query_param` as keywords, so a route
 outside a view can build the same list params.
 
@@ -931,7 +931,7 @@ The route still documents `page`, `page_size` and `sort`, and ignores them.
 
 A route method with a `list_params` parameter takes the same list params as
 `GET /`. Restly gives it the view's
-{attr}`schema_list_params <fastapi_restly.views.BaseRestView.schema_list_params>`,
+{attr}`list_params_schema <fastapi_restly.views.BaseRestView.list_params_schema>`,
 so filters, sort and page are read and checked in the same way, OpenAPI shows
 them, and an unknown key returns `422`. A custom list route, such as a trash
 route, passes them on with `self.handle_get_many(list_params, scope=...)`; see
@@ -965,7 +965,7 @@ override. A route of your own that reads rows of the model starts from
 For list params that Restly does not generate, such as one search key, or
 the keys of another client library, write them as a Pydantic model. Declare
 it as
-{attr}`schema_list_params <fastapi_restly.views.BaseRestView.schema_list_params>`,
+{attr}`list_params_schema <fastapi_restly.views.BaseRestView.list_params_schema>`,
 and apply it to the statement in
 {meth}`apply_filters <fastapi_restly.views.RestView.apply_filters>` and
 {meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>`:
@@ -983,7 +983,7 @@ class ItemView(fr.AsyncRestView):
     prefix = "/items"
     model = Item
     schema = ItemSchema
-    schema_list_params = ItemSearch
+    list_params_schema = ItemSearch
 
     async def apply_filters(self, stmt, list_params: ItemSearch):
         if list_params.q:
@@ -1070,11 +1070,11 @@ class ItemView(fr.AsyncRestView):
     prefix = "/items"
     model = Item
     schema = ItemSchema
-    schema_list_params = ItemListParams
+    list_params_schema = ItemListParams
 
     async def apply_filters(self, stmt, list_params: ItemListParams):
         for name, value in (list_params.filter or {}).items():
-            key = fr.query.FilterKey(self.model, self.schema_response, name)
+            key = fr.query.FilterKey(self.model, self.response_schema, name)
             stmt = stmt.where(key.column == key.parse(value))
         return stmt
 
@@ -1083,7 +1083,7 @@ class ItemView(fr.AsyncRestView):
         sorted_on = []
         if list_params.sort:
             name = list_params.sort.removeprefix("-")
-            key = fr.query.SortKey(self.model, self.schema_response, name)
+            key = fr.query.SortKey(self.model, self.response_schema, name)
             descending = list_params.sort.startswith("-")
             stmt = stmt.order_by(
                 key.term(descending=descending, sort_nulls=self.sort_nulls)
@@ -1137,9 +1137,9 @@ so it is no key, as a `SecretStr` is not.
 
 In {meth}`before_include_view() <fastapi_restly.views.BaseRestView.before_include_view>`,
 Restly sets one class attribute,
-{attr}`schema_list_params <fastapi_restly.views.BaseRestView.schema_list_params>`.
+{attr}`list_params_schema <fastapi_restly.views.BaseRestView.list_params_schema>`.
 It is a Pydantic model that
-{func}`derive_schema_list_params(cls.schema_response, cls.model, pagination=cls.pagination) <fastapi_restly.query.derive_schema_list_params>`
+{func}`derive_list_params_schema(cls.response_schema, cls.model, pagination=cls.pagination) <fastapi_restly.query.derive_list_params_schema>`
 generates, with the view's list settings. It holds the pagination
 parameters, the sort parameter, the filter keys that the settings keep, and
 the view's own keys. Restly builds it once for each view.

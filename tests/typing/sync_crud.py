@@ -39,5 +39,5 @@ class OrderView(fr.RestView):
     prefix = "/orders"
     model = Order
     schema = OrderSchema
-    schema_create = OrderInput
-    schema_update = OrderInput
+    create_schema = OrderInput
+    update_schema = OrderInput

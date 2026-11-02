@@ -15,7 +15,7 @@ from starlette.datastructures import QueryParams
 
 import fastapi_restly as fr
 from fastapi_restly.exc import RestlyConfigurationError
-from fastapi_restly.query import apply_list_params, derive_schema_list_params
+from fastapi_restly.query import apply_list_params, derive_list_params_schema
 from fastapi_restly.testing import RestlyTestClient
 
 from ._models import SharedBase
@@ -419,7 +419,7 @@ def test_declared_grammar_must_match_the_pagination(client):
 
     with pytest.raises(
         RestlyConfigurationError,
-        match="schema_list_params was created for other pagination settings",
+        match="list_params_schema was created for other pagination settings",
     ):
 
         @fr.include_view(client.app)
@@ -428,7 +428,7 @@ def test_declared_grammar_must_match_the_pagination(client):
             model = Thing
             schema = ThingSchema
             pagination = None
-            schema_list_params = derive_schema_list_params(ThingSchema, Thing)
+            list_params_schema = derive_list_params_schema(ThingSchema, Thing)
 
     @fr.include_view(client.app)
     class MatchView(fr.AsyncRestView):
@@ -436,7 +436,7 @@ def test_declared_grammar_must_match_the_pagination(client):
         model = Thing
         schema = ThingSchema
         pagination = None
-        schema_list_params = derive_schema_list_params(
+        list_params_schema = derive_list_params_schema(
             ThingSchema, Thing, pagination=None
         )
 
@@ -446,7 +446,7 @@ def test_declared_grammar_must_match_the_pagination(client):
         prefix = "/paged-things"
         pagination = fr.NumberedPagination(default_page_size=1)
 
-    assert PagedView.schema_list_params.model_fields["page_size"].default == 1
+    assert PagedView.list_params_schema.model_fields["page_size"].default == 1
 
     create_tables()
     client.post("/things/", json={"name": "Thing 0"})
@@ -686,7 +686,7 @@ def test_no_pagination_is_what_none_means(client, unpaginated):
     client.get("/things/?page_size=2", assert_status_code=422)
     spec, operation = _list_operation(client)
     assert _response_properties(spec, operation) == ["data"]
-    assert view.schema_list_params.model_fields.keys().isdisjoint({"page", "page_size"})
+    assert view.list_params_schema.model_fields.keys().isdisjoint({"page", "page_size"})
 
 
 def test_no_pagination_envelope_gets_the_row_count(client):
@@ -749,7 +749,7 @@ def test_query_helpers_take_the_pagination():
 
     pagination = fr.NumberedPagination(page_size_query_param="size")
 
-    params_model = derive_schema_list_params(
+    params_model = derive_list_params_schema(
         WidgetSchema, Widget, pagination=pagination
     )
     assert {"page", "size", "sort"} <= set(params_model.model_fields)
@@ -764,7 +764,7 @@ def test_query_helpers_take_the_pagination():
     assert "LIMIT 10 OFFSET 20" in sql("page=3&size=10", pagination=pagination)
     assert "LIMIT" not in sql("sort=name", pagination=None)
     assert "LIMIT" not in sql("sort=name", pagination=fr.NoPagination())
-    unpaginated = derive_schema_list_params(
+    unpaginated = derive_list_params_schema(
         WidgetSchema, Widget, pagination=fr.NoPagination()
     )
     assert unpaginated.model_fields.keys().isdisjoint({"page", "page_size"})
@@ -785,12 +785,12 @@ def test_apply_list_params_reads_the_pagination_of_its_params_model():
         return str(stmt.compile(compile_kwargs={"literal_binds": True}))
 
     # without pagination, ``page`` is a filter, not a page number
-    unpaginated = derive_schema_list_params(BookmarkSchema, Bookmark, pagination=None)
+    unpaginated = derive_list_params_schema(BookmarkSchema, Bookmark, pagination=None)
     filtered = sql(unpaginated.model_validate({"page": ["3"]}))
     assert "bookmark.page = 3" in filtered
     assert "LIMIT" not in filtered
 
-    renamed = derive_schema_list_params(
+    renamed = derive_list_params_schema(
         BookmarkSchema,
         Bookmark,
         pagination=fr.NumberedPagination(

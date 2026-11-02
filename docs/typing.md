@@ -137,8 +137,8 @@ class UserView(
     prefix = "/users"
     model = User
     schema = UserSchema
-    schema_create = UserCreate
-    schema_update = UserUpdate
+    create_schema = UserCreate
+    update_schema = UserUpdate
 
     def where_id(self, id: int) -> ColumnElement[bool]:
         return User.id == id
@@ -167,7 +167,7 @@ these points:
   `User`, and so is each row of `self.select()`.
 - For the response type, give the view's schema: the response class that
   Restly builds is a subclass of it. A view that sets its own
-  {attr}`schema_response <fastapi_restly.views.BaseRestView.schema_response>`
+  {attr}`response_schema <fastapi_restly.views.BaseRestView.response_schema>`
   gives that class instead, as in `fr.AsyncRestView[User, UserResponse]`.
 
 :::{admonition} Details
@@ -216,9 +216,9 @@ returns the model, and
 takes the update body.
 
 The classes that
-{func}`derive_schema_response() <fastapi_restly.schemas.derive_schema_response>`
+{func}`derive_response_schema() <fastapi_restly.schemas.derive_response_schema>`
 returns cannot be used in an annotation. In a route, use the markers of
-`fastapi_restly.views` instead, such as `ViewResponse`: a type checker reads
+`fastapi_restly.views` instead, such as `ResponseSchema`: a type checker reads
 each marker as `Any`. See
 [Name the view's classes in a custom route](#name-the-response-classes).
 

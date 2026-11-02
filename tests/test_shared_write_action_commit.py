@@ -139,7 +139,7 @@ async def writes(request, tmp_path):
                 make_session=make_session,
                 model=Entry,
                 audit=Audit,
-                schema=view_type.schema_create,
+                schema=view_type.create_schema,
                 events=events,
                 after_calls=after_calls,
                 asynchronous=asynchronous,
@@ -314,7 +314,7 @@ async def test_create_update_and_delete_handlers_share_the_commit(writes):
     async with _enter(view.shared_write_action_commit()):
         obj = await _call(view.handle_create(writes.schema(name="created")))
         updated = await _call(
-            view.handle_update(obj.id, view.schema_update(name="updated"))
+            view.handle_update(obj.id, view.update_schema(name="updated"))
         )
         assert updated is obj
         assert await _call(view.handle_delete(obj.id)) is None
@@ -636,7 +636,7 @@ async def test_async_owner_drains_sync_hooks_through_run_sync(writes):
     def sync_create(session):
         view = SyncEntryView(request=None, session=session)
         with view.shared_write_action_commit():
-            return view.handle_create(view.schema_create(name="sync"))
+            return view.handle_create(view.create_schema(name="sync"))
 
     async with writes.view.shared_write_action_commit():
         await writes.view.handle_create(writes.schema(name="first"))

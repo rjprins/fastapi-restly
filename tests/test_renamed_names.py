@@ -22,14 +22,54 @@ VIEW_BASES = [fr.AsyncRestView, fr.RestView, fr.AsyncReactAdminView, fr.ReactAdm
 
 
 @pytest.mark.parametrize("base", VIEW_BASES)
-def test_old_list_params_setting_names_the_new_one(base):
+@pytest.mark.parametrize(
+    "old, new",
+    [
+        ("listing_param_schema", "list_params_schema"),
+        ("schema_list_params", "list_params_schema"),
+        ("schema_response", "response_schema"),
+        ("schema_create", "create_schema"),
+        ("schema_update", "update_schema"),
+    ],
+)
+def test_old_schema_setting_names_the_new_one(base, old, new):
     with pytest.raises(RestlyConfigurationError) as excinfo:
-        type("OldView", (base,), {"listing_param_schema": object})
+        type("OldView", (base,), {old: object})
 
     assert str(excinfo.value) == (
-        "OldView sets listing_param_schema, which was renamed to "
-        "schema_list_params. Rename the setting."
+        f"OldView sets {old}, which was renamed to {new}. Rename the setting."
     )
+
+
+def test_a_subclass_of_a_base_with_an_old_setting_names_the_base():
+    class OldMixin:
+        schema_response = object
+
+    with pytest.raises(RestlyConfigurationError) as excinfo:
+
+        class OldView(OldMixin, fr.AsyncRestView):
+            pass
+
+    assert "OldView sets schema_response (from OldMixin)" in str(excinfo.value)
+
+
+@pytest.mark.parametrize(
+    "module, name",
+    [
+        (fr.views, "ViewID"),
+        (fr.views, "ViewResponse"),
+        (fr.views, "ViewListResponse"),
+        (fr.views, "ViewCreate"),
+        (fr.views, "ViewUpdate"),
+        (fr.schemas, "derive_schema_response"),
+        (fr.schemas, "derive_schema_list_response"),
+        (fr.schemas, "derive_schema_create"),
+        (fr.schemas, "derive_schema_update"),
+        (fr.query, "derive_schema_list_params"),
+    ],
+)
+def test_an_old_marker_or_function_name_is_gone(module, name):
+    assert not hasattr(module, name)
 
 
 @pytest.mark.parametrize("base", VIEW_BASES)
@@ -180,7 +220,7 @@ def test_an_old_name_set_after_the_class_fails_at_registration(client):
     with pytest.raises(
         RestlyConfigurationError,
         match="LateView sets listing_param_schema, which was renamed to "
-        "schema_list_params",
+        "list_params_schema",
     ):
         fr.include_view(client.app, LateView)
 

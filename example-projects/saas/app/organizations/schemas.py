@@ -55,4 +55,4 @@ class OrganizationUpdate(BaseModel):
 
 # The response class that the view builds from OrganizationSchema. A custom route
 # names it, so OpenAPI shows OrganizationResponse there, as on the CRUD routes.
-OrganizationResponse = fr.schemas.derive_schema_response(OrganizationSchema)
+OrganizationResponse = fr.schemas.derive_response_schema(OrganizationSchema)

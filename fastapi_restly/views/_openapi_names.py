@@ -160,22 +160,22 @@ def _roles_of(view: Any) -> dict[type, list[_Role]]:
     def source(attribute: str) -> str | None:
         return from_schema if attribute in generated else None
 
-    response = view.schema_response
+    response = view.response_schema
     roles: dict[type, list[_Role]] = defaultdict(list)
     roles[view.schema].append(("schema", source("schema")))
-    roles[response].append(("response class", source("schema_response")))
+    roles[response].append(("response class", source("response_schema")))
     # A generated list response comes from the response class, which can be
     # the view's own.
     roles[view.list_response_schema].append(
         (
             "list response",
-            (source("schema_response") or f"from {_path(response)}")
+            (source("response_schema") or f"from {_path(response)}")
             if "list_response_schema" in generated
             else None,
         )
     )
-    roles[view.schema_create].append(("create body", source("schema_create")))
-    roles[view.schema_update].append(("update body", source("schema_update")))
+    roles[view.create_schema].append(("create body", source("create_schema")))
+    roles[view.update_schema].append(("update body", source("update_schema")))
     return roles
 
 
@@ -191,7 +191,7 @@ def _clash_message(
         lines.append(f"- {_describe(cls, roles.get(cls, {}))}")
     lines.append(
         "Give each class its own name. A class that you wrote for a view's "
-        "role goes on the view, for example as schema_create. Restly names "
+        "role goes on the view, for example as create_schema. Restly names "
         "the classes it generates after the view's schema, and the list "
         "response after the response class. To change those names, rename "
         "that class, or give a view without a schema one of its own."
@@ -200,7 +200,7 @@ def _clash_message(
         lines.append(
             "A list response gets its envelope from the pagination. A custom "
             "route that names the list response of a view passes the view's "
-            "pagination to derive_schema_list_response."
+            "pagination to derive_list_response_schema."
         )
     lines.append('See "Name your schemas" in the docs.')
     return "\n".join(lines)

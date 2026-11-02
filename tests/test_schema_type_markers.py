@@ -21,11 +21,11 @@ from fastapi_restly._routes import iter_routes, original_route
 from fastapi_restly.exc import RestlyConfigurationError
 from fastapi_restly.testing._client import RestlyTestClient
 from fastapi_restly.views import (
-    ViewCreate,
-    ViewID,
-    ViewListResponse,
-    ViewResponse,
-    ViewUpdate,
+    CreateSchema,
+    IDType,
+    ListResponseSchema,
+    ResponseSchema,
+    UpdateSchema,
 )
 
 from ._models import SharedBase
@@ -92,13 +92,15 @@ def _rename_mixin(env):
         if env.asynchronous:
 
             @fr.post("/{id}/rename", status_code=200)
-            async def rename(self, id: ViewID, schema_obj: ViewUpdate) -> ViewResponse:
+            async def rename(
+                self, id: IDType, schema_obj: UpdateSchema
+            ) -> ResponseSchema:
                 return await self.handle_update(id, schema_obj)
 
         else:
 
             @fr.post("/{id}/rename", status_code=200)
-            def rename(self, id: ViewID, schema_obj: ViewUpdate) -> ViewResponse:
+            def rename(self, id: IDType, schema_obj: UpdateSchema) -> ResponseSchema:
                 return self.handle_update(id, schema_obj)
 
     return RenameMixin
@@ -170,13 +172,13 @@ def test_list_markers_follow_the_pagination_of_the_view(env):
         if env.asynchronous:
 
             @fr.get("/named/{name}")
-            async def named(self, name: str, list_params) -> ViewListResponse:
+            async def named(self, name: str, list_params) -> ListResponseSchema:
                 result = await self.handle_get_many(
                     list_params, where=self.model.name == name
                 )
                 return result
 
-            @fr.get("/plain", response_model=list[ViewResponse])
+            @fr.get("/plain", response_model=list[ResponseSchema])
             async def plain(self, list_params):
                 result = await self.handle_get_many(list_params)
                 return [self.to_single_response(obj) for obj in result.objects]
@@ -184,13 +186,13 @@ def test_list_markers_follow_the_pagination_of_the_view(env):
         else:
 
             @fr.get("/named/{name}")
-            def named(self, name: str, list_params) -> ViewListResponse:
+            def named(self, name: str, list_params) -> ListResponseSchema:
                 result = self.handle_get_many(
                     list_params, where=self.model.name == name
                 )
                 return result
 
-            @fr.get("/plain", response_model=list[ViewResponse])
+            @fr.get("/plain", response_model=list[ResponseSchema])
             def plain(self, list_params):
                 result = self.handle_get_many(list_params)
                 return [self.to_single_response(obj) for obj in result.objects]
@@ -244,14 +246,14 @@ def test_markers_work_inside_other_types(env):
 
             @fr.get("/maybe/{id}")
             async def maybe(
-                self, id: Annotated[ViewID, Path(ge=1)]
-            ) -> ViewResponse | None:
+                self, id: Annotated[IDType, Path(ge=1)]
+            ) -> ResponseSchema | None:
                 return self.to_single_response(await self.handle_get_one(id))
 
         else:
 
             @fr.get("/maybe/{id}")
-            def maybe(self, id: Annotated[ViewID, Path(ge=1)]) -> ViewResponse | None:
+            def maybe(self, id: Annotated[IDType, Path(ge=1)]) -> ResponseSchema | None:
                 return self.to_single_response(self.handle_get_one(id))
 
     fr.include_view(env.client.app, ProductView)
@@ -278,11 +280,11 @@ def test_view_id_converter_with_another_name_or_a_given_converter(env):
         model = env.Product
 
         @fr.get("/by-item/{item_id}")
-        def by_item(self, item_id: ViewID) -> dict[str, int]:
+        def by_item(self, item_id: IDType) -> dict[str, int]:
             return {"item_id": item_id}
 
         @fr.get("/by-text/{id:str}")
-        def by_text(self, id: ViewID) -> dict[str, int]:
+        def by_text(self, id: IDType) -> dict[str, int]:
             return {"id": id}
 
     fr.include_view(env.client.app, ProductView)
@@ -300,12 +302,12 @@ def test_a_marker_on_a_plain_view_raises():
         prefix = "/ping"
 
         @fr.get("/")
-        def ping(self) -> ViewResponse:
+        def ping(self) -> ResponseSchema:
             return {}
 
     with pytest.raises(
         RestlyConfigurationError,
-        match=r"PingView\.ping uses fastapi_restly\.views\.ViewResponse",
+        match=r"PingView\.ping uses fastapi_restly\.views\.ResponseSchema",
     ):
         fr.include_view(FastAPI(), PingView)
 
@@ -327,31 +329,31 @@ def _generic_view(env):
         model = env.Product
 
         @fr.get("/annotated/{id}")
-        def annotated(self, id: ViewID) -> Data[ViewResponse]:
+        def annotated(self, id: IDType) -> Data[ResponseSchema]:
             return {"data": lamp(id)}
 
-        @fr.get("/decorator/{id}", response_model=Data[ViewResponse])
-        def decorator(self, id: ViewID):
+        @fr.get("/decorator/{id}", response_model=Data[ResponseSchema])
+        def decorator(self, id: IDType):
             return {"data": lamp(id)}
 
         @fr.get("/string/{id}")
-        def string(self, id: ViewID) -> "Data[ViewResponse]":
+        def string(self, id: IDType) -> "Data[ResponseSchema]":
             return {"data": lamp(id)}
 
         @fr.get("/many")
-        def many(self) -> Data[list[ViewResponse]]:
+        def many(self) -> Data[list[ResponseSchema]]:
             return {"data": [lamp(1)]}
 
         @fr.get("/optional/{id}")
-        def optional(self, id: ViewID) -> Data[ViewResponse] | None:
+        def optional(self, id: IDType) -> Data[ResponseSchema] | None:
             return None if id == 0 else {"data": lamp(id)}
 
         @fr.get("/raw/{id}")
-        def raw(self, id: ViewID) -> Data[ViewResponse]:
+        def raw(self, id: IDType) -> Data[ResponseSchema]:
             return lamp(id)
 
         @fr.post("/echo", status_code=200)
-        def echo(self, body: Data[ViewCreate]) -> Data[ViewCreate]:
+        def echo(self, body: Data[CreateSchema]) -> Data[CreateSchema]:
             return body
 
     return ProductView
@@ -425,7 +427,7 @@ def test_a_route_that_returns_the_row_for_a_generic_class_fails_as_in_fastapi(en
 def test_each_view_gets_its_own_class_in_a_generic_class(env):
     class Base(env.base):
         @fr.get("/one/{id}")
-        def one(self, id: ViewID) -> Data[ViewResponse]:
+        def one(self, id: IDType) -> Data[ResponseSchema]:
             return {"data": {"id": id, "name": "Lamp"}}
 
     class ProductView(Base):
@@ -463,11 +465,11 @@ def test_a_marker_in_a_generic_class_on_a_plain_view_raises():
         prefix = "/ping"
 
         @fr.get("/")
-        def ping(self) -> Data[ViewResponse]:
+        def ping(self) -> Data[ResponseSchema]:
             return {}
 
     with pytest.raises(
         RestlyConfigurationError,
-        match=r"PingView\.ping uses fastapi_restly\.views\.ViewResponse",
+        match=r"PingView\.ping uses fastapi_restly\.views\.ResponseSchema",
     ):
         fr.include_view(FastAPI(), PingView)

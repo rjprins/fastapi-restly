@@ -91,9 +91,9 @@ class TaskLabelView(AuthenticatedView[TaskLabel]):
         labels = LabelView(session=self.session, request=self.request)
         async with self.shared_write_action_commit():
             label = await labels.handle_create(
-                LabelView.schema_create(name=request.label_name, color=request.color)
+                LabelView.create_schema(name=request.label_name, color=request.color)
             )
             link = await self.handle_create(
-                self.schema_create(task_id=request.task_id, label_id=label.id)
+                self.create_schema(task_id=request.task_id, label_id=label.id)
             )
         return link

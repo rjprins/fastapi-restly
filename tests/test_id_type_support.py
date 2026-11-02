@@ -561,7 +561,7 @@ def test_redecorated_builtin_endpoint_keeps_its_custom_path(flavor):
             def get_one_endpoint(self, id):
                 return {"id": id}
 
-    # wraps() copies the id: ViewID annotation of the built-in method, so the
+    # wraps() copies the id: IDType annotation of the built-in method, so the
     # path gets the view's converter. The rest of the path stays as written.
     fr.include_view(flavor.client.app, ThingView)
     assert flavor.client.get("/things/lookup/5").json() == {"id": 5}

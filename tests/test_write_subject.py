@@ -329,7 +329,7 @@ async def test_a_soft_delete_gives_the_row_in_the_handler_and_in_a_block(subject
 async def test_create_and_update_handlers_name_their_result(subject):
     view = subject.view
     created = await _call(
-        view.handle_create(view.schema_create(name="z", team_id=subject.team_b.id))
+        view.handle_create(view.create_schema(name="z", team_id=subject.team_b.id))
     )
     assert subject.calls[0] == ("authorize", "create", None)
     assert subject.calls[1] == ("after", "create", created, None)

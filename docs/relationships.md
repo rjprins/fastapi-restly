@@ -382,7 +382,7 @@ class PostView(fr.AsyncRestView):
     prefix = "/posts"
     model = Post
     schema = PostSchema
-    schema_response = PostResponse
+    response_schema = PostResponse
 ```
 
 A link with columns of its own, such as the position of a tag on a post, is
@@ -555,7 +555,7 @@ task_label = await async_make_new_object(
 
 `async_make_new_object` still checks that the rows exist, and writes the
 foreign key columns. A schema that validates, such as
-`self.schema_create(task_id=..., label_id=...)`, needs none of this, and a
+`self.create_schema(task_id=..., label_id=...)`, needs none of this, and a
 handler can take it. The SaaS example's `POST /task-labels/create-and-attach`
 route does that, in
 [`app/labels/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/labels/views.py).

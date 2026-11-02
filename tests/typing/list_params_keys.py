@@ -44,13 +44,13 @@ class MeetingView(
     prefix = "/meetings"
     model = Meeting
     schema = MeetingSchema
-    schema_list_params = MeetingListParams
+    list_params_schema = MeetingListParams
 
     async def apply_filters(
         self, stmt: sqlalchemy.Select[Any], list_params: MeetingListParams
     ) -> sqlalchemy.Select[Any]:
         for name, value in (list_params.filter or {}).items():
-            key = fr.query.FilterKey(self.model, self.schema_response, name)
+            key = fr.query.FilterKey(self.model, self.response_schema, name)
             stmt = stmt.where(key.column == key.parse(value))
         return stmt
 
@@ -61,7 +61,7 @@ class MeetingView(
         sorted_on: list[Any] = []
         if list_params.sort:
             name = list_params.sort.removeprefix("-")
-            key = fr.query.SortKey(self.model, self.schema_response, name)
+            key = fr.query.SortKey(self.model, self.response_schema, name)
             descending = list_params.sort.startswith("-")
             stmt = stmt.order_by(
                 key.term(descending=descending, sort_nulls=self.sort_nulls)
@@ -99,7 +99,7 @@ def find_heroes(name: str, sort: str) -> sqlalchemy.Select[Any]:
 
 def list_heroes(query: dict[str, str]) -> sqlalchemy.Select[Any]:
     """The functions of ``fr.query`` take a SQLModel table too."""
-    list_params = fr.query.derive_schema_list_params(HeroSchema, Hero)
+    list_params = fr.query.derive_list_params_schema(HeroSchema, Hero)
     return fr.query.apply_list_params(
         sqlalchemy.select(Hero), list_params.model_validate(query), Hero, HeroSchema
     )

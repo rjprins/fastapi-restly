@@ -32,7 +32,7 @@ def client(request: pytest.FixtureRequest) -> Iterator[RestlyTestClient]:
 
     authorized: list[str] = []
     is_deleted = fr.where_clause(Item.deleted_at.is_not(None))
-    ItemResponse = fr.schemas.derive_schema_response(ItemSchema)
+    ItemResponse = fr.schemas.derive_response_schema(ItemSchema)
     app = FastAPI()
 
     if sync:

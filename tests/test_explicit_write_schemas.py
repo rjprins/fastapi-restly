@@ -1,7 +1,7 @@
 """An explicit write schema says what a client may write.
 
 The write path used to check the response schema's ReadOnly markers as well.
-A field that an explicit ``schema_create`` or ``schema_update`` declares, but
+A field that an explicit ``create_schema`` or ``update_schema`` declares, but
 the response schema marks ReadOnly, was then dropped: a 500 for a required
 field, a lost value for an optional one, an ignored PATCH, and a 500 for a
 reference that the response schema embeds as a nested object.
@@ -139,7 +139,7 @@ def api(request: pytest.FixtureRequest) -> Iterator[_Api]:
 
 
 def test_required_create_field_is_written(api):
-    client = api.make_client(schema_create=api.models.CommentCreate)
+    client = api.make_client(create_schema=api.models.CommentCreate)
 
     created = client.post(
         "/comments/", json={"body": "hi", "story_id": 2}, assert_status_code=201
@@ -151,7 +151,7 @@ def test_required_create_field_is_written(api):
 
 
 def test_optional_create_field_is_written(api):
-    client = api.make_client(schema_create=api.models.CommentCreate)
+    client = api.make_client(create_schema=api.models.CommentCreate)
 
     created = client.post(
         "/comments/",
@@ -165,7 +165,7 @@ def test_optional_create_field_is_written(api):
 
 def test_explicit_update_field_is_written(api):
     client = api.make_client(
-        schema_create=api.models.CommentCreate, schema_update=api.models.CommentUpdate
+        create_schema=api.models.CommentCreate, update_schema=api.models.CommentUpdate
     )
     created = client.post("/comments/", json={"body": "hi", "story_id": 1}).json()
 
@@ -181,7 +181,7 @@ def test_explicit_update_field_is_written(api):
 @pytest.mark.parametrize("read", ["CommentSchema", "CommentReadNested"])
 def test_reference_the_response_embeds_is_written(api, read):
     client = api.make_client(
-        schema=getattr(api.models, read), schema_create=api.models.CommentCreateByRef
+        schema=getattr(api.models, read), create_schema=api.models.CommentCreateByRef
     )
 
     created = client.post(
@@ -193,9 +193,9 @@ def test_reference_the_response_embeds_is_written(api, read):
 
 
 def test_missing_reference_is_still_checked(api):
-    client = api.make_client(schema_create=api.models.CommentCreate)
+    client = api.make_client(create_schema=api.models.CommentCreate)
 
-    by_ref = api.make_client(schema_create=api.models.CommentCreateByRef)
+    by_ref = api.make_client(create_schema=api.models.CommentCreateByRef)
 
     client.post(
         "/comments/", json={"body": "hi", "story_id": 999}, assert_status_code=404
@@ -206,9 +206,9 @@ def test_missing_reference_is_still_checked(api):
 
 
 def test_create_only_field(api):
-    # ReadOnly on the response schema, declared in schema_create, and a
-    # generated schema_update: settable on create, frozen afterwards.
-    client = api.make_client(schema_create=api.models.CommentCreate)
+    # ReadOnly on the response schema, declared in create_schema, and a
+    # generated update_schema: settable on create, frozen afterwards.
+    client = api.make_client(create_schema=api.models.CommentCreate)
     created = client.post("/comments/", json={"body": "hi", "story_id": 1}).json()
 
     updated = client.patch(
@@ -224,7 +224,7 @@ def test_create_only_field(api):
 
 
 def test_write_schema_readonly_is_still_skipped(api):
-    client = api.make_client(schema_create=api.models.CommentCreateGuarded)
+    client = api.make_client(create_schema=api.models.CommentCreateGuarded)
 
     created = client.post(
         "/comments/",

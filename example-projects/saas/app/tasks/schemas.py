@@ -43,4 +43,4 @@ class TaskSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
 # The response class that TaskView builds from TaskSchema. A route of
 # another view that answers with tasks names it, so OpenAPI shows
 # TaskResponse there, as on the CRUD routes of TaskView.
-TaskResponse = fr.schemas.derive_schema_response(TaskSchema)
+TaskResponse = fr.schemas.derive_response_schema(TaskSchema)

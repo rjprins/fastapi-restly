@@ -7,7 +7,7 @@ from typing import Optional
 import pydantic
 
 import fastapi_restly as fr
-from fastapi_restly.schemas import derive_schema_response
+from fastapi_restly.schemas import derive_response_schema
 
 
 class AuthorSchema(fr.IDSchema):
@@ -21,8 +21,8 @@ class LoginSchema(fr.IDSchema):
     password: fr.WriteOnly[str]
 
 
-AuthorResponse = derive_schema_response(AuthorSchema)
-LoginResponse = derive_schema_response(LoginSchema)
+AuthorResponse = derive_response_schema(AuthorSchema)
+LoginResponse = derive_response_schema(LoginSchema)
 
 
 class Note(pydantic.BaseModel):

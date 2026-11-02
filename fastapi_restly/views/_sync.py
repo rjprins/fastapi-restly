@@ -35,7 +35,13 @@ from ._lifecycle import (
 )
 from ._list_params import _apply_own_filters, _check_list_methods
 from ._reads import _count_statement
-from ._view_types import ViewCreate, ViewID, ViewListResponse, ViewResponse, ViewUpdate
+from ._schema_types import (
+    CreateSchema,
+    IDType,
+    ListResponseSchema,
+    ResponseSchema,
+    UpdateSchema,
+)
 
 
 class RestView(
@@ -86,7 +92,7 @@ class RestView(
     # ====================================================================
 
     @get("/")
-    def get_many_endpoint(self, list_params: Any) -> ViewListResponse:
+    def get_many_endpoint(self, list_params: Any) -> ListResponseSchema:
         """``GET /`` endpoint method. Put the rows in ``scope``, and the list
         params in ``apply_list_params``. Restly builds the response with
         ``to_list_response``. Replace this method only to change the HTTP
@@ -94,7 +100,7 @@ class RestView(
         return self.handle_get_many(list_params)
 
     @get("/{id}")
-    def get_one_endpoint(self, id: ViewID) -> ViewResponse:
+    def get_one_endpoint(self, id: IDType) -> ResponseSchema:
         """``GET /{id}`` endpoint method. Put the rows in ``scope``, and the
         lookup of the id in ``where_id``. Restly builds the response with
         ``to_single_response``. Replace this method only to change the HTTP
@@ -102,7 +108,7 @@ class RestView(
         return self.handle_get_one(id)
 
     @post("/")
-    def create_endpoint(self, data: ViewCreate) -> ViewResponse:
+    def create_endpoint(self, data: CreateSchema) -> ResponseSchema:
         """``POST /`` endpoint method. Override ``create`` for domain
         logic (it is commit-free; the handler owns the commit). Restly builds
         the response with ``to_single_response``. Replace this method only to
@@ -110,7 +116,7 @@ class RestView(
         return self.handle_create(data)
 
     @patch("/{id}")
-    def update_endpoint(self, id: ViewID, data: ViewUpdate) -> ViewResponse:
+    def update_endpoint(self, id: IDType, data: UpdateSchema) -> ResponseSchema:
         """``PATCH /{id}`` endpoint method. Override ``update`` for
         domain logic. Restly builds the response with
         ``to_single_response``. Replace this method only to change the HTTP
@@ -118,7 +124,7 @@ class RestView(
         return self.handle_update(id, data)
 
     @delete("/{id}")
-    def delete_endpoint(self, id: ViewID) -> fastapi.Response:
+    def delete_endpoint(self, id: IDType) -> fastapi.Response:
         """``DELETE /{id}`` endpoint method. Override ``delete`` for
         domain logic (e.g. soft delete); replace this method only to change the
         HTTP contract (e.g. return the deleted object instead of 204)."""
@@ -364,7 +370,7 @@ class RestView(
         :param list_params: the list params (filter, sort, page) as the
             endpoint receives them. A ``QueryParams`` or a mapping goes
             through
-            :attr:`~fastapi_restly.views.BaseRestView.schema_list_params`
+            :attr:`~fastapi_restly.views.BaseRestView.list_params_schema`
             first, as on the list route.
         :param scope: a clause that replaces the view scope for this read;
             ``fr.clauses.UNSCOPED`` reads unscoped.
@@ -498,7 +504,7 @@ class RestView(
 
         Override for list params of your own; the common case is driven by
         configuration. A ``QueryParams`` or a mapping goes through
-        :attr:`~fastapi_restly.views.BaseRestView.schema_list_params` first,
+        :attr:`~fastapi_restly.views.BaseRestView.list_params_schema` first,
         as on the list route. In a ``QueryParams``, a key that the route
         reads is left out. Any other key that the list params do not have
         raises ``RequestValidationError``, as on the list route (see
@@ -510,7 +516,7 @@ class RestView(
             stmt,
             list_params,
             self.model,
-            type(self).schema_response,
+            type(self).response_schema,
             pagination=self.pagination,
             sort_nulls=self.sort_nulls,
         )
@@ -526,7 +532,7 @@ class RestView(
         Like every custom read route, such a route calls :meth:`authorize`
         and starts from :meth:`~fastapi_restly.views.BaseRestView.select`, which applies the scope. :meth:`apply_list_params` calls this
         method first. A ``QueryParams`` or a mapping goes through
-        :attr:`~fastapi_restly.views.BaseRestView.schema_list_params` first,
+        :attr:`~fastapi_restly.views.BaseRestView.list_params_schema` first,
         as on the list route. In a ``QueryParams``, a key that the route
         reads is left out. Any other key that the list params do not have
         raises ``RequestValidationError``, as on the list route (see
@@ -540,7 +546,7 @@ class RestView(
             stmt,
             list_params,
             self.model,
-            type(self).schema_response,
+            type(self).response_schema,
             pagination=self.pagination,
         )
         results = [

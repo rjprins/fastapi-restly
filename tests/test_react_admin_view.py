@@ -707,7 +707,7 @@ def test_a_react_admin_view_keeps_the_list_params_of_its_base(client):
         text: Mapped[str]
 
     class SearchAdmin(fr.AsyncReactAdminView):
-        schema_list_params = SearchParams
+        list_params_schema = SearchParams
 
         async def apply_filters(self, stmt, list_params):
             stmt = await super().apply_filters(stmt, list_params)
@@ -835,7 +835,7 @@ def test_react_admin_list_params_must_be_react_admin_list_params(client):
     with pytest.raises(RestlyConfigurationError, match="ReactAdminListParams"):
 
         class PlainView(fr.AsyncReactAdminView):
-            schema_list_params = PlainParams
+            list_params_schema = PlainParams
 
 
 # --- React-admin specific endpoints (PUT /{id}) ---

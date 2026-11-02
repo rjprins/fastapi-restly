@@ -18,7 +18,7 @@ from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
 from fastapi_restly.testing._client import RestlyTestClient
-from fastapi_restly.views import ViewUpdate
+from fastapi_restly.views import UpdateSchema
 
 from ._models import SharedBase
 from .conftest import create_tables
@@ -88,7 +88,9 @@ def test_string_annotation_on_replaced_endpoint_is_kept(request, asynchronous):
 
 
 @pytest.mark.parametrize("asynchronous", [False, True], ids=["sync", "async"])
-def test_string_markers_on_replaced_endpoint_get_the_view_types(request, asynchronous):
+def test_string_markers_on_replaced_endpoint_get_the_schema_types(
+    request, asynchronous
+):
     client, make_tables = _client_and_tables(request, asynchronous)
 
     class Product(fr.IDMixin, SharedBase):
@@ -106,27 +108,27 @@ def test_string_markers_on_replaced_endpoint_get_the_view_types(request, asynchr
 
             @fr.patch("/{id}")
             async def update_endpoint(
-                self, id: fr.views.ViewID, schema_obj: ViewUpdate
-            ) -> fr.views.ViewResponse:
+                self, id: fr.views.IDType, schema_obj: UpdateSchema
+            ) -> fr.views.ResponseSchema:
                 return await self.handle_update(id, schema_obj)
 
         else:
 
             @fr.patch("/{id}")
             def update_endpoint(
-                self, id: fr.views.ViewID, schema_obj: ViewUpdate
-            ) -> fr.views.ViewResponse:
+                self, id: fr.views.IDType, schema_obj: UpdateSchema
+            ) -> fr.views.ResponseSchema:
                 return self.handle_update(id, schema_obj)
 
     assert ProductView.update_endpoint.__annotations__ == {
-        "id": "fr.views.ViewID",
-        "schema_obj": "ViewUpdate",
-        "return": "fr.views.ViewResponse",
+        "id": "fr.views.IDType",
+        "schema_obj": "UpdateSchema",
+        "return": "fr.views.ResponseSchema",
     }
     fr.include_view(client.app, ProductView)
     make_tables()
 
-    # schema_update takes a partial body, and id takes the int primary key
+    # update_schema takes a partial body, and id takes the int primary key
     created = client.post("/products/", json={"name": "Lamp", "price": 1.0}).json()
     response = client.patch(f"/products/{created['id']}", json={"name": "Desk"})
     assert response.json() == {"id": created["id"], "name": "Desk", "price": 1.0}

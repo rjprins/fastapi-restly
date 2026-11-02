@@ -363,8 +363,8 @@ def test_async_rest_view_crud_and_pagination():
         prefix = "/async-orders"
         model = Order
         schema = OrderSchema
-        schema_create = OrderInputSchema
-        schema_update = OrderInputSchema
+        create_schema = OrderInputSchema
+        update_schema = OrderInputSchema
 
     async def run():
         engine, make_session = _make_engine_and_session()
@@ -614,7 +614,7 @@ def test_get_one_takes_a_predicate_in_place_of_the_id():
         prefix = "/docs"
         model = Doc
         schema = DocSchema
-        schema_update = DocUpdate
+        update_schema = DocUpdate
 
     async def run():
         engine, make_session = _make_engine_and_session()
@@ -684,7 +684,7 @@ def test_get_one_refuses_an_expression_on_another_table():
         prefix = "/boxes"
         model = Box
         schema = BoxSchema
-        schema_update = BoxUpdate
+        update_schema = BoxUpdate
 
     async def run():
         engine, make_session = _make_engine_and_session()

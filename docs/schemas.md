@@ -27,9 +27,9 @@ response class too; [Filtering, Sorting & Pagination](filtering.md)
 covers them.
 
 You can set each class on the view yourself, as
-{attr}`schema_response <fastapi_restly.views.BaseRestView.schema_response>`,
-{attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` or
-{attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>`.
+{attr}`response_schema <fastapi_restly.views.BaseRestView.response_schema>`,
+{attr}`create_schema <fastapi_restly.views.BaseRestView.create_schema>` or
+{attr}`update_schema <fastapi_restly.views.BaseRestView.update_schema>`.
 Restly then uses your class as you wrote it. A view without a
 {attr}`schema <fastapi_restly.views.BaseRestView.schema>` gets one that
 Restly generates from the model.
@@ -121,7 +121,7 @@ response as text; see [Keep NaN and infinity](#nan-and-infinity). It also
 checks that the markers are used in the right place; see
 [the next section](#readonly-and-writeonly).
 
-A request body that you set on the view, such as `schema_create`, can also be
+A request body that you set on the view, such as `create_schema`, can also be
 a plain `pydantic.BaseModel`. Its fields can still use `ReadOnly`,
 `WriteOnly` and {class}`fr.MustExist <fastapi_restly.schemas.MustExist>`.
 
@@ -196,8 +196,8 @@ A JSON column has its own rules for `ReadOnly` and `WriteOnly` fields; see
 (explicit-write-schemas)=
 ## Write the request body yourself
 
-A {attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` or
-{attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>` that
+A {attr}`create_schema <fastapi_restly.views.BaseRestView.create_schema>` or
+{attr}`update_schema <fastapi_restly.views.BaseRestView.update_schema>` that
 you set on the view is the whole contract for its request. Restly writes every
 field that it declares, except the fields that the class itself marks
 `ReadOnly`. The markers on the view's schema only shape the bodies that Restly
@@ -221,7 +221,7 @@ class CommentView(fr.AsyncRestView):
     prefix = "/comments"
     model = Comment
     schema = CommentSchema
-    schema_create = CommentCreate
+    create_schema = CommentCreate
 ```
 
 `POST /comments` sets `story_id`. The generated update body leaves it out, so
@@ -639,7 +639,7 @@ fields. Restly builds this class even when the schema has no `WriteOnly`
 fields, so OpenAPI always shows `UserResponse`.
 
 When what goes out differs more from what comes in, set
-{attr}`schema_response <fastapi_restly.views.BaseRestView.schema_response>`
+{attr}`response_schema <fastapi_restly.views.BaseRestView.response_schema>`
 on the view. Everything that goes out follows it:
 
 - every single response, and each item of the list response;
@@ -647,7 +647,7 @@ on the view. Everything that goes out follows it:
   only on the fields that go out;
 - the relationships that the view loads.
 
-The request bodies still follow `schema_create` and `schema_update`, which
+The request bodies still follow `create_schema` and `update_schema`, which
 Restly derives from `schema`:
 
 ```python
@@ -666,7 +666,7 @@ class AccountView(fr.AsyncRestView):
     prefix = "/accounts"
     model = Account
     schema = AccountSchema
-    schema_response = AccountResponse
+    response_schema = AccountResponse
 ```
 
 `POST /accounts` takes `name`, `email` and `team_id`. Every response shows
@@ -696,11 +696,11 @@ the view's schema `UserSchema`, the resource is `User`:
 
 | Role | Class | View attribute |
 |---|---|---|
-| response | `UserResponse` | {attr}`schema_response <fastapi_restly.views.BaseRestView.schema_response>` |
-| create body | `UserCreate` | {attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` |
-| update body | `UserUpdate` | {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>` |
+| response | `UserResponse` | {attr}`response_schema <fastapi_restly.views.BaseRestView.response_schema>` |
+| create body | `UserCreate` | {attr}`create_schema <fastapi_restly.views.BaseRestView.create_schema>` |
+| update body | `UserUpdate` | {attr}`update_schema <fastapi_restly.views.BaseRestView.update_schema>` |
 | list response | `UserListResponse` | none |
-| list params | `UserListParams` | {attr}`schema_list_params <fastapi_restly.views.BaseRestView.schema_list_params>` |
+| list params | `UserListParams` | {attr}`list_params_schema <fastapi_restly.views.BaseRestView.list_params_schema>` |
 
 A client sees these names in OpenAPI. It does not see the view's schema,
 unless another schema nests it or a custom route names it. The list params
@@ -754,7 +754,7 @@ rules for the classes that you write:
       prefix = "/tasks"
       model = Task
       schema = TaskSchema
-      schema_create = TaskCreate
+      create_schema = TaskCreate
   ```
 
   A class for another purpose, such as the body of a bulk route, gets a name
@@ -769,7 +769,7 @@ rules for the classes that you write:
   ```
 
   The list response takes its name from the response class. So when the two
-  views set the same `schema_response`, give one view a response class of
+  views set the same `response_schema`, give one view a response class of
   its own in the same way.
 
 :::{admonition} Details
@@ -803,14 +803,14 @@ the view registers, Restly puts the view's class in place of each marker:
 
 | Marker | The view's class | On `UserView` |
 |---|---|---|
-| {data}`ViewResponse <fastapi_restly.views.ViewResponse>` | {attr}`schema_response <fastapi_restly.views.BaseRestView.schema_response>` | `UserResponse` |
-| {data}`ViewListResponse <fastapi_restly.views.ViewListResponse>` | the list response, with the view's pagination | `UserListResponse` |
-| {data}`ViewCreate <fastapi_restly.views.ViewCreate>` | {attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` | `UserCreate` |
-| {data}`ViewUpdate <fastapi_restly.views.ViewUpdate>` | {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>` | `UserUpdate` |
-| {data}`ViewID <fastapi_restly.views.ViewID>` | {attr}`id_type <fastapi_restly.views.BaseRestView.id_type>` | `int` |
+| {data}`ResponseSchema <fastapi_restly.views.ResponseSchema>` | {attr}`response_schema <fastapi_restly.views.BaseRestView.response_schema>` | `UserResponse` |
+| {data}`ListResponseSchema <fastapi_restly.views.ListResponseSchema>` | the list response, with the view's pagination | `UserListResponse` |
+| {data}`CreateSchema <fastapi_restly.views.CreateSchema>` | {attr}`create_schema <fastapi_restly.views.BaseRestView.create_schema>` | `UserCreate` |
+| {data}`UpdateSchema <fastapi_restly.views.UpdateSchema>` | {attr}`update_schema <fastapi_restly.views.BaseRestView.update_schema>` | `UserUpdate` |
+| {data}`IDType <fastapi_restly.views.IDType>` | {attr}`id_type <fastapi_restly.views.BaseRestView.id_type>` | `int` |
 
 ```python
-from fastapi_restly.views import ViewID, ViewListResponse, ViewResponse
+from fastapi_restly.views import IDType, ListResponseSchema, ResponseSchema
 
 
 @fr.include_view(app)
@@ -823,11 +823,11 @@ class UserView(AppView):
         ACTIVATE = "activate"
 
     @fr.get("/inactive")
-    async def inactive(self, list_params) -> ViewListResponse:
+    async def inactive(self, list_params) -> ListResponseSchema:
         return await self.handle_get_many(list_params, where=User.active.is_(False))
 
     @fr.post("/{id}/activate", status_code=200)
-    async def activate(self, id: ViewID) -> ViewResponse:
+    async def activate(self, id: IDType) -> ResponseSchema:
         user = await self.get_one(id)
         async with self.write_action(self.Action.ACTIVATE, obj=user):
             user.active = True
@@ -835,7 +835,7 @@ class UserView(AppView):
 ```
 
 OpenAPI then shows `UserListResponse` and `UserResponse` for these routes,
-as for the CRUD routes. A path parameter annotated `ViewID` gets the path
+as for the CRUD routes. A path parameter annotated `IDType` gets the path
 converter of the id type, as the item routes do: here `/{id:int}`; see
 [Item paths](#item-route-matching).
 
@@ -858,7 +858,7 @@ two views this way, in
 
 A marker works wherever the class could go: in a parameter annotation, in the
 return annotation, in `response_model=`, and inside another type, such as
-`list[ViewResponse]` or `ViewResponse | None`. `Annotated[ViewID, Path(ge=1)]`
+`list[ResponseSchema]` or `ResponseSchema | None`. `Annotated[IDType, Path(ge=1)]`
 keeps the `Path(ge=1)`. A path that gives a converter, such as `/{id:str}`,
 keeps it.
 
@@ -869,9 +869,9 @@ no schema, so a route on it cannot use the markers: registration raises
 
 To use the classes outside a route, or the classes of another view, build
 them with
-{func}`derive_schema_response(schema) <fastapi_restly.schemas.derive_schema_response>`
+{func}`derive_response_schema(schema) <fastapi_restly.schemas.derive_response_schema>`
 and
-{func}`derive_schema_list_response(schema_response, pagination=...) <fastapi_restly.schemas.derive_schema_list_response>`.
+{func}`derive_list_response_schema(response_schema, pagination=...) <fastapi_restly.schemas.derive_list_response_schema>`.
 They return the same classes that the view uses. Pass the view's pagination
 as it is, also when it is `None`. A list response with another envelope than
 the view's has another shape, for example `data` without `total_count`.
@@ -1065,19 +1065,19 @@ also covers classes that do not derive from `BaseSchema`.
 Restly builds each class the first time something reads it, once for each view.
 For the view's schema `UserSchema`:
 
-- {attr}`schema_response <fastapi_restly.views.BaseRestView.schema_response>`
+- {attr}`response_schema <fastapi_restly.views.BaseRestView.response_schema>`
   comes from
-  {func}`derive_schema_response() <fastapi_restly.schemas.derive_schema_response>`.
+  {func}`derive_response_schema() <fastapi_restly.schemas.derive_response_schema>`.
   It is a subclass of `UserSchema` that deletes the `WriteOnly` fields. Each
   call with the same schema returns the same class, so a custom route can
   name it.
-- {attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` comes
-  from {func}`derive_schema_create() <fastapi_restly.schemas.derive_schema_create>`.
+- {attr}`create_schema <fastapi_restly.views.BaseRestView.create_schema>` comes
+  from {func}`derive_create_schema() <fastapi_restly.schemas.derive_create_schema>`.
   It is a subclass of `UserSchema` with `OmitReadOnlyMixin` first in the MRO.
   That mixin deletes the `ReadOnly` fields from `cls.model_fields` and rebuilds
   the class with `model_rebuild(force=True)`.
-- {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>` comes
-  from {func}`derive_schema_update() <fastapi_restly.schemas.derive_schema_update>`.
+- {attr}`update_schema <fastapi_restly.views.BaseRestView.update_schema>` comes
+  from {func}`derive_update_schema() <fastapi_restly.schemas.derive_update_schema>`.
   It adds `PatchMixin` as well. After the `ReadOnly` fields are gone, it sets the
   default of every field to `None`, so the client may leave out each field.
   The defaults of `UserSchema` are **replaced** by `None`, not kept. Each
@@ -1103,7 +1103,7 @@ A subclass of one of these classes keeps the fields out that the class deleted,
 unless the subclass declares such a field itself. So `class MyUpdate(UserUpdate)`
 cannot write a `ReadOnly` field by accident.
 
-Declare `schema_response`, `schema_create` or `schema_update` on the view class
+Declare `response_schema`, `create_schema` or `update_schema` on the view class
 to use your own class instead.
 
 (subclass-new-classes)=
@@ -1112,17 +1112,17 @@ to use your own class instead.
 A subclass inherits the classes that its base view declares. Restly builds a
 class again for the subclass in two cases: the base view does not declare it, or
 what it is built from changes. A subclass that declares a new `schema` gets a new
-`schema_response`, `schema_create`, `schema_update` and `schema_list_params`. A
-subclass that declares a new `schema_response` gets new `schema_list_params`. A
+`response_schema`, `create_schema`, `update_schema` and `list_params_schema`. A
+subclass that declares a new `response_schema` gets new `list_params_schema`. A
 view without a schema builds it from `model`, so there a new `model` counts as a
 new `schema`. A class that Restly generates for the subclass is not a change of
 its own, so it does not replace a class that the base declares.
 
 The list params are also built from `pagination`, the list settings such as
 `include_filters` and `sort_query_param`, and the filter methods. A subclass
-that changes one of them gets new `schema_list_params` when the base declares
+that changes one of them gets new `list_params_schema` when the base declares
 the list params that Restly would generate for it, made with
-{func}`derive_schema_list_params() <fastapi_restly.query.derive_schema_list_params>`.
+{func}`derive_list_params_schema() <fastapi_restly.query.derive_list_params_schema>`.
 Other declared list params stay, such as ones from a narrower schema. A
 subclass with other settings then fails when it registers, and the message
 says what to change. List params that you write by hand take no list

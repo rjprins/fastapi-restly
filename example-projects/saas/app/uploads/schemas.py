@@ -31,4 +31,4 @@ class UploadSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
 
 # The response class that the view builds from UploadSchema. A custom route
 # names it, so OpenAPI shows UploadResponse there, as on the CRUD routes.
-UploadResponse = fr.schemas.derive_schema_response(UploadSchema)
+UploadResponse = fr.schemas.derive_response_schema(UploadSchema)

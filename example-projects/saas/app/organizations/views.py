@@ -22,8 +22,8 @@ class OrganizationView(fr.AsyncRestView[Organization]):
     Deletion requires a platform admin. The other routes remain public.
 
     Demonstrates using different schemas per operation:
-    - schema_create: Stricter validation for POST (slug format, name length)
-    - schema_update: Limited fields for PATCH (only name can be updated)
+    - create_schema: Stricter validation for POST (slug format, name length)
+    - update_schema: Limited fields for PATCH (only name can be updated)
 
     Also demonstrates a custom POST route that returns ``201 Created`` with a
     ``Location`` header pointing at the new resource. The default create route
@@ -34,8 +34,8 @@ class OrganizationView(fr.AsyncRestView[Organization]):
     prefix = "/organizations"
     model = Organization
     schema = OrganizationSchema
-    schema_create = OrganizationCreate
-    schema_update = OrganizationUpdate
+    create_schema = OrganizationCreate
+    update_schema = OrganizationUpdate
     exclude_routes = [fr.ViewRoute.CREATE]
 
     @fr.post("/", response_model=OrganizationResponse, status_code=201)

@@ -178,7 +178,7 @@ async def test_savepoint_rollback_keeps_related_response_objects_readable(
         ):
             document = await _call(
                 view.handle_create(
-                    view.schema_create(title="survivor", owner_id=writes.owner_id)
+                    view.create_schema(title="survivor", owner_id=writes.owner_id)
                 )
             )
         assert {"internal_note", "owners"} <= inspect(document.owner.company).unloaded
@@ -188,7 +188,7 @@ async def test_savepoint_rollback_keeps_related_response_objects_readable(
                 await _call(
                     related_view.handle_update(
                         getattr(writes, f"{related_model}_id"),
-                        related_view.schema_update(name="discarded"),
+                        related_view.update_schema(name="discarded"),
                     )
                 )
                 raise ValueError("discard related update")
@@ -250,7 +250,7 @@ async def test_savepoint_rollback_recovers_collection_members_in_a_loaded_cycle(
     async with _enter(view.shared_write_action_commit()):
         document = await _call(
             view.handle_create(
-                view.schema_create(title="survivor", owner_id=writes.owner_id)
+                view.create_schema(title="survivor", owner_id=writes.owner_id)
             )
         )
         company = document.owner.company
@@ -262,7 +262,7 @@ async def test_savepoint_rollback_recovers_collection_members_in_a_loaded_cycle(
                 await _call(
                     writes.owner_view.handle_update(
                         writes.colleague_id,
-                        writes.owner_view.schema_update(name="discarded"),
+                        writes.owner_view.update_schema(name="discarded"),
                     )
                 )
                 raise ValueError("discard collection member update")
@@ -284,7 +284,7 @@ async def test_shared_write_without_rollback_does_not_reload_related_objects(
     async with _enter(view.shared_write_action_commit()):
         document = await _call(
             view.handle_create(
-                view.schema_create(title="survivor", owner_id=writes.owner_id)
+                view.create_schema(title="survivor", owner_id=writes.owner_id)
             )
         )
         writes.statements.clear()
@@ -320,7 +320,7 @@ async def test_writes_that_reach_the_same_objects_record_each_object_once(
             async with _enter(session.begin_nested() if savepoints else nullcontext()):
                 await _call(
                     view.handle_update(
-                        owner.id, view.schema_update(name=owner.name.upper())
+                        owner.id, view.update_schema(name=owner.name.upper())
                     )
                 )
         # A white-box check: it counts the records in the private store of the
@@ -349,19 +349,19 @@ async def test_a_rolled_back_savepoint_drops_the_records_of_all_its_writes(
     async with _enter(view.shared_write_action_commit()):
         await _call(
             view.handle_create(
-                view.schema_create(title="survivor", owner_id=writes.owner_id)
+                view.create_schema(title="survivor", owner_id=writes.owner_id)
             )
         )
         with pytest.raises(ValueError, match="discard both updates"):
             async with _enter(writes.session.begin_nested()):
                 colleague = await _call(
                     owner_view.handle_update(
-                        writes.colleague_id, owner_view.schema_update(name="gone")
+                        writes.colleague_id, owner_view.update_schema(name="gone")
                     )
                 )
                 await _call(
                     owner_view.handle_update(
-                        writes.owner_id, owner_view.schema_update(name="gone too")
+                        writes.owner_id, owner_view.update_schema(name="gone too")
                     )
                 )
                 raise ValueError("discard both updates")

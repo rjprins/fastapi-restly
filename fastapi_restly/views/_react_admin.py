@@ -26,15 +26,15 @@ from fastapi_restly.query import FilterKey, SortKey, SortNulls, order_by_primary
 from fastapi_restly.views import (
     AsyncRestView,
     BaseRestView,
+    IDType,
+    ListResponseSchema,
     ListResult,
     NoPagination,
     NumberedPagination,
+    ResponseSchema,
     RestView,
     SchemaType,
-    ViewID,
-    ViewListResponse,
-    ViewResponse,
-    ViewUpdate,
+    UpdateSchema,
     get,
     put,
 )
@@ -82,7 +82,7 @@ class ReactAdminListParams(pydantic.BaseModel):
     that names the place, as a bad value of other list params does.
 
     To add a query key, such as a search key, subclass this class and set the
-    subclass as the view's ``schema_list_params``.
+    subclass as the view's ``list_params_schema``.
     """
 
     #: The sort order: a field name and ``"ASC"`` or ``"DESC"``, such as
@@ -213,12 +213,12 @@ def _check_pagination(cls: type) -> None:
 def _check_list_params(cls: type) -> None:
     """The view reads the parsed ``sort``, ``range`` and ``filter`` from its
     list params, so they must be a ``ReactAdminListParams``."""
-    list_params = getattr(cls, "schema_list_params", None)
+    list_params = getattr(cls, "list_params_schema", None)
     if not (
         isinstance(list_params, type) and issubclass(list_params, ReactAdminListParams)
     ):
         raise RestlyConfigurationError(
-            f"{cls.__name__}.schema_list_params is {list_params!r}. A react-admin "
+            f"{cls.__name__}.list_params_schema is {list_params!r}. A react-admin "
             "view reads sort, range and filter from its list params, so they "
             "must be a subclass of fr.views.ReactAdminListParams. To add a "
             "query key, subclass ReactAdminListParams."
@@ -275,8 +275,8 @@ def _reject_list_settings(cls: type) -> None:
 
 class _ReactAdminViewProtocol(Protocol):
     model: ClassVar[type[Any]]
-    schema_response: ClassVar[type[pydantic.BaseModel]]
-    schema_update: ClassVar[type[pydantic.BaseModel]]
+    response_schema: ClassVar[type[pydantic.BaseModel]]
+    update_schema: ClassVar[type[pydantic.BaseModel]]
     pagination: ClassVar[NumberedPagination | NoPagination | None]
     sort_nulls: ClassVar[SortNulls]
     put: ClassVar[Any]
@@ -310,11 +310,11 @@ class _ReactAdminMixin:
         default_page_size=DEFAULT_REACT_ADMIN_PAGE_SIZE
     )
 
-    schema_list_params: ClassVar[type[pydantic.BaseModel]] = ReactAdminListParams
+    list_params_schema: ClassVar[type[pydantic.BaseModel]] = ReactAdminListParams
 
     #: A react-admin list is a JSON array, without an envelope.
     list_response_schema: ClassVar[Any] = SchemaType(
-        lambda view: list[view.schema_response]
+        lambda view: list[view.response_schema]
     )
 
     _list_adapter: ClassVar[Any] = SchemaType(
@@ -325,14 +325,14 @@ class _ReactAdminMixin:
         # A class that inherits list params of its own gets generated list
         # params when it sets a schema or a model. So each class declares
         # the list params that it inherits again, before Restly looks at them.
-        if "schema_list_params" not in cls.__dict__:
-            inherited = inspect.getattr_static(cls, "schema_list_params")
-            setattr(cls, "schema_list_params", inherited)
+        if "list_params_schema" not in cls.__dict__:
+            inherited = inspect.getattr_static(cls, "list_params_schema")
+            setattr(cls, "list_params_schema", inherited)
         super().__init_subclass__(**kwargs)
         _check_pagination(cls)
         # A function gets its turn at registration: it can read what is not
         # there yet.
-        if not isinstance(vars(cls)["schema_list_params"], SchemaType):
+        if not isinstance(vars(cls)["list_params_schema"], SchemaType):
             _check_list_params(cls)
 
     def get_react_admin_range_unit(self) -> str:
@@ -386,7 +386,7 @@ class _ReactAdminMixin:
         params = self._react_admin_list_params(list_params)
         filters = getattr(params, "filter", None) or {}
         return _apply_react_admin_filters(
-            stmt, view.model, view.schema_response, filters
+            stmt, view.model, view.response_schema, filters
         )
 
     def _react_admin_sort_and_range(
@@ -398,7 +398,7 @@ class _ReactAdminMixin:
         return _apply_react_admin_sort_and_range(
             stmt,
             view.model,
-            view.schema_response,
+            view.response_schema,
             getattr(params, "sort", None),
             start,
             end,
@@ -460,7 +460,7 @@ class AsyncReactAdminView(_ReactAdminMixin, AsyncRestView):
     """
 
     @get("/")
-    async def get_many_endpoint(self, list_params: Any) -> ViewListResponse:
+    async def get_many_endpoint(self, list_params: Any) -> ListResponseSchema:
         return await self.handle_get_many(list_params)
 
     async def apply_list_params(
@@ -479,11 +479,11 @@ class AsyncReactAdminView(_ReactAdminMixin, AsyncRestView):
         return self._react_admin_filters(stmt, list_params)
 
     @put("/{id}")
-    async def put(self, id: ViewID, data: ViewUpdate) -> ViewResponse:
+    async def put(self, id: IDType, data: UpdateSchema) -> ResponseSchema:
         """``PUT /{id}`` endpoint method, for react-admin's ``update``. It
         runs the same steps as ``PATCH``:
         :meth:`~fastapi_restly.views.AsyncRestView.handle_update`, with the
-        view's ``schema_update`` body. An ``update`` override changes both
+        view's ``update_schema`` body. An ``update`` override changes both
         routes. Replace this method to give ``PUT`` its own rules; see
         :ref:`react-admin-put`."""
         return await self.handle_update(id, data)
@@ -498,7 +498,7 @@ class ReactAdminView(_ReactAdminMixin, RestView):
     """
 
     @get("/")
-    def get_many_endpoint(self, list_params: Any) -> ViewListResponse:
+    def get_many_endpoint(self, list_params: Any) -> ListResponseSchema:
         return self.handle_get_many(list_params)
 
     def apply_list_params(
@@ -517,11 +517,11 @@ class ReactAdminView(_ReactAdminMixin, RestView):
         return self._react_admin_filters(stmt, list_params)
 
     @put("/{id}")
-    def put(self, id: ViewID, data: ViewUpdate) -> ViewResponse:
+    def put(self, id: IDType, data: UpdateSchema) -> ResponseSchema:
         """``PUT /{id}`` endpoint method, for react-admin's ``update``. It
         runs the same steps as ``PATCH``:
         :meth:`~fastapi_restly.views.RestView.handle_update`, with the view's
-        ``schema_update`` body. An ``update`` override changes both routes.
+        ``update_schema`` body. An ``update`` override changes both routes.
         Replace this method to give ``PUT`` its own rules; see
         :ref:`react-admin-put`."""
         return self.handle_update(id, data)

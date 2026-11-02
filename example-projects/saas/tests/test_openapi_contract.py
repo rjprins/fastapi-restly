@@ -74,7 +74,7 @@ def _view_resources(app: FastAPI) -> set[str]:
         if inspect.isclass(dependency.call)
         and issubclass(dependency.call, fr.views.BaseRestView)
     }
-    return {view.schema_response.__name__.removesuffix("Response") for view in views}
+    return {view.response_schema.__name__.removesuffix("Response") for view in views}
 
 
 def test_each_resource_has_one_type_in_openapi(restly_app: FastAPI) -> None:

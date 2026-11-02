@@ -56,7 +56,7 @@ def test_a_subclass_of_the_create_class_stays_without_the_dropped_fields():
 
 
 def test_a_subclass_of_the_response_class_stays_without_the_dropped_fields():
-    class MyResponse(fr.schemas.derive_schema_response(AccountSchema)):
+    class MyResponse(fr.schemas.derive_response_schema(AccountSchema)):
         note: str = ""
 
     assert set(MyResponse.model_fields) == {"id", "name", "is_admin", "note"}
@@ -88,7 +88,7 @@ def test_a_subclass_of_a_subclass_stays_without_the_dropped_fields():
 
 
 def test_a_class_derived_from_a_derived_class_stays_without_the_dropped_fields():
-    response = fr.schemas.derive_schema_response(AccountSchema)
+    response = fr.schemas.derive_response_schema(AccountSchema)
     assert set(create_model_without_read_only_fields(response).model_fields) == {"name"}
 
 
@@ -128,7 +128,7 @@ def test_a_field_from_another_parent_stays():
 
 
 def test_a_subclass_can_send_a_writeonly_field_it_declares_again():
-    class MyResponse(fr.schemas.derive_schema_response(AccountSchema)):
+    class MyResponse(fr.schemas.derive_response_schema(AccountSchema)):
         password: str = ""
 
     data = {"id": 1, "name": "a", "password": "shown"}
@@ -136,7 +136,7 @@ def test_a_subclass_can_send_a_writeonly_field_it_declares_again():
 
 
 def test_a_new_writeonly_field_keeps_the_writeonly_keys_of_the_parent():
-    class MyResponse(fr.schemas.derive_schema_response(AccountSchema)):
+    class MyResponse(fr.schemas.derive_response_schema(AccountSchema)):
         token: fr.WriteOnly[str] = "t"
         model_config = pydantic.ConfigDict(extra="allow")
 
@@ -155,7 +155,7 @@ def test_a_client_cannot_write_a_readonly_field_through_a_subclass(client):
         pass
 
     class View(AccountView):
-        schema_update = MyUpdate
+        update_schema = MyUpdate
 
     fr.include_view(client.app, View)
     create_tables()
@@ -168,11 +168,11 @@ def test_a_client_cannot_write_a_readonly_field_through_a_subclass(client):
 def test_a_view_with_a_subclass_of_the_response_class_works(client):
     Account, AccountView = _account_view()
 
-    class MyResponse(fr.schemas.derive_schema_response(AccountSchema)):
+    class MyResponse(fr.schemas.derive_response_schema(AccountSchema)):
         pass
 
     class View(AccountView):
-        schema_response = MyResponse
+        response_schema = MyResponse
 
     fr.include_view(client.app, View)
     create_tables()

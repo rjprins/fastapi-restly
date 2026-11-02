@@ -51,15 +51,15 @@ from ._base import (
 )
 from ._include import include_view
 from ._list_params import list_filter
-from ._sync import RestView
-from ._view_types import (
+from ._schema_types import (
+    CreateSchema,
+    IDType,
+    ListResponseSchema,
+    ResponseSchema,
     SchemaType,
-    ViewCreate,
-    ViewID,
-    ViewListResponse,
-    ViewResponse,
-    ViewUpdate,
+    UpdateSchema,
 )
+from ._sync import RestView
 
 # isort: split
 # Last: the react-admin views import the public names above, as a view of
@@ -89,11 +89,11 @@ __all__ = [
     "View",
     "ViewRoute",
     "SchemaType",
-    "ViewID",
-    "ViewResponse",
-    "ViewListResponse",
-    "ViewCreate",
-    "ViewUpdate",
+    "IDType",
+    "ResponseSchema",
+    "ListResponseSchema",
+    "CreateSchema",
+    "UpdateSchema",
     "resolve_scope",
     "delete",
     "get",

@@ -12,7 +12,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from starlette.datastructures import QueryParams
 
 import fastapi_restly as fr
-from fastapi_restly.query import apply_list_params, derive_schema_list_params
+from fastapi_restly.query import apply_list_params, derive_list_params_schema
 from fastapi_restly.query._impl import (
     _apply_filtering,
     _apply_pagination,
@@ -145,9 +145,9 @@ def audit_log_select_query():
 
 
 class TestDeriveSchemaListParams:
-    def test_derive_schema_list_params_basic(self):
+    def test_derive_list_params_schema_basic(self):
         """Test creating a query param schema for basic fields."""
-        schema = derive_schema_list_params(WidgetSchema, WidgetModel)
+        schema = derive_list_params_schema(WidgetSchema, WidgetModel)
 
         # Check that the schema was created
         assert schema.__name__ == "WidgetListParams"
@@ -178,9 +178,9 @@ class TestDeriveSchemaListParams:
         }
         assert schema_types == {"boolean", "null"}
 
-    def test_derive_schema_list_params_nested(self):
+    def test_derive_list_params_schema_nested(self):
         """Test creating a query param schema for nested fields."""
-        schema = derive_schema_list_params(
+        schema = derive_list_params_schema(
             NestedWidgetSchema, NestedWidgetModel, include_filters=("*.*",)
         )
 
@@ -188,13 +188,13 @@ class TestDeriveSchemaListParams:
         assert "user.name" in schema.model_fields
         assert "user.age__gte" in schema.model_fields
 
-    def test_derive_schema_list_params_nested_pep604_optional(self):
+    def test_derive_list_params_schema_nested_pep604_optional(self):
         """Optional nested schemas using X | None should still expand nested filters."""
 
         class OptionalNestedSchema(pydantic.BaseModel):
             user: WidgetSchema | None = None
 
-        schema = derive_schema_list_params(
+        schema = derive_list_params_schema(
             OptionalNestedSchema, NestedWidgetModel, include_filters=("*.*",)
         )
 
@@ -202,7 +202,7 @@ class TestDeriveSchemaListParams:
         assert "user.email__contains" in schema.model_fields
         assert "user.email__icontains" in schema.model_fields
 
-    def test_derive_schema_list_params_rejects_sort_field_collision(self):
+    def test_derive_list_params_schema_rejects_sort_field_collision(self):
         """A filter key named ``sort`` would shadow the sorting parameter."""
 
         class SortedWidget(SharedBase):
@@ -215,12 +215,12 @@ class TestDeriveSchemaListParams:
             sort: str
 
         with pytest.raises(ValueError, match="reserved pagination/sort"):
-            derive_schema_list_params(SortFieldSchema, SortedWidget)
+            derive_list_params_schema(SortFieldSchema, SortedWidget)
         # a field that is no column gives no key, so it collides with nothing
-        fields = derive_schema_list_params(SortFieldSchema, WidgetModel).model_fields
+        fields = derive_list_params_schema(SortFieldSchema, WidgetModel).model_fields
         assert "sort__in" not in fields
 
-    def test_derive_schema_list_params_rejects_dunder_in_alias(self):
+    def test_derive_list_params_schema_rejects_dunder_in_alias(self):
         """An alias containing ``__`` would collide with operator suffixes."""
 
         class DunderAliasSchema(pydantic.BaseModel):
@@ -228,9 +228,9 @@ class TestDeriveSchemaListParams:
             name: str = pydantic.Field(alias="na__me")
 
         with pytest.raises(ValueError, match="reserved for operator suffixes"):
-            derive_schema_list_params(DunderAliasSchema, WidgetModel)
+            derive_list_params_schema(DunderAliasSchema, WidgetModel)
 
-    def test_derive_schema_list_params_rejects_dot_in_alias(self):
+    def test_derive_list_params_schema_rejects_dot_in_alias(self):
         """An alias containing ``.`` would collide with relation traversal."""
 
         class DotAliasSchema(pydantic.BaseModel):
@@ -238,7 +238,7 @@ class TestDeriveSchemaListParams:
             name: str = pydantic.Field(alias="na.me")
 
         with pytest.raises(ValueError, match="reserved for relation traversal"):
-            derive_schema_list_params(DotAliasSchema, WidgetModel)
+            derive_list_params_schema(DotAliasSchema, WidgetModel)
 
 
 #: The default ``page`` / ``page_size`` pagination.
@@ -699,7 +699,7 @@ def test_three_level_dotted_filter_executes_with_correct_joins(sync_db):
         city: CitySchema | None = None
 
     # The deep path is advertised — and must therefore execute.
-    params_schema = derive_schema_list_params(
+    params_schema = derive_list_params_schema(
         ResidentSchema, Resident, include_filters=("*", "*.*", "*.*.*")
     )
     assert "city.country.code" in params_schema.model_fields

@@ -30,8 +30,8 @@ class WidgetView(fr.RestView[Widget, WidgetSchema, WidgetInput, WidgetInput, int
     prefix = "/widgets"
     model = Widget
     schema = WidgetSchema
-    schema_create = WidgetInput
-    schema_update = WidgetInput
+    create_schema = WidgetInput
+    update_schema = WidgetInput
 
     @fr.get("/ping")
     def ping(self) -> dict[str, bool]:

@@ -16,7 +16,7 @@ from fastapi_restly.query._impl import (
     _filter_value_parser,
     _iter_fields_including_nested,
     apply_list_params,
-    derive_schema_list_params,
+    derive_list_params_schema,
 )
 
 from ._models import SharedBase
@@ -77,9 +77,9 @@ def mock_query_params():
 
 
 class TestDeriveSchemaListParamsWithAliases:
-    def test_derive_schema_list_params_with_aliases(self):
+    def test_derive_list_params_schema_with_aliases(self):
         """Test creating a query param schema with aliases."""
-        schema = derive_schema_list_params(SchemaWithAliases, AliasModel)
+        schema = derive_list_params_schema(SchemaWithAliases, AliasModel)
 
         # Check that the schema was created
         assert schema.__name__ == "SchemaWithAliasesListParams"
@@ -104,9 +104,9 @@ class TestDeriveSchemaListParamsWithAliases:
         assert "createdAt__gte" in schema.model_fields
         assert "isActive__isnull" in schema.model_fields
 
-    def test_derive_schema_list_params_without_aliases(self):
+    def test_derive_list_params_schema_without_aliases(self):
         """Test creating a query param schema without aliases."""
-        schema = derive_schema_list_params(SchemaWithoutAliases, AliasModel)
+        schema = derive_list_params_schema(SchemaWithoutAliases, AliasModel)
 
         # Check that field filters use field names
         assert "user_name" in schema.model_fields
@@ -388,7 +388,7 @@ class TestRelationAliases:
 
     def test_schema_uses_aliases_for_both_segments(self):
         _Article, ArticleSchema = self._build()
-        fields = derive_schema_list_params(
+        fields = derive_list_params_schema(
             ArticleSchema, _Article, include_filters=("*", "*.*")
         ).model_fields
         assert "writer.authorName" in fields

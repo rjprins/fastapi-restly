@@ -141,7 +141,7 @@ async def test_a_new_version_by_the_sqlalchemy_before_flush_recipe(env):
                     session.add(obj)
 
         view = _hooked(env, Doc, DocSchema, calls)(request=None, session=session)
-        doc = await call(view.handle_update(1, view.schema_update(name="d1 v2")))
+        doc = await call(view.handle_update(1, view.update_schema(name="d1 v2")))
         after = [c for c in calls if c[0] == "after"][0]
         assert after[2] is doc and doc.id == 3 and doc.version == 2
         assert after[3]["id"] == 1
@@ -167,7 +167,7 @@ async def test_an_update_that_returns_another_row(env):
             env, Doc, DocSchema, calls, update=env.pick(update, async_update)
         )(request=None, session=session)
         old_row = await call(session.get(Doc, 1))
-        new_row = await call(view.handle_update(1, view.schema_update(name="copy")))
+        new_row = await call(view.handle_update(1, view.update_schema(name="copy")))
         after = [c for c in calls if c[0] == "after"][0]
         assert after[2] is new_row and new_row.id == 3
         assert after[3]["id"] == 1 and after[3]["current"] is True
@@ -225,7 +225,7 @@ async def test_react_admin_put_gives_new_and_old(env):
     session = await _seed(env, Owner, Doc)
     async with enter(session):
         view = view_type(request=None, session=session)
-        response = await call(view.put(1, view.schema_update(name="put")))
+        response = await call(view.put(1, view.update_schema(name="put")))
         assert response.name == "put" and response.owner.name == "o1"
     assert calls == [("update", "put", "d1")]
 
@@ -251,7 +251,7 @@ async def test_an_update_that_forgets_to_return_the_object(env):
             env, Doc, DocSchema, calls, update=env.pick(update, async_update)
         )(request=None, session=session)
         try:
-            result = await call(view.handle_update(1, view.schema_update(name="x")))
+            result = await call(view.handle_update(1, view.update_schema(name="x")))
         except TypeError:
             result = "refused"
     check = env.make_session()
@@ -283,7 +283,7 @@ async def test_authorize_for_a_create_shaped_block_gets_nothing(env):
         )(request=None, session=session)
         async with enter(view.write_action(fr.Action.CREATE, obj=Doc(name="clone"))):
             pass
-        await call(view.handle_create(view.schema_create(name="posted")))
+        await call(view.handle_create(view.create_schema(name="posted")))
     assert seen[0] == ("create", None, None)
     assert seen[1][2].name == "posted"
 
@@ -312,7 +312,7 @@ async def test_a_create_that_returns_an_existing_row(env):
         view = _hooked(
             env, Doc, DocSchema, calls, create=env.pick(create, async_create)
         )(request=None, session=session)
-        doc = await call(view.handle_create(view.schema_create(name="d1")))
+        doc = await call(view.handle_create(view.create_schema(name="d1")))
     after = [c for c in calls if c[0] == "after"][0]
     assert doc.id == 1 and after[2] is doc and after[3] is None
 
@@ -366,7 +366,7 @@ async def test_children_added_through_a_relationship_in_update(env):
     session = env.make_session()
     async with enter(session):
         view = view_type(request=None, session=session)
-        box = await call(view.handle_update(1, view.schema_update(name="b2")))
+        box = await call(view.handle_update(1, view.update_schema(name="b2")))
         assert [i.label for i in view.to_single_response(box).items] == ["old", "new"]
 
 
@@ -416,7 +416,7 @@ async def test_a_failing_row_in_a_savepoint_inside_a_shared_commit(env):
             for code in ["a", "a", "b"]:
                 try:
                     async with enter(session.begin_nested()):
-                        await call(view.handle_create(view.schema_create(code=code)))
+                        await call(view.handle_create(view.create_schema(code=code)))
                 except IntegrityError:
                     failed.append(code)
     assert failed == ["a"] and calls == ["a", "b"]
@@ -544,11 +544,11 @@ async def test_a_refused_create_in_a_shared_commit_is_not_written(env, savepoint
                         if savepoint:
                             async with enter(session.begin_nested()):
                                 await call(
-                                    view.handle_create(view.schema_create(name=name))
+                                    view.handle_create(view.create_schema(name=name))
                                 )
                         else:
                             await call(
-                                view.handle_create(view.schema_create(name=name))
+                                view.handle_create(view.create_schema(name=name))
                             )
                     except fr.exc.Conflict:
                         pass
@@ -590,7 +590,7 @@ async def test_two_views_of_one_model_in_a_shared_commit(env):
         a = a_type(request=None, session=session)
         b = b_type(request=None, session=session)
         async with enter(a.shared_write_action_commit()):
-            doc = await call(a.handle_update(1, a.schema_update(name="x")))
+            doc = await call(a.handle_update(1, a.update_schema(name="x")))
             other = await call(session.get(Doc, 2))
             async with enter(b.write_action("move", obj=other)):
                 other.name = "y"
@@ -608,8 +608,8 @@ async def test_two_updates_of_one_row_in_a_shared_commit(env):
     async with enter(session):
         view = _hooked(env, Doc, DocSchema, calls)(request=None, session=session)
         async with enter(view.shared_write_action_commit()):
-            await call(view.handle_update(1, view.schema_update(name="x")))
-            await call(view.handle_update(1, view.schema_update(name="y")))
+            await call(view.handle_update(1, view.update_schema(name="x")))
+            await call(view.handle_update(1, view.update_schema(name="y")))
     afters = [(c[2].name, c[3]["name"]) for c in calls if c[0] == "after"]
     assert afters == [("y", "d1"), ("y", "x")]
 
@@ -624,7 +624,7 @@ async def test_a_block_after_a_handler_in_a_shared_commit_reloads_its_row(env):
     async with enter(session):
         view = _hooked(env, Doc, DocSchema, calls)(request=None, session=session)
         async with enter(view.shared_write_action_commit()):
-            doc = await call(view.handle_update(1, view.schema_update(name="x")))
+            doc = await call(view.handle_update(1, view.update_schema(name="x")))
             async with enter(view.write_action("move", obj=None)):
                 doc.owner_id = 2
         assert view.to_single_response(doc).owner.name == "o2"
@@ -652,7 +652,7 @@ async def test_a_refusal_before_the_change_keeps_the_outer_block(env):
         async with enter(view.write_action("rename", obj=doc)):
             doc.name = "renamed"
             with pytest.raises(fr.exc.Conflict):
-                await call(view.handle_create(view.schema_create(name="refused")))
+                await call(view.handle_create(view.create_schema(name="refused")))
     check = env.make_session()
     async with enter(check):
         names = sorted(await call(check.scalars(select(Doc.name))))
@@ -676,7 +676,7 @@ async def test_a_business_method_must_return_one_object(env):
             request=None, session=session
         )
         with pytest.raises(TypeError, match=r"returned a list"):
-            await call(view.handle_create(view.schema_create(name="listed")))
+            await call(view.handle_create(view.create_schema(name="listed")))
         await call(session.rollback())
     check = env.make_session()
     async with enter(check):

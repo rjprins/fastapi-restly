@@ -34,9 +34,9 @@ class _Entry:
     model: type[Any]
     resource_name: str
     schema: type[pydantic.BaseModel]
-    schema_response: type[pydantic.BaseModel]
-    schema_create: type[pydantic.BaseModel]
-    schema_update: type[pydantic.BaseModel]
+    response_schema: type[pydantic.BaseModel]
+    create_schema: type[pydantic.BaseModel]
+    update_schema: type[pydantic.BaseModel]
 
 
 _RegistryKey = int
@@ -105,9 +105,9 @@ def _register_for_resource_ref(
         model=model,
         resource_name=resource_name,
         schema=view_cls.schema,
-        schema_response=view_cls.schema_response,
-        schema_create=view_cls.schema_create,
-        schema_update=view_cls.schema_update,
+        response_schema=view_cls.response_schema,
+        create_schema=view_cls.create_schema,
+        update_schema=view_cls.update_schema,
     )
 
     entries = _registry_entries(parent_router)
@@ -250,9 +250,9 @@ def _annotate_spec(
         for schema_cls in dict.fromkeys(
             (
                 entry.schema,
-                entry.schema_response,
-                entry.schema_create,
-                entry.schema_update,
+                entry.response_schema,
+                entry.create_schema,
+                entry.update_schema,
             )
         ):
             refs = _compute_refs(schema_cls, entry.model, model_to_resource)

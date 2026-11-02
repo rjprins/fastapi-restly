@@ -260,7 +260,7 @@ replaces the view's scope for this one read. So the trash list and the
 restore action can be routes on the same view, not a second view class:
 
 ```python
-from fastapi_restly.views import ViewID, ViewListResponse, ViewResponse
+from fastapi_restly.views import IDType, ListResponseSchema, ResponseSchema
 
 
 @fr.include_view(app)
@@ -274,11 +274,11 @@ class ItemView(fr.AsyncRestView):
         RESTORE = "restore"
 
     @fr.get("/trash")
-    async def trash(self, list_params) -> ViewListResponse:
+    async def trash(self, list_params) -> ListResponseSchema:
         return await self.handle_get_many(list_params, scope=ItemClauses.trashed)
 
     @fr.post("/{id}/restore", status_code=200)
-    async def restore(self, id: ViewID) -> ViewResponse:
+    async def restore(self, id: IDType) -> ResponseSchema:
         item = await self.get_one(id, scope=ItemClauses.trashed)
         async with self.write_action(self.Action.RESTORE, obj=item):
             item.deleted_at = None
@@ -305,7 +305,7 @@ the action itself; see [Add a custom action route](#custom-action-route). The
 route reads only the trash, so a row that is not deleted returns 404 here. To
 read without any scope on one route, pass `scope=fr.clauses.UNSCOPED`.
 
-The markers `ViewListResponse`, `ViewResponse` and `ViewID` give the two
+The markers `ListResponseSchema`, `ResponseSchema` and `IDType` give the two
 routes the view's classes, `ItemListResponse` and `ItemResponse`, and its id
 type. So OpenAPI shows the same types as for the CRUD routes, and Restly
 sends the list result and the row through the view's response step.
@@ -328,7 +328,7 @@ the items in one collection still hides deleted items:
 
 ```python
 @fr.get("/in-collection/{collection_id}")
-async def in_collection(self, collection_id: int, list_params) -> ViewListResponse:
+async def in_collection(self, collection_id: int, list_params) -> ListResponseSchema:
     return await self.handle_get_many(
         list_params, where=Item.collection_id == collection_id
     )

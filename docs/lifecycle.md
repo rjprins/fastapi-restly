@@ -455,11 +455,11 @@ method. It calls the handler, gets the values for the whole page in one
 call, and builds the response:
 
 ```python
-from fastapi_restly.views import ViewListResponse
+from fastapi_restly.views import ListResponseSchema
 
 
 @fr.get("/")
-async def get_many_endpoint(self, list_params) -> ViewListResponse:
+async def get_many_endpoint(self, list_params) -> ListResponseSchema:
     result = await self.handle_get_many(list_params)
     ratings = await rating_service.for_ids([p.id for p in result.objects])
     for project in result.objects:
@@ -619,7 +619,7 @@ on:
     from fastapi import HTTPException
 
     @fr.post("/bulk", status_code=201)
-    async def bulk_create(self, items: list[OrderCreate]) -> list[ViewResponse]:
+    async def bulk_create(self, items: list[OrderCreate]) -> list[ResponseSchema]:
         orders = []
         for item in items:
             try:
@@ -829,7 +829,7 @@ route decorator. Most replacements call the handler and only change the
 response:
 
 ```python
-from fastapi_restly.views import ViewResponse
+from fastapi_restly.views import ResponseSchema
 
 
 @fr.include_view(app)
@@ -839,7 +839,7 @@ class ProductView(fr.AsyncRestView):
     schema = ProductSchema
 
     @fr.delete("/{id}", status_code=200)
-    async def delete_endpoint(self, id: int) -> ViewResponse:
+    async def delete_endpoint(self, id: int) -> ResponseSchema:
         obj = await self.get_one(id)               # load through the scope, or 404
         response = self.to_single_response(obj)    # the row as GET /{id} sends it
         await self.handle_delete(id)               # authorize, delete, commit
@@ -849,7 +849,7 @@ class ProductView(fr.AsyncRestView):
 The default `DELETE /{id}` answers `204 No Content`. This version answers
 `200` with the deleted row, as React Admin's `ra-data-simple-rest` expects
 ([React Admin](react_admin.md)). It builds the response before the row is
-gone. `ViewResponse` makes the response class the `response_model`, so only
+gone. `ResponseSchema` makes the response class the `response_model`, so only
 its fields go out, as from `GET /{id}`, and OpenAPI shows them.
 
 :::{admonition} Details
@@ -860,14 +860,14 @@ replaces the inherited method with the same name. The other inherited
 endpoint methods stay.
 
 The built-in endpoint methods get the view's types from markers, such as
-`get_one_endpoint(self, id: ViewID) -> ViewResponse`. A replacement gets the
+`get_one_endpoint(self, id: IDType) -> ResponseSchema`. A replacement gets the
 view's types only where it uses the markers too; see
 [Name the view's classes in a custom route](#name-the-response-classes). A
 parameter or a return without an annotation gets no type. Restly keeps an
 annotation that you write, so `data: ProductReplace` validates the
 request body against `ProductReplace`. `list_params` is the exception: it
 always gets the view's
-{attr}`schema_list_params <fastapi_restly.views.BaseRestView.schema_list_params>`.
+{attr}`list_params_schema <fastapi_restly.views.BaseRestView.list_params_schema>`.
 :::
 
 ### Change the list route
@@ -882,7 +882,7 @@ header. Keep the `list_params` parameter to keep Restly's
 import fastapi
 import json
 
-from fastapi_restly.views import ViewResponse
+from fastapi_restly.views import ResponseSchema
 
 
 @fr.include_view(app)
@@ -891,7 +891,7 @@ class ProductView(fr.AsyncRestView):
     model = Product
     schema = ProductSchema
 
-    @fr.get("/", response_model=list[ViewResponse])
+    @fr.get("/", response_model=list[ResponseSchema])
     async def get_many_endpoint(self, list_params):
         result = await self.handle_get_many(list_params)
         serialized = [
@@ -910,7 +910,7 @@ The route sends a plain list, not the default envelope, so it names its
 shows no schema for the response. The route builds the body itself, so it
 dumps each row `by_alias=True`, as FastAPI does for a response model.
 [Name the view's classes in a custom route](#name-the-response-classes)
-explains the markers, such as `ViewResponse`.
+explains the markers, such as `ResponseSchema`.
 
 ### Share a changed route across views
 
@@ -918,12 +918,12 @@ When several views need the same contract, put the replacement in a mixin.
 List the mixin before the view class, so Python finds its method first:
 
 ```python
-from fastapi_restly.views import ViewID, ViewResponse
+from fastapi_restly.views import IDType, ResponseSchema
 
 
 class DeleteReturnsObjectMixin:
     @fr.delete("/{id}", status_code=200)
-    async def delete_endpoint(self, id: ViewID) -> ViewResponse:
+    async def delete_endpoint(self, id: IDType) -> ResponseSchema:
         obj = await self.get_one(id)
         response = self.to_single_response(obj)
         await self.handle_delete(id)
@@ -937,7 +937,7 @@ class ProductView(DeleteReturnsObjectMixin, fr.AsyncRestView):
     schema = ProductSchema
 ```
 
-`ViewID` and `ViewResponse` give each view that uses the mixin its own id
+`IDType` and `ResponseSchema` give each view that uses the mixin its own id
 type and response class.
 
 The [React Admin](react_admin.md) views use this pattern. They replace
@@ -964,13 +964,13 @@ the view shows, and each row loads what the response needs:
 
 ```python
     @fr.get("/recent")
-    async def recent(self) -> list[ViewResponse]:
+    async def recent(self) -> list[ResponseSchema]:
         await self.authorize(fr.Action.GET_MANY)
         stmt = self.select().order_by(Post.created_at.desc()).limit(5)
         return list(await self.session.scalars(stmt))
 ```
 
-`ViewResponse` from `fastapi_restly.views` stands for the view's response
+`ResponseSchema` from `fastapi_restly.views` stands for the view's response
 class. The route declares a list of it, so Restly passes each row through
 `to_single_response`, as the list route does; see
 [The response of a custom route](#custom-route-response). The route builds
@@ -989,7 +989,7 @@ The SaaS example's `GET /users/me` returns the caller's own row:
 :::{admonition} Details
 :class: details
 
-`ViewResponse` stands for the view's response class, `UserResponse`, so
+`ResponseSchema` stands for the view's response class, `UserResponse`, so
 OpenAPI shows the same type as for `GET /users/{id}`, and the row goes
 through the view's response step
 ([The response of a custom route](#custom-route-response)). The
@@ -1014,7 +1014,7 @@ of the primary key. Everything else about the load stays the same: the view's
 
 ```python
     @fr.get("/by-email/{email}")
-    async def get_by_email(self, email: str) -> ViewResponse:
+    async def get_by_email(self, email: str) -> ResponseSchema:
         return await self.handle_get_one(User.email == email)
 ```
 
@@ -1158,7 +1158,7 @@ commit. The SaaS example's `PATCH /users/me` updates the caller's own row:
 
 ```python
     @fr.patch("/me")
-    async def update_current_user(self, request: UpdateMeRequest) -> ViewResponse:
+    async def update_current_user(self, request: UpdateMeRequest) -> ResponseSchema:
         return await self.handle_update(Current.user_id(), request)
 ```
 
@@ -1173,7 +1173,7 @@ such as a parent row and its child rows. Build the new object, and pass it to
 
 ```python
     @fr.post("/with-lines", status_code=201)
-    async def create_with_lines(self, data: OrderWithLines) -> ViewResponse:
+    async def create_with_lines(self, data: OrderWithLines) -> ResponseSchema:
         order = Order(customer_id=data.customer_id)
         async with self.write_action(self.Action.CREATE, obj=order, data=data):
             order.lines = [OrderLine(sku=line.sku) for line in data.lines]
@@ -1208,7 +1208,7 @@ options, so each row comes back as the database has it:
         REORDER = "reorder"
 
     @fr.put("/positions")
-    async def reorder(self, items: list[CookbookPosition]) -> list[ViewResponse]:
+    async def reorder(self, items: list[CookbookPosition]) -> list[ResponseSchema]:
         cookbooks = []
         async with self.write_action(self.Action.REORDER, obj=None, data=items):
             for item in items:
@@ -1255,7 +1255,7 @@ after the block with `await obj.awaitable_attrs.<name>`, or add it to
 Restly checks the references in `data`, also in the schemas nested in it and
 in each item of a list; see [Check that the referenced row exists](#reference-exists).
 
-The routes above declare `ViewResponse`, or a list of it. So Restly sends
+The routes above declare `ResponseSchema`, or a list of it. So Restly sends
 the rows that they return through the view's response step, and OpenAPI
 shows the same types as for the CRUD routes; see
 [The response of a custom route](#custom-route-response). A route
@@ -1276,7 +1276,7 @@ hooks run:
 
 ```python
     @fr.post("/bulk", status_code=201)
-    async def bulk_create(self, items: list[OrderCreate]) -> list[ViewResponse]:
+    async def bulk_create(self, items: list[OrderCreate]) -> list[ResponseSchema]:
         async with self.shared_write_action_commit():
             orders = [await self.handle_create(item) for item in items]
         return orders

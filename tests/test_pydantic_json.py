@@ -891,7 +891,7 @@ def test_a_document_of_any_type_has_only_isnull(sync_client):
     found = sync_client.get("/items?doc__isnull=false").json()["data"]
     assert found == [{"id": 1, "doc": 5}]
     sync_client.get("/items?doc=5", assert_status_code=422)
-    key = fr.query.FilterKey(Item, ItemView.schema_response, "doc")
+    key = fr.query.FilterKey(Item, ItemView.response_schema, "doc")
     assert key.parse(None) is None
     with pytest.raises(fr.exc.BadQueryParam):
         key.parse("5")

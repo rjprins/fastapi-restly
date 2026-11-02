@@ -280,14 +280,14 @@ def test_create_model_with_optional_fields():
     assert "email" in TestUpdate.model_fields
 
     # Test that the new model can be instantiated with optional fields
-    schema_update = TestUpdate()
-    assert schema_update.name == None
-    assert schema_update.email == None
+    update_schema = TestUpdate()
+    assert update_schema.name == None
+    assert update_schema.email == None
 
     # Test that fields can be set
-    schema_update = TestUpdate(name="Updated", email="updated@example.com")
-    assert schema_update.name == "Updated"
-    assert schema_update.email == "updated@example.com"
+    update_schema = TestUpdate(name="Updated", email="updated@example.com")
+    assert update_schema.name == "Updated"
+    assert update_schema.email == "updated@example.com"
 
 
 def test_generated_request_schema_names_drop_a_final_schema_or_response():

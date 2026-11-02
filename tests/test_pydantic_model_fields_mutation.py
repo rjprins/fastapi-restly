@@ -154,10 +154,10 @@ def test_patch_mixin_drops_a_default_factory() -> None:
         model = Item
         schema = ItemSchema
 
-    info = ItemView.schema_update.model_fields["tags"]
+    info = ItemView.update_schema.model_fields["tags"]
     assert info.default is None
     assert info.default_factory is None
-    assert ItemView.schema_update().tags is None  # type: ignore[call-arg]
+    assert ItemView.update_schema().tags is None  # type: ignore[call-arg]
     assert "ItemUpdate" in app.openapi()["components"]["schemas"]
 
 

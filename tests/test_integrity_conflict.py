@@ -130,7 +130,7 @@ def test_a_row_inside_a_shared_block_raises_the_raw_error(client):
                 for name in names:
                     try:
                         async with self.session.begin_nested():
-                            await self.handle_create(self.schema_create(name=name))
+                            await self.handle_create(self.create_schema(name=name))
                         created += 1
                     except IntegrityError:
                         skipped += 1
@@ -158,7 +158,7 @@ def test_an_error_that_escapes_the_shared_block_is_409(client):
         async def bulk(self, names: list[str]):
             async with self.shared_write_action_commit():
                 for name in names:
-                    await self.handle_create(self.schema_create(name=name))
+                    await self.handle_create(self.create_schema(name=name))
             return {"created": len(names)}
 
     create_tables()
@@ -348,10 +348,10 @@ def test_an_after_hook_inside_another_block_stays_raw(client, outer):
         async def nested(self):
             if outer == "write_action":
                 async with self.write_action("outer", obj=None):
-                    await self.handle_create(self.schema_create(name="a"))
+                    await self.handle_create(self.create_schema(name="a"))
             else:
                 async with self.shared_write_action_commit():
-                    await self.handle_create(self.schema_create(name="a"))
+                    await self.handle_create(self.create_schema(name="a"))
             return {}
 
     create_tables()
@@ -374,8 +374,8 @@ def test_a_nested_shared_block_lets_the_raw_error_through(client):
             async with self.shared_write_action_commit():
                 try:
                     async with self.shared_write_action_commit():
-                        await self.handle_create(self.schema_create(name="a"))
-                        await self.handle_create(self.schema_create(name="a"))
+                        await self.handle_create(self.create_schema(name="a"))
+                        await self.handle_create(self.create_schema(name="a"))
                 except IntegrityError:
                     seen.append("raw")
                     raise
@@ -411,7 +411,7 @@ def test_sync_crud_and_write_action_conflicts_are_409(sync_db):
         def bulk(self, names: list[str]):
             with self.shared_write_action_commit():
                 for name in names:
-                    self.handle_create(self.schema_create(name=name))
+                    self.handle_create(self.create_schema(name=name))
             return {"created": len(names)}
 
     SharedBase.metadata.create_all(engine)
