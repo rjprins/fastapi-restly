@@ -45,7 +45,13 @@ from ._guards import _check_removed_settings
 from ._list_params import _list_openapi_parameters
 from ._misuse_lint import _warn_on_misuse
 from ._openapi import _register_for_resource_ref
-from ._view_types import _evaluated, _replace_view_types, _view_types, _ViewType
+from ._view_types import (
+    _evaluated,
+    _pydantic_generic_args,
+    _replace_view_types,
+    _view_types,
+    _ViewType,
+)
 
 V = TypeVar("V", bound=type[View])
 
@@ -194,7 +200,7 @@ def _view_type_in(annotation: Any) -> _ViewType | None:
                 return metadata
     if get_origin(annotation) is Literal:
         return None
-    for arg in get_args(annotation):
+    for arg in (*get_args(annotation), *_pydantic_generic_args(annotation)):
         if (found := _view_type_in(arg)) is not None:
             return found
     return None

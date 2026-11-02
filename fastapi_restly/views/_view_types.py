@@ -153,10 +153,17 @@ def _evaluated(annotation: Any, func: Callable) -> Any:
         return annotation
 
 
+def _pydantic_generic_args(annotation: Any) -> tuple[Any, ...]:
+    """The arguments of a filled Pydantic generic class: ``(ViewResponse,)`` for
+    ``Data[ViewResponse]``. It is a class, so ``typing.get_args`` finds nothing."""
+    metadata = getattr(annotation, "__pydantic_generic_metadata__", None)
+    return metadata["args"] if metadata is not None and metadata["origin"] else ()
+
+
 def _replace_view_types(annotation: Any, view_types: Mapping[str, Any]) -> Any:
     """Replace each marker in ``annotation``, also inside a type such as
-    ``list[ViewResponse]``. Returns ``annotation`` itself when it holds no
-    marker."""
+    ``list[ViewResponse]`` or ``Data[ViewResponse]``. Returns ``annotation``
+    itself when it holds no marker."""
     origin = get_origin(annotation)
     if origin is Annotated:
         inner, *metadata = get_args(annotation)
@@ -170,6 +177,12 @@ def _replace_view_types(annotation: Any, view_types: Mapping[str, Any]) -> Any:
         if filled_inner is inner:
             return annotation
         return Annotated[(filled_inner, *metadata)]
+    generic = _pydantic_generic_args(annotation)
+    if generic:
+        filled_args = tuple(_replace_view_types(arg, view_types) for arg in generic)
+        if all(new is old for new, old in zip(filled_args, generic)):
+            return annotation
+        return annotation.__pydantic_generic_metadata__["origin"][filled_args]
     args = get_args(annotation)
     if not args or origin is Literal:
         return annotation

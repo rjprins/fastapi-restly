@@ -5,11 +5,13 @@ classes when it registers.
 """
 
 from types import SimpleNamespace
-from typing import Annotated
+from typing import Annotated, Generic, TypeVar
 from uuid import UUID, uuid4
 
+import pydantic
 import pytest
 from fastapi import FastAPI, Path
+from fastapi.exceptions import ResponseValidationError
 from fastapi.routing import APIRoute
 from sqlalchemy import Uuid
 from sqlalchemy.orm import Mapped, mapped_column
@@ -18,10 +20,24 @@ import fastapi_restly as fr
 from fastapi_restly._routes import iter_routes, original_route
 from fastapi_restly.exc import RestlyConfigurationError
 from fastapi_restly.testing._client import RestlyTestClient
-from fastapi_restly.views import ViewID, ViewListResponse, ViewResponse, ViewUpdate
+from fastapi_restly.views import (
+    ViewCreate,
+    ViewID,
+    ViewListResponse,
+    ViewResponse,
+    ViewUpdate,
+)
 
 from ._models import SharedBase
 from .conftest import create_tables
+
+T = TypeVar("T")
+
+
+class Data(pydantic.BaseModel, Generic[T]):
+    """A wrapper around one object, for the tests of a marker in a generic class."""
+
+    data: T
 
 
 @pytest.fixture(params=["sync", "async"])
@@ -285,6 +301,171 @@ def test_a_marker_on_a_plain_view_raises():
 
         @fr.get("/")
         def ping(self) -> ViewResponse:
+            return {}
+
+    with pytest.raises(
+        RestlyConfigurationError,
+        match=r"PingView\.ping uses fastapi_restly\.views\.ViewResponse",
+    ):
+        fr.include_view(FastAPI(), PingView)
+
+
+def _json_schema(operation, status="200"):
+    return operation["responses"][status]["content"]["application/json"]["schema"]
+
+
+def _generic_view(env):
+    """A view with one route for each way to name a marker in a generic class."""
+
+    def lamp(id):
+        row = env.Product(name="Lamp")
+        row.id = id
+        return row
+
+    class ProductView(env.base):
+        prefix = "/products"
+        model = env.Product
+
+        @fr.get("/annotated/{id}")
+        def annotated(self, id: ViewID) -> Data[ViewResponse]:
+            return {"data": lamp(id)}
+
+        @fr.get("/decorator/{id}", response_model=Data[ViewResponse])
+        def decorator(self, id: ViewID):
+            return {"data": lamp(id)}
+
+        @fr.get("/string/{id}")
+        def string(self, id: ViewID) -> "Data[ViewResponse]":
+            return {"data": lamp(id)}
+
+        @fr.get("/many")
+        def many(self) -> Data[list[ViewResponse]]:
+            return {"data": [lamp(1)]}
+
+        @fr.get("/optional/{id}")
+        def optional(self, id: ViewID) -> Data[ViewResponse] | None:
+            return None if id == 0 else {"data": lamp(id)}
+
+        @fr.get("/raw/{id}")
+        def raw(self, id: ViewID) -> Data[ViewResponse]:
+            return lamp(id)
+
+        @fr.post("/echo", status_code=200)
+        def echo(self, body: Data[ViewCreate]) -> Data[ViewCreate]:
+            return body
+
+    return ProductView
+
+
+@pytest.mark.parametrize("route", ["annotated", "decorator", "string"])
+def test_a_marker_in_a_generic_class_is_filled(env, route):
+    fr.include_view(env.client.app, _generic_view(env))
+    client = env.client
+
+    assert client.get(f"/products/{route}/7").json() == {
+        "data": {"id": 7, "name": "Lamp"}
+    }
+    spec = client.app.openapi()
+    operation = spec["paths"][f"/products/{route}/{{id}}"]["get"]
+    name = _ref(_json_schema(operation))
+    assert name == "Data_ProductResponse_"
+    assert _ref(spec["components"]["schemas"][name]["properties"]["data"]) == (
+        "ProductResponse"
+    )
+    # the marker gets the view's converter also here, from the route's parameter
+    assert f"/products/{route}/{{id:int}}" in _route_paths(client.app)
+
+
+def test_a_marker_inside_a_type_inside_a_generic_class_is_filled(env):
+    fr.include_view(env.client.app, _generic_view(env))
+    client = env.client
+
+    assert client.get("/products/many").json() == {
+        "data": [{"id": 1, "name": "Lamp"}]
+    }
+    spec = client.app.openapi()
+    name = _ref(_json_schema(spec["paths"]["/products/many"]["get"]))
+    data = spec["components"]["schemas"][name]["properties"]["data"]
+    assert data["type"] == "array"
+    assert _ref(data["items"]) == "ProductResponse"
+
+
+def test_a_generic_class_with_a_marker_can_be_optional(env):
+    fr.include_view(env.client.app, _generic_view(env))
+    client = env.client
+
+    assert client.get("/products/optional/0").json() is None
+    assert client.get("/products/optional/7").json() == {
+        "data": {"id": 7, "name": "Lamp"}
+    }
+    operation = client.app.openapi()["paths"]["/products/optional/{id}"]["get"]
+    options = _json_schema(operation)["anyOf"]
+    assert {"type": "null"} in options
+    assert [_ref(o) for o in options if "$ref" in o] == ["Data_ProductResponse_"]
+
+
+def test_a_generic_class_with_a_marker_as_the_body(env):
+    fr.include_view(env.client.app, _generic_view(env))
+    client = env.client
+
+    body = {"data": {"name": "Lamp"}}
+    assert client.post("/products/echo", json=body).json() == body
+    client.post("/products/echo", json={"data": {}}, assert_status_code=422)
+    operation = client.app.openapi()["paths"]["/products/echo"]["post"]
+    request_body = operation["requestBody"]["content"]["application/json"]["schema"]
+    assert _ref(request_body) == "Data_ProductCreate_"
+
+
+def test_a_route_that_returns_the_row_for_a_generic_class_fails_as_in_fastapi(env):
+    # Restly does not wrap the row: only the route knows where it goes. FastAPI's
+    # check of the response fails, so the row does not go out.
+    fr.include_view(env.client.app, _generic_view(env))
+    with pytest.raises(ResponseValidationError):
+        env.client.get("/products/raw/7")
+
+
+def test_each_view_gets_its_own_class_in_a_generic_class(env):
+    class Base(env.base):
+        @fr.get("/one/{id}")
+        def one(self, id: ViewID) -> Data[ViewResponse]:
+            return {"data": {"id": id, "name": "Lamp"}}
+
+    class ProductView(Base):
+        prefix = "/products"
+        model = env.Product
+
+    class GadgetView(Base):
+        prefix = "/gadgets"
+        model = env.Gadget
+
+    fr.include_view(env.client.app, ProductView)
+    fr.include_view(env.client.app, GadgetView)
+    paths = env.client.app.openapi()["paths"]
+    products = paths["/products/one/{id}"]["get"]
+    gadgets = paths["/gadgets/one/{id}"]["get"]
+    assert _ref(_json_schema(products)) == "Data_ProductResponse_"
+    assert _ref(_json_schema(gadgets)) == "Data_GadgetResponse_"
+
+
+def test_a_generic_class_without_a_marker_is_left_alone():
+    class PingView(fr.View):
+        prefix = "/ping"
+
+        @fr.get("/")
+        def ping(self) -> Data[int]:
+            return {"data": 1}
+
+    app = FastAPI()
+    fr.include_view(app, PingView)
+    assert RestlyTestClient(app).get("/ping/").json() == {"data": 1}
+
+
+def test_a_marker_in_a_generic_class_on_a_plain_view_raises():
+    class PingView(fr.View):
+        prefix = "/ping"
+
+        @fr.get("/")
+        def ping(self) -> Data[ViewResponse]:
             return {}
 
     with pytest.raises(
