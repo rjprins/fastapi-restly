@@ -67,7 +67,7 @@ def test_custom_route_write_action_conflict_is_409(client):
             tag = await self.get_one(id)
             async with self.write_action("rename", obj=tag):
                 tag.name = name
-            return self.to_response(tag)
+            return self.to_single_response(tag)
 
     create_tables()
     client.post("/tags", json={"name": "a"})
@@ -298,7 +298,7 @@ def test_a_conflict_in_a_hook_before_the_commit_is_409(client, hook):
             tag = await self.get_one(id)
             async with self.write_action("rename", obj=tag):
                 tag.name = name
-            return self.to_response(tag)
+            return self.to_single_response(tag)
 
     create_tables()
     client.post("/tags", json={"name": "taken"})
@@ -405,7 +405,7 @@ def test_sync_crud_and_write_action_conflicts_are_409(sync_db):
             tag = self.get_one(id)
             with self.write_action("rename", obj=tag):
                 tag.name = name
-            return self.to_response(tag)
+            return self.to_single_response(tag)
 
         @fr.post("/bulk", status_code=200)
         def bulk(self, names: list[str]):

@@ -27,7 +27,7 @@ PATCH /projects/1
        │    ├─ before_action_commit(...)
        │    ├─ commit
        │    └─ after_action_commit(...)
-       └─ to_response(obj)                # the response class, as JSON
+       └─ to_single_response(obj)         # the response class, as JSON
 ```
 
 The highlighted lines are the methods that you can override in your view.

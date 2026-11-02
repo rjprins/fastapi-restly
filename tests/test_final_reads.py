@@ -229,7 +229,9 @@ def test_where_id_serves_every_item_route(client):
 
         @fr.get("/by-title/{title}")
         async def by_title(self, title: str) -> Any:
-            return self.to_response(await self.handle_get_one(Book.title == title))
+            return self.to_single_response(
+                await self.handle_get_one(Book.title == title)
+            )
 
     create_tables()
     _seed(client)
@@ -587,7 +589,7 @@ def _marked_book_view(client: RestlyTestClient, Book: Any, BookSchema: Any) -> A
 
 
 def test_a_route_that_declares_view_response_returns_the_row(client):
-    """``-> ViewResponse``: the row goes through ``to_response``. Anything
+    """``-> ViewResponse``: the row goes through ``to_single_response``. Anything
     else, such as a response object, goes out as it is."""
     Shelf, Book, ShelfSchema, BookSchema = _models()
 
@@ -657,7 +659,7 @@ def test_a_route_that_declares_a_list_of_view_response_returns_rows(sync_client)
 
 def test_a_route_that_declares_view_list_response_returns_the_list_result(client):
     """``-> ViewListResponse``: a ``ListResult`` goes through
-    ``to_response(result, ResponseShape.LIST)``."""
+    ``to_list_response``."""
     Shelf, Book, ShelfSchema, BookSchema = _models()
 
     class BookView(_marked_book_view(client, Book, BookSchema)):

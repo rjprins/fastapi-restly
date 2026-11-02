@@ -20,7 +20,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 import fastapi_restly as fr
 from fastapi_restly.exc import RestlyConfigurationError
 from fastapi_restly.testing._client import RestlyTestClient
-from fastapi_restly.views import SchemaType, ViewID, ViewResponse
+from fastapi_restly.views import SchemaType, ViewCreate, ViewID, ViewResponse
 
 from ._models import SharedBase
 from .conftest import create_tables
@@ -927,3 +927,72 @@ def test_a_sync_view_takes_a_function(sync_db):
     SharedBase.metadata.create_all(engine)
     client = RestlyTestClient(app)
     assert client.post("/lamps/", json={"name": "a"}).json()["note"] == "noted"
+
+
+# --- recipes in the docs ------------------------------------------------------
+
+
+def test_endpoints_replaced_on_a_base_view_give_each_view_its_types(client, Lamp):
+    class Bulb(fr.IDMixin, SharedBase):
+        name: Mapped[str]
+
+    class BulbSchema(fr.IDSchema):
+        name: str
+
+    class ApiView(fr.AsyncRestView):
+        @fr.get("/{id}")
+        async def get_one_endpoint(self, id: ViewID) -> Data[ViewResponse]:
+            obj = await self.handle_get_one(id)
+            return {"data": self.to_single_response(obj)}
+
+        @fr.post("/")
+        async def create_endpoint(self, data: ViewCreate) -> Data[ViewResponse]:
+            obj = await self.handle_create(data)
+            return {"data": self.to_single_response(obj)}
+
+    class LampView(ApiView):
+        prefix = "/lamps"
+        model = Lamp
+        schema = LampSchema
+
+    class BulbView(ApiView):
+        prefix = "/bulbs"
+        model = Bulb
+        schema = BulbSchema
+
+    fr.include_view(client.app, LampView)
+    fr.include_view(client.app, BulbView)
+    create_tables()
+
+    paths = client.get("/openapi.json").json()["paths"]
+    assert _response_ref(paths["/lamps/{id}"]["get"]) == "Data_LampResponse_"
+    assert _response_ref(paths["/bulbs/{id}"]["get"]) == "Data_BulbResponse_"
+    assert _response_ref(paths["/lamps"]["post"], "201") == "Data_LampResponse_"
+    assert _body_ref(paths["/bulbs"]["post"]) == "BulbCreate"
+
+    created = client.post("/lamps", json={"name": "desk"}).json()
+    assert created == {"data": {"id": 1, "name": "desk"}}
+    assert client.get("/lamps/1").json() == created
+
+
+def test_a_delete_that_sends_the_row_shows_it_in_the_spec(client, Lamp):
+    class LampView(fr.AsyncRestView):
+        prefix = "/lamps"
+        model = Lamp
+        schema = LampSchema
+
+        @fr.delete("/{id}", status_code=200)
+        async def delete_endpoint(self, id: int) -> ViewResponse:
+            obj = await self.get_one(id)
+            response = self.to_single_response(obj)
+            await self.handle_delete(id)
+            return response
+
+    fr.include_view(client.app, LampView)
+    create_tables()
+    client.post("/lamps", json={"name": "desk"})
+
+    paths = client.get("/openapi.json").json()["paths"]
+    assert _response_ref(paths["/lamps/{id}"]["delete"]) == "LampResponse"
+    assert client.delete("/lamps/1").json() == {"id": 1, "name": "desk"}
+    client.get("/lamps/1", assert_status_code=404)

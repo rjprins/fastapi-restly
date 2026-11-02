@@ -296,21 +296,21 @@ def test_a_route_reads_through_its_own_scope(client):
             result = await self.handle_get_many(
                 list_params, scope=ScopeNoteClauses.trashed
             )
-            return self.to_response(result, fr.ResponseShape.LIST)
+            return self.to_list_response(result)
 
         @fr.get("/everything")
         async def everything(self):
             result = await self.handle_get_many(
                 self.request.query_params, scope=fr.clauses.UNSCOPED
             )
-            return self.to_response(result, fr.ResponseShape.LIST)
+            return self.to_list_response(result)
 
         @fr.post("/{id}/restore")
         async def restore(self, id: int):
             note = await self.handle_get_one(id, scope=ScopeNoteClauses.trashed)
             async with self.write_action("restore", obj=note):
                 note.deleted = False
-            return self.to_response(note)
+            return self.to_single_response(note)
 
     create_tables()
 
@@ -422,7 +422,7 @@ def test_a_route_narrows_inside_the_scope_with_where(client):
             result = await self.handle_get_many(
                 list_params, where=WhereTask.project_id == project_id
             )
-            return self.to_response(result, fr.ResponseShape.LIST)
+            return self.to_list_response(result)
 
         # the same filter passed as scope= replaces the visibility rules
         @fr.get("/replaced/{project_id}")
@@ -430,7 +430,7 @@ def test_a_route_narrows_inside_the_scope_with_where(client):
             result = await self.handle_get_many(
                 list_params, scope=fr.where_clause(WhereTask.project_id == project_id)
             )
-            return self.to_response(result, fr.ResponseShape.LIST)
+            return self.to_list_response(result)
 
         # a declared clause narrows the same way, uncalled
         @fr.get("/urgent")
@@ -438,7 +438,7 @@ def test_a_route_narrows_inside_the_scope_with_where(client):
             result = await self.handle_get_many(
                 list_params, where=WhereTaskClauses.is_urgent
             )
-            return self.to_response(result, fr.ResponseShape.LIST)
+            return self.to_list_response(result)
 
         # where= narrows inside a per-read scope too
         @fr.get("/trash/{project_id}")
@@ -448,7 +448,7 @@ def test_a_route_narrows_inside_the_scope_with_where(client):
                 scope=WhereTaskClauses.trashed,
                 where=WhereTask.project_id == project_id,
             )
-            return self.to_response(result, fr.ResponseShape.LIST)
+            return self.to_list_response(result)
 
     create_tables()
 
@@ -724,7 +724,7 @@ def test_a_session_rule_holds_under_every_scope_and_reference_check(client):
             result = await self.handle_get_many(
                 self.request.query_params, scope=FloorNoteClauses.is_deleted
             )
-            return self.to_response(result, fr.ResponseShape.LIST)
+            return self.to_list_response(result)
 
     @fr.include_view(client.app)
     class OptedOutView(TenantBase):
@@ -830,7 +830,7 @@ def test_a_sync_route_takes_the_list_params(sync_db):
             result = self.handle_get_many(
                 list_params, scope=SyncListedNoteClauses.is_deleted
             )
-            return self.to_response(result, fr.ResponseShape.LIST)
+            return self.to_list_response(result)
 
     @fr.include_view(client.app)
     class SyncListedNoteSubView(SyncListedNoteView):

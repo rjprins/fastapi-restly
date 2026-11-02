@@ -841,8 +841,10 @@ converter of the id type, as the item routes do: here `/{id:int}`; see
 
 The routes return the list result and the row. Because they declare the
 view's response, Restly passes these through
-{meth}`to_response <fastapi_restly.views.BaseRestView.to_response>`, as the
-CRUD routes do; see
+{meth}`to_list_response <fastapi_restly.views.BaseRestView.to_list_response>`
+and
+{meth}`to_single_response <fastapi_restly.views.BaseRestView.to_single_response>`,
+as for the CRUD routes; see
 [The response of a custom route](#custom-route-response).
 
 A marker stands for the class of the view that registers. So a route on a

@@ -20,7 +20,6 @@ from ._base import (
     ModelT,
     ReadScope,
     ResponseSchemaT,
-    ResponseShape,
     UpdateSchemaT,
     _check_action_name,
     _ReadWhere,
@@ -56,8 +55,7 @@ class AsyncRestView(
     in the docs):
 
     * ``<verb>_endpoint``: the endpoint method. Owns the HTTP signature,
-      ``response_model``, and ``to_response``. Override it to change the
-      HTTP contract.
+      and ``response_model``. Override it to change the HTTP contract.
     * ``handle_<verb>``: the handler. Handles the steps: ``authorize``, the
       load or the business method, and the commit bracket
       (``before_action_commit`` -> commit -> ``after_action_commit``);
@@ -91,38 +89,35 @@ class AsyncRestView(
 
     @get("/")
     async def get_many_endpoint(self, list_params: Any) -> ViewListResponse:
-        """``GET /`` endpoint method. Put the rows in ``scope``, the list
-        params in ``apply_list_params``, and the response shape in
-        ``to_response``; replace this method only to change the HTTP
+        """``GET /`` endpoint method. Put the rows in ``scope``, and the list
+        params in ``apply_list_params``. Restly builds the response with
+        ``to_list_response``. Replace this method only to change the HTTP
         contract."""
-        result = await self.handle_get_many(list_params)
-        return self.to_response(result, ResponseShape.LIST)
+        return await self.handle_get_many(list_params)
 
     @get("/{id}")
     async def get_one_endpoint(self, id: ViewID) -> ViewResponse:
-        """``GET /{id}`` endpoint method. Put the rows in ``scope``, the
-        lookup of the id in ``where_id``, and the response shape in
-        ``to_response``; replace this method only to change the HTTP
+        """``GET /{id}`` endpoint method. Put the rows in ``scope``, and the
+        lookup of the id in ``where_id``. Restly builds the response with
+        ``to_single_response``. Replace this method only to change the HTTP
         contract."""
-        obj = await self.handle_get_one(id)
-        return self.to_response(obj)
+        return await self.handle_get_one(id)
 
     @post("/")
     async def create_endpoint(self, data: ViewCreate) -> ViewResponse:
         """``POST /`` endpoint method. Override ``create`` for domain
-        logic (it is commit-free; the handler owns the commit),
-        ``to_response`` for the response shape; replace this method only to
+        logic (it is commit-free; the handler owns the commit). Restly builds
+        the response with ``to_single_response``. Replace this method only to
         change the HTTP contract."""
-        obj = await self.handle_create(data)
-        return self.to_response(obj)
+        return await self.handle_create(data)
 
     @patch("/{id}")
     async def update_endpoint(self, id: ViewID, data: ViewUpdate) -> ViewResponse:
         """``PATCH /{id}`` endpoint method. Override ``update`` for
-        domain logic, ``to_response`` for the response shape; replace this
-        method only to change the HTTP contract."""
-        obj = await self.handle_update(id, data)
-        return self.to_response(obj)
+        domain logic. Restly builds the response with
+        ``to_single_response``. Replace this method only to change the HTTP
+        contract."""
+        return await self.handle_update(id, data)
 
     @delete("/{id}")
     async def delete_endpoint(self, id: ViewID) -> fastapi.Response:
@@ -130,7 +125,7 @@ class AsyncRestView(
         domain logic (e.g. soft delete); replace this method only to change the
         HTTP contract (e.g. return the deleted object instead of 204)."""
         await self.handle_delete(id)
-        return self.to_response(None, ResponseShape.EMPTY)
+        return fastapi.Response(status_code=204)
 
     # ====================================================================
     # Handlers (final: call from a custom route, never override)

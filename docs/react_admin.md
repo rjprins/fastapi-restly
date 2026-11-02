@@ -234,6 +234,9 @@ method that you override changes both routes. To give `PUT` its own rules,
 requires the complete record, while `PATCH` still accepts a part of it:
 
 ```python
+from fastapi_restly.views import ViewResponse
+
+
 class ProductReplace(fr.BaseSchema):
     name: str
     price: float
@@ -244,9 +247,8 @@ class ProductView(fr.AsyncReactAdminView):
     model = Product
 
     @fr.put("/{id}")
-    async def put(self, id: int, payload: ProductReplace):
-        obj = await self.handle_update(id, payload)
-        return self.to_response(obj)
+    async def put(self, id: int, payload: ProductReplace) -> ViewResponse:
+        return await self.handle_update(id, payload)
 ```
 
 A `PUT` with a missing field returns 422. Keys that the schema does not

@@ -150,9 +150,8 @@ add it.
 
 1. Actions are verbs: `get_many`, `get_one`, `create`, `update`, `delete`.
    These names stay.
-2. "List" is what `get_many` returns: the result (`ListResult`), the response
-   shape (`ResponseShape.LIST`), the list response (`to_list_response`) and
-   the list params (`schema_list_params`).
+2. "List" is what `get_many` returns: the result (`ListResult`), the list
+   response (`to_list_response`) and the list params (`schema_list_params`).
 3. An attribute puts the noun first and the role after, so it does not look
    like a method: `schema_create`, `schema_list_params`.
 4. A function starts with a verb. It starts with an action name only if it is

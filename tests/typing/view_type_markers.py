@@ -34,12 +34,12 @@ class RenameView(fr.AsyncRestView[Any]):
     @fr.post("/{id}/rename", status_code=200)
     async def rename(self, id: ViewID, data: ViewUpdate) -> ViewResponse:
         obj = await self.handle_update(id, data)
-        return self.to_response(obj)
+        return obj
 
     @fr.get("/recent")
     async def recent(self, list_params: Any) -> ViewListResponse:
         result = await self.handle_get_many(list_params)
-        return self.to_response(result, fr.ResponseShape.LIST)
+        return result
 
 
 @fr.include_view(app)
@@ -59,11 +59,11 @@ class SyncTaskView(fr.RestView[Task, TaskSchema]):
 
     @fr.post("/import", response_model=list[ViewResponse])
     def import_tasks(self, data: ViewCreate) -> Any:
-        return [self.to_response(self.handle_create(data))]
+        return [self.to_single_response(self.handle_create(data))]
 
     @fr.get("/maybe/{id}")
     def maybe(self, id: ViewID) -> ViewResponse | None:
-        return self.to_response(self.handle_get_one(id))
+        return self.to_single_response(self.handle_get_one(id))
 
 
 # SchemaType: a function of the view, on a setting and in a route.

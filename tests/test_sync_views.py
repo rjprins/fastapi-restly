@@ -481,7 +481,9 @@ def test_sync_rest_view_crud_and_pagination(sync_db):
         assert first.customer.name == "Acme"
         assert second.customer.name == "Acme"
 
-        paginated = view.get_many_endpoint({"page": "1", "page_size": "10"})
+        paginated = view.to_list_response(
+            view.get_many_endpoint({"page": "1", "page_size": "10"})
+        )
         assert paginated.total_count == 2
         assert paginated.page == 1
         assert paginated.page_size == 10
@@ -555,7 +557,7 @@ def test_sync_rest_view_dispatches_to_handle_overrides(sync_db):
         view.session = session
 
         created = view.create_endpoint(WidgetSchema(id=0, name="alpha"))
-        view.get_many_endpoint({})
+        view.to_list_response(view.get_many_endpoint({}))
         view.get_one_endpoint(created.id)
         view.update_endpoint(created.id, WidgetSchema(id=created.id, name="beta"))
         view.delete_endpoint(created.id)
@@ -644,7 +646,7 @@ def test_a_natural_key_route_is_handle_get_one_with_a_predicate(sync_db):
 
         @fr.get("/by-slug/{slug}")
         def get_by_slug(self, slug: str) -> PageSchema:
-            return self.to_response(self.handle_get_one(Page.slug == slug))
+            return self.to_single_response(self.handle_get_one(Page.slug == slug))
 
         def authorize(self, action, obj=None, data=None):
             if obj is not None and obj.slug == "secret":

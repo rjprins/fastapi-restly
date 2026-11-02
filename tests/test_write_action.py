@@ -32,14 +32,14 @@ def _publish_view(client, **attrs):
         doc = await self.handle_get_one(id)  # scope + 404 + read-auth
         async with self.write_action("publish", obj=doc):
             doc.published = True
-        return self.to_response(doc)
+        return self.to_single_response(doc)
 
     async def boom_endpoint(self, id: int):
         doc = await self.handle_get_one(id)
         async with self.write_action("publish", obj=doc):
             doc.published = True
             raise fr.exc.Conflict("nope")  # fails inside the block
-        return self.to_response(doc)
+        return self.to_single_response(doc)
 
     namespace = {
         "prefix": "/docs",
@@ -124,7 +124,7 @@ def test_a_new_object_as_obj_is_created(client):
             copy = Item(name=original.name + " (copy)")
             async with self.write_action("create", obj=copy):
                 pass  # Restly adds the new object, and saves it
-            return self.to_response(copy)
+            return self.to_single_response(copy)
 
         async def authorize(self, action, obj=None, data=None):
             seen.setdefault(action, []).append(obj)

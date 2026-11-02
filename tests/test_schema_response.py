@@ -150,14 +150,14 @@ def test_a_custom_route_that_names_the_classes_shows_one_type_per_resource():
         @fr.get("/archived", response_model=TaskListResponse)
         async def archived(self, list_params):
             result = await self.handle_get_many(list_params, where=Task.archived)
-            return self.to_response(result, fr.ResponseShape.LIST)
+            return self.to_list_response(result)
 
         @fr.post("/{id}/archive", response_model=TaskResponse)
         async def archive(self, id: int):
             task = await self.get_one(id)
             async with self.write_action("archive", obj=task):
                 task.archived = True
-            return self.to_response(task)
+            return self.to_single_response(task)
 
     assert _ref(app, "/tasks/archived", "get") == "TaskListResponse"
     assert _ref(app, "/tasks", "get") == "TaskListResponse"
@@ -193,7 +193,7 @@ def test_the_wrong_pagination_gives_a_second_class_and_a_warning():
         @fr.get("/empty", response_model=ShelfListResponse)
         async def empty(self, list_params):
             result = await self.handle_get_many(list_params)
-            return self.to_response(result, fr.ResponseShape.LIST)
+            return self.to_list_response(result)
 
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always", RestlyDuplicateSchemaNameWarning)
@@ -514,7 +514,7 @@ def test_an_instance_of_the_schema_goes_out_through_the_view_s_response_class(
 def test_an_instance_of_a_subclass_goes_out_without_its_other_fields(client, base):
     """The view's schema adds fields to its own response class. An override
     returns an instance of the schema: only the fields of the response class
-    go out, also where no response model removes the others."""
+    go out, also on the react-admin list, which writes its own body."""
 
     class Eel(fr.IDMixin, SharedBase):
         name: Mapped[str]
@@ -536,14 +536,10 @@ def test_an_instance_of_a_subclass_goes_out_without_its_other_fields(client, bas
         def to_single_response(self, obj):
             return EelSchema.model_validate(obj, from_attributes=True)
 
-        @fr.get("/{id}/plain", response_model=None)
-        async def plain(self, id: int) -> Any:
-            return self.to_response(await self.handle_get_one(id))
-
     create_tables()
     client.post("/eels/", json={"name": "conger", "secret": "s3"})
 
-    for path in ("/eels/1", "/eels/", "/eels/1/plain"):
+    for path in ("/eels/1", "/eels/"):
         body = client.get(path).json()
         if path == "/eels/":
             body = body[0] if isinstance(body, list) else body["data"][0]

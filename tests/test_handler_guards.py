@@ -182,7 +182,7 @@ def test_the_replacement_seams_define_cleanly():
 
         @fr.post("/")
         async def create_endpoint(self, schema_obj):
-            return self.to_response(await self.handle_create(schema_obj))
+            return self.to_single_response(await self.handle_create(schema_obj))
 
     assert RecordView.handle_create is fr.AsyncRestView.handle_create
 

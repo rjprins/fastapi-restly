@@ -35,7 +35,7 @@ POST /
        │    ├─ before_action_commit("create", new=obj, old=None)
        │    ├─ commit
        │    └─ after_action_commit("create", new=obj, old=None)
-       └─ to_response(obj)
+       └─ to_single_response(obj)
 ```
 
 The highlighted lines are the methods that you can override in your view.
@@ -45,9 +45,9 @@ all five actions: `update_endpoint` calls `handle_update`, which calls
 `update`, and so on. A read has a load in the place of the business method.
 
 - The **endpoint method**, `<verb>_endpoint`, is the method that FastAPI
-  calls. It owns the HTTP contract: the route decorator, the parameters, the
-  `response_model` and the call to
-  {meth}`to_response <fastapi_restly.views.BaseRestView.to_response>`.
+  calls. It owns the HTTP contract: the route decorator, the parameters and
+  the `response_model`. It returns the row, and Restly builds the response with
+  {meth}`to_single_response <fastapi_restly.views.BaseRestView.to_single_response>`.
   Replace it only to change that contract, such as the status code. See
   [Change the status code, headers or response of one route](#replace-endpoint-method).
 - The **handler**, `handle_<verb>`, runs the steps. It calls
@@ -116,7 +116,7 @@ A read has no commit bracket and no business method. Its load is final. Each
 step of the load comes from a declaration or from a small hook:
 
 ```{code-block} text
-:emphasize-lines: 2,7,8,9,10,11,14,16,19,20,21,22
+:emphasize-lines: 2,7,8,9,10,13,15,18,19,20,21
 
 GET /{id}
   └─ get_one_endpoint(id)                     # endpoint method
@@ -127,8 +127,7 @@ GET /{id}
        │    │    ├─ .where(where_id(id))      # hook: the primary key by default
        │    │    └─ no row: raise not_found(id)   # hook: a 404 by default
        │    └─ authorize("get_one", obj=obj)  # POLICY: checks the loaded row
-       └─ to_response(obj)
-            └─ to_single_response(obj)        # the response of the row
+       └─ to_single_response(obj)             # the response of the row
 
 GET /
   └─ get_many_endpoint(list_params)
@@ -138,7 +137,7 @@ GET /
        │         ├─ select()                  # the same start as get_one
        │         ├─ apply_list_params(stmt, list_params)   # filters, sort, page
        │         └─ count(stmt)               # on a paginated view
-       └─ to_response(result, LIST)
+       └─ to_list_response(result)
             └─ to_single_response(row)        # for each row
 ```
 
@@ -193,7 +192,9 @@ of some columns, SQLAlchemy leaves the loader options out.
 | The list total | {meth}`count <fastapi_restly.views.RestView.count>` |
 | A side effect inside the commit: an outbox or audit row, or other work that needs the new id | {meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>` ([below](#transaction-hooks)) |
 | A side effect after the commit: an email, a webhook | {meth}`after_action_commit <fastapi_restly.views.RestView.after_action_commit>` ([below](#transaction-hooks)) |
-| The response shape of every route | {meth}`to_response <fastapi_restly.views.BaseRestView.to_response>` ([Responses](#to-response)) |
+| How one object becomes a response | {meth}`to_single_response <fastapi_restly.views.BaseRestView.to_single_response>` ([Responses](#to-single-response)) |
+| The list response | {attr}`list_response_schema <fastapi_restly.views.BaseRestView.list_response_schema>` ([Responses](#list-schema)) |
+| The response shape of every route | endpoint methods replaced on a base view ([Responses](#every-route-shape)) |
 | The HTTP contract of one route: status, headers, parameters | `<verb>_endpoint` ([below](#replace-endpoint-method)) |
 | A path that is not CRUD: a lookup, an action such as publish | a method with {func}`@fr.get <fastapi_restly.views.get>` or {func}`@fr.post <fastapi_restly.views.post>` ([read route](#custom-read-route), [action route](#custom-action-route)) |
 | A lookup by another key, such as a slug or an email | In a custom route, call {meth}`handle_get_one <fastapi_restly.views.RestView.handle_get_one>` with an expression ([below](#natural-key-route)) |
@@ -828,6 +829,9 @@ route decorator. Most replacements call the handler and only change the
 response:
 
 ```python
+from fastapi_restly.views import ViewResponse
+
+
 @fr.include_view(app)
 class ProductView(fr.AsyncRestView):
     prefix = "/products"
@@ -835,9 +839,9 @@ class ProductView(fr.AsyncRestView):
     schema = ProductSchema
 
     @fr.delete("/{id}", status_code=200)
-    async def delete_endpoint(self, id: int):
+    async def delete_endpoint(self, id: int) -> ViewResponse:
         obj = await self.get_one(id)               # load through the scope, or 404
-        response = self.to_response(obj)           # the row as GET /{id} sends it
+        response = self.to_single_response(obj)    # the row as GET /{id} sends it
         await self.handle_delete(id)               # authorize, delete, commit
         return response
 ```
@@ -845,9 +849,8 @@ class ProductView(fr.AsyncRestView):
 The default `DELETE /{id}` answers `204 No Content`. This version answers
 `200` with the deleted row, as React Admin's `ra-data-simple-rest` expects
 ([React Admin](react_admin.md)). It builds the response before the row is
-gone. {meth}`to_response <fastapi_restly.views.BaseRestView.to_response>`
-gives an object of the response class, so only its fields go out, as from
-`GET /{id}`.
+gone. `ViewResponse` makes the response class the `response_model`, so only
+its fields go out, as from `GET /{id}`, and OpenAPI shows them.
 
 :::{admonition} Details
 :class: details
@@ -892,7 +895,7 @@ class ProductView(fr.AsyncRestView):
     async def get_many_endpoint(self, list_params):
         result = await self.handle_get_many(list_params)
         serialized = [
-            self.to_response(obj).model_dump(mode="json", by_alias=True)
+            self.to_single_response(obj).model_dump(mode="json", by_alias=True)
             for obj in result.objects
         ]
         return fastapi.Response(
@@ -922,7 +925,7 @@ class DeleteReturnsObjectMixin:
     @fr.delete("/{id}", status_code=200)
     async def delete_endpoint(self, id: ViewID) -> ViewResponse:
         obj = await self.get_one(id)
-        response = self.to_response(obj)
+        response = self.to_single_response(obj)
         await self.handle_delete(id)
         return response
 

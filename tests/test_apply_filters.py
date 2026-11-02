@@ -315,7 +315,7 @@ def test_a_view_with_list_params_of_its_own(view_class):
         async def raw(self) -> Any:
             # the overrides get the model, and the envelope its page size
             result = await self.handle_get_many(self.request.query_params)
-            return self.to_response(result, fr.ResponseShape.LIST)
+            return self.to_list_response(result)
 
     app = FastAPI()
     fr.include_view(app, ItemView)

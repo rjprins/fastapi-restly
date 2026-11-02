@@ -83,7 +83,7 @@ def test_inherited_replaced_endpoint_resolves_postponed_annotations(env):
             async def update_endpoint(
                 self, id: PositiveId, schema_obj: ProductReplace
             ) -> ProductRead:
-                return self.to_response(await self.handle_update(id, schema_obj))
+                return self.to_single_response(await self.handle_update(id, schema_obj))
 
         else:
 
@@ -91,7 +91,7 @@ def test_inherited_replaced_endpoint_resolves_postponed_annotations(env):
             def update_endpoint(
                 self, id: PositiveId, schema_obj: ProductReplace
             ) -> ProductRead:
-                return self.to_response(self.handle_update(id, schema_obj))
+                return self.to_single_response(self.handle_update(id, schema_obj))
 
     class ProductView(ReplaceUpdateMixin, env.base):
         prefix = "/products"
@@ -131,14 +131,14 @@ def test_inherited_custom_route_resolves_postponed_annotations(env):
             @fr.post("/import", status_code=201)
             async def import_product(self, payload: ProductReplace) -> ProductRead:
                 """Import one product."""
-                return self.to_response(await self.handle_create(payload))
+                return self.to_single_response(await self.handle_create(payload))
 
         else:
 
             @fr.post("/import", status_code=201)
             def import_product(self, payload: ProductReplace) -> ProductRead:
                 """Import one product."""
-                return self.to_response(self.handle_create(payload))
+                return self.to_single_response(self.handle_create(payload))
 
     class ProductView(ImportMixin, env.base):
         prefix = "/products"

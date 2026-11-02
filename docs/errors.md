@@ -10,8 +10,8 @@ view, and the request stops there. If the error comes before the commit,
 Restly does not commit the write.
 
 Errors do not pass through
-{meth}`to_response <fastapi_restly.views.BaseRestView.to_response>`. That
-method shapes only successful responses (see
+{meth}`to_single_response <fastapi_restly.views.BaseRestView.to_single_response>`.
+That method shapes only successful responses (see
 [Responses](responses.md)). To change the error body, change the
 exception handlers of the app, as in any FastAPI app.
 
@@ -167,7 +167,7 @@ catches `fr.exc.Conflict`:
                 tag.name = name
         except fr.exc.Conflict:
             raise fr.exc.Conflict(f"A tag named {name!r} already exists")
-        return self.to_response(tag)
+        return self.to_single_response(tag)
 ```
 
 Restly rolls back the change of the action that caused the conflict, so the

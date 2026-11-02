@@ -41,7 +41,9 @@ def _build(client):
             # Return a FULL schema instance with the WriteOnly field populated --
             # the path that used to leak via the isinstance short-circuit. This
             # custom route has no response_model, so only layer (a) protects it.
-            return self.to_response(UserSchema(id=id, name="bob", password="secret"))
+            return self.to_single_response(
+                UserSchema(id=id, name="bob", password="secret")
+            )
 
     create_tables()
     return UserSchema
@@ -114,7 +116,7 @@ def test_schema_instance_path_does_not_rerun_validators(client):
 
         @fr.get("/echo")
         async def echo(self):
-            return self.to_response(AcctSchema(id=1, name="x", token="secret"))
+            return self.to_single_response(AcctSchema(id=1, name="x", token="secret"))
 
     create_tables()
 

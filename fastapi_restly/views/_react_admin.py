@@ -29,7 +29,6 @@ from fastapi_restly.views import (
     ListResult,
     NoPagination,
     NumberedPagination,
-    ResponseShape,
     RestView,
     SchemaType,
     ViewID,
@@ -462,8 +461,7 @@ class AsyncReactAdminView(_ReactAdminMixin, AsyncRestView):
 
     @get("/")
     async def get_many_endpoint(self, list_params: Any) -> ViewListResponse:
-        result = await self.handle_get_many(list_params)
-        return self.to_response(result, ResponseShape.LIST)
+        return await self.handle_get_many(list_params)
 
     async def apply_list_params(
         self, stmt: sqlalchemy.Select, list_params: Any
@@ -488,8 +486,7 @@ class AsyncReactAdminView(_ReactAdminMixin, AsyncRestView):
         view's ``schema_update`` body. An ``update`` override changes both
         routes. Replace this method to give ``PUT`` its own rules; see
         :ref:`react-admin-put`."""
-        obj = await self.handle_update(id, data)
-        return self.to_response(obj)
+        return await self.handle_update(id, data)
 
 
 class ReactAdminView(_ReactAdminMixin, RestView):
@@ -502,8 +499,7 @@ class ReactAdminView(_ReactAdminMixin, RestView):
 
     @get("/")
     def get_many_endpoint(self, list_params: Any) -> ViewListResponse:
-        result = self.handle_get_many(list_params)
-        return self.to_response(result, ResponseShape.LIST)
+        return self.handle_get_many(list_params)
 
     def apply_list_params(
         self, stmt: sqlalchemy.Select, list_params: Any
@@ -528,5 +524,4 @@ class ReactAdminView(_ReactAdminMixin, RestView):
         ``schema_update`` body. An ``update`` override changes both routes.
         Replace this method to give ``PUT`` its own rules; see
         :ref:`react-admin-put`."""
-        obj = self.handle_update(id, data)
-        return self.to_response(obj)
+        return self.handle_update(id, data)

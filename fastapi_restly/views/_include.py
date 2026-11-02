@@ -34,7 +34,7 @@ from typing_extensions import TypeVar
 from ..db._config import _fr_config
 from ..exc import RestlyConfigurationError, RestlyMisuseWarning
 from ..schemas._base import _reject_buried_markers
-from ._base import BaseRestView, ListResult, ResponseShape, View, _serves_route
+from ._base import BaseRestView, ListResult, View, _serves_route
 from ._class_based_view import (
     _copy_all_parent_class_endpoints_into_this_subclass,
     _init_all_endpoints,
@@ -345,10 +345,9 @@ def _with_view_response(
 
     A route that declares the view's response answers through the view's
     response step, also when it returns the row: a row goes through
-    :meth:`~BaseRestView.to_response`, each row of a list, or of another
-    iterable such as the result of ``session.scalars()``, through
-    :meth:`~BaseRestView.to_single_response`, and a ``ListResult`` through
-    ``to_response(result, ResponseShape.LIST)``. Anything else, such as
+    :meth:`~BaseRestView.to_single_response`, each row of a list, or of another
+    iterable such as the result of ``session.scalars()``, too, and a
+    ``ListResult`` through :meth:`~BaseRestView.to_list_response`. Anything else, such as
     ``None`` or a response object that the route built itself, goes out as
     it is.
     """
@@ -362,7 +361,7 @@ def _with_view_response(
 
     def respond(view: Any, result: Any) -> Any:
         if kind == "single" and isinstance(result, view.model):
-            return view.to_response(result)
+            return view._single_response(result)
         if kind == "many" and _is_rows(result):
             rows = list(result)
             if all(isinstance(row, view.model) for row in rows):
@@ -370,7 +369,7 @@ def _with_view_response(
             # the iterable is used up: send the items that it gave
             return rows
         if kind == "list" and isinstance(result, ListResult):
-            return view.to_response(result, ResponseShape.LIST)
+            return view.to_list_response(result)
         return result
 
     if inspect.iscoroutinefunction(endpoint):

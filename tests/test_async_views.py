@@ -392,7 +392,9 @@ def test_async_rest_view_crud_and_pagination():
             assert first.item_name == "Keyboard"
             assert second.item_name == "Mouse"
 
-            paginated = await view.get_many_endpoint({"page": "1", "page_size": "10"})
+            paginated = view.to_list_response(
+                await view.get_many_endpoint({"page": "1", "page_size": "10"})
+            )
             assert paginated.total_count == 2
             assert paginated.page == 1
             assert paginated.page_size == 10
@@ -470,7 +472,7 @@ def test_async_rest_view_dispatches_to_handle_overrides():
             view.session = session
 
             created = await view.create_endpoint(WidgetSchema(id=0, name="alpha"))
-            await view.get_many_endpoint({})
+            view.to_list_response(await view.get_many_endpoint({}))
             await view.get_one_endpoint(created.id)
             await view.update_endpoint(
                 created.id, WidgetSchema(id=created.id, name="beta")

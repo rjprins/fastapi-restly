@@ -85,7 +85,7 @@ class WidgetView(fr.RestView[Widget, WidgetSchema, WidgetInput, WidgetInput, int
             scope=fr.clauses.UNSCOPED,
             where=fr.where_clause(Widget.name == name),
         )
-        return self.to_response(by_name or by_clause, fr.ResponseShape.LIST)
+        return self.to_list_response(by_name or by_clause)
 
 
 def create_widgets_together(view: WidgetView, items: list[WidgetInput]) -> list[Widget]:

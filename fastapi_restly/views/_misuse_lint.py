@@ -82,7 +82,8 @@ def _warn_on_misuse(view_cls: type[View]) -> None:
             warnings.warn(
                 f"{name} overrides the endpoint method '{endpoint}'. Override "
                 f"an endpoint method only to change the HTTP contract. {seams}; "
-                f"for a gate 'authorize'; for the response shape 'to_response'. "
+                f"for a gate 'authorize'; for the response 'to_single_response' "
+                f"or 'to_list_response'. "
                 f"Call 'handle_{verb}' from the replacement to keep {keep}.",
                 RestlyMisuseWarning,
                 stacklevel=5,

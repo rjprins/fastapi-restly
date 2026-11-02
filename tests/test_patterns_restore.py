@@ -58,7 +58,7 @@ def client(request: pytest.FixtureRequest) -> Iterator[RestlyTestClient]:
                 obj = self.get_one(id, scope=is_deleted)
                 with self.write_action("restore", obj=obj):
                     obj.deleted_at = None
-                return self.to_response(obj)
+                return self.to_single_response(obj)
 
     else:
 
@@ -83,7 +83,7 @@ def client(request: pytest.FixtureRequest) -> Iterator[RestlyTestClient]:
                 obj = await self.get_one(id, scope=is_deleted)
                 async with self.write_action("restore", obj=obj):
                     obj.deleted_at = None
-                return self.to_response(obj)
+                return self.to_single_response(obj)
 
     if sync:
         engine, _ = request.getfixturevalue("sync_db")

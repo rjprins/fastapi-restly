@@ -732,11 +732,10 @@ def test_sync_create_serializes_assigned_collection(sync_client):
             obj.tags = list(self.session.scalars(select(Tag)).all())
             return obj
 
-        def to_response(self, result, *args, **kwargs) -> Any:
+        def to_single_response(self, obj) -> Any:
             # snapshot load state after save_object, before serialization reads it
-            if isinstance(result, SyncTaggedDoc):
-                load_state["unloaded"] = set(sa_inspect(result).unloaded)
-            return super().to_response(result, *args, **kwargs)
+            load_state["unloaded"] = set(sa_inspect(obj).unloaded)
+            return super().to_single_response(obj)
 
     _create_sync_tables()
     with _fr_config.make_session() as session:

@@ -49,7 +49,7 @@ class AccountView(fr.AsyncRestView[Account, AccountResponse]):
     @fr.get("/inactive", response_model=AccountListResponse)
     async def inactive(self, list_params: Any) -> Any:
         result = await self.handle_get_many(list_params)
-        return self.to_response(result, fr.ResponseShape.LIST)
+        return self.to_list_response(result)
 
 
 class Note(fr.IDMixin, Base):

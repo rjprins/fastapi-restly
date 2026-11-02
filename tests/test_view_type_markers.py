@@ -93,13 +93,13 @@ def _rename_mixin(env):
 
             @fr.post("/{id}/rename", status_code=200)
             async def rename(self, id: ViewID, schema_obj: ViewUpdate) -> ViewResponse:
-                return self.to_response(await self.handle_update(id, schema_obj))
+                return await self.handle_update(id, schema_obj)
 
         else:
 
             @fr.post("/{id}/rename", status_code=200)
             def rename(self, id: ViewID, schema_obj: ViewUpdate) -> ViewResponse:
-                return self.to_response(self.handle_update(id, schema_obj))
+                return self.handle_update(id, schema_obj)
 
     return RenameMixin
 
@@ -174,7 +174,7 @@ def test_list_markers_follow_the_pagination_of_the_view(env):
                 result = await self.handle_get_many(
                     list_params, where=self.model.name == name
                 )
-                return self.to_response(result, fr.ResponseShape.LIST)
+                return result
 
             @fr.get("/plain", response_model=list[ViewResponse])
             async def plain(self, list_params):
@@ -188,7 +188,7 @@ def test_list_markers_follow_the_pagination_of_the_view(env):
                 result = self.handle_get_many(
                     list_params, where=self.model.name == name
                 )
-                return self.to_response(result, fr.ResponseShape.LIST)
+                return result
 
             @fr.get("/plain", response_model=list[ViewResponse])
             def plain(self, list_params):
@@ -246,13 +246,13 @@ def test_markers_work_inside_other_types(env):
             async def maybe(
                 self, id: Annotated[ViewID, Path(ge=1)]
             ) -> ViewResponse | None:
-                return self.to_response(await self.handle_get_one(id))
+                return self.to_single_response(await self.handle_get_one(id))
 
         else:
 
             @fr.get("/maybe/{id}")
             def maybe(self, id: Annotated[ViewID, Path(ge=1)]) -> ViewResponse | None:
-                return self.to_response(self.handle_get_one(id))
+                return self.to_single_response(self.handle_get_one(id))
 
     fr.include_view(env.client.app, ProductView)
     env.make_tables()

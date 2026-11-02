@@ -477,14 +477,16 @@ def test_not_found_gets_none_for_an_expression(flavor):
         class BookViewBase(flavor.base):
             @fr.get("/by-title/{title}")
             def by_title(self, title: str) -> Any:
-                return self.to_response(self.handle_get_one(Book.title == title))
+                return self.to_single_response(self.handle_get_one(Book.title == title))
 
     else:
 
         class BookViewBase(flavor.base):  # type: ignore[no-redef]
             @fr.get("/by-title/{title}")
             async def by_title(self, title: str) -> Any:
-                return self.to_response(await self.handle_get_one(Book.title == title))
+                return self.to_single_response(
+                    await self.handle_get_one(Book.title == title)
+                )
 
     asked: list[Any] = []
 

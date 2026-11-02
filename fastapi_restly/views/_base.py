@@ -178,25 +178,6 @@ class ViewRoute(str, Enum):
     DELETE = "delete_endpoint"
 
 
-class ResponseShape(str, Enum):
-    """The response shape an endpoint method asks :meth:`BaseRestView.to_response` to
-    produce.
-
-    This is separate from write-action names such as ``"publish"``. Endpoint
-    methods choose one of these three response shapes; custom actions remain an
-    open string namespace.
-    """
-
-    #: One object: ``result`` is a row, and the response is an instance of
-    #: the response class, from :meth:`BaseRestView.to_single_response`.
-    SINGLE = "single"
-    #: A list: ``result`` is a :class:`ListResult`, and the response is the
-    #: list envelope, from :meth:`BaseRestView.to_list_response`.
-    LIST = "list"
-    #: No body: ``result`` is not used, and the response is ``204 No Content``.
-    EMPTY = "empty"
-
-
 class Action:
     """The names of the five CRUD actions: the ``action`` that ``authorize``
     gets. A write, such as ``CREATE`` or the action of a ``write_action``
@@ -1083,25 +1064,6 @@ class BaseRestView(
             ),
         )
         return _build_envelope(envelope, {"data": data, **page_info})
-
-    def to_response(
-        self, result: Any, shape: ResponseShape = ResponseShape.SINGLE
-    ) -> Any:
-        """Endpoint-method response boundary.
-
-        ``shape`` selects the response form, and with it what ``result`` is: one
-        object for ``SINGLE`` (:meth:`to_single_response`), a
-        :class:`ListResult` for ``LIST`` (:meth:`to_list_response`), and
-        nothing for ``EMPTY``. A plain Python list is not a valid ``result``.
-        ``shape`` is not the write-action name. Override for envelopes or
-        shape-wide status behavior; per-endpoint projections belong in the
-        endpoint method.
-        """
-        if shape is ResponseShape.EMPTY:
-            return fastapi.Response(status_code=204)
-        if shape is ResponseShape.LIST:
-            return self.to_list_response(result)
-        return self._single_response(result)
 
     def snapshot(self, obj: Any) -> dict[str, Any]:
         """The column values that are loaded on ``obj``, passed as ``old`` to

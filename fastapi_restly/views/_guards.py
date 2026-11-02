@@ -353,6 +353,17 @@ _RENAMED_METHODS = {
 }
 
 
+# Removed before 1.0, with what to use instead.
+_REMOVED_METHODS = {
+    "to_response": (
+        "To change one object in a response, override to_single_response. To "
+        "change the list response, set list_response_schema or override "
+        "to_list_response. To change what one route sends, replace its endpoint "
+        "method."
+    )
+}
+
+
 def _missing_view_attribute(view_name: str, name: str) -> str:
     """The message for a view attribute that does not exist: the
     replacement when it is a removed or renamed method."""
@@ -362,6 +373,8 @@ def _missing_view_attribute(view_name: str, name: str) -> str:
             f"{_REMOVED_DOMAIN_UTILITIES[name]} For another model, use "
             f"fr.objects.{name} or async_{name}."
         )
+    if name in _REMOVED_METHODS:
+        return f"{view_name}.{name} was removed. {_REMOVED_METHODS[name]}"
     if name in _RENAMED_METHODS:
         return (
             f"{view_name}.{name} is now {_RENAMED_METHODS[name]}."
@@ -442,6 +455,12 @@ def _check_renamed_names(cls: type) -> None:
                     f"{cls.__name__} defines {old}{origin}, which was renamed "
                     f"to {new}.{_RENAMED_METHOD_HINTS.get(old, '')} Rename the "
                     "method."
+                )
+        for name, instead in _REMOVED_METHODS.items():
+            if name in vars(klass):
+                raise RestlyConfigurationError(
+                    f"{cls.__name__} defines {name}{origin}, which was removed. "
+                    f"{instead}"
                 )
         for name, value in vars(klass).items():
             if not hasattr(value, "_api_route_args"):

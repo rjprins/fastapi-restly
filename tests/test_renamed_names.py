@@ -281,6 +281,45 @@ def test_the_new_names_define_a_view():
             return await self.handle_get_many(list_params)
 
 
-def test_the_list_shape_is_named_list():
-    assert fr.ResponseShape.LIST.value == "list"
-    assert not hasattr(fr.ResponseShape, "LISTING")
+def test_an_override_of_the_removed_to_response_raises():
+    with pytest.raises(RestlyConfigurationError) as caught:
+
+        class ItemView(fr.AsyncRestView):
+            def to_response(self, result, shape=None):
+                return result
+
+    message = str(caught.value)
+    assert "ItemView defines to_response, which was removed" in message
+    assert "to_single_response" in message
+    assert "to_list_response" in message
+    assert "list_response_schema" in message
+
+
+def test_an_override_of_to_response_from_a_mixin_raises():
+    class ShapeMixin:
+        def to_response(self, result, shape=None):
+            return result
+
+    with pytest.raises(RestlyConfigurationError) as caught:
+
+        class ItemView(ShapeMixin, fr.AsyncRestView):
+            pass
+
+    assert "to_response (from ShapeMixin)" in str(caught.value)
+
+
+def test_a_call_of_the_removed_to_response_says_what_to_use():
+    class ItemView(fr.AsyncRestView):
+        pass
+
+    with pytest.raises(AttributeError) as caught:
+        ItemView().to_response(None)
+
+    message = str(caught.value)
+    assert "to_response was removed" in message
+    assert "to_single_response" in message
+
+
+@pytest.mark.parametrize("package", [fr, fr.views])
+def test_response_shape_is_gone(package):
+    assert not hasattr(package, "ResponseShape")

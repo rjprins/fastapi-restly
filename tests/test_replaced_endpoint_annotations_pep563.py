@@ -65,13 +65,13 @@ def test_string_annotation_on_replaced_endpoint_is_kept(request, asynchronous):
 
             @fr.patch("/{id}")
             async def update_endpoint(self, id: int, schema_obj: ProductReplace):
-                return self.to_response(await self.handle_update(id, schema_obj))
+                return self.to_single_response(await self.handle_update(id, schema_obj))
 
         else:
 
             @fr.patch("/{id}")
             def update_endpoint(self, id: int, schema_obj: ProductReplace):
-                return self.to_response(self.handle_update(id, schema_obj))
+                return self.to_single_response(self.handle_update(id, schema_obj))
 
     assert ProductView.update_endpoint.__annotations__["schema_obj"] == "ProductReplace"
     fr.include_view(client.app, ProductView)
@@ -108,7 +108,7 @@ def test_string_markers_on_replaced_endpoint_get_the_view_types(request, asynchr
             async def update_endpoint(
                 self, id: fr.views.ViewID, schema_obj: ViewUpdate
             ) -> fr.views.ViewResponse:
-                return self.to_response(await self.handle_update(id, schema_obj))
+                return await self.handle_update(id, schema_obj)
 
         else:
 
@@ -116,7 +116,7 @@ def test_string_markers_on_replaced_endpoint_get_the_view_types(request, asynchr
             def update_endpoint(
                 self, id: fr.views.ViewID, schema_obj: ViewUpdate
             ) -> fr.views.ViewResponse:
-                return self.to_response(self.handle_update(id, schema_obj))
+                return self.handle_update(id, schema_obj)
 
     assert ProductView.update_endpoint.__annotations__ == {
         "id": "fr.views.ViewID",

@@ -60,7 +60,7 @@ def test_user_replaced_endpoint_method_keeps_its_docstring_in_openapi():
         async def get_one_endpoint(self, id: int):
             """Fetch one record, customer-facing description."""
             obj = await self.handle_get_one(id)
-            return self.to_response(obj)
+            return self.to_single_response(obj)
 
     spec = _spec_for(CustomView)
     op = spec["paths"]["/endpoint-doc-custom/{id}"]["get"]

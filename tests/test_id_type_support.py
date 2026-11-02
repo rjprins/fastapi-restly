@@ -282,13 +282,13 @@ def test_replaced_endpoint_on_a_uuid_model_accepts_a_uuid(flavor):
 
             @fr.get("/{id}")
             async def get_one_endpoint(self, id: UUID):
-                return self.to_response(await self.handle_get_one(id))
+                return self.to_single_response(await self.handle_get_one(id))
 
         else:
 
             @fr.get("/{id}")
             def get_one_endpoint(self, id: UUID):
-                return self.to_response(self.handle_get_one(id))
+                return self.to_single_response(self.handle_get_one(id))
 
     fr.include_view(flavor.client.app, ThingView)
     flavor.make_tables()

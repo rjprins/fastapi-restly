@@ -194,7 +194,7 @@ async def test_savepoint_rollback_keeps_related_response_objects_readable(
                 raise ValueError("discard related update")
 
     writes.statements.clear()
-    body = view.to_response(document).model_dump(mode="json")
+    body = view.to_single_response(document).model_dump(mode="json")
     assert body["title"] == "survivor"
     assert body["owner"]["name"] == "Alice"
     assert body["owner"]["company"]["name"] == "Initech"
@@ -269,7 +269,7 @@ async def test_savepoint_rollback_recovers_collection_members_in_a_loaded_cycle(
 
     assert after_names == [["Alice", "Bob"]]
     writes.statements.clear()
-    assert view.to_response(document).owner.company.name == "Initech"
+    assert view.to_single_response(document).owner.company.name == "Initech"
     assert sorted(owner.name for owner in company.owners) == ["Alice", "Bob"]
     assert writes.statements == []
     assert "company" in inspect(colleague).unloaded
@@ -292,7 +292,7 @@ async def test_shared_write_without_rollback_does_not_reload_related_objects(
     # The commit releases the savepoint of the block, and reads nothing.
     assert [statement.split()[0] for statement in writes.statements] == ["RELEASE"]
     writes.statements.clear()
-    assert view.to_response(document).owner.name == "Alice"
+    assert view.to_single_response(document).owner.name == "Alice"
     assert writes.statements == []
     assert {"internal_note", "owners"} <= inspect(document.owner.company).unloaded
 

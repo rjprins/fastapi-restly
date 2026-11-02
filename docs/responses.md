@@ -1,14 +1,14 @@
 # Responses
 
-Every CRUD endpoint method ends with one call,
-{meth}`self.to_response(result, shape) <fastapi_restly.views.BaseRestView.to_response>`.
-The shape says what `result` is, and `to_response` passes it on:
+A CRUD endpoint method returns the row, or the list result. Each route declares
+the view's response, so Restly knows what to do with this value:
 
-| Shape | `result` | What `to_response` returns |
+| The endpoint method returns | Restly calls | Which gives |
 |---|---|---|
-| {attr}`SINGLE <fastapi_restly.views.ResponseShape.SINGLE>` | one ORM object | {meth}`to_single_response(obj) <fastapi_restly.views.BaseRestView.to_single_response>`: an instance of the response class |
-| {attr}`LIST <fastapi_restly.views.ResponseShape.LIST>` | a {class}`ListResult <fastapi_restly.views.ListResult>` | {meth}`to_list_response(result) <fastapi_restly.views.BaseRestView.to_list_response>`: the list envelope, filled with instances of the response class |
-| {attr}`EMPTY <fastapi_restly.views.ResponseShape.EMPTY>` | `None` | an empty `204 No Content` response |
+| one ORM object | {meth}`to_single_response(obj) <fastapi_restly.views.BaseRestView.to_single_response>` | an instance of the response class |
+| a {class}`ListResult <fastapi_restly.views.ListResult>` | {meth}`to_list_response(result) <fastapi_restly.views.BaseRestView.to_list_response>` | the list envelope, filled with instances of the response class |
+
+`DELETE` returns an empty `204 No Content` response.
 
 FastAPI then serializes the value with the route's `response_model`. Restly
 sets it when the view registers: the response class for a single object, and
@@ -26,14 +26,14 @@ around the fields, and where each change goes:
   [The response of a custom route](#custom-route-response);
 - the shape of one route, such as an envelope around a single object: a
   replaced endpoint method; see [Change the shape of one route](#one-route-shape);
-- the shape of every route: `to_response`; see
-  [Change the shape of every route](#to-response);
+- the shape of every route: endpoint methods replaced on a base view; see
+  [Change the shape of every route](#every-route-shape);
 - how one object becomes a response: `to_single_response`; see
   [Change how one object is serialized](#to-single-response);
 - a smaller schema for the list route; see
   [Use a different schema for the list route](#list-schema).
 
-Errors do not pass through `to_response`. To change the error shape, see
+Errors do not pass through these methods. To change the error shape, see
 [Errors](errors.md).
 
 (default-responses)=
@@ -231,19 +231,17 @@ class ProjectView(fr.AsyncRestView):
 ```
 
 Restly passes the row to
-{meth}`to_response <fastapi_restly.views.BaseRestView.to_response>`, as
-`PATCH /{id}` does. So an override of
-{meth}`to_single_response <fastapi_restly.views.BaseRestView.to_single_response>`
-changes this response too, and OpenAPI shows `ProjectResponse`.
+{meth}`to_single_response <fastapi_restly.views.BaseRestView.to_single_response>`,
+as `PATCH /{id}` does. So an override of it changes this response too, and OpenAPI shows `ProjectResponse`.
 
 What Restly does depends on what the route declares, in its return
 annotation or in `response_model=`:
 
 | The route declares | The route returns | Restly sends |
 |---|---|---|
-| {data}`ViewResponse <fastapi_restly.views.ViewResponse>` | a row of the view's model | `to_response(row)` |
+| {data}`ViewResponse <fastapi_restly.views.ViewResponse>` | a row of the view's model | `to_single_response(row)` |
 | `list[ViewResponse]` | a list of rows, or another iterable of rows, such as `await self.session.scalars(stmt)` | `to_single_response(row)` for each row |
-| {data}`ViewListResponse <fastapi_restly.views.ViewListResponse>` | a {class}`ListResult <fastapi_restly.views.ListResult>` | `to_response(result, ResponseShape.LIST)` |
+| {data}`ViewListResponse <fastapi_restly.views.ViewListResponse>` | a {class}`ListResult <fastapi_restly.views.ListResult>` | `to_list_response(result)` |
 | the view's response class itself, as in `response_model=ProjectResponse` | a row | the same as for `ViewResponse` |
 | the view's model, as in `-> Project` | a row | the same as for `ViewResponse` |
 | `list[Project]` | a list of rows | the same as for `list[ViewResponse]` |
@@ -251,7 +249,7 @@ annotation or in `response_model=`:
 Each of these may allow `None`, as in `-> ViewResponse | None`, and a `None`
 goes out as `null`. Any other value goes out as it is: a dict, an instance
 of a schema, or a `fastapi.Response`. So a route that calls
-`self.to_response(row)` itself works the same way.
+`self.to_single_response(row)` itself works the same way.
 
 :::{admonition} Details
 :class: details
@@ -336,40 +334,51 @@ It returns an instance of the view's envelope model, so read its attributes:
 `page.data` and `page.total_count` with the default envelope.
 :::
 
-(to-response)=
+(every-route-shape)=
 ## Change the shape of every route
 
-When the same wrapper applies to more than one route, put it in
-{meth}`to_response() <fastapi_restly.views.BaseRestView.to_response>`. The
-default endpoint methods all return through it:
+When every view has the same contract, replace the endpoint methods once, on a
+base view. A marker inside a generic class gives each view its own type in
+OpenAPI:
 
 ```python
-    def to_response(self, result, shape=fr.ResponseShape.SINGLE):
-        if shape is fr.ResponseShape.SINGLE:
-            return {"data": self.to_single_response(result)}
-        return super().to_response(result, shape)
+from typing import Generic, TypeVar
+
+import pydantic
+
+from fastapi_restly.views import ViewCreate, ViewID, ViewResponse
+
+T = TypeVar("T")
+
+
+class Data(pydantic.BaseModel, Generic[T]):
+    data: T
+
+
+class ApiView(fr.AsyncRestView):
+    @fr.get("/{id}")
+    async def get_one_endpoint(self, id: ViewID) -> Data[ViewResponse]:
+        obj = await self.handle_get_one(id)
+        return {"data": self.to_single_response(obj)}
+
+    @fr.post("/")
+    async def create_endpoint(self, data: ViewCreate) -> Data[ViewResponse]:
+        obj = await self.handle_create(data)
+        return {"data": self.to_single_response(obj)}
 ```
 
-This override changes only the value. The `response_model` of each CRUD route
-still describes the bare object. So FastAPI's response validation fails, and
-OpenAPI shows the wrong shape. A new contract needs both parts: the
-`to_response` override for the value, and a replaced endpoint method with a
-matching `response_model` for each route that changes; see
-[Change the shape of one route](#one-route-shape).
-
-`to_response` knows the shape of the response, not the action. It cannot tell
-{meth}`create <fastapi_restly.views.RestView.create>` from
-{meth}`get_one <fastapi_restly.views.RestView.get_one>`: both are `SINGLE`.
-To change the status code or the headers of one route, replace that endpoint
-method; see [Change the status code or headers of one route](#replace-endpoint-method).
+A view that subclasses `ApiView` gets `Data[UserResponse]` in OpenAPI, and
+another view gets `Data[TagResponse]`. To change the status code or the headers
+of one route, replace that endpoint method; see
+[Change the status code or headers of one route](#replace-endpoint-method).
 
 (to-single-response)=
 ## Change how one object is serialized
 
 {meth}`to_single_response(obj) <fastapi_restly.views.BaseRestView.to_single_response>`
 turns one ORM object into an instance of the response class. It reads the
-attributes of the object and validates them with Pydantic. Each endpoint
-method calls it, through `to_response`, and so does each item of a list.
+attributes of the object and validates them with Pydantic. It runs for each
+row that a route returns, and for each item of a list.
 
 Override it to send other values, or to build the response faster when you
 trust the data:
@@ -489,7 +498,7 @@ In each case only the fields of the response class go out.
   endpoint method.
 - [Filtering, Sorting & Pagination](filtering.md): the page parameters
   that clients send.
-- [Errors](errors.md): the error shape, which does not pass
-  through `to_response`.
+- [Errors](errors.md): the error shape, which does not pass through the
+  response methods.
 - [Return related objects in a response](#relationship-loading): how nested
   relationship fields load, and `MissingGreenlet` on async.

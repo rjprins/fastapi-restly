@@ -102,13 +102,13 @@ def test_replaced_update_endpoint_keeps_explicit_id_and_schema_obj(env):
 
             @fr.patch("/{id}")
             async def update_endpoint(self, id: PositiveId, schema_obj: ProductReplace):
-                return self.to_response(await self.handle_update(id, schema_obj))
+                return self.to_single_response(await self.handle_update(id, schema_obj))
 
         else:
 
             @fr.patch("/{id}")
             def update_endpoint(self, id: PositiveId, schema_obj: ProductReplace):
-                return self.to_response(self.handle_update(id, schema_obj))
+                return self.to_single_response(self.handle_update(id, schema_obj))
 
     openapi = _register(env, ProductView)
     client = env.client
@@ -144,13 +144,13 @@ def test_replaced_create_endpoint_keeps_explicit_schema_obj(env):
 
             @fr.post("/", status_code=201)
             async def create_endpoint(self, schema_obj: ProductCreateStrict):
-                return self.to_response(await self.handle_create(schema_obj))
+                return self.to_single_response(await self.handle_create(schema_obj))
 
         else:
 
             @fr.post("/", status_code=201)
             def create_endpoint(self, schema_obj: ProductCreateStrict):
-                return self.to_response(self.handle_create(schema_obj))
+                return self.to_single_response(self.handle_create(schema_obj))
 
     openapi = _register(env, ProductView)
     client = env.client
@@ -172,13 +172,13 @@ def test_replaced_get_one_endpoint_keeps_explicit_id(env):
 
             @fr.get("/{id}")
             async def get_one_endpoint(self, id: PositiveId):
-                return self.to_response(await self.handle_get_one(id))
+                return self.to_single_response(await self.handle_get_one(id))
 
         else:
 
             @fr.get("/{id}")
             def get_one_endpoint(self, id: PositiveId):
-                return self.to_response(self.handle_get_one(id))
+                return self.to_single_response(self.handle_get_one(id))
 
     openapi = _register(env, ProductView)
     client = env.client
@@ -204,13 +204,13 @@ def test_explicit_annotation_with_unhashable_metadata_is_kept(env):
 
             @fr.get("/{id}")
             async def get_one_endpoint(self, id: UnhashableId):
-                return self.to_response(await self.handle_get_one(id))
+                return self.to_single_response(await self.handle_get_one(id))
 
         else:
 
             @fr.get("/{id}")
             def get_one_endpoint(self, id: UnhashableId):
-                return self.to_response(self.handle_get_one(id))
+                return self.to_single_response(self.handle_get_one(id))
 
     openapi = _register(env, ProductView)
 
@@ -262,37 +262,37 @@ def test_replaced_endpoint_with_markers_gets_the_view_types(env):
 
             @fr.get("/{id}")
             async def get_one_endpoint(self, id: views.ViewID) -> views.ViewResponse:
-                return self.to_response(await self.handle_get_one(id))
+                return await self.handle_get_one(id)
 
             @fr.post("/", status_code=201)
             async def create_endpoint(
                 self, schema_obj: views.ViewCreate
             ) -> views.ViewResponse:
-                return self.to_response(await self.handle_create(schema_obj))
+                return await self.handle_create(schema_obj)
 
             @fr.patch("/{id}")
             async def update_endpoint(
                 self, id: views.ViewID, schema_obj: views.ViewUpdate
             ) -> views.ViewResponse:
-                return self.to_response(await self.handle_update(id, schema_obj))
+                return await self.handle_update(id, schema_obj)
 
         else:
 
             @fr.get("/{id}")
             def get_one_endpoint(self, id: views.ViewID) -> views.ViewResponse:
-                return self.to_response(self.handle_get_one(id))
+                return self.handle_get_one(id)
 
             @fr.post("/", status_code=201)
             def create_endpoint(
                 self, schema_obj: views.ViewCreate
             ) -> views.ViewResponse:
-                return self.to_response(self.handle_create(schema_obj))
+                return self.handle_create(schema_obj)
 
             @fr.patch("/{id}")
             def update_endpoint(
                 self, id: views.ViewID, schema_obj: views.ViewUpdate
             ) -> views.ViewResponse:
-                return self.to_response(self.handle_update(id, schema_obj))
+                return self.handle_update(id, schema_obj)
 
     openapi = _register(env, ProductView)
     client = env.client
@@ -333,13 +333,13 @@ def test_replaced_endpoint_without_annotations_gets_no_view_types(env):
 
             @fr.get("/{id}")
             async def get_one_endpoint(self, id: Any):
-                return self.to_response(await self.handle_get_one(int(id)))
+                return self.to_single_response(await self.handle_get_one(int(id)))
 
         else:
 
             @fr.get("/{id}")
             def get_one_endpoint(self, id: Any):
-                return self.to_response(self.handle_get_one(int(id)))
+                return self.to_single_response(self.handle_get_one(int(id)))
 
     openapi = _register(env, ProductView)
     assert _id_param(openapi, "/products/{id}", "get") == {"title": "Id"}
@@ -360,13 +360,13 @@ def test_replaced_endpoint_keeps_explicit_return_annotation(env):
 
             @fr.get("/{id}")
             async def get_one_endpoint(self, id: Any) -> ProductName:
-                return self.to_response(await self.handle_get_one(id))
+                return self.to_single_response(await self.handle_get_one(id))
 
         else:
 
             @fr.get("/{id}")
             def get_one_endpoint(self, id: Any) -> ProductName:
-                return self.to_response(self.handle_get_one(id))
+                return self.to_single_response(self.handle_get_one(id))
 
     openapi = _register(env, ProductView)
     client = env.client
@@ -484,13 +484,13 @@ def test_replaced_react_admin_put_keeps_explicit_schema_obj(env):
 
             @fr.put("/{id}")
             async def put(self, id: int, schema_obj: ProductReplace):
-                return self.to_response(await self.handle_update(id, schema_obj))
+                return self.to_single_response(await self.handle_update(id, schema_obj))
 
         else:
 
             @fr.put("/{id}")
             def put(self, id: int, schema_obj: ProductReplace):
-                return self.to_response(self.handle_update(id, schema_obj))
+                return self.to_single_response(self.handle_update(id, schema_obj))
 
     openapi = _register(env, ProductView)
     client = env.client
@@ -543,14 +543,14 @@ def test_explicit_list_params_annotation_takes_the_view_list_params(env):
             @fr.get("/search")
             async def search(self, list_params: dict[str, str]):
                 result = await self.handle_get_many(list_params)
-                return self.to_response(result, fr.ResponseShape.LIST)
+                return self.to_list_response(result)
 
         else:
 
             @fr.get("/search")
             def search(self, list_params: dict[str, str]):
                 result = self.handle_get_many(list_params)
-                return self.to_response(result, fr.ResponseShape.LIST)
+                return self.to_list_response(result)
 
     openapi = _register(env, ProductView)
     client = env.client

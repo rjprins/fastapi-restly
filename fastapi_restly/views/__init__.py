@@ -4,8 +4,7 @@ Every CRUD route on ``RestView`` / ``AsyncRestView`` runs through three
 methods. The handler handles the steps, and you override a step:
 
 1. ``<verb>_endpoint``, the endpoint method: the ``@route``, FastAPI
-   signature, ``response_model``, and ``to_response``. Replace only to change
-   the HTTP contract.
+   signature and ``response_model``. Replace only to change the HTTP contract.
 2. ``handle_<verb>``, the handler: handles the steps, ``authorize``, the
    load or the business method, and the commit bracket
    (``before_action_commit`` -> commit -> ``after_action_commit``). Final:
@@ -21,7 +20,8 @@ methods. The handler handles the steps, and you override a step:
 Cross-cutting seams: ``scope`` (read visibility), ``where_id`` (the row an
 id names), ``not_found`` (the error for a missing row),
 ``get_loader_options`` (what a read loads), ``authorize`` (policy),
-``apply_list_params`` (list params), ``to_response`` (response shape),
+``apply_list_params`` (list params), ``to_single_response`` and
+``to_list_response`` (the response),
 ``write_action`` (custom write actions), ``shared_write_action_commit``
 (one commit over several writes). After a write business method, the
 commit bracket saves: it adds a new object, flushes, refreshes the object
@@ -39,7 +39,6 @@ from ._base import (
     BaseRestView,
     ListResult,
     ReadScope,
-    ResponseShape,
     View,
     ViewRoute,
     delete,
@@ -87,7 +86,6 @@ __all__ = [
     "PaginatedEnvelope",
     "Action",
     "ReadScope",
-    "ResponseShape",
     "View",
     "ViewRoute",
     "SchemaType",

@@ -69,7 +69,6 @@ def test_rest_view_route_and_hook_names_are_current():
         # Read / response helpers
         "count",
         "apply_list_params",
-        "to_response",
         "to_list_response",
         "to_single_response",
     )

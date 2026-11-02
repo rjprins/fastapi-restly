@@ -90,7 +90,7 @@ def test_an_override_that_keeps_the_steps_does_not_warn():
         @fr.get("/")
         async def get_many_endpoint(self, list_params: Any, archived: bool = False):
             result = await self.handle_get_many(list_params)
-            return self.to_response(result, fr.ResponseShape.LIST)
+            return self.to_list_response(result)
 
         @fr.post("/", status_code=201)
         async def create_endpoint(self, data: ViewCreate) -> Any:

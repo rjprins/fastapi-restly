@@ -113,14 +113,14 @@ def custom_list_client(request):
             @fr.get("/custom")
             async def custom(self, list_params, trace: str | None = None):
                 result = await self.handle_get_many(list_params)
-                return self.to_response(result, fr.ResponseShape.LIST)
+                return self.to_list_response(result)
 
         else:
 
             @fr.get("/custom")
             def custom(self, list_params, trace: str | None = None):
                 result = self.handle_get_many(list_params)
-                return self.to_response(result, fr.ResponseShape.LIST)
+                return self.to_list_response(result)
 
     if asynchronous:
         create_tables()
@@ -1131,9 +1131,9 @@ def test_react_admin_list_runs_the_handler_load_and_response_seams(client):
             events.append(("count", None))
             return (await super().count(stmt)) + 10
 
-        def to_response(self, result, shape=fr.ResponseShape.SINGLE):
-            events.append(("to_response", shape))
-            return super().to_response(result, shape)
+        def to_list_response(self, list_result):
+            events.append(("to_list_response", None))
+            return super().to_list_response(list_result)
 
     create_tables()
     client.post("/seam-items/", json={"name": "a"})
@@ -1145,10 +1145,9 @@ def test_react_admin_list_runs_the_handler_load_and_response_seams(client):
         "authorize",
         "apply_list_params",
         "count",
-        "to_response",
+        "to_list_response",
     ]
     assert events[0] == ("authorize", "get_many")
-    assert events[-1] == ("to_response", fr.ResponseShape.LIST)
     assert response.json()[0]["name"] == "a"
     # the header reports the total that count put in the ListResult
     assert response.headers["Content-Range"].endswith("/11")
@@ -1181,9 +1180,9 @@ def test_sync_react_admin_list_runs_the_handler_load_and_response_seams(sync_cli
             events.append(("count", None))
             return super().count(stmt) + 10
 
-        def to_response(self, result, shape=fr.ResponseShape.SINGLE):
-            events.append(("to_response", shape))
-            return super().to_response(result, shape)
+        def to_list_response(self, list_result):
+            events.append(("to_list_response", None))
+            return super().to_list_response(list_result)
 
     SharedBase.metadata.create_all(_fr_config.make_session.kw["bind"])
     sync_client.post("/sync-seam-items/", json={"name": "a"})
@@ -1195,10 +1194,9 @@ def test_sync_react_admin_list_runs_the_handler_load_and_response_seams(sync_cli
         "authorize",
         "apply_list_params",
         "count",
-        "to_response",
+        "to_list_response",
     ]
     assert events[0] == ("authorize", "get_many")
-    assert events[-1] == ("to_response", fr.ResponseShape.LIST)
     assert response.json()[0]["name"] == "a"
     assert response.headers["Content-Range"].endswith("/11")
 
