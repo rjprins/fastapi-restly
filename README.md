@@ -1,5 +1,8 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/rjprins/fastapi-restly/main/docs/_static/fr-wordmark.svg" alt="FastAPI-Restly" width="664">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/rjprins/fastapi-restly/main/docs/_static/fr-wordmark-dark.svg">
+    <img src="https://raw.githubusercontent.com/rjprins/fastapi-restly/main/docs/_static/fr-wordmark.svg" alt="FastAPI-Restly" width="666">
+  </picture>
 </p>
 
 <p align="center">

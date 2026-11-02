@@ -51,35 +51,31 @@
     content: none;
 }
 
-/* Homepage wordmark: keep the mark and title together. */
-.bd-article h1:has(> img[src$="fr-monogram.svg"]) {
+/* Homepage wordmark: show the logo. The heading text stays for the page title
+   and for screen readers, but has no visible size. */
+.bd-article h1:has(> img[src$="fr-wordmark.svg"]) {
     display: flex;
-    align-items: center;
     justify-content: center;
-    gap: 0.235294em;
     margin: 0 0 2rem;
-    font-family: "Archivo", var(--pst-font-family-heading);
-    font-size: clamp(1.75rem, 5.902778vw, 5.3125rem);
-    font-weight: 700;
+    font-size: 0;
     line-height: 1;
-    letter-spacing: -0.045em;
-    white-space: nowrap;
 }
 
-.bd-article h1 > img[src$="fr-monogram.svg"] {
-    flex: 0 0 auto;
-    width: 1.035294em;
+.bd-article h1 > img[src$="fr-wordmark.svg"] {
+    width: min(100%, 666px);
     height: auto;
 }
 
-.bd-article h1:has(> img[src$="fr-monogram.svg"]) > .headerlink {
+.bd-article h1:has(> img[src$="fr-wordmark.svg"]) > .headerlink {
     display: none;
 }
 
-html[data-theme="dark"] .bd-article h1 > img[src$="fr-monogram.svg"] {
+html[data-theme="dark"] .bd-article h1 > img[src$="fr-wordmark.svg"] {
     border-radius: 0;
     background-color: transparent;
-    content: url("fr-monogram-dark.svg");
+    /* The theme dims images in dark mode, which would make the logo grey. */
+    filter: none;
+    content: url("fr-wordmark-dark.svg");
 }
 
 /* Hide the "Section Navigation" sidebar block when it has no links */

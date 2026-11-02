@@ -1,4 +1,4 @@
-# ![](_static/fr-monogram.svg) FastAPI-Restly
+# ![](_static/fr-wordmark.svg) FastAPI-Restly
 
 **Class-based REST resources for FastAPI and SQLAlchemy 2.0. Minimal
 boilerplate, full control.**

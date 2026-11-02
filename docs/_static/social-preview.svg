@@ -30,7 +30,7 @@
   <image xlink:href="restly-cat.png" x="753" y="306" width="440" height="286"/>
 
   <!-- logo: copied from fr-wordmark.svg -->
-  <g transform="translate(76.3 60) scale(1.6763)">
+  <g transform="translate(76.3 60) scale(1.6698)">
   <g transform="scale(0.171875000)">
     <g class="letters" transform="translate(45 388) scale(1.45)">
       <path d="M121.203-123H85.797V0H28.5v-123H6.594v-28.203l23.109-14.094V-168c0-21.394 4.394-36.992 13.187-46.797 8.801-9.801 23.203-14.703 43.203-14.703 8.602 0 16.407.653 23.407 1.953 7 1.305 14.3 3.25 21.906 5.844l-12.312 37.203c-2.793-.8-5.938-1.5-9.438-2.094-3.5-.601-7.25-.906-11.25-.906-8.406 0-12.609 5.7-12.609 17.094v4.5h35.406Z"/>
@@ -43,16 +43,16 @@
     <use href="#glyph-225" transform="translate(545.000 0.000)"/>
     <use href="#glyph-378" transform="translate(1080.000 0.000)"/>
     <use href="#glyph-387" transform="translate(1591.000 0.000)"/>
-    <use href="#glyph-1" transform="translate(1888.000 0.000)"/>
-    <use href="#glyph-143" transform="translate(2567.000 0.000)"/>
-    <use href="#glyph-73" transform="translate(3203.000 0.000)"/>
-    <use href="#glyph-554" transform="translate(3459.000 0.000)"/>
-    <use href="#glyph-146" transform="translate(3747.000 0.000)"/>
-    <use href="#glyph-265" transform="translate(4420.000 0.000)"/>
-    <use href="#glyph-378" transform="translate(4959.000 0.000)"/>
-    <use href="#glyph-387" transform="translate(5470.000 0.000)"/>
-    <use href="#glyph-320" transform="translate(5767.000 0.000)"/>
-    <use href="#glyph-426" transform="translate(5989.000 0.000)"/>
+    <use href="#glyph-1" transform="translate(1918.000 0.000)"/>
+    <use href="#glyph-143" transform="translate(2597.000 0.000)"/>
+    <use href="#glyph-73" transform="translate(3233.000 0.000)"/>
+    <use href="#glyph-554" transform="translate(3489.000 0.000)"/>
+    <use href="#glyph-146" transform="translate(3777.000 0.000)"/>
+    <use href="#glyph-265" transform="translate(4450.000 0.000)"/>
+    <use href="#glyph-378" transform="translate(4989.000 0.000)"/>
+    <use href="#glyph-387" transform="translate(5500.000 0.000)"/>
+    <use href="#glyph-320" transform="translate(5797.000 0.000)"/>
+    <use href="#glyph-426" transform="translate(6019.000 0.000)"/>
   </g>
   </g>
 
