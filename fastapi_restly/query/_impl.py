@@ -528,7 +528,7 @@ def derive_list_params_schema(
 
     :param response_schema: The response class whose fields decide the
         available filter parameters. A view passes its ``response_schema``, so
-        a client can filter only on what it can see.
+        a client can filter only on a field of that class.
     :param model: The SQLAlchemy model the list endpoint queries. Used to verify
         each field resolves to a filterable column; non-column fields are
         omitted from the generated params.

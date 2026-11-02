@@ -76,7 +76,7 @@ class FilterKey:
 
     :param model: The model of the rows, such as the view's ``model``.
     :param response_schema: The response class. A view passes its
-        ``response_schema``, so a client can filter only on what it sees.
+        ``response_schema``, so a client can filter only on a field of that class.
     :param key: The key, as the client sends it.
     :raises fastapi_restly.exc.BadQueryParam: ``Unknown filter key``.
     """
@@ -148,7 +148,7 @@ class SortKey:
 
     :param model: The model of the rows, such as the view's ``model``.
     :param response_schema: The response class. A view passes its
-        ``response_schema``, so a client can sort only on what it sees.
+        ``response_schema``, so a client can sort only on a field of that class.
     :param key: The key, as the client sends it.
     :raises fastapi_restly.exc.BadQueryParam: ``Unknown sort key``.
     """

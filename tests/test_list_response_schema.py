@@ -6,6 +6,7 @@ spec follows. On a react-admin view the setting is a list, as the route sends a
 JSON array.
 """
 
+import collections.abc
 from collections.abc import Iterator
 from typing import Any
 
@@ -340,12 +341,12 @@ def test_a_class_that_sets_extra_raises(Item, extra):
         fr.include_view(FastAPI(), ItemView)
 
 
-def test_a_list_on_the_default_route_raises(Item):
+def test_another_type_on_the_default_route_raises(Item):
     class ItemView(fr.AsyncRestView):
         prefix = "/items"
         model = Item
         schema = ItemSchema
-        list_response_schema = list[ItemResponse]
+        list_response_schema = dict[str, ItemResponse]
 
     with pytest.raises(RestlyConfigurationError) as caught:
         fr.include_view(FastAPI(), ItemView)
@@ -770,3 +771,187 @@ def test_a_single_response_marker_still_works_next_to_the_list(client, Item):
     _fill(client)
 
     assert client.get("/items/first").json()["name"] == "a"
+
+
+# --- the rest of the list response ---------------------------------------------
+
+
+def test_a_generic_class_without_its_type_raises(client, Item):
+    class ItemView(fr.AsyncRestView):
+        prefix = "/items"
+        model = Item
+        schema = ItemSchema
+        list_response_schema = PaginatedEnvelope
+
+    with pytest.raises(RestlyConfigurationError, match="PaginatedEnvelope.*type"):
+        fr.include_view(client.app, ItemView)
+
+
+def test_none_raises_also_with_a_replaced_endpoint(client, Item):
+    class ItemView(fr.AsyncRestView):
+        prefix = "/items"
+        model = Item
+        schema = ItemSchema
+        list_response_schema = None
+
+        @fr.get("/")
+        async def get_many_endpoint(self, list_params) -> ListResponseSchema:
+            return []
+
+    with pytest.raises(RestlyConfigurationError, match="list_response_schema is None"):
+        fr.include_view(client.app, ItemView)
+
+
+def test_a_function_that_returns_nothing_raises_also_with_an_override(client, Item):
+    class ItemView(fr.AsyncRestView):
+        prefix = "/items"
+        model = Item
+        schema = ItemSchema
+        list_response_schema = SchemaType(lambda view: None)
+
+        def to_list_response(self, list_result):
+            return []
+
+    with pytest.raises(RestlyConfigurationError, match="None"):
+        fr.include_view(client.app, ItemView)
+
+
+def test_a_list_type_on_the_default_route(client, Item):
+    class ItemView(fr.AsyncRestView):
+        prefix = "/items"
+        model = Item
+        schema = ItemSchema
+        list_response_schema = list[ItemSummary]
+
+    fr.include_view(client.app, ItemView)
+    _fill(client)
+
+    schema = _response_schema(client)
+    assert schema["type"] == "array"
+    assert schema["items"] == {"$ref": "#/components/schemas/ItemSummary"}
+    assert client.get("/items").json() == [
+        {"id": 1, "name": "a"},
+        {"id": 2, "name": "b"},
+    ]
+
+
+def test_a_list_type_with_a_replaced_endpoint_that_returns_a_list_result(client, Item):
+    class ItemView(fr.AsyncRestView):
+        prefix = "/items"
+        model = Item
+        schema = ItemSchema
+        list_response_schema = list[ItemSummary]
+
+        @fr.get("/")
+        async def get_many_endpoint(self, list_params) -> ListResponseSchema:
+            return await self.handle_get_many(list_params)
+
+    fr.include_view(client.app, ItemView)
+    _fill(client)
+
+    assert client.get("/items").json() == [
+        {"id": 1, "name": "a"},
+        {"id": 2, "name": "b"},
+    ]
+
+
+class WideSummary(fr.IDSchema):
+    name: str
+    nope: str
+
+
+@pytest.mark.parametrize(
+    "list_response",
+    [
+        list[WideSummary],
+        collections.abc.Sequence[WideSummary],
+        PaginatedEnvelope[WideSummary],
+    ],
+    ids=["list", "sequence", "envelope"],
+)
+def test_an_item_field_that_the_response_lacks_raises(client, Item, list_response):
+    class ItemView(fr.AsyncRestView):
+        prefix = "/items"
+        model = Item
+        schema = ItemSchema
+        list_response_schema = list_response
+
+    with pytest.raises(RestlyConfigurationError, match="nope"):
+        fr.include_view(client.app, ItemView)
+
+
+def test_an_item_field_that_the_response_lacks_raises_on_react_admin(react_admin, Item):
+    client, base, _, _ = react_admin
+
+    class ItemView(base):
+        prefix = "/items"
+        model = Item
+        schema = ItemSchema
+        list_response_schema = list[WideSummary]
+
+    with pytest.raises(RestlyConfigurationError, match="nope"):
+        fr.include_view(client.app, ItemView)
+
+
+def test_a_before_validator_can_fill_an_item_field(client, Item):
+    class Filled(fr.IDSchema):
+        name: str
+        label: str
+
+        @pydantic.model_validator(mode="before")
+        @classmethod
+        def fill_label(cls, data):
+            return {"id": data.id, "name": data.name, "label": data.name.upper()}
+
+    class ItemView(fr.AsyncRestView):
+        prefix = "/items"
+        model = Item
+        schema = ItemSchema
+        list_response_schema = PaginatedEnvelope[Filled]
+
+    fr.include_view(client.app, ItemView)
+    _fill(client)
+
+    assert client.get("/items").json()["data"][0]["label"] == "A"
+
+
+def test_react_admin_writes_only_the_public_fields_of_an_override(react_admin, Item):
+    client, base, create, _ = react_admin
+
+    class Secret(fr.IDSchema):
+        name: str
+        note: fr.WriteOnly[str]
+
+    class ItemView(base):
+        prefix = "/items"
+        model = Item
+        schema = Secret
+
+        def to_single_response(self, obj):
+            return Secret(id=obj.id, name=obj.name, note=obj.note)
+
+    fr.include_view(client.app, ItemView)
+    create()
+    client.post("/items", json={"name": "a", "note": "SECRET"})
+
+    response = client.get("/items")
+    assert response.json() == [{"id": 1, "name": "a"}]
+
+
+def test_the_recipe_with_a_map_and_a_replaced_endpoint(client, Item):
+    class ItemView(fr.AsyncRestView):
+        prefix = "/items"
+        model = Item
+        schema = ItemSchema
+        list_response_schema = dict[int, str]
+
+        @fr.get("/")
+        async def get_many_endpoint(self, list_params) -> ListResponseSchema:
+            result = await self.handle_get_many(list_params)
+            return {item.id: item.name for item in result.objects}
+
+    fr.include_view(client.app, ItemView)
+    _fill(client)
+
+    assert client.get("/items").json() == {"1": "a", "2": "b"}
+    assert _response_schema(client)["additionalProperties"]["type"] == "string"

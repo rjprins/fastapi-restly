@@ -245,11 +245,15 @@ annotation or in `response_model=`:
 | the view's response class itself, as in `response_model=ProjectResponse` | a row | the same as for `ResponseSchema` |
 | the view's model, as in `-> Project` | a row | the same as for `ResponseSchema` |
 | `list[Project]` | a list of rows | the same as for `list[ResponseSchema]` |
+| nothing, `Any`, or `response_model=None` | a row of the view's model or a `ListResult`, also inside a dict or a list | the same as for `ResponseSchema` and `ListResponseSchema` |
 
 Each of these may allow `None`, as in `-> ResponseSchema | None`, and a `None`
 goes out as `null`. Any other value goes out as it is: a dict, an instance
 of a schema, or a `fastapi.Response`. So a route that calls
 `self.to_single_response(row)` itself works the same way.
+
+A route that declares nothing shows an empty schema in OpenAPI. So declare the
+response when the route has one.
 
 :::{admonition} Details
 :class: details
@@ -422,6 +426,12 @@ class UserView(fr.AsyncRestView):
     list_response_schema = PaginatedEnvelope[UserSummary]
 ```
 
+This class changes what the list sends, and nothing else. The filters and sort
+keys follow the response class, not `UserSummary`. So a client can still filter
+and sort on a field that the items do not show. To hide a field, make it
+`WriteOnly`, or take it out of the list with `exclude_filters` and
+`exclude_sort_keys`.
+
 :::{admonition} Details
 :class: details
 
@@ -433,8 +443,12 @@ page fields on a view without pagination.
 
 Restly fills the items from the response class, so an item can have fewer
 fields than the response class. Registration raises for a field without a
-default that the response class does not have. The filters and sort keys
-follow the response class, not `UserSummary`.
+default that the response class does not have, in `list[X]` and in a `data`
+field with `list[X]`. The view still loads what the response class needs, so a
+smaller class makes the response smaller, not the query.
+
+A list type, such as `list[UserSummary]`, sends a JSON array without the page
+values.
 
 The setting also takes a function, so a base view can give each view other keys,
 as in `{"articles": [...], "articlesCount": 2}`; see
@@ -444,10 +458,10 @@ A subclass of the view keeps the class. A subclass that sets a new `schema` or
 `response_schema` gets the default again, as for the
 [other classes](#subclass-new-classes).
 
-For a shape that Restly cannot fill, such as a bare list, set the type and
-replace {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>`.
-The marker {data}`ListResponseSchema <fastapi_restly.views.ListResponseSchema>`
-then gives the route this type:
+For a shape that Restly cannot fill, set the type and replace
+{meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>`. The
+marker {data}`ListResponseSchema <fastapi_restly.views.ListResponseSchema>` then
+gives the route this type. This route sends a map from id to name:
 
 ```python
 from fastapi_restly.views import ListResponseSchema
@@ -457,15 +471,12 @@ class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
     schema = UserSchema
-    list_response_schema = list[UserSummary]
+    list_response_schema = dict[int, str]
 
     @fr.get("/")
     async def get_many_endpoint(self, list_params) -> ListResponseSchema:
         result = await self.handle_get_many(list_params)
-        return [
-            UserSummary.model_validate(user, from_attributes=True)
-            for user in result.objects
-        ]
+        return {user.id: user.name for user in result.objects}
 ```
 :::
 

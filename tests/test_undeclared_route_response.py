@@ -1,0 +1,261 @@
+"""A row never goes out through a route that declares no response.
+
+Without a response model, FastAPI writes each attribute of a row, so also a
+``WriteOnly`` column. A default endpoint method returns the row. So a replaced
+endpoint that calls ``super()`` without declaring a response, or a custom route
+that calls an endpoint method, must still send the view's response.
+"""
+
+from collections.abc import Iterator
+from typing import Any
+
+import pytest
+from fastapi import FastAPI
+from fastapi.responses import PlainTextResponse
+from sqlalchemy.orm import Mapped
+
+import fastapi_restly as fr
+from fastapi_restly.testing._client import RestlyTestClient
+
+from ._models import SharedBase
+from .conftest import create_tables
+
+
+class UserSchema(fr.IDSchema):
+    name: str
+    password: fr.WriteOnly[str]
+
+
+@pytest.fixture
+def User():
+    class User(fr.IDMixin, SharedBase):
+        name: Mapped[str]
+        password: Mapped[str]
+
+    return User
+
+
+def _user_view(User):
+    class UserView(fr.AsyncRestView):
+        prefix = "/users"
+        model = User
+        schema = UserSchema
+
+    return UserView
+
+
+def _with_row(client):
+    create_tables()
+    response = client.post("/users", json={"name": "a", "password": "SECRET"})
+    assert "SECRET" not in response.text
+
+
+def test_a_list_recipe_that_calls_super(client, User):
+    class View(_user_view(User)):
+        @fr.get("/")
+        async def get_many_endpoint(self, list_params, as_text: bool = False):
+            if not as_text:
+                return await super().get_many_endpoint(list_params)
+            result = await self.handle_get_many(list_params)
+            return PlainTextResponse("\n".join(u.name for u in result.objects))
+
+    fr.include_view(client.app, View)
+    _with_row(client)
+
+    body = client.get("/users").json()
+    assert body["data"] == [{"id": 1, "name": "a"}]
+    assert body["total_count"] == 1
+    assert client.get("/users", params={"as_text": "true"}).text == "a"
+
+
+def test_an_item_route_that_calls_super(client, User):
+    class View(_user_view(User)):
+        @fr.get("/{id}")
+        async def get_one_endpoint(self, id: int):
+            return await super().get_one_endpoint(id)
+
+        @fr.post("/")
+        async def create_endpoint(self, data: fr.views.CreateSchema):
+            return await super().create_endpoint(data)
+
+    fr.include_view(client.app, View)
+    create_tables()
+
+    created = client.post("/users", json={"name": "a", "password": "SECRET"})
+    assert created.json() == {"id": 1, "name": "a"}
+    assert client.get("/users/1").json() == {"id": 1, "name": "a"}
+
+
+def test_a_custom_route_that_calls_an_endpoint_method(client, User):
+    class View(_user_view(User)):
+        @fr.get("/me")
+        async def me(self):
+            return await self.get_one_endpoint(1)
+
+        @fr.get("/everyone")
+        async def everyone(self):
+            return await self.get_many_endpoint({})
+
+    fr.include_view(client.app, View)
+    _with_row(client)
+
+    assert client.get("/users/me").json() == {"id": 1, "name": "a"}
+    assert client.get("/users/everyone").json()["data"] == [{"id": 1, "name": "a"}]
+
+
+def test_a_custom_route_that_returns_a_row(client, User):
+    class View(_user_view(User)):
+        @fr.get("/{id}/plain")
+        async def plain(self, id: fr.views.IDType):
+            return await self.handle_get_one(id)
+
+    fr.include_view(client.app, View)
+    _with_row(client)
+
+    assert client.get("/users/1/plain").json() == {"id": 1, "name": "a"}
+
+
+def test_a_row_inside_a_dict_or_a_list(client, User):
+    class View(_user_view(User)):
+        @fr.get("/{id}/wrapped")
+        async def wrapped(self, id: fr.views.IDType):
+            row = await self.get_one_endpoint(id)
+            return {"data": row, "others": [row], "pair": (row, 1)}
+
+    fr.include_view(client.app, View)
+    _with_row(client)
+
+    row = {"id": 1, "name": "a"}
+    assert client.get("/users/1/wrapped").json() == {
+        "data": row,
+        "others": [row],
+        "pair": [row, 1],
+    }
+
+
+@pytest.mark.parametrize("declared", ["none", "any"])
+def test_a_route_that_says_it_has_no_model(client, User, declared):
+    class View(_user_view(User)):
+        if declared == "none":
+
+            @fr.get("/{id}/plain", response_model=None)
+            async def plain(self, id: fr.views.IDType):
+                return await self.handle_get_one(id)
+
+        else:
+
+            @fr.get("/{id}/plain")
+            async def plain(self, id: fr.views.IDType) -> Any:
+                return await self.handle_get_one(id)
+
+    fr.include_view(client.app, View)
+    _with_row(client)
+
+    assert client.get("/users/1/plain").json() == {"id": 1, "name": "a"}
+
+
+def test_an_override_of_the_response_step_applies(client, User):
+    class View(_user_view(User)):
+        def to_single_response(self, obj):
+            response = super().to_single_response(obj)
+            response.name = response.name.upper()
+            return response
+
+        @fr.get("/{id}/plain")
+        async def plain(self, id: fr.views.IDType):
+            return await self.handle_get_one(id)
+
+    fr.include_view(client.app, View)
+    _with_row(client)
+
+    assert client.get("/users/1/plain").json()["name"] == "A"
+
+
+def test_other_values_go_out_as_they_are(client, User):
+    class Other(fr.IDMixin, SharedBase):
+        title: Mapped[str]
+
+    class View(_user_view(User)):
+        @fr.get("/{id}/plain")
+        async def plain(self, id: fr.views.IDType):
+            return {"id": id, "items": [1, "two", None]}
+
+        @fr.get("/{id}/other")
+        async def other(self, id: fr.views.IDType):
+            return Other(title="t")
+
+        @fr.get("/{id}/nothing")
+        async def nothing(self, id: fr.views.IDType):
+            return None
+
+    fr.include_view(client.app, View)
+    _with_row(client)
+
+    assert client.get("/users/1/plain").json() == {"id": 1, "items": [1, "two", None]}
+    assert client.get("/users/1/other").json()["title"] == "t"
+    assert client.get("/users/1/nothing").json() is None
+
+
+def test_a_route_that_names_another_class_keeps_fastapi_behaviour(client, User):
+    class Names(fr.BaseSchema):
+        name: str
+
+    class View(_user_view(User)):
+        @fr.get("/{id}/names")
+        async def names(self, id: fr.views.IDType) -> Names:
+            return await self.handle_get_one(id)
+
+    fr.include_view(client.app, View)
+    _with_row(client)
+
+    assert client.get("/users/1/names").json() == {"name": "a"}
+
+
+def test_the_spec_of_a_route_without_a_response_stays_empty(client, User):
+    class View(_user_view(User)):
+        @fr.get("/{id}/plain")
+        async def plain(self, id: fr.views.IDType):
+            return await self.handle_get_one(id)
+
+    fr.include_view(client.app, View)
+    create_tables()
+
+    spec = client.get("/openapi.json").json()
+    content = spec["paths"]["/users/{id}/plain"]["get"]["responses"]["200"]["content"]
+    assert content["application/json"]["schema"] == {}
+
+
+@pytest.fixture
+def sync_client(sync_db) -> Iterator[RestlyTestClient]:
+    with RestlyTestClient(FastAPI()) as client:
+        yield client
+
+
+def test_a_sync_view(sync_db, sync_client, User):
+    engine, _ = sync_db
+
+    class View(fr.RestView):
+        prefix = "/users"
+        model = User
+        schema = UserSchema
+
+        @fr.get("/{id}")
+        def get_one_endpoint(self, id: int):
+            return super().get_one_endpoint(id)
+
+        @fr.get("/")
+        def get_many_endpoint(self, list_params):
+            return super().get_many_endpoint(list_params)
+
+        @fr.get("/{id}/wrapped")
+        def wrapped(self, id: fr.views.IDType):
+            return {"data": self.get_one_endpoint(id)}
+
+    fr.include_view(sync_client.app, View)
+    SharedBase.metadata.create_all(engine)
+    sync_client.post("/users", json={"name": "a", "password": "SECRET"})
+
+    row = {"id": 1, "name": "a"}
+    assert sync_client.get("/users/1").json() == row
+    assert sync_client.get("/users").json()["data"] == [row]
+    assert sync_client.get("/users/1/wrapped").json() == {"data": row}

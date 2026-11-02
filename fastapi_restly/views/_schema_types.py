@@ -8,6 +8,7 @@ gets its own types. A setting of the view can hold a :class:`SchemaType` too.
 """
 
 import inspect
+import threading
 import types
 from contextvars import ContextVar
 from typing import (
@@ -25,7 +26,7 @@ from typing import (
 from sqlalchemy import inspect as sa_inspect
 
 from ..exc import RestlyConfigurationError
-from ..schemas._base import _model_id_type
+from ..schemas._base import _alias_value, _model_id_type
 
 
 class SchemaType:
@@ -56,7 +57,9 @@ class SchemaType:
 
     Restly calls the function once for each view class, when something first
     reads the type. It can read any setting of the view, in any order. A setting
-    must get a Pydantic class. A route can get any type that FastAPI accepts.
+    must get a Pydantic class, and ``list_response_schema`` also takes a list type.
+    A route can get any type that FastAPI accepts. The function can use a marker
+    in what it returns, as in ``Data[ResponseSchema]``.
 
     :param fn: The function. It gets the view class and returns the type.
     """
@@ -80,6 +83,13 @@ class SchemaType:
             return f"fastapi_restly.views.{self.name}"
         return f"SchemaType({self.fn!r})"
 
+    # FastAPI copies the metadata of an annotation.
+    def __copy__(self) -> "SchemaType":
+        return self
+
+    def __deepcopy__(self, memo: dict[int, Any]) -> "SchemaType":
+        return self
+
     def __get__(self, instance: Any, owner: type | None = None) -> Any:
         """The type for the view that reads the setting."""
         return _filled(self, owner if owner is not None else type(instance))
@@ -91,17 +101,29 @@ _BUILDING: ContextVar[frozenset[tuple[Callable[[Any], Any], type]]] = ContextVar
 )
 
 
+_RESULTS_LOCK = threading.Lock()
+
+
+def _results_on(view_cls: type) -> dict[Callable[[Any], Any], Any]:
+    """The results of the functions on ``view_cls``. A subclass has its own."""
+    results = view_cls.__dict__.get("_fr_schema_types")
+    if results is None:
+        with _RESULTS_LOCK:
+            results = view_cls.__dict__.get("_fr_schema_types")
+            if results is None:
+                results = {}
+                cast(Any, view_cls)._fr_schema_types = results
+    return results
+
+
 def _filled(schema_type: SchemaType, view_cls: type) -> Any:
     """What ``schema_type`` gives on ``view_cls``, from one call for each view.
 
-    So a class that the function builds is one class in OpenAPI. The results are
-    on the view class, as a subclass has its own.
+    So a class that the function builds is one class in OpenAPI. A marker in the
+    result gets the view's type too.
     """
     fn = schema_type.fn
-    results = view_cls.__dict__.get("_fr_schema_types")
-    if results is None:
-        results = {}
-        cast(Any, view_cls)._fr_schema_types = results
+    results = _results_on(view_cls)
     if fn in results:
         return results[fn]
     building = _BUILDING.get()
@@ -113,9 +135,16 @@ def _filled(schema_type: SchemaType, view_cls: type) -> Any:
         )
     token = _BUILDING.set(building | {(fn, view_cls)})
     try:
-        result = fn(view_cls)
+        result = _replace_schema_types(fn(view_cls), view_cls)
     finally:
         _BUILDING.reset(token)
+    # A marker reads a setting, and the check of that setting names it.
+    if result is None and schema_type.name is None:
+        raise RestlyConfigurationError(
+            f"The SchemaType function {getattr(fn, '__qualname__', fn)} of "
+            f"{view_cls.__name__} returned None. It must return a type. Check for "
+            "a missing return."
+        )
     # Two threads can read at the same time. Both then use the first result.
     return results.setdefault(fn, result)
 
@@ -129,8 +158,7 @@ def _marker(name: str, fn: Callable[[Any], Any]) -> SchemaType:
 def _view_id_type(view_cls: type) -> Any:
     """The ``{id}`` type: ``id_type`` when set, else the model's primary key's.
 
-    Resolved per registration and never stored on the class, so a subclass
-    with another model derives its own.
+    A subclass with another model gets its own.
     """
     explicit = getattr(view_cls, "id_type", None)
     if explicit is not None:
@@ -230,6 +258,17 @@ def _evaluated(annotation: Any, func: Callable) -> Any:
         return annotation
 
 
+def _without_none(annotation: Any) -> tuple[Any, bool]:
+    """``annotation`` without ``None``, and whether it allowed ``None``:
+    ``ResponseSchema | None`` gives ``(ResponseSchema, True)``."""
+    if get_origin(annotation) in (Union, types.UnionType):
+        args = get_args(annotation)
+        rest = [arg for arg in args if arg is not type(None)]
+        if len(rest) == 1 and len(rest) < len(args):
+            return rest[0], True
+    return annotation, False
+
+
 def _pydantic_generic_args(annotation: Any) -> tuple[Any, ...]:
     """The arguments of a filled Pydantic generic class: ``(ResponseSchema,)`` for
     ``Data[ResponseSchema]``. It is a class, so ``typing.get_args`` finds nothing."""
@@ -237,10 +276,37 @@ def _pydantic_generic_args(annotation: Any) -> tuple[Any, ...]:
     return metadata["args"] if metadata is not None and metadata["origin"] else ()
 
 
-def _replace_schema_types(annotation: Any, view_cls: type) -> Any:
+def _schema_type_in(annotation: Any, seen: set[Any] | None = None) -> SchemaType | None:
+    """The first marker in ``annotation``, or ``None``."""
+    seen = set() if seen is None else seen
+    annotation = _alias_value(annotation, seen)
+    if get_origin(annotation) is Annotated:
+        for metadata in get_args(annotation)[1:]:
+            if isinstance(metadata, SchemaType):
+                return metadata
+    if get_origin(annotation) is Literal:
+        return None
+    for arg in (*get_args(annotation), *_pydantic_generic_args(annotation)):
+        if (found := _schema_type_in(arg, seen)) is not None:
+            return found
+    return None
+
+
+def _replace_schema_types(
+    annotation: Any, view_cls: type, aliases: set[Any] | None = None
+) -> Any:
     """Replace each marker in ``annotation``, also inside a type such as
-    ``list[ResponseSchema]`` or ``Data[ResponseSchema]``. Returns ``annotation``
-    itself when it holds no marker."""
+    ``list[ResponseSchema]`` or ``Data[ResponseSchema]``, or in a type alias.
+    Returns ``annotation`` itself when it holds no marker.
+
+    ``aliases`` are the type aliases on the way to ``annotation``, so an alias
+    that names itself ends.
+    """
+    aliases = set(aliases or ())
+    value = _alias_value(annotation, aliases)
+    if value is not annotation:
+        filled = _replace_schema_types(value, view_cls, aliases)
+        return annotation if filled is value else filled
     origin = get_origin(annotation)
     if origin is Annotated:
         inner, *metadata = get_args(annotation)
@@ -250,20 +316,22 @@ def _replace_schema_types(annotation: Any, view_cls: type) -> Any:
             rest = [m for m in metadata if not isinstance(m, SchemaType)]
             filled = _filled(marker, view_cls)
             return Annotated[(filled, *rest)] if rest else filled
-        filled_inner = _replace_schema_types(inner, view_cls)
+        filled_inner = _replace_schema_types(inner, view_cls, aliases)
         if filled_inner is inner:
             return annotation
         return Annotated[(filled_inner, *metadata)]
     generic = _pydantic_generic_args(annotation)
     if generic:
-        filled_args = tuple(_replace_schema_types(arg, view_cls) for arg in generic)
+        filled_args = tuple(
+            _replace_schema_types(arg, view_cls, aliases) for arg in generic
+        )
         if all(new is old for new, old in zip(filled_args, generic)):
             return annotation
         return annotation.__pydantic_generic_metadata__["origin"][filled_args]
     args = get_args(annotation)
     if not args or origin is Literal:
         return annotation
-    filled_args = tuple(_replace_schema_types(arg, view_cls) for arg in args)
+    filled_args = tuple(_replace_schema_types(arg, view_cls, aliases) for arg in args)
     if all(new is old for new, old in zip(filled_args, args)):
         return annotation
     if origin in (Union, types.UnionType):

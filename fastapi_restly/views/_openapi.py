@@ -24,6 +24,7 @@ from sqlalchemy import inspect as sa_inspect
 from .._mapping import is_mapped_class
 from ..schemas import IDSchema
 from ..schemas._base import _collection_item_type, _unwrap_type
+from ._base import _list_item_class
 from ._openapi_names import _warn_on_name_clashes
 
 _PATCHED_ATTR = "_fr_resource_refs_patched"
@@ -37,6 +38,7 @@ class _Entry:
     response_schema: type[pydantic.BaseModel]
     create_schema: type[pydantic.BaseModel]
     update_schema: type[pydantic.BaseModel]
+    list_item_schema: type[pydantic.BaseModel] | None
 
 
 _RegistryKey = int
@@ -108,6 +110,7 @@ def _register_for_resource_ref(
         response_schema=view_cls.response_schema,
         create_schema=view_cls.create_schema,
         update_schema=view_cls.update_schema,
+        list_item_schema=_list_item_class(view_cls.list_response_schema),
     )
 
     entries = _registry_entries(parent_router)
@@ -253,8 +256,11 @@ def _annotate_spec(
                 entry.response_schema,
                 entry.create_schema,
                 entry.update_schema,
+                entry.list_item_schema,
             )
         ):
+            if schema_cls is None:
+                continue
             refs = _compute_refs(schema_cls, entry.model, model_to_resource)
             props = schemas.get(schema_cls.__name__, {}).get("properties", {})
             for prop_key, resource_name in refs.items():

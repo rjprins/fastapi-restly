@@ -31,8 +31,8 @@ Every `View` subclass, CRUD or not, honors these class attributes:
 | {attr}`dependencies <fastapi_restly.views.View.dependencies>` | `ClassVar[Any]` | A list of FastAPI dependencies, such as `[Depends(require_login)]`, run for every route in the view. Each class in the hierarchy adds its own, base first. |
 | {attr}`responses <fastapi_restly.views.View.responses>` | `ClassVar[dict[int \| str, dict[str, Any]]]` | OpenAPI response overrides. `View` defaults to `{}`; `BaseRestView` defaults to `{404: {"description": "Not found"}}`. Each class in the hierarchy adds its own, and a subclass's entry for a status code wins. |
 
-`RestView` and `AsyncRestView` add the following. A setting that holds a class
-also takes a {class}`SchemaType <fastapi_restly.views.SchemaType>`; see
+`RestView` and `AsyncRestView` add the following. A setting that holds a schema
+class also takes a {class}`SchemaType <fastapi_restly.views.SchemaType>`; see
 [Build a class for each view](#schema-type).
 
 | Attribute | Type | Description |
@@ -129,10 +129,10 @@ names are identical between variants.
 
 | Kind | Method | Signature | Return | Purpose |
 |---|---|---|---|---|
-| Endpoint method | {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>` | `(list_params)` | `list_response_schema`, such as `UserListResponse`: unless the view sets it, the pagination's envelope (`PaginatedEnvelope` by default, or `Envelope`) filled with the response class | `GET /`; validates query parameters and serializes the list result via `to_list_response`. |
-| Endpoint method | {meth}`get_one_endpoint <fastapi_restly.views.RestView.get_one_endpoint>` | `(id)` | response class | `GET /{id}`; serializes one retrieved object. |
-| Endpoint method | {meth}`create_endpoint <fastapi_restly.views.RestView.create_endpoint>` | `(data)` | response class | `POST /`; serializes the created object. |
-| Endpoint method | {meth}`update_endpoint <fastapi_restly.views.RestView.update_endpoint>` | `(id, data)` | response class | `PATCH /{id}`; serializes the updated object. |
+| Endpoint method | {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>` | `(list_params)` | `ListResult[Model]` | `GET /`; validates query parameters. Restly then builds the response with `to_list_response`. |
+| Endpoint method | {meth}`get_one_endpoint <fastapi_restly.views.RestView.get_one_endpoint>` | `(id)` | `Model` | `GET /{id}`. Restly then builds the response with `to_single_response`. |
+| Endpoint method | {meth}`create_endpoint <fastapi_restly.views.RestView.create_endpoint>` | `(data)` | `Model` | `POST /`. Restly then builds the response with `to_single_response`. |
+| Endpoint method | {meth}`update_endpoint <fastapi_restly.views.RestView.update_endpoint>` | `(id, data)` | `Model` | `PATCH /{id}`. Restly then builds the response with `to_single_response`. |
 | Endpoint method | {meth}`delete_endpoint <fastapi_restly.views.RestView.delete_endpoint>` | `(id)` | `fastapi.Response` | `DELETE /{id}`; returns `204` by default. |
 | Handler | {meth}`handle_get_many <fastapi_restly.views.RestView.handle_get_many>` | `(list_params, *, scope=None, where=None)` | `ListResult[Model]` | Run `authorize("get_many")`, then `get_many`, forwarding `scope=`. A route names its own scope here (a trash list); `fr.clauses.UNSCOPED` reads past the view scope. `where=` takes an expression or a clause and [narrows inside the scope](#per-read-where); the handler passes it on to `get_many`. Final. |
 | Handler | {meth}`handle_get_one <fastapi_restly.views.RestView.handle_get_one>` | `(id, *, scope=None)` | `Model` | Load through `get_one` (scoped, 404), forwarding `scope=`, then `authorize("get_one", obj=...)`. Reusable from a custom read route as "scoped load + 404 + read-auth"; a write action loads with `get_one` and gates its own action. `id` takes a predicate the way `get_one` does, so a [natural-key route](#natural-key-route) is this handler with `Item.slug == slug`. Final. |
@@ -159,7 +159,7 @@ names are identical between variants.
 | Override point | {meth}`snapshot <fastapi_restly.views.BaseRestView.snapshot>` | `(obj)` | `dict[str, Any]` | Frozen capture of an object's already-loaded column values, taken after `authorize` and before the mutation, passed as `old` to the commit hooks. |
 | Override point | {meth}`get_loader_options <fastapi_restly.views.BaseRestView.get_loader_options>` | `()` | `list[Any]` | The loader options of every read: by default a `selectinload(...)` for each relationship the response class names. `select()` applies them, and so does the reload after the save of a write. Override to load a relationship the response class does not name, or a `query_expression` with `with_expression(...)`. See [Return related objects in a response](#relationship-loading). |
 | Override point | {meth}`to_single_response <fastapi_restly.views.BaseRestView.to_single_response>` | `(obj)` | instance of `response_schema` | Validate and serialize one ORM object with Restly's alias/reference/write-only handling. Override for custom projections or an intentional `model_construct()` fast path. |
-| Override point | {meth}`to_list_response <fastapi_restly.views.BaseRestView.to_list_response>` | `(list_result)` | envelope model instance | Build the list response body: an instance of `list_response_schema`. The page comes from `list_result.list_params`. To change the shape, set `list_response_schema` or the pagination's `envelope`. A shape that Restly cannot fill, such as a bare list, needs `get_many_endpoint` replaced. |
+| Override point | {meth}`to_list_response <fastapi_restly.views.BaseRestView.to_list_response>` | `(list_result)` | envelope model instance | Build the list response body: an instance of `list_response_schema`. The page comes from `list_result.list_params`. To change the shape, set `list_response_schema` or the pagination's `envelope`. A shape that Restly cannot fill needs `get_many_endpoint` replaced. |
 
 The `scope` argument of the loads and of `select` has the type
 `fr.views.ReadScope`: `None` resolves the view's scope, a clause replaces it,

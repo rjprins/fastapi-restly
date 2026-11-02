@@ -13,6 +13,7 @@ Provides default reading and writing functions on the database using
 SQLAlchemy models.
 """
 
+import collections.abc
 import dataclasses
 import functools
 import inspect
@@ -118,7 +119,12 @@ from ._reads import (
     _reject_bad_row_identity,
     _rows_reload_statements,
 )
-from ._schema_types import SchemaType, _fill_schema_types
+from ._schema_types import (
+    SchemaType,
+    _fill_schema_types,
+    _schema_type_in,
+    _without_none,
+)
 
 # Unbound: a mapped class need not subclass DeclarativeBase (a SQLModel table,
 # an imperative mapping). ``BaseRestView`` checks the mapping at class definition.
@@ -887,8 +893,6 @@ class BaseRestView(
         request = getattr(self, "request", None)
         if request is None:
             return
-        if getattr(self, "list_params_schema", None) is None:
-            return
         params_model = _list_params_schema(type(self))
         list_keys = {key for key, _, _ in _list_params_fields(params_model)}
         self._reject_unknown_keys(request.query_params, list_keys)
@@ -1043,7 +1047,8 @@ class BaseRestView(
         ``total_count`` / ``page`` / ``page_size`` / ``total_pages``), or an
         :class:`Envelope` (``data`` only) for a view without pagination. To
         change the shape, set :attr:`list_response_schema` or the pagination's
-        ``envelope``. For a ``Content-Range`` header, see
+        ``envelope``. A list type, such as ``list[UserSummary]``, gives a list
+        without the page values. For a ``Content-Range`` header, see
         :class:`AsyncReactAdminView`: it overrides this method and sets
         :attr:`list_response_schema` to match.
 
@@ -1052,6 +1057,10 @@ class BaseRestView(
         data = [self._single_response(obj) for obj in list_result.objects]
         pagination = self.pagination
         envelope = type(self).list_response_schema
+        if not _is_pydantic_class(envelope):
+            return _type_adapter(envelope).validate_python(
+                data, from_attributes=True, by_alias=False, by_name=True
+            )
         if not isinstance(pagination, NumberedPagination):
             return _build_envelope(envelope, _unpaginated_page_info(data))
         params = self._to_query_params(list_result.list_params)
@@ -1082,10 +1091,19 @@ class BaseRestView(
         """Each schema setting holds a Pydantic class, or a function that gives
         one. Another value would fail only on a request, or not at all."""
         for name in _DEFAULT_SETTINGS:
+            value = getattr(cls, name)
+            marker = _schema_type_in(value)
+            if marker is not None:
+                raise RestlyConfigurationError(
+                    f"{cls.__name__}.{name} is {value!r}, which uses {marker!r}. "
+                    "A setting cannot hold a marker, as Restly fills a marker in "
+                    "a route. Write a function: "
+                    f"{name} = SchemaType(lambda view: ...), and read "
+                    "view.response_schema in it."
+                )
             if name == "list_response_schema":
                 continue  # any type, see _check_list_response_schema
-            value = getattr(cls, name)
-            if isinstance(value, type) and issubclass(value, pydantic.BaseModel):
+            if _is_pydantic_class(value):
                 continue
             if isinstance(inspect.getattr_static(cls, name), SchemaType):
                 raise RestlyConfigurationError(
@@ -1105,35 +1123,48 @@ class BaseRestView(
         on the first request."""
         if _uses_default(cls, "list_response_schema"):
             return
-        if cls.to_list_response is not BaseRestView.to_list_response:
-            return
-        endpoint = getattr(cls, "get_many_endpoint", None)
-        if endpoint is None or not endpoint.__module__.startswith("fastapi_restly."):
-            return
-        if not _serves_route(cls, "get_many_endpoint"):
-            return
         label = f"{cls.__name__}.list_response_schema"
-        other_shape = " For another shape, replace get_many_endpoint."
         value = cls.list_response_schema
-        if not (isinstance(value, type) and issubclass(value, pydantic.BaseModel)):
+        if value is None:
             raise RestlyConfigurationError(
-                f"{label} must be a Pydantic class for the default GET /, got "
-                f"{value!r}.{other_shape}"
+                f"{label} is None. It must be a type, such as "
+                "PaginatedEnvelope[UserSummary] or list[UserSummary]."
             )
-        sample = (
-            _numbered_page_info_sample()
-            if isinstance(cls.pagination, NumberedPagination)
-            else _unpaginated_page_info([])
-        )
-        _check_fillable(label, value, sample, other_shape)
+        if _has_items_without_a_type(value):
+            raise RestlyConfigurationError(
+                f"{label} is the generic class {value.__name__} without a type for "
+                "its items, so OpenAPI would show items without a type. Write "
+                f"{value.__name__}[UserSummary]."
+            )
+        # A view that replaces what fills the class decides what the class is.
+        endpoint = getattr(cls, "get_many_endpoint", None)
+        if (
+            endpoint is None
+            or not endpoint.__module__.startswith("fastapi_restly.")
+            or not cls.to_list_response.__module__.startswith("fastapi_restly.")
+            or not _serves_route(cls, "get_many_endpoint")
+        ):
+            return
+        other_shape = " For another shape, replace get_many_endpoint."
+        if _is_pydantic_class(value):
+            sample = (
+                _numbered_page_info_sample()
+                if isinstance(cls.pagination, NumberedPagination)
+                else _unpaginated_page_info([])
+            )
+            _check_fillable(label, value, sample, other_shape)
+        elif _list_item_type(value) is None:
+            raise RestlyConfigurationError(
+                f"{label} must be a Pydantic class or a list type for the default "
+                f"GET /, got {value!r}.{other_shape}"
+            )
         response = cls.response_schema
         lacking = _fields_the_items_lack(value, response)
         if lacking:
             raise RestlyConfigurationError(
-                f"The items of {label} {value.__name__} have fields that "
-                f"{response.__name__} does not have: {', '.join(lacking)}. Restly "
-                "fills the items from the response class, so add these fields to "
-                f"it, or give them a default.{other_shape}"
+                f"The items of {label} have fields that {response.__name__} does "
+                f"not have: {', '.join(lacking)}. Restly fills the items from the "
+                f"response class, so add these fields to it.{other_shape}"
             )
 
     @classmethod
@@ -1498,17 +1529,56 @@ def _route_names(view_cls: type, setting: str) -> frozenset[str]:
     )
 
 
+def _is_pydantic_class(value: Any) -> bool:
+    return isinstance(value, type) and issubclass(value, pydantic.BaseModel)
+
+
+@functools.cache
+def _type_adapter(annotation: Any) -> pydantic.TypeAdapter[Any]:
+    return pydantic.TypeAdapter(annotation)
+
+
+def _list_item_type(annotation: Any) -> Any:
+    """``X`` for ``list[X]`` and ``Sequence[X]``, also with ``| None``. Or
+    ``None``."""
+    annotation, _ = _without_none(annotation)
+    if get_origin(annotation) not in (list, collections.abc.Sequence):
+        return None
+    return next(iter(get_args(annotation)), None)
+
+
+def _has_items_without_a_type(list_response: Any) -> bool:
+    """Whether ``list_response`` is a generic class that was not given the type of
+    its items, such as ``PaginatedEnvelope``."""
+    if not _is_pydantic_class(list_response):
+        return False
+    field = list_response.model_fields.get("data")
+    return field is not None and isinstance(_list_item_type(field.annotation), TypeVar)
+
+
+def _list_item_class(list_response: Any) -> type[pydantic.BaseModel] | None:
+    """The Pydantic class of the items of a list response: ``X`` for ``list[X]``
+    and for a class with a field ``data: list[X]``. Or ``None``."""
+    annotation = list_response
+    if _is_pydantic_class(list_response):
+        field = list_response.model_fields.get("data")
+        annotation = None if field is None else field.annotation
+    item = _list_item_type(annotation)
+    return item if _is_pydantic_class(item) else None
+
+
 def _fields_the_items_lack(
-    list_response: type[pydantic.BaseModel], response: type[pydantic.BaseModel]
+    list_response: Any, response: type[pydantic.BaseModel]
 ) -> list[str]:
     """The fields without a default of the items of ``list_response`` that
-    ``response`` has neither as a field nor as an attribute. Items that are not
-    a Pydantic class in a list are not looked at."""
-    field = list_response.model_fields.get("data")
-    if field is None or get_origin(field.annotation) is not list:
-        return []
-    item = next(iter(get_args(field.annotation)), None)
-    if not (isinstance(item, type) and issubclass(item, pydantic.BaseModel)):
+    ``response`` has neither as a field nor as an attribute. A validator that
+    runs before the fields may fill them, so such a class is not looked at."""
+    item = _list_item_class(list_response)
+    if item is None or any(
+        validator.info.mode == "before"
+        and not validator.func.__module__.startswith("fastapi_restly.")
+        for validator in item.__pydantic_decorators__.model_validators.values()
+    ):
         return []
     return [
         name

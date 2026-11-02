@@ -7,8 +7,21 @@ view can be read before it registers, and setups that need the class definition
 to be over keep working.
 """
 
+import copy
+import dataclasses
+import functools
+import sys
 import threading
-from typing import Annotated, Any, Generic, Optional, TypeVar
+from typing import (
+    Annotated,
+    Any,
+    Generic,
+    NamedTuple,
+    Optional,
+    TypedDict,
+    TypeVar,
+    get_args,
+)
 
 import pydantic
 import pytest
@@ -16,11 +29,19 @@ import sqlalchemy
 from fastapi import FastAPI
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from typing_extensions import TypeAliasType
 
 import fastapi_restly as fr
 from fastapi_restly.exc import RestlyConfigurationError
 from fastapi_restly.testing._client import RestlyTestClient
-from fastapi_restly.views import CreateSchema, IDType, ResponseSchema, SchemaType
+from fastapi_restly.views import (
+    CreateSchema,
+    IDType,
+    ListResponseSchema,
+    PaginatedEnvelope,
+    ResponseSchema,
+    SchemaType,
+)
 
 from ._models import SharedBase
 from .conftest import create_tables
@@ -105,7 +126,7 @@ def test_a_function_as_the_create_body_and_the_update_body(client, Lamp):
             )
         )
         update_schema = SchemaType(
-            lambda view: fr.schemas.derive_update_schema(view.create_schema)
+            lambda view: fr.schemas.derive_update_schema(view.create_schema, view.model)
         )
 
     fr.include_view(client.app, LampView)
@@ -341,7 +362,7 @@ def test_a_function_reads_any_other_setting_in_any_order(Lamp):
 
         @SchemaType
         def update_schema(view):
-            return fr.schemas.derive_update_schema(view.create_schema)
+            return fr.schemas.derive_update_schema(view.create_schema, view.model)
 
         @SchemaType
         def create_schema(view):
@@ -687,8 +708,19 @@ def test_a_wrong_value_for_a_setting_raises_at_registration(Lamp, setting, value
         fr.include_view(FastAPI(), LampView)
 
 
+def test_a_function_that_gives_nothing_raises(Lamp):
+    class LampView(fr.AsyncRestView):
+        prefix = "/lamps"
+        model = Lamp
+        schema = LampSchema
+        response_schema = SchemaType(lambda view: None)
+
+    with pytest.raises(RestlyConfigurationError, match="of LampView returned None"):
+        fr.include_view(FastAPI(), LampView)
+
+
 @pytest.mark.parametrize(
-    "result", [None, list[LampSchema], NotAModel], ids=["none", "list", "plain-class"]
+    "result", [list[LampSchema], NotAModel], ids=["list", "plain-class"]
 )
 def test_a_function_that_gives_something_else_than_a_class_raises(Lamp, result):
     class LampView(fr.AsyncRestView):
@@ -817,13 +849,13 @@ def test_a_recursive_class_ends_the_search(Lamp):
 # --- the public derive functions ---------------------------------------------
 
 
-def test_derive_create_and_update_leave_out_the_read_only_fields():
+def test_derive_create_and_update_leave_out_the_read_only_fields(Lamp):
     class Schema(fr.BaseSchema):
         id: fr.ReadOnly[int]
         name: str
 
-    create = fr.schemas.derive_create_schema(Schema)
-    update = fr.schemas.derive_update_schema(Schema)
+    create = fr.schemas.derive_create_schema(Schema, Lamp)
+    update = fr.schemas.derive_update_schema(Schema, Lamp)
     assert list(create.model_fields) == ["name"]
     assert list(update.model_fields) == ["name"]
     assert update().model_dump() == {"name": None}
@@ -831,12 +863,11 @@ def test_derive_create_and_update_leave_out_the_read_only_fields():
     assert update.__name__ == "SchemaUpdate"
 
 
-def test_derive_create_and_update_with_a_model_leave_out_a_generated_key(Lamp):
+def test_derive_create_and_update_leave_out_a_generated_key(Lamp):
     class Plain(fr.BaseSchema):
         id: int
         name: str
 
-    assert list(fr.schemas.derive_create_schema(Plain).model_fields) == ["id", "name"]
     assert list(fr.schemas.derive_create_schema(Plain, Lamp).model_fields) == ["name"]
     assert list(fr.schemas.derive_update_schema(Plain, Lamp).model_fields) == ["name"]
 
@@ -860,7 +891,7 @@ def test_derive_update_from_a_class_of_your_own(client, Lamp):
         model = Lamp
         schema = LampSchema
         create_schema = LampIn
-        update_schema = fr.schemas.derive_update_schema(LampIn)
+        update_schema = fr.schemas.derive_update_schema(LampIn, Lamp)
 
     fr.include_view(client.app, LampView)
     create_tables()
@@ -1061,3 +1092,477 @@ def test_each_view_gets_its_own_keys(client, Lamp):
     row = {"id": 1, "name": "desk"}
     assert client.get("/lamps").json() == {"lamps": [row], "lampsCount": 1}
     assert client.get("/lamps/1").json() == {"lamp": row}
+
+
+# --- what a function gives ----------------------------------------------------
+
+
+def test_a_route_function_that_returns_nothing_raises(client, Lamp):
+    def forgot_the_return(view):
+        Data[view.response_schema]
+
+    class LampView(fr.AsyncRestView):
+        prefix = "/lamps"
+        model = Lamp
+        schema = LampSchema
+
+        @fr.get("/{id}/wrapped")
+        async def wrapped(
+            self, id: IDType
+        ) -> Annotated[Any, SchemaType(forgot_the_return)]:
+            return {}
+
+    with pytest.raises(RestlyConfigurationError, match="forgot_the_return.*None"):
+        fr.include_view(client.app, LampView)
+
+
+@pytest.mark.parametrize(
+    "fn",
+    [
+        lambda view: ResponseSchema,
+        lambda view: Optional[ResponseSchema],
+        lambda view: Data[ResponseSchema],
+    ],
+    ids=["bare", "optional", "generic"],
+)
+def test_a_function_can_return_a_marker(client, Lamp, fn):
+    class LampView(fr.AsyncRestView):
+        prefix = "/lamps"
+        model = Lamp
+        schema = LampSchema
+
+        @fr.get("/{id}/made")
+        async def made(self, id: IDType) -> Annotated[Any, SchemaType(fn)]:
+            return None
+
+    fr.include_view(client.app, LampView)
+    assert "LampResponse" in str(client.get("/openapi.json").json()["paths"])
+
+
+def test_a_function_that_allows_none_uses_the_response_step(client, Lamp):
+    calls = []
+
+    class LampView(fr.AsyncRestView):
+        prefix = "/lamps"
+        model = Lamp
+        schema = LampSchema
+
+        def to_single_response(self, obj):
+            calls.append(obj)
+            return super().to_single_response(obj)
+
+        @fr.get("/{id}/maybe")
+        async def maybe(
+            self, id: IDType
+        ) -> Annotated[Any, SchemaType(lambda view: Optional[view.response_schema])]:
+            return await self.handle_get_one(id)
+
+    fr.include_view(client.app, LampView)
+    create_tables()
+    client.post("/lamps", json={"name": "desk"})
+    calls.clear()
+
+    assert client.get("/lamps/1/maybe").json() == {"id": 1, "name": "desk"}
+    assert len(calls) == 1
+
+
+# --- a marker in a setting ----------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "setting, value",
+    [
+        ("list_response_schema", list[ResponseSchema]),
+        ("list_response_schema", PaginatedEnvelope[ResponseSchema]),
+        ("response_schema", Data[ResponseSchema]),
+    ],
+)
+def test_a_setting_that_holds_a_marker_raises(client, Lamp, setting, value):
+    LampView = type(
+        "LampView",
+        (fr.AsyncRestView,),
+        {"prefix": "/lamps", "model": Lamp, "schema": LampSchema, setting: value},
+    )
+
+    with pytest.raises(RestlyConfigurationError, match=f"{setting}.*SchemaType"):
+        fr.include_view(client.app, LampView)
+
+
+def test_a_function_on_a_setting_can_return_a_marker(client, Lamp):
+    class LampView(fr.AsyncRestView):
+        prefix = "/lamps"
+        model = Lamp
+        schema = LampSchema
+        list_response_schema = SchemaType(lambda view: list[ResponseSchema])
+
+    assert LampView.list_response_schema == list[LampView.response_schema]
+
+
+# --- type aliases -------------------------------------------------------------
+
+
+def test_a_type_alias_of_a_marker(client, Lamp):
+    Resp = TypeAliasType("Resp", ResponseSchema)
+    Key = TypeAliasType("Key", IDType)
+    calls = []
+
+    class LampView(fr.AsyncRestView):
+        prefix = "/lamps"
+        model = Lamp
+        schema = LampSchema
+
+        def to_single_response(self, obj):
+            calls.append(obj)
+            return super().to_single_response(obj)
+
+        @fr.get("/{id}/aliased")
+        async def aliased(self, id: Key) -> Resp:
+            return await self.handle_get_one(id)
+
+    fr.include_view(client.app, LampView)
+    create_tables()
+    client.post("/lamps", json={"name": "desk"})
+    calls.clear()
+
+    spec = client.get("/openapi.json").json()
+    operation = spec["paths"]["/lamps/{id}/aliased"]["get"]
+    assert _response_ref(operation) == "LampResponse"
+    assert operation["parameters"][0]["schema"]["type"] == "integer"
+    assert client.get("/lamps/1/aliased").json() == {"id": 1, "name": "desk"}
+    assert len(calls) == 1
+    client.get("/lamps/abc/aliased", assert_status_code=404)
+
+
+def test_a_recursive_type_alias_is_left_alone(client, Lamp):
+    Tree = TypeAliasType("Tree", "list[Tree] | str")
+
+    class LampView(fr.AsyncRestView):
+        prefix = "/lamps"
+        model = Lamp
+        schema = LampSchema
+
+        @fr.get("/{id}/tree", response_model=None)
+        async def tree(self, id: IDType) -> Tree:
+            return "leaf"
+
+    fr.include_view(client.app, LampView)
+    create_tables()
+    assert client.get("/lamps/1/tree").json() == "leaf"
+
+
+# --- responses= ---------------------------------------------------------------
+
+
+def _model_of(operation, status):
+    return operation["responses"][status]["content"]["application/json"]["schema"]
+
+
+@pytest.mark.parametrize(
+    "model, name",
+    [(ResponseSchema, "LampResponse"), (Data[ResponseSchema], "Data_LampResponse_")],
+    ids=["bare", "generic"],
+)
+def test_a_marker_in_responses_of_a_route(client, Lamp, model, name):
+    class ApiView(fr.AsyncRestView):
+        @fr.post("/{id}/claim", responses={409: {"model": model, "description": "x"}})
+        async def claim(self, id: IDType) -> ResponseSchema:
+            return await self.handle_get_one(id)
+
+    class LampView(ApiView):
+        prefix = "/lamps"
+        model = Lamp
+        schema = LampSchema
+
+    fr.include_view(client.app, LampView)
+
+    spec = client.get("/openapi.json").json()
+    operation = spec["paths"]["/lamps/{id}/claim"]["post"]
+    assert _ref(_model_of(operation, "409")) == name
+    assert operation["responses"]["409"]["description"] == "x"
+    assert spec["components"]["schemas"]["LampResponse"]["properties"]
+
+
+def test_a_marker_in_responses_of_a_view(client, Lamp):
+    class ApiView(fr.AsyncRestView):
+        responses = {409: {"model": ResponseSchema}}
+
+    class LampView(ApiView):
+        prefix = "/lamps"
+        model = Lamp
+        schema = LampSchema
+
+    fr.include_view(client.app, LampView)
+
+    operation = client.get("/openapi.json").json()["paths"]["/lamps"]["get"]
+    assert _ref(_model_of(operation, "409")) == "LampResponse"
+
+
+def test_a_marker_in_responses_of_a_plain_view_raises(client):
+    class PlainView(fr.View):
+        prefix = "/plain"
+
+        @fr.get("/", responses={409: {"model": ResponseSchema}})
+        def index(self):
+            return {}
+
+    with pytest.raises(RestlyConfigurationError, match="ResponseSchema"):
+        fr.include_view(client.app, PlainView)
+
+
+def test_a_marker_can_be_copied():
+    assert copy.copy(ResponseSchema) == ResponseSchema
+    marker = get_args(ResponseSchema)[1]
+    assert copy.deepcopy(marker) is marker
+
+
+# --- a marker in a field ------------------------------------------------------
+
+
+@dataclasses.dataclass
+class InADataclass:
+    item: ResponseSchema
+
+
+class InATypedDict(TypedDict):
+    item: ResponseSchema
+
+
+class InANamedTuple(NamedTuple):
+    item: ResponseSchema
+
+
+@pytest.mark.parametrize("wrapper", [InADataclass, InATypedDict, InANamedTuple])
+def test_a_marker_in_a_field_of_another_kind_of_class_raises(client, Lamp, wrapper):
+    class LampView(fr.AsyncRestView):
+        prefix = "/lamps"
+        model = Lamp
+        schema = LampSchema
+
+        @fr.get("/{id}/wrapped")
+        async def wrapped(self, id: IDType) -> wrapper:
+            return None
+
+    with pytest.raises(RestlyConfigurationError, match="field item"):
+        fr.include_view(client.app, LampView)
+
+
+# --- a function on a subclass counts as new -----------------------------------
+
+
+class _OtherSchema(fr.IDSchema):
+    name: str
+    note: str = "n"
+
+
+@pytest.mark.parametrize("form", ["schema", "decorator"])
+def test_a_new_schema_as_a_function_replaces_the_declared_classes(Lamp, form):
+    class Create(LampSchema):
+        pass
+
+    class Base(fr.AsyncRestView):
+        model = Lamp
+        schema = LampSchema
+        create_schema = Create
+
+    if form == "schema":
+
+        class Sub(Base):
+            schema = SchemaType(lambda view: _OtherSchema)
+
+    else:
+
+        class Sub(Base):
+            @SchemaType
+            def schema(view):
+                return _OtherSchema
+
+    assert Base.create_schema is Create
+    assert Sub.create_schema is not Create
+    assert "note" in Sub.create_schema.model_fields
+    assert "note" in Sub.response_schema.model_fields
+
+
+def test_a_new_response_schema_as_a_function_replaces_the_declared_list_classes(Lamp):
+    class OnlyTheId(fr.IDSchema):
+        pass
+
+    class Base(fr.AsyncRestView):
+        model = Lamp
+        schema = LampSchema
+        list_params_schema = fr.query.derive_list_params_schema(LampSchema, Lamp)
+
+    class Sub(Base):
+        response_schema = SchemaType(lambda view: OnlyTheId)
+
+    assert "name" in Base.list_params_schema.model_fields
+    assert "name" not in Sub.list_params_schema.model_fields
+
+
+def test_a_function_on_the_same_class_keeps_a_declared_class(Lamp):
+    class Create(LampSchema):
+        pass
+
+    class Base(fr.AsyncRestView):
+        model = Lamp
+        schema = SchemaType(lambda view: LampSchema)
+        create_schema = Create
+
+    class Sub(Base):
+        pass
+
+    assert Base.create_schema is Create
+    assert Sub.create_schema is Create
+
+
+# --- what the response step takes ---------------------------------------------
+
+
+def test_a_decorator_without_async_around_an_async_endpoint(client, Lamp):
+    def logged(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            return func(*args, **kwargs)
+
+        return wrapper
+
+    class LampView(fr.AsyncRestView):
+        prefix = "/lamps"
+        model = Lamp
+        schema = LampSchema
+
+        def to_single_response(self, obj):
+            response = super().to_single_response(obj)
+            response.name = response.name.upper()
+            return response
+
+        @fr.get("/{id}")
+        @logged
+        async def get_one_endpoint(self, id: IDType) -> ResponseSchema:
+            return await self.handle_get_one(id)
+
+        @fr.get("/")
+        @logged
+        async def get_many_endpoint(self, list_params) -> ListResponseSchema:
+            return await self.handle_get_many(list_params)
+
+    fr.include_view(client.app, LampView)
+    create_tables()
+    client.post("/lamps", json={"name": "desk"})
+
+    assert client.get("/lamps/1").json()["name"] == "DESK"
+    assert client.get("/lamps").json()["data"][0]["name"] == "DESK"
+
+
+def test_a_row_of_another_model_uses_the_response_step(client, Lamp):
+    class Shade(fr.IDMixin, SharedBase):
+        name: Mapped[str]
+
+    class LampView(fr.AsyncRestView):
+        prefix = "/lamps"
+        model = Lamp
+        schema = LampSchema
+
+        def to_single_response(self, obj):
+            response = super().to_single_response(obj)
+            response.name = response.name.upper()
+            return response
+
+        async def create(self, data):
+            return Shade(name=data.name)
+
+    fr.include_view(client.app, LampView)
+    create_tables()
+
+    assert client.post("/lamps", json={"name": "desk"}).json()["name"] == "DESK"
+
+
+def test_a_list_of_rows_uses_the_response_class_of_an_override(client, Lamp):
+    class Aliased(fr.IDSchema):
+        name: str = pydantic.Field(alias="lampName")
+
+    class Wide(fr.IDSchema):
+        model_config = pydantic.ConfigDict(from_attributes=True)
+        name: str
+
+    class LampView(fr.AsyncRestView):
+        prefix = "/lamps"
+        model = Lamp
+        response_schema = Aliased
+        schema = Aliased
+
+        def to_single_response(self, obj):
+            return Wide(id=obj.id, name=obj.name)
+
+        @fr.get("/{id}/one")
+        async def one(self, id: IDType) -> ResponseSchema:
+            return await self.handle_get_one(id)
+
+        @fr.get("/{id}/many")
+        async def many(self, id: IDType) -> list[ResponseSchema]:
+            return [await self.handle_get_one(id)]
+
+    fr.include_view(client.app, LampView)
+    create_tables()
+    client.post("/lamps", json={"lampName": "desk"})
+
+    assert client.get("/lamps/1/one").json() == {"id": 1, "lampName": "desk"}
+    assert client.get("/lamps/1/many").json() == [{"id": 1, "lampName": "desk"}]
+
+
+# --- first reads --------------------------------------------------------------
+
+
+def test_two_threads_that_read_a_new_view_share_one_result(Lamp):
+    fn_calls = []
+
+    def build(view):
+        fn_calls.append(view)
+        return pydantic.create_model("Built", name=(str, ...))
+
+    original = sys.getswitchinterval()
+    sys.setswitchinterval(1e-6)
+    try:
+        for _ in range(300):
+
+            class V(fr.AsyncRestView):
+                model = Lamp
+                schema = LampSchema
+                built = SchemaType(build)
+
+            barrier = threading.Barrier(4)
+            seen = []
+
+            def read():
+                barrier.wait()
+                seen.append(V.built)
+
+            threads = [threading.Thread(target=read) for _ in range(4)]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join()
+            assert len({id(result) for result in seen}) == 1
+    finally:
+        sys.setswitchinterval(original)
+
+
+# --- two derived parents ------------------------------------------------------
+
+
+def test_a_class_with_two_derived_parents_keeps_out_what_each_dropped(Lamp):
+    class One(fr.IDSchema):
+        name: str
+        pin: fr.WriteOnly[str]
+
+    class Two(fr.IDSchema):
+        name: str
+        salary: fr.ReadOnly[int] = 0
+
+    class Both(
+        fr.schemas.derive_response_schema(One),
+        fr.schemas.derive_create_schema(Two, Lamp),
+    ):
+        pass
+
+    assert "pin" not in Both.model_fields
+    assert "salary" not in Both.model_fields

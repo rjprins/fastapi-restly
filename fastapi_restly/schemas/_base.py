@@ -1877,8 +1877,14 @@ def _drop_fields(cls: type[pydantic.BaseModel], names: set[str]) -> None:
     for name in names:
         del cls.model_fields[name]
     _skip_field_checks(cls, names)
-    inherited = getattr(cls, "__restly_dropped_fields__", frozenset())
-    cls.__restly_dropped_fields__ = inherited | names  # type: ignore[attr-defined]
+    cls.__restly_dropped_fields__ = _dropped_fields(cls) | names  # type: ignore[attr-defined]
+
+
+def _dropped_fields(cls: type) -> frozenset[str]:
+    """The fields that ``cls`` and each of its parents dropped."""
+    return frozenset().union(
+        *(vars(klass).get("__restly_dropped_fields__", ()) for klass in cls.__mro__)
+    )
 
 
 def _brought_back_fields(cls: type[pydantic.BaseModel]) -> set[str]:
@@ -1893,7 +1899,7 @@ def _brought_back_fields(cls: type[pydantic.BaseModel]) -> set[str]:
     A field that ``cls`` declares itself, or that another parent has, is a real
     field and stays.
     """
-    dropped = getattr(cls, "__restly_dropped_fields__", frozenset())
+    dropped = _dropped_fields(cls)
     if not dropped:
         return set()
     own = _own_annotations(cls)
@@ -2042,9 +2048,7 @@ def _derive_response_schema(
     return cls
 
 
-def derive_create_schema(
-    schema: type[_SchemaT], model: type[Any] | None = None
-) -> type[_SchemaT]:
+def derive_create_schema(schema: type[_SchemaT], model: type[Any]) -> type[_SchemaT]:
     """Build the create body of a view's schema: the schema without its
     ``ReadOnly`` fields, named ``<Resource>Create``.
 
@@ -2057,8 +2061,8 @@ def derive_create_schema(
         UserCreate = fr.schemas.derive_create_schema(UserSchema, User)
 
     :param schema: The view's schema.
-    :param model: The view's model. With a model, the class also leaves out a
-        primary key that the server generates, as a view does.
+    :param model: The view's model. The class also leaves out a primary key that
+        the server generates, as a view does.
     :returns: The create body.
     """
     return cast(type[_SchemaT], _derive_create_schema(schema, model))
@@ -2066,16 +2070,14 @@ def derive_create_schema(
 
 @functools.cache
 def _derive_create_schema(
-    schema: type[pydantic.BaseModel], model: type[Any] | None
+    schema: type[pydantic.BaseModel], model: type[Any]
 ) -> type[pydantic.BaseModel]:
     return create_model_without_read_only_fields(
-        schema, omit=() if model is None else _generated_primary_key_fields(model)
+        schema, omit=_generated_primary_key_fields(model)
     )
 
 
-def derive_update_schema(
-    schema: type[_SchemaT], model: type[Any] | None = None
-) -> type[_SchemaT]:
+def derive_update_schema(schema: type[_SchemaT], model: type[Any]) -> type[_SchemaT]:
     """Build the update body of a view's schema: the schema without its
     ``ReadOnly`` fields, with each other field optional, named
     ``<Resource>Update``.
@@ -2095,11 +2097,11 @@ def derive_update_schema(
 
         class UserView(fr.AsyncRestView):
             create_schema = UserCreate
-            update_schema = fr.schemas.derive_update_schema(UserCreate)
+            update_schema = fr.schemas.derive_update_schema(UserCreate, User)
 
     :param schema: The view's schema, or another class to start from.
-    :param model: The view's model. With a model, the class also leaves out a
-        primary key that the server generates, as a view does.
+    :param model: The view's model. The class also leaves out a primary key that
+        the server generates, as a view does.
     :returns: The update body.
     """
     return cast(type[_SchemaT], _derive_update_schema(schema, model))
@@ -2107,10 +2109,10 @@ def derive_update_schema(
 
 @functools.cache
 def _derive_update_schema(
-    schema: type[pydantic.BaseModel], model: type[Any] | None
+    schema: type[pydantic.BaseModel], model: type[Any]
 ) -> type[pydantic.BaseModel]:
     return create_model_with_optional_fields(
-        schema, omit=() if model is None else _generated_primary_key_fields(model)
+        schema, omit=_generated_primary_key_fields(model)
     )
 
 

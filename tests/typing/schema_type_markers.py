@@ -79,3 +79,22 @@ class FunctionView(fr.AsyncRestView[Any]):
 
     @fr.get("/wrapped")
     async def wrapped(self) -> Wrapped: ...
+
+
+class TaskListView(fr.AsyncRestView):
+    prefix = "/task-list"
+    model = Task
+    schema = TaskSchema
+    create_schema = fr.schemas.derive_create_schema(TaskSchema, Task)
+    update_schema = fr.schemas.derive_update_schema(TaskSchema, Task)
+
+    @SchemaType
+    def list_response_schema(view: Any) -> Any:
+        return list[view.response_schema]
+
+
+class TaskLambdaListView(fr.AsyncRestView):
+    # mypy reads this as a type, so the docs name the ignore.
+    list_response_schema = SchemaType(
+        lambda view: list[view.response_schema]  # type: ignore[name-defined]
+    )

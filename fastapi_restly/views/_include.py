@@ -5,22 +5,24 @@ in place of the markers in each route, and adds each route to the router
 with its tags and operation id.
 """
 
+import dataclasses
 import functools
 import inspect
 import re
-import types
 import warnings
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from enum import Enum
 from typing import (
     Annotated,
     Any,
     Callable,
     Iterable,
-    Literal,
+    NoReturn,
     Union,
     get_args,
     get_origin,
+    get_type_hints,
+    is_typeddict,
     overload,
 )
 from uuid import UUID
@@ -29,11 +31,13 @@ import fastapi
 import pydantic
 from fastapi import Response
 from fastapi.datastructures import Default
+from sqlalchemy import inspect as sa_inspect
+from sqlalchemy.orm.state import InstanceState
 from typing_extensions import TypeVar
 
 from ..db._config import _fr_config
 from ..exc import RestlyConfigurationError, RestlyMisuseWarning
-from ..schemas._base import _reject_buried_markers
+from ..schemas._base import _alias_value, _reject_buried_markers
 from ._base import BaseRestView, ListResult, View, _serves_route
 from ._class_based_view import (
     _copy_all_parent_class_endpoints_into_this_subclass,
@@ -50,7 +54,9 @@ from ._schema_types import (
     _evaluated,
     _pydantic_generic_args,
     _replace_schema_types,
+    _schema_type_in,
     _view_id_type,
+    _without_none,
 )
 
 V = TypeVar("V", bound=type[View])
@@ -113,7 +119,7 @@ def _init_view_cls_and_add_to_router(
     methods.
 
     The class-level preparation (copying parent endpoints, renaming, annotating,
-    schema generation, dataclass-style __init__) only runs once per View class —
+    dataclass-style __init__) only runs once per View class —
     subsequent calls to ``include_view()`` reuse the prepared class and only
     construct a fresh APIRouter to mount on the new parent. This makes
     registering the same view on *different* routers safe (e.g. a public app and
@@ -195,48 +201,64 @@ def _prepare_view_class(view_cls: type[View]) -> None:
     view_cls._fr_initialised = True  # type: ignore[attr-defined]
 
 
-def _schema_type_in(annotation: Any) -> SchemaType | None:
-    """The first marker in ``annotation``, or ``None``."""
-    if get_origin(annotation) is Annotated:
-        for metadata in get_args(annotation)[1:]:
-            if isinstance(metadata, SchemaType):
-                return metadata
-    if get_origin(annotation) is Literal:
-        return None
-    for arg in (*get_args(annotation), *_pydantic_generic_args(annotation)):
-        if (found := _schema_type_in(arg)) is not None:
-            return found
-    return None
+def _fields_of(cls: Any) -> list[tuple[str, Any, Sequence[Any]]]:
+    """The name, annotation and metadata of each field of a class that FastAPI
+    can turn into a schema. Empty for anything else."""
+    if not isinstance(cls, type):
+        return []
+    if issubclass(cls, pydantic.BaseModel):
+        return [(n, f.annotation, f.metadata) for n, f in cls.model_fields.items()]
+    is_named_tuple = issubclass(cls, tuple) and hasattr(cls, "_fields")
+    if not (dataclasses.is_dataclass(cls) or is_typeddict(cls) or is_named_tuple):
+        return []
+    try:
+        hints = get_type_hints(cls, include_extras=True)
+    except (NameError, TypeError, AttributeError):
+        hints = inspect.get_annotations(cls)
+    return [(name, annotation, ()) for name, annotation in hints.items()]
 
 
 def _schema_type_in_a_field(
-    annotation: Any, seen: set[type] | None = None
+    annotation: Any, seen: set[Any] | None = None
 ) -> tuple[type, str, SchemaType] | None:
-    """The first marker in a field of a Pydantic class that ``annotation`` names:
-    the class, the name of the field and the marker. Or ``None``.
+    """The first marker in a field of a class that ``annotation`` names: the
+    class, the name of the field and the marker. Or ``None``.
 
     Restly fills a route's own annotations, not the fields of a class that it
     names. Pydantic reads such a field as ``Any``.
     """
     seen = set() if seen is None else seen
+    annotation = _alias_value(annotation, seen)
     for arg in (*get_args(annotation), *_pydantic_generic_args(annotation)):
         if (found := _schema_type_in_a_field(arg, seen)) is not None:
             return found
-    is_model = isinstance(annotation, type) and issubclass(
-        annotation, pydantic.BaseModel
-    )
-    if not is_model or annotation in seen:
+    if not isinstance(annotation, type) or annotation in seen:
         return None
     seen.add(annotation)
-    for name, field in annotation.model_fields.items():
-        marker = next((m for m in field.metadata if isinstance(m, SchemaType)), None)
+    for name, field_type, metadata in _fields_of(annotation):
+        marker = next((m for m in metadata if isinstance(m, SchemaType)), None)
         if marker is None:
-            marker = _schema_type_in(field.annotation)
+            marker = _schema_type_in(field_type)
         if marker is not None:
             return annotation, name, marker
-        if (found := _schema_type_in_a_field(field.annotation, seen)) is not None:
+        if (found := _schema_type_in_a_field(field_type, seen)) is not None:
             return found
     return None
+
+
+def _filled_responses(
+    responses: Mapping[Any, Mapping[str, Any]], view_cls: type
+) -> dict[Any, Any]:
+    """``responses`` of a route or a view, with the view's types in place of the
+    markers in each ``model``."""
+    filled = {}
+    for status, response in responses.items():
+        model = response.get("model")
+        new_model = _replace_schema_types(model, view_cls)
+        filled[status] = (
+            response if new_model is model else {**response, "model": new_model}
+        )
+    return filled
 
 
 def _view_route_args(endpoint: Callable, view_cls: Any) -> tuple[str, dict[str, Any]]:
@@ -252,10 +274,15 @@ def _view_route_args(endpoint: Callable, view_cls: Any) -> tuple[str, dict[str, 
     filled = _replace_schema_types(response_model, view_cls)
     if filled is not response_model:
         route_kwargs = {**route_kwargs, "response_model": filled}
+    if route_kwargs.get("responses"):
+        route_kwargs = {
+            **route_kwargs,
+            "responses": _filled_responses(route_kwargs["responses"], view_cls),
+        }
     converter = {int: "int", UUID: "uuid"}.get(_view_id_type(view_cls))
     if converter is not None:
         for name, annotation in inspect.get_annotations(endpoint).items():
-            annotation = _evaluated(annotation, endpoint)
+            annotation = _alias_value(_evaluated(annotation, endpoint))
             is_id = get_origin(annotation) is Annotated and any(
                 isinstance(m, SchemaType) and m.name == "IDType"
                 for m in get_args(annotation)[1:]
@@ -263,17 +290,6 @@ def _view_route_args(endpoint: Callable, view_cls: Any) -> tuple[str, dict[str, 
             if is_id:
                 path = path.replace(f"{{{name}}}", f"{{{name}:{converter}}}")
     return path, route_kwargs
-
-
-def _without_none(annotation: Any) -> tuple[Any, bool]:
-    """``annotation`` without ``None``, and whether it allowed ``None``:
-    ``ResponseSchema | None`` gives ``(ResponseSchema, True)``."""
-    if get_origin(annotation) in (Union, types.UnionType):
-        args = get_args(annotation)
-        rest = [arg for arg in args if arg is not type(None)]
-        if len(rest) == 1 and len(rest) < len(args):
-            return rest[0], True
-    return annotation, False
 
 
 def _view_response_kind(view_cls: Any, endpoint: Callable) -> tuple[str | None, Any]:
@@ -287,6 +303,10 @@ def _view_response_kind(view_cls: Any, endpoint: Callable) -> tuple[str | None, 
     class, or the view's model in the return annotation, declares the view's
     response, also with ``| None``. Another class that the route names keeps
     FastAPI's behaviour.
+
+    The kind is ``"undeclared"`` for a route that names no class: nothing,
+    ``None`` or ``Any``. FastAPI would then write each attribute of a row, also
+    of a ``WriteOnly`` column.
     """
     _, route_kwargs = endpoint._api_route_args  # type: ignore[attr-defined]
     in_decorator = "response_model" in route_kwargs
@@ -294,7 +314,10 @@ def _view_response_kind(view_cls: Any, endpoint: Callable) -> tuple[str | None, 
         declared = route_kwargs["response_model"]
     else:
         declared = inspect.get_annotations(endpoint).get("return")
-    declared, optional = _without_none(_evaluated(declared, endpoint))
+    declared = _replace_schema_types(_evaluated(declared, endpoint), view_cls)
+    if declared is None or declared is Any:
+        return "undeclared", None
+    declared, optional = _without_none(declared)
     kind, response_model = _declared_view_response(view_cls, declared, in_decorator)
     if optional and response_model is not None:
         response_model = Union[response_model, None]
@@ -314,7 +337,7 @@ def _declared_view_response(
     """
     response = view_cls.response_schema
     list_response = _bare(view_cls.list_response_schema)
-    declared = _bare(_replace_schema_types(declared, view_cls))
+    declared = _bare(declared)
     if declared is response:
         return "single", None
     if declared is list_response:
@@ -350,9 +373,16 @@ def _with_view_response(
     ``ListResult`` through :meth:`~BaseRestView.to_list_response`. Anything else, such as
     ``None`` or a response object that the route built itself, goes out as
     it is.
+
+    A route that declares no response does the same for a row of the view's
+    model and for a ``ListResult``, also inside a dict or a list.
     """
     kind, response_model = _view_response_kind(view_cls, endpoint)
-    if kind is None:
+    function = inspect.unwrap(endpoint)
+    streams = inspect.isgeneratorfunction(function) or inspect.isasyncgenfunction(
+        function
+    )
+    if kind is None or (kind == "undeclared" and streams):
         return endpoint, route_kwargs
     if response_model is not None:
         route_kwargs = {**route_kwargs, "response_model": response_model}
@@ -360,19 +390,22 @@ def _with_view_response(
     self_name = next(iter(signature.parameters))
 
     def respond(view: Any, result: Any) -> Any:
-        if kind == "single" and isinstance(result, view.model):
+        if kind == "undeclared":
+            return _with_view_responses(view, result)
+        if kind == "single" and _is_row(result):
             return view._single_response(result)
         if kind == "many" and _is_rows(result):
             rows = list(result)
-            if all(isinstance(row, view.model) for row in rows):
-                return [view.to_single_response(row) for row in rows]
+            if all(_is_row(row) for row in rows):
+                return [view._single_response(row) for row in rows]
             # the iterable is used up: send the items that it gave
             return rows
         if kind == "list" and isinstance(result, ListResult):
             return view.to_list_response(result)
         return result
 
-    if inspect.iscoroutinefunction(endpoint):
+    # A decorator without async around an async endpoint returns a coroutine.
+    if inspect.iscoroutinefunction(endpoint) or inspect.iscoroutinefunction(function):
 
         @functools.wraps(endpoint)
         async def wrapped(*args: Any, **kwargs: Any) -> Any:
@@ -402,6 +435,25 @@ def _with_view_response(
     return wrapped, route_kwargs
 
 
+def _with_view_responses(view: Any, value: Any) -> Any:
+    """``value`` with the view's response in place of each row of the view's model
+    and each ``ListResult``, also inside a dict, a list or a tuple."""
+    if isinstance(value, view.model):
+        return view._single_response(value)
+    if isinstance(value, ListResult):
+        return view.to_list_response(value)
+    if isinstance(value, dict):
+        return {key: _with_view_responses(view, item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_with_view_responses(view, item) for item in value]
+    return value
+
+
+def _is_row(value: Any) -> bool:
+    """Whether ``value`` is an ORM object."""
+    return isinstance(sa_inspect(value, raiseerr=False), InstanceState)
+
+
 def _is_rows(result: Any) -> bool:
     """Whether ``result`` can be a list of rows: an iterable that is not
     text, a mapping, a model or a response."""
@@ -418,15 +470,23 @@ def _reject_schema_types_on_a_plain_view(
     sig = inspect.signature(endpoint)
     annotations = [p.annotation for p in sig.parameters.values()]
     annotations += [sig.return_annotation, route_kwargs.get("response_model")]
+    annotations += _models_in(route_kwargs.get("responses"))
     for annotation in annotations:
         marker = _schema_type_in(_evaluated(annotation, endpoint))
         if marker is not None:
-            raise RestlyConfigurationError(
-                f"{view_cls.__name__}.{name} uses {marker!r}, which stands for "
-                f"a type of a CRUD view. {view_cls.__name__} is a plain View, "
-                "so it has no such type. Write the type, or base the view on "
-                "fr.AsyncRestView or fr.RestView."
-            )
+            _raise_on_a_plain_view(view_cls, f"{view_cls.__name__}.{name}", marker)
+
+
+def _models_in(responses: Mapping[Any, Mapping[str, Any]] | None) -> list[Any]:
+    return [response.get("model") for response in (responses or {}).values()]
+
+
+def _raise_on_a_plain_view(view_cls: type, where: str, marker: SchemaType) -> NoReturn:
+    raise RestlyConfigurationError(
+        f"{where} uses {marker!r}, which stands for a type of a CRUD view. "
+        f"{view_cls.__name__} is a plain View, so it has no such type. Write the "
+        "type, or base the view on fr.AsyncRestView or fr.RestView."
+    )
 
 
 def _reject_schema_types_in_fields(
@@ -437,7 +497,8 @@ def _reject_schema_types_in_fields(
     sig = inspect.signature(endpoint)
     annotations = [p.annotation for p in sig.parameters.values()]
     annotations += [sig.return_annotation, route_kwargs.get("response_model")]
-    seen: set[type] = set()
+    annotations += _models_in(route_kwargs.get("responses"))
+    seen: set[Any] = set()
     for annotation in annotations:
         found = _schema_type_in_a_field(_evaluated(annotation, endpoint), seen)
         if found is not None:
@@ -469,6 +530,15 @@ def _init_api_router(view_cls: type[View]) -> fastapi.APIRouter:
             dependencies = [seen for seen in dependencies if seen is not dependency]
             dependencies.append(dependency)
         responses.update(level.get("responses") or {})
+    is_rest_view = issubclass(view_cls, BaseRestView)
+    if is_rest_view:
+        responses = _filled_responses(responses, view_cls)
+    else:
+        for model in _models_in(responses):
+            if (marker := _schema_type_in(model)) is not None:
+                _raise_on_a_plain_view(
+                    view_cls, f"The responses of {view_cls.__name__}", marker
+                )
     tags = _get_router_tags(view_cls, prefix)
     api_router = fastapi.APIRouter(
         prefix=prefix, tags=tags, responses=responses, dependencies=dependencies
@@ -476,7 +546,6 @@ def _init_api_router(view_cls: type[View]) -> fastapi.APIRouter:
 
     # Find all endpoint functions in this class and add them to the router
     list_parameters: list[dict[str, Any]] | None = None
-    is_rest_view = issubclass(view_cls, BaseRestView)
     for name, attr in list(view_cls.__dict__.items()):
         if not hasattr(attr, "_api_route_args"):
             continue

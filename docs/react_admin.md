@@ -127,7 +127,7 @@ OpenAPI shows the array of the response class, and
 holds this type. For smaller items, set it to another list, such as
 `list[ProductSummary]`. Restly fills the items from the response class. A value
 that is not a list raises at registration, unless the view replaces
-`get_many_endpoint`.
+`get_many_endpoint` or `to_list_response`.
 
 Any other query key gets a 422, so a typo cannot return more rows than you
 asked for without notice. The `page`, `page_size` and field filters of the

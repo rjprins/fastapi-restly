@@ -856,9 +856,10 @@ two views this way, in
 :::{admonition} Details
 :class: details
 
-A marker works wherever the class could go: in a parameter annotation, in the
-return annotation, in `response_model=`, and inside another type, such as
-`list[ResponseSchema]` or `ResponseSchema | None`. `Annotated[IDType, Path(ge=1)]`
+A marker works wherever a route can name a class: in a parameter annotation, in
+the return annotation, in `response_model=`, in the `model` of `responses=`, in a
+type alias, and inside another type, such as `list[ResponseSchema]` or
+`ResponseSchema | None`. `Annotated[IDType, Path(ge=1)]`
 keeps the `Path(ge=1)`. A path that gives a converter, such as `/{id:str}`,
 keeps it.
 
@@ -869,15 +870,16 @@ no schema, so a route on it cannot use the markers: registration raises
 
 To look at the classes of a view, in a test or in a tool, read them on the
 view, as in `UserView.response_schema`. Restly builds a class at the first read,
-so this works before the view registers.
+so this works before the view registers, once the classes that it needs exist.
+Restly keeps this class, so set the settings of a view before the first read.
 
 To use the classes where you have no view, build them with
 {func}`derive_response_schema(schema) <fastapi_restly.schemas.derive_response_schema>`
 and
 {func}`derive_list_response_schema(response_schema, pagination=...) <fastapi_restly.schemas.derive_list_response_schema>`.
 They return the same classes that the view uses, unless the view sets its own.
-Pass the view's pagination
-as it is, also when it is `None`. A list response with another envelope than
+On a react-admin view, the list is `list[UserResponse]` instead. Pass the view's
+pagination as it is, also when it is `None`. A list response with another envelope than
 the view's has another shape, for example `data` without `total_count`.
 There are then two classes named `UserListResponse`, and Restly warns; see
 [Name your schemas](#name-your-schemas). A function builds these classes, so
@@ -886,7 +888,8 @@ type checkers do not accept them in an annotation, as in
 `# type: ignore[valid-type]` on such a line.
 
 A custom route that names `UserSchema` or `PaginatedEnvelope[UserSchema]`
-sends the same JSON, but shows a type of its own in OpenAPI.
+shows a type of its own in OpenAPI. Restly does not fill such a class from a
+`ListResult`. So the route calls `to_list_response` itself.
 
 A marker works in the annotation of a route, also inside a generic class, as in
 `Data[ResponseSchema]`. It does not work in a field of a class that you write:
@@ -986,7 +989,9 @@ Restly calls the function when something first reads the type, once for each
 view class. It does not call the function when Python creates the class. So the
 function can read any setting of the view, in any order, and it can use a class
 that the module defines later. A function that reads its own result raises
-{class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`.
+{class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`,
+and so does a function that returns `None`. A marker in what it returns gets the
+type of the view, as in `Data[ResponseSchema]`.
 
 Restly keeps one result for each function. So define `Single` once, or use a
 named function. Two lambdas are two functions, even when they look the same, so
@@ -996,7 +1001,14 @@ Give each class a name of its own, or OpenAPI shows long names and Restly warns;
 see [Name your schemas](#name-your-schemas). A generic class gets a name from
 its type argument, such as `Data_UserResponse_`. For another class, use
 `pydantic.create_model(name, ...)`, as above. A class that you rename later, with
-`__name__`, still gets a long name in OpenAPI.
+`__name__`, keeps its first name in OpenAPI.
+
+A setting holds a function or a class. It cannot hold a marker, because Restly
+fills a marker in a route. So `list_response_schema = list[ResponseSchema]`
+raises at registration. Write
+`list_response_schema = SchemaType(lambda view: list[view.response_schema])`.
+In this lambda, mypy reports `name-defined`, so add
+`# type: ignore[name-defined]`, or write a `def` with `view: Any`.
 
 A subclass that sets a class on the setting uses that class. The function stays
 for the other subclasses. A subclass with a new `schema` gets the function
@@ -1230,9 +1242,10 @@ to use your own class instead.
 A subclass inherits the classes that its base view declares. Restly builds a
 class again for the subclass in two cases: the base view does not declare it, or
 what it is built from changes. A subclass that declares a new `schema` gets a new
-`response_schema`, `create_schema`, `update_schema` and `list_params_schema`. A
-subclass that declares a new `response_schema` gets new `list_params_schema`. A
-view without a schema builds it from `model`, so there a new `model` counts as a
+`response_schema`, `create_schema`, `update_schema`, `list_params_schema` and
+`list_response_schema`. A subclass that declares a new `response_schema` gets new
+`list_params_schema` and `list_response_schema`. A function counts as a new
+class here. A view without a schema builds it from `model`, so there a new `model` counts as a
 new `schema`. A class that Restly generates for the subclass is not a change of
 its own, so it does not replace a class that the base declares.
 

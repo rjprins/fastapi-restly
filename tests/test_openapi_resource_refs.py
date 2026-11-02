@@ -247,3 +247,46 @@ def test_spec_is_idempotent_on_multiple_openapi_calls():
         "author_id"
     ].get("x-resource-ref")
     assert ref1 == ref2 == "authors"
+
+
+def test_the_items_of_a_list_response_schema_get_x_resource_ref():
+    class Author(fr.IDMixin, SharedBase):
+        name: Mapped[str]
+
+    class Pet(fr.IDMixin, SharedBase):
+        name: Mapped[str]
+        owner_id: Mapped[int] = mapped_column(sa.ForeignKey(Author.id))
+
+    class OwnerSchema(fr.IDSchema):
+        name: str
+
+    class PetSchema(fr.IDSchema):
+        name: str
+        owner_id: int
+        note: str = "n"
+
+    class PetSummary(fr.IDSchema):
+        owner_id: int
+
+    app = fastapi.FastAPI()
+
+    @fr.include_view(app)
+    class AuthorView(fr.AsyncRestView):
+        prefix = "/authors"
+        model = Author
+        schema = OwnerSchema
+
+    @fr.include_view(app)
+    class PetView(fr.AsyncRestView):
+        prefix = "/pets"
+        model = Pet
+        schema = PetSchema
+        list_response_schema = fr.views.PaginatedEnvelope[PetSummary]
+
+    schemas = app.openapi()["components"]["schemas"]
+    assert (
+        schemas["PetResponse"]["properties"]["owner_id"]["x-resource-ref"] == "authors"
+    )
+    assert (
+        schemas["PetSummary"]["properties"]["owner_id"]["x-resource-ref"] == "authors"
+    )

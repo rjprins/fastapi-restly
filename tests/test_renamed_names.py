@@ -363,3 +363,24 @@ def test_a_call_of_the_removed_to_response_says_what_to_use():
 @pytest.mark.parametrize("package", [fr, fr.views])
 def test_response_shape_is_gone(package):
     assert not hasattr(package, "ResponseShape")
+
+
+@pytest.mark.parametrize(
+    "old, new",
+    [
+        ("schema_response", "response_schema"),
+        ("schema_create", "create_schema"),
+        ("schema_update", "update_schema"),
+        ("schema_list_params", "list_params_schema"),
+    ],
+)
+def test_reading_an_old_setting_names_the_new_one(old, new):
+    class Thing(fr.IDMixin, SharedBase):
+        name: Mapped[str]
+
+    class ThingView(fr.AsyncRestView):
+        model = Thing
+
+    view = object.__new__(ThingView)
+    with pytest.raises(AttributeError, match=f"{old} is now {new}"):
+        getattr(view, old)

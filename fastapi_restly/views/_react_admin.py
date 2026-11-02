@@ -27,7 +27,6 @@ from fastapi_restly.views import (
     AsyncRestView,
     BaseRestView,
     IDType,
-    ListResponseSchema,
     ListResult,
     NoPagination,
     NumberedPagination,
@@ -35,7 +34,6 @@ from fastapi_restly.views import (
     RestView,
     SchemaType,
     UpdateSchema,
-    get,
     put,
 )
 
@@ -408,15 +406,16 @@ class _ReactAdminMixin:
     def to_list_response(self, list_result: ListResult[Any]) -> fastapi.Response:
         """Build the react-admin list response: a JSON array with a
         ``Content-Range`` header."""
-        # Each row as the response class sends it, also when
-        # to_single_response returns another model. Then the items of the
-        # list response, which fills them by field name.
+        # The items of the list response read the fields that they name from
+        # what to_single_response returns, by field name and in lax mode, as the
+        # other responses do.
         adapter = type(self)._list_adapter
         rows = adapter.validate_python(
-            [cast(Any, self)._single_response(obj) for obj in list_result.objects],
+            [cast(Any, self).to_single_response(obj) for obj in list_result.objects],
             from_attributes=True,
             by_alias=False,
             by_name=True,
+            strict=False,
         )
         params = self._react_admin_list_params(list_result.list_params)
         start, _ = self._react_admin_range(params)
@@ -459,10 +458,6 @@ class AsyncReactAdminView(_ReactAdminMixin, AsyncRestView):
     with ra-data-simple-rest.
     """
 
-    @get("/")
-    async def get_many_endpoint(self, list_params: Any) -> ListResponseSchema:
-        return await self.handle_get_many(list_params)
-
     async def apply_list_params(
         self, stmt: sqlalchemy.Select, list_params: Any
     ) -> sqlalchemy.Select:
@@ -496,10 +491,6 @@ class ReactAdminView(_ReactAdminMixin, RestView):
     Use this instead of RestView when your frontend is react-admin
     with ra-data-simple-rest.
     """
-
-    @get("/")
-    def get_many_endpoint(self, list_params: Any) -> ListResponseSchema:
-        return self.handle_get_many(list_params)
 
     def apply_list_params(
         self, stmt: sqlalchemy.Select, list_params: Any

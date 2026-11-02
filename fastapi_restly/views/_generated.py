@@ -48,12 +48,22 @@ def _declared_at(cls: type, name: str) -> int | None:
     return None
 
 
+def _function_at(cls: type, name: str) -> int | None:
+    """Position in the MRO of the class with the function that ``cls`` uses for
+    ``name``, or None when the nearest value is a class."""
+    for index, klass in enumerate(cls.__mro__):
+        if name in klass.__dict__:
+            return index if isinstance(klass.__dict__[name], SchemaType) else None
+    return None
+
+
 def _decided_at(cls: type, name: str) -> int | None:
     """Position in the MRO of the class that decides the value of ``name``.
 
     A declared value is decided where it is declared, unless what it is built
-    from is decided nearer to ``cls``: then Restly builds it again. Any other
-    value is decided where its source is decided. Declared list params that
+    from is decided nearer to ``cls``: then Restly builds it again. A function
+    is decided where it is set, or where its source is decided, if that is
+    nearer. Declared list params that
     Restly would generate for the declaring class are also built from the list
     settings and the filter methods.
     """
@@ -70,7 +80,10 @@ def _decided_at(cls: type, name: str) -> int | None:
             if source_at is None or settings_at < source_at:
                 source_at = settings_at
     if declared is None:
-        return source_at
+        function_at = _function_at(cls, name)
+        return min(
+            (at for at in (function_at, source_at) if at is not None), default=None
+        )
     # A declared schema stays, whatever model a subclass sets.
     if name != "schema" and source_at is not None and source_at < declared:
         return source_at

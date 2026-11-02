@@ -386,6 +386,8 @@ def _missing_view_attribute(view_name: str, name: str) -> str:
             f"{view_name}.{name} is now {_RENAMED_METHODS[name]}."
             f"{_RENAMED_METHOD_HINTS.get(name, '')}"
         )
+    if name in _RENAMED_SETTINGS:
+        return f"{view_name}.{name} is now {_RENAMED_SETTINGS[name]}."
     return f"{view_name!r} object has no attribute {name!r}"
 
 

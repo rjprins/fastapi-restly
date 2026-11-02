@@ -22,8 +22,9 @@ marked "Silent" gives no error when you miss it.
 3. Rename these functions: `fr.schemas.derive_schema_response` to
    `derive_response_schema`, `fr.schemas.derive_schema_list_response` to
    `derive_list_response_schema`, and `fr.query.derive_schema_list_params` to
-   `derive_list_params_schema`. A parameter `schema_response` of these functions
-   or of `fr.query.apply_list_params` is now `response_schema`.
+   `derive_list_params_schema`. A parameter `schema_response` of these functions,
+   of `fr.query.apply_list_params`, of `fr.query.FilterKey` or of
+   `fr.query.SortKey` is now `response_schema`.
 4. Remove `to_response` and `ResponseShape`. In a custom route, declare
    `-> ResponseSchema` and return the row, or call `to_single_response`. For a
    list, declare `-> ListResponseSchema` and return the `ListResult`, or call
@@ -33,10 +34,18 @@ marked "Silent" gives no error when you miss it.
    each response becomes endpoint methods that you replace on a base view; see
    "Change the shape of every route" in the guide.
 5. Silent: a default endpoint method that you call yourself, such as
-   `await view.get_one_endpoint(1)`, returns the row or the `ListResult`. Restly
-   builds the response after the method returns. In a test, use the client, or
-   call `to_single_response` or `to_list_response`.
-6. Silent: a custom route without a response model, which calls an override of
+   `await super().get_one_endpoint(id)`, returns the row or the `ListResult`.
+   Restly builds the response after the route returns. So code that reads the
+   result gets a row, not the response. Call `to_single_response` or
+   `to_list_response` if you need the response, also in a test.
+6. Silent: a route that declares no response, and returns a row of the view's
+   model, sends the fields of the response class. Before, FastAPI sent each column
+   of the row, also a `WriteOnly` column. To send more fields, declare a class.
+7. Silent: on a react-admin view, `GET /` now has a response model, the list type.
+   An override of `to_list_response` that returns data, and not a `Response`, loses
+   the fields that this type does not have. Set `list_response_schema` to the type
+   that you send.
+8. Silent: a custom route without a response model, which calls an override of
    `to_single_response` that returns another model, sends all fields of that
    model. Before, `to_response` copied the value into the response class. Declare
    `-> ResponseSchema` on the route.
@@ -50,10 +59,12 @@ marked "Silent" gives no error when you miss it.
   in the guide.
 - `list_response_schema`, a setting for the class of the list response. Restly
   fills it as it fills an envelope. So a view can send smaller items, or other
-  keys, without a replaced endpoint. On a react-admin view it is a list, so
-  `list[UserSummary]` gives smaller items there too.
+  keys, without a replaced endpoint. A list type, such as `list[UserSummary]`,
+  sends a JSON array. On a react-admin view the setting is such a list.
 - `fr.schemas.derive_create_schema` and `fr.schemas.derive_update_schema`, which
-  build the classes of a view from a schema.
+  build the classes of a view from a schema and a model.
+- A marker in the `model` of `responses=`, on a route or on a view, gets the type
+  of the view.
 - You can read a view's classes before the view registers, as in
   `UserView.response_schema`.
 
@@ -64,20 +75,28 @@ marked "Silent" gives no error when you miss it.
 - Registration raises `RestlyConfigurationError` for a schema setting that is not
   a Pydantic class or a `SchemaType`, and for a function that gives another type.
 - Registration raises `RestlyConfigurationError` for a class in a route with a
-  marker in a plain field. The field had no type in OpenAPI.
+  marker in a plain field: of a Pydantic class, a dataclass, a `TypedDict` or a
+  `NamedTuple`. The field had no type in OpenAPI.
+- Registration raises `RestlyConfigurationError` for a marker in a setting, as in
+  `list_response_schema = list[ResponseSchema]`, for a function that returns
+  `None`, and for `list_response_schema = PaginatedEnvelope` without a type for
+  the items. OpenAPI showed items without a type.
 - Registration raises `RestlyConfigurationError` for an own list response class
-  that `GET /` cannot fill, or with an item field that the response class does
-  not have.
+  that `GET /` cannot fill, or with a field in `list[X]` that the response class
+  does not have. Another form, such as a `RootModel`, gets a `500` on `GET /`.
 - Two views with the same schema and model share one create class and one update
   class.
 - A subclass of a view with a new `schema` gets the function of a base view back,
-  if a base view has one, and otherwise Restly's default.
+  if a base view has one, and otherwise Restly's default. A function on the
+  subclass counts as a new `schema`.
 - A subclass of a derived class can declare a field of `omit` again.
 
 ### Fixed
 
 - A marker inside a generic class, as in `Data[ResponseSchema]`, is filled. Before,
   the marker stayed, and OpenAPI showed a field without a type.
+- A marker in a type alias, as in `type Resp = ResponseSchema`, is filled. Before,
+  OpenAPI showed an empty class, and a row went out with all its columns.
 - The list route of a react-admin view shows an array of the response class in
   OpenAPI. Before, it showed an empty schema. A custom route with the list marker
   no longer shows an envelope while it sends an array.
