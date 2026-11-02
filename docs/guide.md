@@ -133,14 +133,15 @@ filter, sort and page parameters to the URL.
 
 - [Schemas & Validation](schemas.md): generate the schema or write it, keep
   a field out of the requests or the responses, validate input, keep times
-  in UTC, keep NaN and infinity, store a Pydantic model in a JSON column, and
-  use other field names in JSON, such as camelCase.
+  in UTC, keep NaN and infinity, store a Pydantic model in a JSON column, use
+  other field names in JSON, such as camelCase, and build a class for each view
+  with `SchemaType`.
 - [Relationships](relationships.md): accept the id of another row, check
   that the row exists, link many rows to many rows, return related objects,
   and fix `MissingGreenlet`.
-- [Responses](responses.md): what each route returns, the list envelope,
-  the response of a custom route, and how to change the shape of one route
-  or of all routes.
+- [Responses](responses.md): what each route returns, the list envelope and
+  the list response class, the response of a custom route, and how to change
+  the shape of one route or of all routes.
 - [Filtering, Sorting & Pagination](filtering.md): the filters, the sort
   order and the pages that a client can use on a list, the keys that a view
   chooses, filters of your own, and list params that you write yourself.

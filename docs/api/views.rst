@@ -18,7 +18,9 @@ Markers for the view's own types
 A route names the classes of its view with these markers. When the view
 registers, Restly puts the view's class in place of each marker, so a route
 on a base view gets the classes of each subclass. A type checker reads each
-marker as ``Any``. See :ref:`name-the-response-classes`.
+marker as ``Any``. See :ref:`name-the-response-classes`. To build another type
+for each view, use :class:`~fastapi_restly.views.SchemaType`; see
+:ref:`schema-type`.
 
 .. py:data:: IDType
 
@@ -34,7 +36,9 @@ marker as ``Any``. See :ref:`name-the-response-classes`.
 
 .. py:data:: ListResponseSchema
 
-   The view's list response: the envelope of the view's pagination, with
+   The view's list response,
+   :attr:`~fastapi_restly.views.BaseRestView.list_response_schema`. Unless the
+   view sets another class, this is the envelope of the view's pagination, with
    items of the view's response class.
 
 .. py:data:: CreateSchema

@@ -279,21 +279,26 @@ The markers also give a custom route the view's types in OpenAPI; see
 
 An envelope around a single object changes the HTTP contract. So does a list
 shape that no envelope model can express, such as a count in a header. For
-these, [replace the endpoint method](#replace-endpoint-method) and set a
-matching `response_model` on the replacement.
+these, [replace the endpoint method](#replace-endpoint-method) and declare the
+new shape on the replacement.
 
-For a `{"data": ...}` wrapper around a single object, replace
+For a `{"data": ...}` wrapper around a single object, write a generic class, and
+replace
 {meth}`get_one_endpoint <fastapi_restly.views.RestView.get_one_endpoint>` and
 {meth}`create_endpoint <fastapi_restly.views.RestView.create_endpoint>`:
 
 ```python
+from typing import Generic, TypeVar
+
 import pydantic
 
-from fastapi_restly.views import CreateSchema
+from fastapi_restly.views import CreateSchema, IDType, ResponseSchema
+
+T = TypeVar("T")
 
 
-class UserEnvelope(pydantic.BaseModel):
-    data: UserSchema
+class Data(pydantic.BaseModel, Generic[T]):
+    data: T
 
 
 @fr.include_view(app)
@@ -302,19 +307,19 @@ class UserView(fr.AsyncRestView):
     model = User
     schema = UserSchema
 
-    @fr.get("/{id}", response_model=UserEnvelope)
-    async def get_one_endpoint(self, id: int):
+    @fr.get("/{id}")
+    async def get_one_endpoint(self, id: IDType) -> Data[ResponseSchema]:
         obj = await self.handle_get_one(id)
         return {"data": self.to_single_response(obj)}
 
-    @fr.post("/", response_model=UserEnvelope)
-    async def create_endpoint(self, data: CreateSchema):
+    @fr.post("/")
+    async def create_endpoint(self, data: CreateSchema) -> Data[ResponseSchema]:
         obj = await self.handle_create(data)
         return {"data": self.to_single_response(obj)}
 ```
 
 Call `to_single_response(obj)` before you put the object in the envelope.
-`CreateSchema` keeps the view's create body; see
+The markers keep the view's classes; see
 [Name the view's classes in a custom route](#name-the-response-classes).
 
 :::{admonition} Details
@@ -338,23 +343,10 @@ It returns an instance of the view's envelope model, so read its attributes:
 ## Change the shape of every route
 
 When every view has the same contract, replace the endpoint methods once, on a
-base view. A marker inside a generic class gives each view its own type in
-OpenAPI:
+base view. A marker stands for the class of each view that registers, so each
+view gets its own type in OpenAPI:
 
 ```python
-from typing import Generic, TypeVar
-
-import pydantic
-
-from fastapi_restly.views import CreateSchema, IDType, ResponseSchema
-
-T = TypeVar("T")
-
-
-class Data(pydantic.BaseModel, Generic[T]):
-    data: T
-
-
 class ApiView(fr.AsyncRestView):
     @fr.get("/{id}")
     async def get_one_endpoint(self, id: IDType) -> Data[ResponseSchema]:
@@ -367,9 +359,12 @@ class ApiView(fr.AsyncRestView):
         return {"data": self.to_single_response(obj)}
 ```
 
-A view that subclasses `ApiView` gets `Data[UserResponse]` in OpenAPI, and
-another view gets `Data[TagResponse]`. To change the status code or the headers
-of one route, replace that endpoint method; see
+`Data` is the class from [Change the shape of one route](#one-route-shape). A
+view that subclasses `ApiView` gets `Data[UserResponse]` in OpenAPI, and another
+view gets `Data[TagResponse]`. For a shape that differs per view, such as a root
+key, as in `{"article": {...}}`, write a function that builds the class; see
+[Build a class for each view](#schema-type). To change the status code or the
+headers of one route, replace that endpoint method; see
 [Change the status code or headers of one route](#replace-endpoint-method).
 
 (to-single-response)=
@@ -440,6 +435,10 @@ Restly fills the items from the response class, so an item can have fewer
 fields than the response class. Registration raises for a field without a
 default that the response class does not have. The filters and sort keys
 follow the response class, not `UserSummary`.
+
+The setting also takes a function, so a base view can give each view other keys,
+as in `{"articles": [...], "articlesCount": 2}`; see
+[Build a class for each view](#schema-type).
 
 A subclass of the view keeps the class. A subclass that sets a new `schema` or
 `response_schema` gets the default again, as for the

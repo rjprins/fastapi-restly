@@ -31,7 +31,9 @@ Every `View` subclass, CRUD or not, honors these class attributes:
 | {attr}`dependencies <fastapi_restly.views.View.dependencies>` | `ClassVar[Any]` | A list of FastAPI dependencies, such as `[Depends(require_login)]`, run for every route in the view. Each class in the hierarchy adds its own, base first. |
 | {attr}`responses <fastapi_restly.views.View.responses>` | `ClassVar[dict[int \| str, dict[str, Any]]]` | OpenAPI response overrides. `View` defaults to `{}`; `BaseRestView` defaults to `{404: {"description": "Not found"}}`. Each class in the hierarchy adds its own, and a subclass's entry for a status code wins. |
 
-`RestView` and `AsyncRestView` add the following:
+`RestView` and `AsyncRestView` add the following. A setting that holds a class
+also takes a {class}`SchemaType <fastapi_restly.views.SchemaType>`; see
+[Build a class for each view](#schema-type).
 
 | Attribute | Type | Description |
 |---|---|---|

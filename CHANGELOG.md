@@ -7,6 +7,85 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+This release adds `SchemaType`, a type that depends on the view, and a setting
+for the list response. Each name of a view's schema now ends with what it is. To
+upgrade, work through these steps. A missed step fails with an error. A step
+marked "Silent" gives no error when you miss it.
+
+1. Rename these settings of a view: `schema_response` to `response_schema`,
+   `schema_create` to `create_schema`, `schema_update` to `update_schema`, and
+   `schema_list_params` to `list_params_schema`.
+2. Rename these markers of `fastapi_restly.views`: `ViewID` to `IDType`,
+   `ViewResponse` to `ResponseSchema`, `ViewListResponse` to
+   `ListResponseSchema`, `ViewCreate` to `CreateSchema`, and `ViewUpdate` to
+   `UpdateSchema`.
+3. Rename these functions: `fr.schemas.derive_schema_response` to
+   `derive_response_schema`, `fr.schemas.derive_schema_list_response` to
+   `derive_list_response_schema`, and `fr.query.derive_schema_list_params` to
+   `derive_list_params_schema`. A parameter `schema_response` of these functions
+   or of `fr.query.apply_list_params` is now `response_schema`.
+4. Remove `to_response` and `ResponseShape`. In a custom route, declare
+   `-> ResponseSchema` and return the row, or call `to_single_response`. For a
+   list, declare `-> ListResponseSchema` and return the `ListResult`, or call
+   `to_list_response`. For `ResponseShape.EMPTY`, return
+   `fastapi.Response(status_code=204)`. An override of `to_response` for one
+   object becomes an override of `to_single_response`. An override that wraps
+   each response becomes endpoint methods that you replace on a base view; see
+   "Change the shape of every route" in the guide.
+5. Silent: a default endpoint method that you call yourself, such as
+   `await view.get_one_endpoint(1)`, returns the row or the `ListResult`. Restly
+   builds the response after the method returns. In a test, use the client, or
+   call `to_single_response` or `to_list_response`.
+6. Silent: a custom route without a response model, which calls an override of
+   `to_single_response` that returns another model, sends all fields of that
+   model. Before, `to_response` copied the value into the response class. Declare
+   `-> ResponseSchema` on the route.
+
+### Added
+
+- `fastapi_restly.views.SchemaType(fn)`: a type that depends on the view. The
+  function gets the view class and returns the type. It goes on a setting that
+  takes a schema class, as a decorator on such a setting, or in the annotation of
+  a route. OpenAPI shows the type of each view; see "Build a class for each view"
+  in the guide.
+- `list_response_schema`, a setting for the class of the list response. Restly
+  fills it as it fills an envelope. So a view can send smaller items, or other
+  keys, without a replaced endpoint. On a react-admin view it is a list, so
+  `list[UserSummary]` gives smaller items there too.
+- `fr.schemas.derive_create_schema` and `fr.schemas.derive_update_schema`, which
+  build the classes of a view from a schema.
+- You can read a view's classes before the view registers, as in
+  `UserView.response_schema`.
+
+### Changed
+
+- Restly builds a view's classes when something first reads them, once for each
+  view. Registration no longer writes them on the view class.
+- Registration raises `RestlyConfigurationError` for a schema setting that is not
+  a Pydantic class or a `SchemaType`, and for a function that gives another type.
+- Registration raises `RestlyConfigurationError` for a class in a route with a
+  marker in a plain field. The field had no type in OpenAPI.
+- Registration raises `RestlyConfigurationError` for an own list response class
+  that `GET /` cannot fill, or with an item field that the response class does
+  not have.
+- Two views with the same schema and model share one create class and one update
+  class.
+- A subclass of a view with a new `schema` gets the function of a base view back,
+  if a base view has one, and otherwise Restly's default.
+- A subclass of a derived class can declare a field of `omit` again.
+
+### Fixed
+
+- A marker inside a generic class, as in `Data[ResponseSchema]`, is filled. Before,
+  the marker stayed, and OpenAPI showed a field without a type.
+- The list route of a react-admin view shows an array of the response class in
+  OpenAPI. Before, it showed an empty schema. A custom route with the list marker
+  no longer shows an envelope while it sends an array.
+- A subclass of a derived class keeps out the fields that the class dropped.
+  Before, a subclass of the update class could write a `ReadOnly` field, and a
+  subclass of the response class required a `WriteOnly` field and failed on each
+  response.
+
 ## [0.13.0] - 2026-11-01
 
 This release adds `fr.models.PydanticJSON`, a JSON column that holds a

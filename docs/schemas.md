@@ -804,7 +804,7 @@ the view registers, Restly puts the view's class in place of each marker:
 | Marker | The view's class | On `UserView` |
 |---|---|---|
 | {data}`ResponseSchema <fastapi_restly.views.ResponseSchema>` | {attr}`response_schema <fastapi_restly.views.BaseRestView.response_schema>` | `UserResponse` |
-| {data}`ListResponseSchema <fastapi_restly.views.ListResponseSchema>` | the list response, with the view's pagination | `UserListResponse` |
+| {data}`ListResponseSchema <fastapi_restly.views.ListResponseSchema>` | {attr}`list_response_schema <fastapi_restly.views.BaseRestView.list_response_schema>` | `UserListResponse` |
 | {data}`CreateSchema <fastapi_restly.views.CreateSchema>` | {attr}`create_schema <fastapi_restly.views.BaseRestView.create_schema>` | `UserCreate` |
 | {data}`UpdateSchema <fastapi_restly.views.UpdateSchema>` | {attr}`update_schema <fastapi_restly.views.BaseRestView.update_schema>` | `UserUpdate` |
 | {data}`IDType <fastapi_restly.views.IDType>` | {attr}`id_type <fastapi_restly.views.BaseRestView.id_type>` | `int` |
@@ -867,12 +867,16 @@ annotation. A plain {class}`View <fastapi_restly.views.View>` has no model and
 no schema, so a route on it cannot use the markers: registration raises
 {class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`.
 
-To use the classes outside a route, or the classes of another view, build
-them with
+To look at the classes of a view, in a test or in a tool, read them on the
+view, as in `UserView.response_schema`. Restly builds a class at the first read,
+so this works before the view registers.
+
+To use the classes where you have no view, build them with
 {func}`derive_response_schema(schema) <fastapi_restly.schemas.derive_response_schema>`
 and
 {func}`derive_list_response_schema(response_schema, pagination=...) <fastapi_restly.schemas.derive_list_response_schema>`.
-They return the same classes that the view uses. Pass the view's pagination
+They return the same classes that the view uses, unless the view sets its own.
+Pass the view's pagination
 as it is, also when it is `None`. A list response with another envelope than
 the view's has another shape, for example `data` without `total_count`.
 There are then two classes named `UserListResponse`, and Restly warns; see
@@ -883,6 +887,120 @@ type checkers do not accept them in an annotation, as in
 
 A custom route that names `UserSchema` or `PaginatedEnvelope[UserSchema]`
 sends the same JSON, but shows a type of its own in OpenAPI.
+
+A marker works in the annotation of a route, also inside a generic class, as in
+`Data[ResponseSchema]`. It does not work in a field of a class that you write:
+the field would have no type in OpenAPI, so registration raises. Make the class
+generic, or [build it in a function](#schema-type).
+:::
+
+(schema-type)=
+## Build a class for each view
+
+A marker names a class that the view already has. To build another class for
+each view, write a function.
+{class}`SchemaType <fastapi_restly.views.SchemaType>` gives the function the
+view class, and uses the type that the function returns. It goes where a class
+goes: on a setting of the view, or in the annotation of a route. OpenAPI shows
+the type of each view.
+
+This base view gives each view its own keys in the list response. So
+`GET /articles` sends `{"articles": [...], "articlesCount": 2}`:
+
+```python
+import pydantic
+
+from fastapi_restly.views import SchemaType
+
+
+def keyed_list(view):
+    key = view.list_key
+    return pydantic.create_model(
+        f"{key.title()}List",
+        data=(list[view.response_schema], pydantic.Field(alias=key)),
+        total_count=(int, pydantic.Field(alias=f"{key}Count")),
+    )
+
+
+class ApiView(fr.AsyncRestView):
+    list_response_schema = SchemaType(keyed_list)
+
+
+@fr.include_view(app)
+class ArticleView(ApiView):
+    prefix = "/articles"
+    model = Article
+    schema = ArticleSchema
+    list_key = "articles"
+```
+
+In a route, the function goes in an `Annotated` type. Here each view sets
+`single_key`, so with `single_key = "article"`, `GET /articles/1` sends
+`{"article": {...}}`:
+
+```python
+from typing import Annotated, Any
+
+from fastapi_restly.views import IDType
+
+
+def keyed_single(view):
+    key = view.single_key
+    return pydantic.create_model(
+        f"{key.title()}Single",
+        data=(view.response_schema, pydantic.Field(alias=key)),
+    )
+
+
+Single = Annotated[Any, SchemaType(keyed_single)]
+
+
+class ApiView(fr.AsyncRestView):
+    @fr.get("/{id}")
+    async def get_one_endpoint(self, id: IDType) -> Single:
+        obj = await self.handle_get_one(id)
+        return {self.single_key: self.to_single_response(obj)}
+```
+
+:::{admonition} Details
+:class: details
+
+Six settings take a function: `schema`, `response_schema`, `create_schema`,
+`update_schema`, `list_params_schema` and `list_response_schema`. The function
+of the first five must return a Pydantic class, or registration raises. For
+`list_response_schema`, see
+[Use a different schema for the list route](#list-schema). A route can use any
+type that FastAPI accepts.
+
+A setting can also use `SchemaType` as a decorator. The name of the method is
+the name of the setting:
+
+```python
+class ApiView(fr.AsyncRestView):
+    @SchemaType
+    def list_response_schema(view):
+        return keyed_list(view)
+```
+
+Restly calls the function when something first reads the type, once for each
+view class. It does not call the function when Python creates the class. So the
+function can read any setting of the view, in any order, and it can use a class
+that the module defines later. A function that reads its own result raises
+{class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`.
+
+Restly keeps one result for each function. So define `Single` once, or use a
+named function. Two lambdas are two functions, even when they look the same, so
+they give two classes.
+
+Give each class a name of its own, or OpenAPI shows long names and Restly warns;
+see [Name your schemas](#name-your-schemas). A generic class gets a name from
+its type argument, such as `Data_UserResponse_`. For another class, use
+`pydantic.create_model(name, ...)`, as above. A class that you rename later, with
+`__name__`, still gets a long name in OpenAPI.
+
+A subclass that sets a class on the setting uses that class. The function stays
+for the other subclasses. A subclass with a new `schema` gets the function
+back; see [When a subclass view gets new classes](#subclass-new-classes).
 :::
 
 (json-document-columns)=

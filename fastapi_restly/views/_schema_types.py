@@ -154,8 +154,8 @@ ResponseSchema: TypeAlias = Annotated[
     Any, _marker("ResponseSchema", lambda view: view.response_schema)
 ]
 
-#: The view's list response: the envelope of the view's pagination, with
-#: items of the view's response class.
+#: The view's list response,
+#: :attr:`~fastapi_restly.views.BaseRestView.list_response_schema`.
 ListResponseSchema: TypeAlias = Annotated[
     Any, _marker("ListResponseSchema", lambda view: view.list_response_schema)
 ]

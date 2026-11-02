@@ -996,3 +996,68 @@ def test_a_delete_that_sends_the_row_shows_it_in_the_spec(client, Lamp):
     assert _response_ref(paths["/lamps/{id}"]["delete"]) == "LampResponse"
     assert client.delete("/lamps/1").json() == {"id": 1, "name": "desk"}
     client.get("/lamps/1", assert_status_code=404)
+
+
+def _keyed_list(view):
+    key = view.list_key
+    return pydantic.create_model(
+        f"{key.title()}List",
+        data=(list[view.response_schema], pydantic.Field(alias=key)),
+        total_count=(int, pydantic.Field(alias=f"{key}Count")),
+    )
+
+
+def _keyed_single(view):
+    key = view.single_key
+    return pydantic.create_model(
+        f"{key.title()}Single", data=(view.response_schema, pydantic.Field(alias=key))
+    )
+
+
+def test_each_view_gets_its_own_keys(client, Lamp):
+    Single = Annotated[Any, SchemaType(_keyed_single)]
+
+    class Bulb(fr.IDMixin, SharedBase):
+        name: Mapped[str]
+
+    class BulbSchema(fr.IDSchema):
+        name: str
+
+    class ApiView(fr.AsyncRestView):
+        list_response_schema = SchemaType(_keyed_list)
+
+        @fr.get("/{id}")
+        async def get_one_endpoint(self, id: IDType) -> Single:
+            obj = await self.handle_get_one(id)
+            return {self.single_key: self.to_single_response(obj)}
+
+    class LampView(ApiView):
+        prefix = "/lamps"
+        model = Lamp
+        schema = LampSchema
+        list_key = "lamps"
+        single_key = "lamp"
+
+    class BulbView(ApiView):
+        prefix = "/bulbs"
+        model = Bulb
+        schema = BulbSchema
+        list_key = "bulbs"
+        single_key = "bulb"
+
+    fr.include_view(client.app, LampView)
+    fr.include_view(client.app, BulbView)
+    create_tables()
+    client.post("/lamps", json={"name": "desk"})
+
+    spec = client.get("/openapi.json").json()
+    assert _response_ref(spec["paths"]["/lamps"]["get"]) == "LampsList"
+    assert _response_ref(spec["paths"]["/bulbs"]["get"]) == "BulbsList"
+    assert _response_ref(spec["paths"]["/lamps/{id}"]["get"]) == "LampSingle"
+    schemas = spec["components"]["schemas"]
+    assert set(schemas["LampSingle"]["properties"]) == {"lamp"}
+    assert set(schemas["BulbsList"]["properties"]) == {"bulbs", "bulbsCount"}
+
+    row = {"id": 1, "name": "desk"}
+    assert client.get("/lamps").json() == {"lamps": [row], "lampsCount": 1}
+    assert client.get("/lamps/1").json() == {"lamp": row}
