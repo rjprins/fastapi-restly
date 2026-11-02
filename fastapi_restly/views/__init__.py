@@ -53,7 +53,14 @@ from ._base import (
 from ._include import include_view
 from ._list_params import list_filter
 from ._sync import RestView
-from ._view_types import ViewCreate, ViewID, ViewListResponse, ViewResponse, ViewUpdate
+from ._view_types import (
+    SchemaType,
+    ViewCreate,
+    ViewID,
+    ViewListResponse,
+    ViewResponse,
+    ViewUpdate,
+)
 
 # isort: split
 # Last: the react-admin views import the public names above, as a view of
@@ -83,6 +90,7 @@ __all__ = [
     "ResponseShape",
     "View",
     "ViewRoute",
+    "SchemaType",
     "ViewID",
     "ViewResponse",
     "ViewListResponse",

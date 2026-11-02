@@ -13,6 +13,7 @@ the public API, as a view of yours would. A comment names the ticket of each
 private name that has no public form yet.
 """
 
+import inspect
 from typing import Any, ClassVar, Literal, Protocol, cast
 
 import fastapi
@@ -30,6 +31,7 @@ from fastapi_restly.views import (
     NumberedPagination,
     ResponseShape,
     RestView,
+    SchemaType,
     ViewID,
     ViewResponse,
     ViewUpdate,
@@ -292,16 +294,21 @@ class _ReactAdminMixin:
         default_page_size=DEFAULT_REACT_ADMIN_PAGE_SIZE
     )
 
+    schema_list_params: ClassVar[type[pydantic.BaseModel]] = ReactAdminListParams
+
     def __init_subclass__(cls, **kwargs: Any) -> None:
-        super().__init_subclass__(**kwargs)
-        _check_pagination(cls)
         # A class that inherits list params of its own gets generated list
         # params when it sets a schema or a model. So each class declares
-        # the list params that it inherits again.
+        # the list params that it inherits again, before Restly looks at them.
         if "schema_list_params" not in cls.__dict__:
-            inherited = getattr(cls, "schema_list_params", ReactAdminListParams)
+            inherited = inspect.getattr_static(cls, "schema_list_params")
             setattr(cls, "schema_list_params", inherited)
-        _check_list_params(cls)
+        super().__init_subclass__(**kwargs)
+        _check_pagination(cls)
+        # A function gets its turn at registration: it can read what is not
+        # there yet.
+        if not isinstance(vars(cls)["schema_list_params"], SchemaType):
+            _check_list_params(cls)
 
     def get_react_admin_range_unit(self) -> str:
         """Return the unit string used in the Content-Range header."""
@@ -403,6 +410,7 @@ class _ReactAdminMixin:
         # At registration, as Restly checks these settings. No public form
         # yet.
         _reject_list_settings(cls)
+        _check_list_params(cls)
         cast(Any, super()).before_include_view()
 
 

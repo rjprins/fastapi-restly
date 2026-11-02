@@ -2042,6 +2042,106 @@ def _derive_schema_response(
     return cls
 
 
+def derive_schema_create(
+    schema: type[_SchemaT], model: type[Any] | None = None
+) -> type[_SchemaT]:
+    """Build the create body of a view's schema: the schema without its
+    ``ReadOnly`` fields, named ``<Resource>Create``.
+
+    A view without its own
+    :attr:`~fastapi_restly.views.BaseRestView.schema_create` gets this class.
+    The class is a subclass of ``schema``. Each call with the same arguments
+    returns the same class, so a custom route can name the class that the view
+    uses::
+
+        UserCreate = fr.schemas.derive_schema_create(UserSchema, User)
+
+    :param schema: The view's schema.
+    :param model: The view's model. With a model, the class also leaves out a
+        primary key that the server generates, as a view does.
+    :returns: The create body.
+    """
+    return cast(type[_SchemaT], _derive_schema_create(schema, model))
+
+
+@functools.cache
+def _derive_schema_create(
+    schema: type[pydantic.BaseModel], model: type[Any] | None
+) -> type[pydantic.BaseModel]:
+    return create_model_without_read_only_fields(
+        schema, omit=() if model is None else _generated_primary_key_fields(model)
+    )
+
+
+def derive_schema_update(
+    schema: type[_SchemaT], model: type[Any] | None = None
+) -> type[_SchemaT]:
+    """Build the update body of a view's schema: the schema without its
+    ``ReadOnly`` fields, with each other field optional, named
+    ``<Resource>Update``.
+
+    A view without its own
+    :attr:`~fastapi_restly.views.BaseRestView.schema_update` gets this class.
+    The class is a subclass of ``schema``. Each call with the same arguments
+    returns the same class, so a custom route can name the class that the view
+    uses.
+
+    ``schema`` can be a class of your own, such as the create body of a view that
+    sets ``schema_create``, so that ``PATCH`` follows that body::
+
+        class UserCreate(fr.BaseSchema):
+            name: str
+
+
+        class UserView(fr.AsyncRestView):
+            schema_create = UserCreate
+            schema_update = fr.schemas.derive_schema_update(UserCreate)
+
+    :param schema: The view's schema, or another class to start from.
+    :param model: The view's model. With a model, the class also leaves out a
+        primary key that the server generates, as a view does.
+    :returns: The update body.
+    """
+    return cast(type[_SchemaT], _derive_schema_update(schema, model))
+
+
+@functools.cache
+def _derive_schema_update(
+    schema: type[pydantic.BaseModel], model: type[Any] | None
+) -> type[pydantic.BaseModel]:
+    return create_model_with_optional_fields(
+        schema, omit=() if model is None else _generated_primary_key_fields(model)
+    )
+
+
+def _generated_primary_key_fields(model_cls: type[Any]) -> frozenset[str]:
+    """The primary key attributes the server generates, never the client.
+
+    A derived create or update schema leaves these out even when the schema
+    does not mark them ReadOnly. Generated means an autoincrement column, a
+    column default, or a dataclass field outside ``__init__``. A key without
+    any of these is a natural key, and the client supplies it.
+    """
+    mapper = sa_inspect(model_cls)
+    autoincrement = getattr(mapper.local_table, "autoincrement_column", None)
+    not_in_init = (
+        {f.name for f in dataclasses.fields(model_cls) if not f.init}
+        if dataclasses.is_dataclass(model_cls)
+        else set()
+    )
+    generated = set()
+    for column in mapper.primary_key:
+        key = mapper.get_property_by_column(column).key
+        if (
+            column is autoincrement
+            or column.default is not None
+            or column.server_default is not None
+            or key in not_in_init
+        ):
+            generated.add(key)
+    return frozenset(generated)
+
+
 def derive_schema_list_response(
     schema_response: type[pydantic.BaseModel],
     *,

@@ -141,8 +141,10 @@ fastapi_restly.schemas:
   - UTCDatetime
   - WriteOnly
   - derive_schema
+  - derive_schema_create
   - derive_schema_list_response
   - derive_schema_response
+  - derive_schema_update
   - in_utc
 fastapi_restly.testing:
   - AsyncRestlyTestClient
@@ -163,6 +165,7 @@ fastapi_restly.views:
   - ReadScope
   - ResponseShape
   - RestView
+  - SchemaType
   - View
   - ViewCreate
   - ViewID
@@ -242,8 +245,10 @@ fastapi_restly.query:
   - order_by_primary_key
 fastapi_restly.schemas:
   - derive_schema
+  - derive_schema_create
   - derive_schema_list_response
   - derive_schema_response
+  - derive_schema_update
 fastapi_restly.testing:
   - AsyncRestlyTestClient
   - RestlyTestClient
@@ -254,6 +259,7 @@ fastapi_restly.views:
   - PaginatedEnvelope
   - ReactAdminListParams
   - ReadScope
+  - SchemaType
   - ViewCreate
   - ViewID
   - ViewListResponse

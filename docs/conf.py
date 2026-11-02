@@ -29,7 +29,7 @@ from sqlalchemy.orm.properties import MappedColumn
 
 import fastapi_restly.db as fr_db
 from fastapi_restly.schemas._base import UTCDatetime, readonly_marker, writeonly_marker
-from fastapi_restly.views._view_types import _ViewType
+from fastapi_restly.views._view_types import SchemaType
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
@@ -293,7 +293,7 @@ def _alias_name(annotation):
             return "fastapi_restly.schemas.ReadOnly", inner
         if meta is writeonly_marker:
             return "fastapi_restly.schemas.WriteOnly", inner
-        if isinstance(meta, _ViewType):
+        if isinstance(meta, SchemaType):
             return f"fastapi_restly.views.{meta.name}", None
     if in_utc:
         return "fastapi_restly.schemas.UTCDatetime", None

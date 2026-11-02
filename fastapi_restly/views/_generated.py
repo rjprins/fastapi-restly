@@ -1,56 +1,32 @@
-"""What registration generates for a view.
+"""What a view uses for a setting that it does not set.
 
-A view that does not declare a response schema or list params gets them
-generated from its schema. This module finds the class in the MRO that
-declares or decides a setting, so that registration generates only what is
-missing. It also finds the primary key fields that the server generates.
+Each default is a :class:`~fastapi_restly.views.SchemaType` on ``BaseRestView``,
+so it follows each view. This module also finds the class in the MRO that
+declares or decides a setting: a subclass with a new ``schema`` must not inherit
+a class that was declared for the old one.
 """
 
-import dataclasses
+import inspect
 import weakref
 from typing import Any
 
 import pydantic
-from sqlalchemy import inspect as sa_inspect
 
 from .._pagination import NumberedPagination
 from ..exc import RestlyConfigurationError
 from ..query._impl import _KEY_SETTINGS, _derive_list_params, _record_of
 from ..query._paged import PagedListParams, _completed_list_params
-from ..schemas import derive_schema_response
+from ..schemas import (
+    derive_schema,
+    derive_schema_create,
+    derive_schema_response,
+    derive_schema_update,
+)
 from ._guards import _owner
 from ._list_params import _LIST_SETTING_DEFAULTS, _list_setting, _own_filters
+from ._view_types import SchemaType
 
-
-def _generated_primary_key_fields(model_cls: type[Any]) -> frozenset[str]:
-    """The primary key attributes the server generates, never the client.
-
-    A derived create or update schema leaves these out even when the schema
-    does not mark them ReadOnly. Generated means an autoincrement column, a
-    column default, or a dataclass field outside ``__init__``. A key without
-    any of these is a natural key, and the client supplies it.
-    """
-    mapper = sa_inspect(model_cls)
-    autoincrement = getattr(mapper.local_table, "autoincrement_column", None)
-    not_in_init = (
-        {f.name for f in dataclasses.fields(model_cls) if not f.init}
-        if dataclasses.is_dataclass(model_cls)
-        else set()
-    )
-    generated = set()
-    for column in mapper.primary_key:
-        key = mapper.get_property_by_column(column).key
-        if (
-            column is autoincrement
-            or column.default is not None
-            or column.server_default is not None
-            or key in not_in_init
-        ):
-            generated.add(key)
-    return frozenset(generated)
-
-
-#: What registration builds each class of a view from.
+#: What Restly builds each class of a view from.
 _BUILT_FROM = {
     "schema": "model",
     "schema_response": "schema",
@@ -60,21 +36,13 @@ _BUILT_FROM = {
 }
 
 
-def _mark_generated(cls: type, name: str) -> None:
-    generated = cls.__dict__.get("_fr_generated", frozenset())
-    cls._fr_generated = generated | {name}  # type: ignore[attr-defined]
-
-
 def _declared_at(cls: type, name: str) -> int | None:
-    """Position in the MRO of the class that declares ``name``, or None.
-
-    A value that registration generated is not a declaration.
-    """
+    """Position in the MRO of the class that declares a class for ``name``, or
+    None when the nearest value is a :class:`SchemaType`: that follows each
+    view."""
     for index, klass in enumerate(cls.__mro__):
-        if name in klass.__dict__ and name not in klass.__dict__.get(
-            "_fr_generated", ()
-        ):
-            return index
+        if name in klass.__dict__:
+            return None if isinstance(klass.__dict__[name], SchemaType) else index
     return None
 
 
@@ -82,11 +50,10 @@ def _decided_at(cls: type, name: str) -> int | None:
     """Position in the MRO of the class that decides the value of ``name``.
 
     A declared value is decided where it is declared, unless what it is built
-    from is decided nearer to ``cls``: then registration rebuilds it. A
-    generated value is decided where its source is decided. So a copy that
-    registration wrote into a subclass does not count as a change. Declared
-    list params that Restly would generate for the declaring class are also
-    built from the list settings and the filter methods.
+    from is decided nearer to ``cls``: then Restly builds it again. Any other
+    value is decided where its source is decided. Declared list params that
+    Restly would generate for the declaring class are also built from the list
+    settings and the filter methods.
     """
     declared = _declared_at(cls, name)
     source = _BUILT_FROM.get(name)
@@ -152,42 +119,25 @@ def _list_settings_at(cls: type) -> int:
     )
 
 
-def _needs_generating(cls: type, name: str) -> bool:
-    """Whether registration must build ``name`` for this view class.
-
-    A declared value is inherited. Registration builds it when no class
-    declares it, or when what it is built from is decided nearer to ``cls``,
-    as in a subclass that declares a new ``schema``.
-    """
-    if name in cls.__dict__.get("_fr_generated", ()):
-        return False
-    declared = _declared_at(cls, name)
-    return declared is None or _decided_at(cls, name) != declared
+def _drop_stale_settings(cls: type) -> None:
+    """A subclass with a new ``schema`` gets new classes built from it, also when
+    a base class declares them. So it gets the default back."""
+    for name, default in _DEFAULT_SETTINGS.items():
+        declared = _declared_at(cls, name)
+        if declared is not None and _decided_at(cls, name) != declared:
+            setattr(cls, name, default)
 
 
-def _schema_response(view_cls: type) -> type[pydantic.BaseModel]:
-    """The response class of a view.
-
-    Registration sets ``schema_response``. A view that is not registered
-    yet, or a subclass that changes ``schema``, gets the class that
-    registration would set.
-    """
-    if _needs_generating(view_cls, "schema_response"):
-        return derive_schema_response(view_cls.schema)
-    return view_cls.schema_response
+def _uses_default(cls: type, name: str) -> bool:
+    """Whether the view uses Restly's default for ``name``."""
+    return inspect.getattr_static(cls, name, None) is _DEFAULT_SETTINGS[name]
 
 
-def _derive_view_list_params(view_cls: type) -> type[pydantic.BaseModel]:
-    """The list params that registration generates for a view: from its
-    response class, its pagination, its list settings and its filter
-    methods."""
-    if not hasattr(view_cls, "model"):
-        raise ValueError(
-            f"'{view_cls.__name__}.model' must be specified: it is needed to "
-            "generate the list params."
-        )
+def _derive_view_list_params(view_cls: Any) -> type[pydantic.BaseModel]:
+    """The list params that Restly generates for a view: from its response
+    class, its pagination, its list settings and its filter methods."""
     return _derive_list_params(
-        _schema_response(view_cls),
+        view_cls.schema_response,
         view_cls.model,
         pagination=view_cls.pagination,
         settings={name: getattr(view_cls, name) for name in _KEY_SETTINGS},
@@ -205,18 +155,13 @@ def _derive_view_list_params(view_cls: type) -> type[pydantic.BaseModel]:
     )
 
 
-def _schema_list_params(view_cls: type) -> type[pydantic.BaseModel]:
+def _schema_list_params(view_cls: Any) -> type[pydantic.BaseModel]:
     """The list params of a view, as its list routes use them.
 
-    Registration sets ``schema_list_params``. A view that is not registered
-    yet, such as a subclass of a registered view, gets the class that
-    registration would set. List params from ``fr.query.PagedListParams``
-    get the page fields of the view's pagination: the attribute keeps the
-    class that the view declares, and each view with other pages gets its
-    own subclass.
+    List params from ``fr.query.PagedListParams`` get the page fields of the
+    view's pagination: the attribute keeps the class that the view declares,
+    and each view with other pages gets its own subclass.
     """
-    if _needs_generating(view_cls, "schema_list_params"):
-        return _derive_view_list_params(view_cls)
     declared = view_cls.schema_list_params
     pagination = getattr(view_cls, "pagination", None)
     if _is_paged_list_params(declared) and isinstance(pagination, NumberedPagination):
@@ -227,3 +172,18 @@ def _schema_list_params(view_cls: type) -> type[pydantic.BaseModel]:
 def _is_paged_list_params(list_params: Any) -> bool:
     """Whether ``list_params`` come from ``fr.query.PagedListParams``."""
     return isinstance(list_params, type) and issubclass(list_params, PagedListParams)
+
+
+#: What a view uses when it sets nothing. A function reads what it needs: a base
+#: view without a model gets ``AttributeError``, as for a setting it does not have.
+_DEFAULT_SETTINGS = {
+    "schema": SchemaType(lambda view: derive_schema(view.model)),
+    "schema_response": SchemaType(lambda view: derive_schema_response(view.schema)),
+    "schema_list_params": SchemaType(_derive_view_list_params),
+    "schema_create": SchemaType(
+        lambda view: derive_schema_create(view.schema, view.model)
+    ),
+    "schema_update": SchemaType(
+        lambda view: derive_schema_update(view.schema, view.model)
+    ),
+}

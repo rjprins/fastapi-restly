@@ -1,14 +1,15 @@
-"""Markers that stand for the view's own types in a route.
+"""Types that depend on the view: :class:`SchemaType` and the markers.
 
 A route on a mixin or a base view cannot name the classes of each view that
 uses it, because the decorator runs in the class body. A marker names the
-role instead. When a view registers, Restly puts the view's class in place
-of each marker, so each subclass gets its own classes.
+role instead, and a :class:`SchemaType` is a function of the view. When a view
+registers, Restly puts the view's type in place of each one, so each subclass
+gets its own types. A setting of the view can hold a :class:`SchemaType` too.
 """
 
 import inspect
 import types
-from collections.abc import Mapping
+from contextvars import ContextVar
 from typing import (
     Annotated,
     Any,
@@ -23,43 +24,107 @@ from typing import (
 
 from sqlalchemy import inspect as sa_inspect
 
+from ..exc import RestlyConfigurationError
 from ..schemas import derive_schema_list_response
 from ..schemas._base import _model_id_type
 
 
-class _ViewType:
-    """The metadata of a marker: the role of the view's class it stands for."""
+class SchemaType:
+    """A type that depends on the view: a function that gets the view class
+    and returns the type.
 
-    __slots__ = ("name",)
+    A setting that takes a schema class also takes a ``SchemaType``. Here each
+    view gets a create body of its own::
 
-    def __init__(self, name: str) -> None:
-        self.name = name
+        class ApiView(fr.AsyncRestView):
+            schema_create = SchemaType(lambda view: with_tenant(view.schema))
+
+    A setting can also use it as a decorator::
+
+        class ApiView(fr.AsyncRestView):
+            @SchemaType
+            def schema_create(view):
+                return with_tenant(view.schema)
+
+    In a route, it goes in the metadata of an annotation::
+
+        Single = Annotated[Any, SchemaType(lambda view: Data[view.schema_response])]
+
+
+        class ApiView(fr.AsyncRestView):
+            @fr.get("/{id}")
+            async def get_one_endpoint(self, id: ViewID) -> Single: ...
+
+    Restly calls the function once for each view class, when something first
+    reads the type. It can read any setting of the view, in any order. A setting
+    must get a Pydantic class. A route can get any type that FastAPI accepts.
+
+    :param fn: The function. It gets the view class and returns the type.
+    """
+
+    __slots__ = ("fn", "name")
+
+    fn: Callable[[Any], Any]
+    #: The name of a marker of this module.
+    name: str | None
+
+    # Returns Any for the type checkers: the settings say they hold a class, and
+    # reading one gives the class.
+    def __new__(cls, fn: Callable[[Any], Any]) -> Any:
+        self = super().__new__(cls)
+        self.fn = fn
+        self.name = None
+        return self
 
     def __repr__(self) -> str:
-        return f"fastapi_restly.views.{self.name}"
+        if self.name is not None:
+            return f"fastapi_restly.views.{self.name}"
+        return f"SchemaType({self.fn!r})"
+
+    def __get__(self, instance: Any, owner: type | None = None) -> Any:
+        """The type for the view that reads the setting."""
+        return _filled(self, owner if owner is not None else type(instance))
 
 
-#: The view's id type: :attr:`~fastapi_restly.views.BaseRestView.id_type`,
-#: else the type of the model's primary key. A path parameter with this type
-#: gets the view's path converter, as the CRUD item routes do: ``{id:int}``
-#: for ``int`` and ``{id:uuid}`` for ``UUID``.
-ViewID: TypeAlias = Annotated[Any, _ViewType("ViewID")]
+#: The functions being called now, for the check of a function that reads itself.
+_BUILDING: ContextVar[frozenset[tuple[Callable[[Any], Any], type]]] = ContextVar(
+    "_BUILDING", default=frozenset()
+)
 
-#: The view's response class,
-#: :attr:`~fastapi_restly.views.BaseRestView.schema_response`.
-ViewResponse: TypeAlias = Annotated[Any, _ViewType("ViewResponse")]
 
-#: The view's list response: the envelope of the view's pagination, with
-#: items of the view's response class.
-ViewListResponse: TypeAlias = Annotated[Any, _ViewType("ViewListResponse")]
+def _filled(schema_type: SchemaType, view_cls: type) -> Any:
+    """What ``schema_type`` gives on ``view_cls``, from one call for each view.
 
-#: The view's create body,
-#: :attr:`~fastapi_restly.views.BaseRestView.schema_create`.
-ViewCreate: TypeAlias = Annotated[Any, _ViewType("ViewCreate")]
+    So a class that the function builds is one class in OpenAPI. The results are
+    on the view class, as a subclass has its own.
+    """
+    fn = schema_type.fn
+    results = view_cls.__dict__.get("_fr_schema_types")
+    if results is None:
+        results = {}
+        cast(Any, view_cls)._fr_schema_types = results
+    if fn in results:
+        return results[fn]
+    building = _BUILDING.get()
+    if (fn, view_cls) in building:
+        raise RestlyConfigurationError(
+            f"The SchemaType function {getattr(fn, '__qualname__', fn)} of "
+            f"{view_cls.__name__} reads its own result, directly or through "
+            "another setting."
+        )
+    token = _BUILDING.set(building | {(fn, view_cls)})
+    try:
+        result = fn(view_cls)
+    finally:
+        _BUILDING.reset(token)
+    # Two threads can read at the same time. Both then use the first result.
+    return results.setdefault(fn, result)
 
-#: The view's update body,
-#: :attr:`~fastapi_restly.views.BaseRestView.schema_update`.
-ViewUpdate: TypeAlias = Annotated[Any, _ViewType("ViewUpdate")]
+
+def _marker(name: str, fn: Callable[[Any], Any]) -> SchemaType:
+    marker = SchemaType(fn)
+    marker.name = name
+    return marker
 
 
 def _view_id_type(view_cls: type) -> Any:
@@ -78,23 +143,44 @@ def _view_id_type(view_cls: type) -> Any:
     return _model_id_type(model) or int
 
 
-def _view_types(view_cls: type) -> dict[str, Any]:
-    """The class that each marker of ``fastapi_restly.views`` stands for."""
-    view = cast(Any, view_cls)
-    return {
-        "ViewID": _view_id_type(view_cls),
-        "ViewResponse": view.schema_response,
-        "ViewListResponse": derive_schema_list_response(
+#: The view's id type: :attr:`~fastapi_restly.views.BaseRestView.id_type`,
+#: else the type of the model's primary key. A path parameter with this type
+#: gets the view's path converter, as the CRUD item routes do: ``{id:int}``
+#: for ``int`` and ``{id:uuid}`` for ``UUID``.
+ViewID: TypeAlias = Annotated[Any, _marker("ViewID", _view_id_type)]
+
+#: The view's response class,
+#: :attr:`~fastapi_restly.views.BaseRestView.schema_response`.
+ViewResponse: TypeAlias = Annotated[
+    Any, _marker("ViewResponse", lambda view: view.schema_response)
+]
+
+#: The view's list response: the envelope of the view's pagination, with
+#: items of the view's response class.
+ViewListResponse: TypeAlias = Annotated[
+    Any,
+    _marker(
+        "ViewListResponse",
+        lambda view: derive_schema_list_response(
             view.schema_response, pagination=view.pagination
         ),
-        "ViewCreate": view.schema_create,
-        "ViewUpdate": view.schema_update,
-    }
+    ),
+]
+
+#: The view's create body,
+#: :attr:`~fastapi_restly.views.BaseRestView.schema_create`.
+ViewCreate: TypeAlias = Annotated[
+    Any, _marker("ViewCreate", lambda view: view.schema_create)
+]
+
+#: The view's update body,
+#: :attr:`~fastapi_restly.views.BaseRestView.schema_update`.
+ViewUpdate: TypeAlias = Annotated[
+    Any, _marker("ViewUpdate", lambda view: view.schema_update)
+]
 
 
-def _fill_view_types(
-    func: Callable, view_types: Mapping[str, Any], list_params: Any
-) -> None:
+def _fill_view_types(func: Callable, view_cls: type, list_params: Any) -> None:
     """Put the view's classes in place of the markers in ``func.__signature__``.
 
     A parameter named ``list_params`` always takes the view's list params,
@@ -111,23 +197,21 @@ def _fill_view_types(
         if param.name == "list_params":
             annotation = list_params
         elif param.name in written:
-            annotation = _with_view_types(written[param.name], func, view_types)
+            annotation = _with_view_types(written[param.name], func, view_cls)
         else:
             annotation = param.annotation
         changed = changed or annotation is not param.annotation
         params.append(param.replace(annotation=annotation))
     returns = sig.return_annotation
     if "return" in written:
-        returns = _with_view_types(written["return"], func, view_types)
+        returns = _with_view_types(written["return"], func, view_cls)
     if changed or returns is not sig.return_annotation:
         func.__signature__ = sig.replace(  # type: ignore[attr-defined]
             parameters=params, return_annotation=returns
         )
 
 
-def _with_view_types(
-    annotation: Any, func: Callable, view_types: Mapping[str, Any]
-) -> Any:
+def _with_view_types(annotation: Any, func: Callable, view_cls: type) -> Any:
     """``annotation`` with the view's classes in place of its markers.
 
     It is ``annotation`` itself when it holds no marker. So an annotation
@@ -135,7 +219,7 @@ def _with_view_types(
     string for FastAPI to resolve.
     """
     evaluated = _evaluated(annotation, func)
-    filled = _replace_view_types(evaluated, view_types)
+    filled = _replace_view_types(evaluated, view_cls)
     return annotation if filled is evaluated else filled
 
 
@@ -160,33 +244,33 @@ def _pydantic_generic_args(annotation: Any) -> tuple[Any, ...]:
     return metadata["args"] if metadata is not None and metadata["origin"] else ()
 
 
-def _replace_view_types(annotation: Any, view_types: Mapping[str, Any]) -> Any:
+def _replace_view_types(annotation: Any, view_cls: type) -> Any:
     """Replace each marker in ``annotation``, also inside a type such as
     ``list[ViewResponse]`` or ``Data[ViewResponse]``. Returns ``annotation``
     itself when it holds no marker."""
     origin = get_origin(annotation)
     if origin is Annotated:
         inner, *metadata = get_args(annotation)
-        marker = next((m for m in metadata if isinstance(m, _ViewType)), None)
+        marker = next((m for m in metadata if isinstance(m, SchemaType)), None)
         if marker is not None:
             # Annotated[ViewID, Path(ge=1)] keeps the Path(ge=1)
-            rest = [m for m in metadata if not isinstance(m, _ViewType)]
-            filled = view_types[marker.name]
+            rest = [m for m in metadata if not isinstance(m, SchemaType)]
+            filled = _filled(marker, view_cls)
             return Annotated[(filled, *rest)] if rest else filled
-        filled_inner = _replace_view_types(inner, view_types)
+        filled_inner = _replace_view_types(inner, view_cls)
         if filled_inner is inner:
             return annotation
         return Annotated[(filled_inner, *metadata)]
     generic = _pydantic_generic_args(annotation)
     if generic:
-        filled_args = tuple(_replace_view_types(arg, view_types) for arg in generic)
+        filled_args = tuple(_replace_view_types(arg, view_cls) for arg in generic)
         if all(new is old for new, old in zip(filled_args, generic)):
             return annotation
         return annotation.__pydantic_generic_metadata__["origin"][filled_args]
     args = get_args(annotation)
     if not args or origin is Literal:
         return annotation
-    filled_args = tuple(_replace_view_types(arg, view_types) for arg in args)
+    filled_args = tuple(_replace_view_types(arg, view_cls) for arg in args)
     if all(new is old for new, old in zip(filled_args, args)):
         return annotation
     if origin in (Union, types.UnionType):

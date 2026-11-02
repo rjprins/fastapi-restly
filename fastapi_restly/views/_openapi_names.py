@@ -24,6 +24,7 @@ from starlette.routing import BaseRoute
 from .._routes import iter_routes, original_route
 from ..exc import RestlyDuplicateSchemaNameWarning
 from ..schemas import derive_schema_list_response
+from ._generated import _DEFAULT_SETTINGS, _uses_default
 
 _CLASHES_ATTR = "_fr_openapi_name_clashes"
 _normalize = GenerateJsonSchema().normalize_name
@@ -149,7 +150,7 @@ def _route_view(route: APIRoute) -> type | None:
 def _roles_of(view: Any) -> dict[type, list[_Role]]:
     """The classes of a view by role. For a class that Restly generates, the
     role also says what Restly generates it from."""
-    generated = view.__dict__.get("_fr_generated", frozenset())
+    generated = {name for name in _DEFAULT_SETTINGS if _uses_default(view, name)}
     # A view without a schema gets one from its model, and the other classes
     # come from that schema.
     if "schema" in generated:

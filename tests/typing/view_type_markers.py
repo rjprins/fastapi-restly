@@ -1,10 +1,11 @@
-from typing import Any
+from typing import Annotated, Any
 
 from fastapi import FastAPI
 from sqlalchemy.orm import DeclarativeBase, Mapped
 
 import fastapi_restly as fr
 from fastapi_restly.views import (
+    SchemaType,
     ViewCreate,
     ViewID,
     ViewListResponse,
@@ -63,3 +64,18 @@ class SyncTaskView(fr.RestView[Task, TaskSchema]):
     @fr.get("/maybe/{id}")
     def maybe(self, id: ViewID) -> ViewResponse | None:
         return self.to_response(self.handle_get_one(id))
+
+
+# SchemaType: a function of the view, on a setting and in a route.
+Wrapped = Annotated[Any, SchemaType(lambda view: view.schema_response)]
+
+
+class FunctionView(fr.AsyncRestView[Any]):
+    schema_create = SchemaType(lambda view: view.schema)
+
+    @SchemaType
+    def schema_update(view: Any) -> Any:
+        return view.schema
+
+    @fr.get("/wrapped")
+    async def wrapped(self) -> Wrapped: ...

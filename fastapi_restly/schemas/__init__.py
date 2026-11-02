@@ -11,8 +11,10 @@ from ._base import (
     TimestampsSchemaMixin,
     UTCDatetime,
     WriteOnly,
+    derive_schema_create,
     derive_schema_list_response,
     derive_schema_response,
+    derive_schema_update,
 )
 from ._generator import derive_schema
 
@@ -36,8 +38,10 @@ __all__ = [
     "UTCDatetime",
     "WriteOnly",
     "derive_schema",
+    "derive_schema_create",
     "derive_schema_list_response",
     "derive_schema_response",
+    "derive_schema_update",
     "in_utc",
 ]
 

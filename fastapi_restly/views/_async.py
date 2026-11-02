@@ -29,7 +29,6 @@ from ._base import (
     patch,
     post,
 )
-from ._generated import _schema_response
 from ._lifecycle import (
     _async_bracket,
     _async_shared_write_action_commit,
@@ -521,7 +520,7 @@ class AsyncRestView(
             stmt,
             list_params,
             self.model,
-            _schema_response(type(self)),
+            type(self).schema_response,
             pagination=self.pagination,
             sort_nulls=self.sort_nulls,
         )
@@ -551,7 +550,7 @@ class AsyncRestView(
             stmt,
             list_params,
             self.model,
-            _schema_response(type(self)),
+            type(self).schema_response,
             pagination=self.pagination,
         )
         results: list[tuple[str, Any]] = []

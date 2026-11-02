@@ -33,6 +33,7 @@ from typing_extensions import TypeVar
 
 from ..db._config import _fr_config
 from ..exc import RestlyConfigurationError, RestlyMisuseWarning
+from ..schemas import derive_schema_list_response
 from ..schemas._base import _reject_buried_markers
 from ._base import BaseRestView, ListResult, ResponseShape, View, _serves_route
 from ._class_based_view import (
@@ -40,17 +41,17 @@ from ._class_based_view import (
     _init_all_endpoints,
     _init_class_based_view,
 )
-from ._generated import _schema_list_params
+from ._generated import _drop_stale_settings, _schema_list_params
 from ._guards import _check_removed_settings
 from ._list_params import _list_openapi_parameters
 from ._misuse_lint import _warn_on_misuse
 from ._openapi import _register_for_resource_ref
 from ._view_types import (
+    SchemaType,
     _evaluated,
     _pydantic_generic_args,
     _replace_view_types,
-    _view_types,
-    _ViewType,
+    _view_id_type,
 )
 
 V = TypeVar("V", bound=type[View])
@@ -182,6 +183,9 @@ def _prepare_view_class(view_cls: type[View]) -> None:
     """
     if view_cls.__dict__.get("_fr_initialised", False):
         return
+    if issubclass(view_cls, BaseRestView):
+        # A class decorator can set a new schema after the class definition.
+        _drop_stale_settings(view_cls)
     if _fr_config.warn_on_misuse:
         _warn_on_misuse(view_cls)
     _copy_all_parent_class_endpoints_into_this_subclass(view_cls)
@@ -192,11 +196,11 @@ def _prepare_view_class(view_cls: type[View]) -> None:
     view_cls._fr_initialised = True  # type: ignore[attr-defined]
 
 
-def _view_type_in(annotation: Any) -> _ViewType | None:
+def _view_type_in(annotation: Any) -> SchemaType | None:
     """The first marker in ``annotation``, or ``None``."""
     if get_origin(annotation) is Annotated:
         for metadata in get_args(annotation)[1:]:
-            if isinstance(metadata, _ViewType):
+            if isinstance(metadata, SchemaType):
                 return metadata
     if get_origin(annotation) is Literal:
         return None
@@ -206,9 +210,37 @@ def _view_type_in(annotation: Any) -> _ViewType | None:
     return None
 
 
-def _view_route_args(
-    endpoint: Callable, view_types: Mapping[str, Any]
-) -> tuple[str, dict[str, Any]]:
+def _view_type_in_a_field(
+    annotation: Any, seen: set[type] | None = None
+) -> tuple[type, str, SchemaType] | None:
+    """The first marker in a field of a Pydantic class that ``annotation`` names:
+    the class, the name of the field and the marker. Or ``None``.
+
+    Restly fills a route's own annotations, not the fields of a class that it
+    names. Pydantic reads such a field as ``Any``.
+    """
+    seen = set() if seen is None else seen
+    for arg in (*get_args(annotation), *_pydantic_generic_args(annotation)):
+        if (found := _view_type_in_a_field(arg, seen)) is not None:
+            return found
+    is_model = isinstance(annotation, type) and issubclass(
+        annotation, pydantic.BaseModel
+    )
+    if not is_model or annotation in seen:
+        return None
+    seen.add(annotation)
+    for name, field in annotation.model_fields.items():
+        marker = next((m for m in field.metadata if isinstance(m, SchemaType)), None)
+        if marker is None:
+            marker = _view_type_in(field.annotation)
+        if marker is not None:
+            return annotation, name, marker
+        if (found := _view_type_in_a_field(field.annotation, seen)) is not None:
+            return found
+    return None
+
+
+def _view_route_args(endpoint: Callable, view_cls: Any) -> tuple[str, dict[str, Any]]:
     """The path and the route arguments of ``endpoint``, for this view.
 
     ``response_model`` can hold a marker. A path parameter annotated
@@ -218,30 +250,20 @@ def _view_route_args(
     """
     path, route_kwargs = endpoint._api_route_args  # type: ignore[attr-defined]
     response_model = route_kwargs.get("response_model")
-    filled = _replace_view_types(response_model, view_types)
+    filled = _replace_view_types(response_model, view_cls)
     if filled is not response_model:
         route_kwargs = {**route_kwargs, "response_model": filled}
-    converter = {int: "int", UUID: "uuid"}.get(view_types["ViewID"])
+    converter = {int: "int", UUID: "uuid"}.get(_view_id_type(view_cls))
     if converter is not None:
         for name, annotation in inspect.get_annotations(endpoint).items():
             annotation = _evaluated(annotation, endpoint)
             is_id = get_origin(annotation) is Annotated and any(
-                isinstance(m, _ViewType) and m.name == "ViewID"
+                isinstance(m, SchemaType) and m.name == "ViewID"
                 for m in get_args(annotation)[1:]
             )
             if is_id:
                 path = path.replace(f"{{{name}}}", f"{{{name}:{converter}}}")
     return path, route_kwargs
-
-
-def _marker_name(annotation: Any) -> str | None:
-    """The name of the marker that ``annotation`` is, such as
-    ``"ViewResponse"``, or ``None`` when it is not a marker."""
-    if get_origin(annotation) is Annotated:
-        for metadata in get_args(annotation)[1:]:
-            if isinstance(metadata, _ViewType):
-                return metadata.name
-    return None
 
 
 def _without_none(annotation: Any) -> tuple[Any, bool]:
@@ -291,21 +313,32 @@ def _declared_view_response(
     :func:`~fastapi_restly.schemas.derive_schema_response`: each call with
     the same schema returns that same class.
     """
-    own = _view_types(view_cls)
-    name = _marker_name(declared)
-    if name == "ViewResponse" or declared is own["ViewResponse"]:
+    response = view_cls.schema_response
+    list_response = derive_schema_list_response(
+        response, pagination=view_cls.pagination
+    )
+    declared = _bare(_replace_view_types(declared, view_cls))
+    if declared is response:
         return "single", None
-    if name == "ViewListResponse" or declared is own["ViewListResponse"]:
+    if declared is list_response:
         return "list", None
     if get_origin(declared) is list:
         (item,) = get_args(declared) or (None,)
-        if _marker_name(item) == "ViewResponse" or item is own["ViewResponse"]:
+        item = _bare(item)
+        if item is response:
             return "many", None
         if not in_decorator and item is view_cls.model:
-            return "many", list[view_cls.schema_response]  # type: ignore[name-defined]
+            return "many", list[response]  # type: ignore[valid-type]
     if not in_decorator and declared is view_cls.model:
-        return "single", view_cls.schema_response
+        return "single", response
     return None, None
+
+
+def _bare(annotation: Any) -> Any:
+    """``annotation`` without its ``Annotated``: the class that it names."""
+    if get_origin(annotation) is Annotated:
+        return get_args(annotation)[0]
+    return annotation
 
 
 def _with_view_response(
@@ -400,6 +433,29 @@ def _reject_view_types_on_a_plain_view(
             )
 
 
+def _reject_view_types_in_fields(
+    view_cls: type, name: str, endpoint: Callable, route_kwargs: Mapping[str, Any]
+) -> None:
+    """Raise when a route names a Pydantic class with a marker in a field: the
+    field would have no type in OpenAPI."""
+    sig = inspect.signature(endpoint)
+    annotations = [p.annotation for p in sig.parameters.values()]
+    annotations += [sig.return_annotation, route_kwargs.get("response_model")]
+    seen: set[type] = set()
+    for annotation in annotations:
+        found = _view_type_in_a_field(_evaluated(annotation, endpoint), seen)
+        if found is not None:
+            model, field, marker = found
+            raise RestlyConfigurationError(
+                f"{view_cls.__name__}.{name} names the class {model.__name__}, "
+                f"and its field {field} uses {marker!r}. Restly fills a marker "
+                "in the annotations of a route, not in a field of a class, so "
+                "this field would have no type in OpenAPI. Make the class "
+                "generic and write Wrapper[ViewResponse] in the route, or build "
+                "the class in a fastapi_restly.views.SchemaType function."
+            )
+
+
 def _init_api_router(view_cls: type[View]) -> fastapi.APIRouter:
     # Also for a plain View, which _check_renamed_names does not see.
     _check_removed_settings(view_cls)
@@ -424,21 +480,22 @@ def _init_api_router(view_cls: type[View]) -> fastapi.APIRouter:
 
     # Find all endpoint functions in this class and add them to the router
     list_parameters: list[dict[str, Any]] | None = None
-    view_types = _view_types(view_cls) if issubclass(view_cls, BaseRestView) else None
-    for name, attr in view_cls.__dict__.items():
+    is_rest_view = issubclass(view_cls, BaseRestView)
+    for name, attr in list(view_cls.__dict__.items()):
         if not hasattr(attr, "_api_route_args"):
             continue
         # include_routes and exclude_routes are settings of the CRUD views only
-        if view_types is not None and not _serves_route(view_cls, name):
+        if is_rest_view and not _serves_route(view_cls, name):
             continue
         endpoint = attr
-        if view_types is not None:
-            path, route_kwargs = _view_route_args(endpoint, view_types)
+        if is_rest_view:
+            path, route_kwargs = _view_route_args(endpoint, view_cls)
         else:
             path, route_kwargs = endpoint._api_route_args
             _reject_view_types_on_a_plain_view(view_cls, name, endpoint, route_kwargs)
+        _reject_view_types_in_fields(view_cls, name, endpoint, route_kwargs)
         defaults = {}
-        if issubclass(view_cls, BaseRestView) and name in _CRUD_ROUTE_METADATA:
+        if is_rest_view and name in _CRUD_ROUTE_METADATA:
             route_name, summary = _CRUD_ROUTE_METADATA[name]
             # FastAPI carries placeholders through include_router(), so an
             # explicit generator on the route, router, or app still wins.
@@ -454,7 +511,7 @@ def _init_api_router(view_cls: type[View]) -> fastapi.APIRouter:
                 ),
             }
         route_kwargs = {**defaults, **route_kwargs}
-        if view_types is not None:
+        if is_rest_view:
             endpoint, route_kwargs = _with_view_response(
                 view_cls, endpoint, route_kwargs
             )

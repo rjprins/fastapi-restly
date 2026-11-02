@@ -16,9 +16,13 @@ import pydantic
 from sqlalchemy import inspect as sa_inspect
 
 from ..exc import RestlyMisuseWarning
-from ..schemas._base import _is_readonly, reference_origin_and_target
+from ..schemas._base import (
+    _generated_primary_key_fields,
+    _is_readonly,
+    reference_origin_and_target,
+)
 from ._base import BaseRestView, View, ViewRoute, _serves_route
-from ._generated import _declared_at, _generated_primary_key_fields, _needs_generating
+from ._generated import _uses_default
 from ._guards import _WRITE_VERBS
 from ._schema_to_model import _relationship_name_for_fk
 
@@ -229,9 +233,9 @@ def _warn_writable_model_set_fields(view_cls: type[View]) -> None:
     ):
         if not any(_serves_route(view_cls, route) for route in routes):
             continue
-        if not _needs_generating(view_cls, attr):
+        if not _uses_default(view_cls, attr):
             write_classes.setdefault(getattr(view_cls, attr), False)
-        elif _declared_at(view_cls, "schema") is not None:
+        elif not _uses_default(view_cls, "schema"):
             write_classes.setdefault(view_cls.schema, True)
     for cls, derived in write_classes.items():
         for field_name, field_info in cls.model_fields.items():

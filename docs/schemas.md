@@ -1060,8 +1060,8 @@ also covers classes that do not derive from `BaseSchema`.
 
 ### How Restly builds the request bodies and the response class
 
-{meth}`before_include_view() <fastapi_restly.views.BaseRestView.before_include_view>`
-builds the classes. For the view's schema `UserSchema`:
+Restly builds each class the first time something reads it, once for each view.
+For the view's schema `UserSchema`:
 
 - {attr}`schema_response <fastapi_restly.views.BaseRestView.schema_response>`
   comes from
@@ -1069,12 +1069,14 @@ builds the classes. For the view's schema `UserSchema`:
   It is a subclass of `UserSchema` that deletes the `WriteOnly` fields. Each
   call with the same schema returns the same class, so a custom route can
   name it.
-- {attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` is
-  a subclass of `UserSchema` with `OmitReadOnlyMixin` first in the MRO. That
-  mixin deletes the `ReadOnly` fields from `cls.model_fields` and rebuilds the
-  class with `model_rebuild(force=True)`.
-- {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>`
-  adds `PatchMixin` as well. After the `ReadOnly` fields are gone, it sets the
+- {attr}`schema_create <fastapi_restly.views.BaseRestView.schema_create>` comes
+  from {func}`derive_schema_create() <fastapi_restly.schemas.derive_schema_create>`.
+  It is a subclass of `UserSchema` with `OmitReadOnlyMixin` first in the MRO.
+  That mixin deletes the `ReadOnly` fields from `cls.model_fields` and rebuilds
+  the class with `model_rebuild(force=True)`.
+- {attr}`schema_update <fastapi_restly.views.BaseRestView.schema_update>` comes
+  from {func}`derive_schema_update() <fastapi_restly.schemas.derive_schema_update>`.
+  It adds `PatchMixin` as well. After the `ReadOnly` fields are gone, it sets the
   default of every field to `None`, so the client may leave out each field.
   The defaults of `UserSchema` are **replaced** by `None`, not kept. Each
   field keeps its type, and Pydantic does not validate the `None` default,
@@ -1095,21 +1097,23 @@ serializers of that field too, and Pydantic does not run them there. So a
 validator for a `ReadOnly` field, a `WriteOnly` field or a generated primary
 key does not need `check_fields=False`.
 
-Restly stores the classes on the view when it registers the view. Declare
-`schema_response`, `schema_create` or `schema_update` on the view class to use
-your own class instead.
+A subclass of one of these classes keeps the fields out that the class deleted,
+unless the subclass declares such a field itself. So `class MyUpdate(UserUpdate)`
+cannot write a `ReadOnly` field by accident.
+
+Declare `schema_response`, `schema_create` or `schema_update` on the view class
+to use your own class instead.
 
 ### When a subclass view gets new classes
 
-A subclass inherits the classes that its base view declares. Registration
-builds a class again for the subclass in two cases: Restly generated it for
-the parent, or what it is built from changes. A subclass that declares a new
-`schema` gets a new `schema_response`, `schema_create`, `schema_update` and
-`schema_list_params`. A subclass that declares a new `schema_response` gets
-new `schema_list_params`. A view without a schema builds it from `model`, so
-there a new `model` counts as a new `schema`. A class that Restly generates
-for the subclass is not a change of its own, so it does not replace a class
-that the base declares.
+A subclass inherits the classes that its base view declares. Restly builds a
+class again for the subclass in two cases: the base view does not declare it, or
+what it is built from changes. A subclass that declares a new `schema` gets a new
+`schema_response`, `schema_create`, `schema_update` and `schema_list_params`. A
+subclass that declares a new `schema_response` gets new `schema_list_params`. A
+view without a schema builds it from `model`, so there a new `model` counts as a
+new `schema`. A class that Restly generates for the subclass is not a change of
+its own, so it does not replace a class that the base declares.
 
 The list params are also built from `pagination`, the list settings such as
 `include_filters` and `sort_query_param`, and the filter methods. A subclass

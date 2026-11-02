@@ -774,10 +774,12 @@ these steps:
    each request.
 4. It calls
    {meth}`before_include_view() <fastapi_restly.views.BaseRestView.before_include_view>`.
-   On a CRUD view, this builds the schemas that the view does not declare and
-   the {attr}`schema_list_params <fastapi_restly.views.BaseRestView.schema_list_params>`.
-   It sets the item path from `id_type`, fills in the types of the endpoint
-   methods, and removes the route marker of each excluded route.
+   On a CRUD view, this reads the schemas and the
+   {attr}`schema_list_params <fastapi_restly.views.BaseRestView.schema_list_params>`,
+   and checks them. Restly builds a class that the view does not declare at the
+   first read, also before registration. It sets the item path from `id_type`,
+   fills in the types of the endpoint methods, and removes the route marker of
+   each excluded route.
 5. It turns the dependency attributes into keyword parameters of the view's
    `__init__`. FastAPI then resolves them, and the new instance stores them.
 6. It builds an `APIRouter`. The prefix joins the prefixes of all classes in

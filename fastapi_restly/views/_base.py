@@ -65,23 +65,14 @@ from ..exc import NotFound, RestlyConfigurationError, RestlySkippedFilterMethods
 from ..objects import snapshot as _object_snapshot
 from ..query._impl import _OwnFilter, _query_settings, _record_of
 from ..query._shared import SortNulls
-from ..schemas import BaseSchema, derive_schema_list_response, derive_schema_response
-from ..schemas._base import (
-    _as_response,
-    _response_adapter,
-    _schema_resource_name,
-    create_model_with_optional_fields,
-    create_model_without_read_only_fields,
-)
-from ..schemas._generator import derive_schema
+from ..schemas import BaseSchema, derive_schema_list_response
+from ..schemas._base import _as_response, _response_adapter, _schema_resource_name
 from ._generated import (
-    _derive_view_list_params,
-    _generated_primary_key_fields,
+    _DEFAULT_SETTINGS,
+    _drop_stale_settings,
     _is_paged_list_params,
-    _mark_generated,
-    _needs_generating,
     _schema_list_params,
-    _schema_response,
+    _uses_default,
 )
 from ._guards import (
     _FINAL_HANDLERS,
@@ -123,7 +114,7 @@ from ._reads import (
     _reject_bad_row_identity,
     _rows_reload_statements,
 )
-from ._view_types import _fill_view_types, _view_types
+from ._view_types import SchemaType, _fill_view_types
 
 # Unbound: a mapped class need not subclass DeclarativeBase (a SQLModel table,
 # an imperative mapping). ``BaseRestView`` checks the mapping at class definition.
@@ -496,7 +487,7 @@ class BaseRestView(
     #: and :attr:`schema_update` from it. When a view sets none, Restly
     #: generates it from :attr:`model` with
     #: :func:`~fastapi_restly.schemas.derive_schema`.
-    schema: ClassVar[type[pydantic.BaseModel]]
+    schema: ClassVar[type[pydantic.BaseModel]] = _DEFAULT_SETTINGS["schema"]
     #: The class of everything that goes out: the single responses, the
     #: items of the list response, and the fields the list params filter and
     #: sort on. The relationships it names are the ones the view loads. When
@@ -504,18 +495,24 @@ class BaseRestView(
     #: :func:`~fastapi_restly.schemas.derive_schema_response`: the view's
     #: schema without its ``WriteOnly`` fields, named ``<Resource>Response``.
     #: A class that a view sets is used as it is.
-    schema_response: ClassVar[type[pydantic.BaseModel]]
+    schema_response: ClassVar[type[pydantic.BaseModel]] = _DEFAULT_SETTINGS[
+        "schema_response"
+    ]
     #: The class of the ``POST`` body. When a view sets none, Restly builds
     #: it from the view's schema without its ``ReadOnly`` fields and without
     #: a primary key that the server generates. It is named
     #: ``<Resource>Create``. A class that a view sets is used as it is.
-    schema_create: ClassVar[type[pydantic.BaseModel]]
+    schema_create: ClassVar[type[pydantic.BaseModel]] = _DEFAULT_SETTINGS[
+        "schema_create"
+    ]
     #: The class of the ``PATCH`` body. When a view sets none, Restly builds
     #: it from the view's schema without its ``ReadOnly`` fields and without
     #: a primary key that the server generates, and makes every other field
     #: optional. It is named ``<Resource>Update``. A class that a view sets
     #: is used as it is.
-    schema_update: ClassVar[type[pydantic.BaseModel]]
+    schema_update: ClassVar[type[pydantic.BaseModel]] = _DEFAULT_SETTINGS[
+        "schema_update"
+    ]
     #: The SQLAlchemy model that the view serves: a mapped class. A view that
     #: you register needs it. A class that is not mapped raises
     #: :class:`~fastapi_restly.exc.RestlyConfigurationError` when Python
@@ -622,7 +619,9 @@ class BaseRestView(
     #: ``GET /``, so a custom list route (a trash route naming its own scope)
     #: reads the same list params. The route can take other query parameters
     #: beside it.
-    schema_list_params: ClassVar[type[pydantic.BaseModel]]
+    schema_list_params: ClassVar[type[pydantic.BaseModel]] = _DEFAULT_SETTINGS[
+        "schema_list_params"
+    ]
 
     #: The ``fastapi.Request`` of the current request, which Restly sets for
     #: each request. After :func:`include_view`, a view that you create
@@ -646,6 +645,7 @@ class BaseRestView(
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
         super().__init_subclass__(**kwargs)
+        _drop_stale_settings(cls)
         _reject_bare_verb_route_names(cls)
         # validate at class definition, so a raw expression fails at
         # import instead of on the first read
@@ -841,7 +841,7 @@ class BaseRestView(
         page.
         """
         return _build_relationship_loader_options(
-            self.model, _schema_response(type(self))
+            self.model, type(self).schema_response
         )
 
     def _get_reload_statements(self, subject: Any, others: list[Any]) -> list[Any]:
@@ -993,7 +993,7 @@ class BaseRestView(
         class, so a strict ``float`` field reads the text ``"NaN"`` that a
         JSON column stores.
         """
-        schema_response = _schema_response(type(self))
+        schema_response = type(self).schema_response
         response = _as_response(schema_response, obj)
         if isinstance(response, schema_response):
             return cast(ResponseSchemaT, response)
@@ -1024,7 +1024,7 @@ class BaseRestView(
     def _single_response(self, obj: Any) -> pydantic.BaseModel:
         """One object as an instance of the response class. An override of
         :meth:`to_single_response` may return an instance of another model."""
-        return _as_response(_schema_response(type(self)), self.to_single_response(obj))
+        return _as_response(type(self).schema_response, self.to_single_response(obj))
 
     @staticmethod
     def _to_query_params(list_params: Any) -> QueryParams:
@@ -1057,7 +1057,7 @@ class BaseRestView(
         data = [self._single_response(obj) for obj in list_result.objects]
         pagination = self.pagination
         envelope = derive_schema_list_response(
-            _schema_response(type(self)), pagination=pagination
+            type(self).schema_response, pagination=pagination
         )
         if not isinstance(pagination, NumberedPagination):
             return _build_envelope(envelope, _unpaginated_page_info(data))
@@ -1104,6 +1104,26 @@ class BaseRestView(
         return _object_snapshot(obj)
 
     @classmethod
+    def _check_schema_settings(cls) -> None:
+        """Each schema setting holds a Pydantic class, or a function that gives
+        one. Another value would fail only on a request, or not at all."""
+        for name in _DEFAULT_SETTINGS:
+            value = getattr(cls, name)
+            if isinstance(value, type) and issubclass(value, pydantic.BaseModel):
+                continue
+            if isinstance(inspect.getattr_static(cls, name), SchemaType):
+                raise RestlyConfigurationError(
+                    f"The SchemaType function of {cls.__name__}.{name} must "
+                    f"return a Pydantic class, but it returned {value!r}. A route "
+                    "can use another type: put the SchemaType in the annotation "
+                    "of the route."
+                )
+            raise RestlyConfigurationError(
+                f"{cls.__name__}.{name} must be a Pydantic class or a "
+                f"fastapi_restly.views.SchemaType, got {value!r}."
+            )
+
+    @classmethod
     def _check_declared_schema_list_params(cls) -> None:
         """Reject declared list params that do not follow the view's settings.
 
@@ -1137,42 +1157,19 @@ class BaseRestView(
         _check_pagination_setting(cls)
         _check_renamed_names(cls)
 
-        # A declared schema is inherited like any attribute. One that Restly
-        # generated for a parent is rebuilt, since the subclass may change
-        # what it was derived from.
-        if _needs_generating(cls, "schema"):
-            if not hasattr(cls, "model"):
+        if not hasattr(cls, "model"):
+            if _uses_default(cls, "schema"):
                 raise ValueError(
                     f"'{cls.__name__}.model' must be specified to auto-generate schema"
                 )
-            cls.schema = derive_schema(cls.model)
-            _mark_generated(cls, "schema")
-
-        if _needs_generating(cls, "schema_response"):
-            cls.schema_response = derive_schema_response(cls.schema)
-            _mark_generated(cls, "schema_response")
-
-        if _needs_generating(cls, "schema_list_params"):
-            cls.schema_list_params = _derive_view_list_params(cls)
-            _mark_generated(cls, "schema_list_params")
-        else:
+            if _uses_default(cls, "schema_list_params"):
+                raise ValueError(
+                    f"'{cls.__name__}.model' must be specified: it is needed to "
+                    "generate the list params."
+                )
+        cls._check_schema_settings()
+        if not _uses_default(cls, "schema_list_params"):
             cls._check_declared_schema_list_params()
-        if _needs_generating(cls, "schema_create"):
-            cls.schema_create = cast(
-                type[CreateSchemaT],
-                create_model_without_read_only_fields(
-                    cls.schema, omit=_generated_primary_key_fields(cls.model)
-                ),
-            )
-            _mark_generated(cls, "schema_create")
-        if _needs_generating(cls, "schema_update"):
-            cls.schema_update = cast(
-                type[UpdateSchemaT],
-                create_model_with_optional_fields(
-                    cls.schema, omit=_generated_primary_key_fields(cls.model)
-                ),
-            )
-            _mark_generated(cls, "schema_update")
 
         # Every route that declares ``list_params`` takes the view's list
         # params: ``GET /`` and any custom list route alike, guarded the same
@@ -1185,7 +1182,6 @@ class BaseRestView(
         list_params = Annotated[
             params_model, fastapi.Depends(_list_params_dependency(params_model))
         ]
-        view_types = _view_types(cls)
         for name, route in list(cls.__dict__.items()):
             if not hasattr(route, "_api_route_args"):
                 continue
@@ -1194,7 +1190,7 @@ class BaseRestView(
             ):
                 route = _guard_list_params(route)
                 setattr(cls, name, route)
-            _fill_view_types(route, view_types, list_params)
+            _fill_view_types(route, cls, list_params)
         _check_route_settings(cls)
         _check_composite_key(cls)
 

@@ -13,8 +13,8 @@ GET /users?sort=-created_at,name
 GET /users?page=2&page_size=50
 ```
 
-Restly builds these list params when the view registers. It reads the
-view's response class, and gives each field that maps to a column one filter,
+Restly builds these list params once for each view. It reads the view's
+response class, and gives each field that maps to a column one filter,
 plus filters with an operator suffix such as `__gte`. So a client can filter
 and sort only on the fields that go out. By default the response class is
 the view's schema without its `WriteOnly` fields; see
@@ -1142,7 +1142,7 @@ It is a Pydantic model that
 {func}`derive_schema_list_params(cls.schema_response, cls.model, pagination=cls.pagination) <fastapi_restly.query.derive_schema_list_params>`
 generates, with the view's list settings. It holds the pagination
 parameters, the sort parameter, the filter keys that the settings keep, and
-the view's own keys. Restly builds it once, when the view registers.
+the view's own keys. Restly builds it once for each view.
 
 A route reads the list params through a dependency, not as a FastAPI
 query model. FastAPI splits a query model into separate parameters only when
