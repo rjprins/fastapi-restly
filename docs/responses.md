@@ -245,7 +245,7 @@ annotation or in `response_model=`:
 | the view's response class itself, as in `response_model=ProjectResponse` | a row | the same as for `ResponseSchema` |
 | the view's model, as in `-> Project` | a row | the same as for `ResponseSchema` |
 | `list[Project]` | a list of rows | the same as for `list[ResponseSchema]` |
-| nothing, `response_model=None`, or a type without fields, such as `Any`, `dict` or `dict[str, Any]` | a row of the view's model or a `ListResult`, also inside a dict or a list | the same as for `ResponseSchema` and `ListResponseSchema` |
+| nothing, `response_model=None`, or a type without fields, such as `Any`, `dict` or `dict[str, Any]` | a row of the view's model, a list of rows, a `ListResult`, or a dict with one of these as a value | the same as for `ResponseSchema` and `ListResponseSchema`, and any other value goes out as it is |
 
 Each of these may allow `None`, as in `-> ResponseSchema | None`, and a `None`
 goes out as `null`. Any other value goes out as it is: a dict, an instance
@@ -255,9 +255,12 @@ of a schema, or a `fastapi.Response`. So a route that calls
 A route that declares nothing shows an empty schema in OpenAPI. So declare the
 response when the route has one.
 
-Restly replaces only a row of the view's model. A row of another model goes out
-with each column, as in FastAPI, and so does a row in a field of type `Any` of
-your own class. So do not return such a row if a column holds a secret.
+On such a route, Restly looks at the value itself, at the first item of a list,
+and at the first 20 values of a dict. A row anywhere else goes out with each
+column, as in FastAPI: in `{"a": {"b": row}}`, in a tuple, in the result of
+`session.execute(stmt).all()`, or in a field of type `Any` of your own class. A
+row of another model also goes out with each column. So declare the response if
+a column holds a secret.
 
 :::{admonition} Details
 :class: details

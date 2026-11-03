@@ -6,7 +6,6 @@ endpoint that calls ``super()`` without declaring a response, or a custom route
 that calls an endpoint method, must still send the view's response.
 """
 
-import collections
 import collections.abc
 from collections.abc import Iterator
 from typing import Annotated, Any, get_origin
@@ -21,6 +20,7 @@ from typing_extensions import TypeAliasType
 
 import fastapi_restly as fr
 from fastapi_restly.testing._client import RestlyTestClient
+from fastapi_restly.views._include import _with_view_responses
 
 from ._models import SharedBase
 from .conftest import create_tables
@@ -125,17 +125,13 @@ def test_a_row_inside_a_dict_or_a_list(client, User):
         @fr.get("/{id}/wrapped")
         async def wrapped(self, id: fr.views.IDType):
             row = await self.get_one_endpoint(id)
-            return {"data": row, "others": [row], "pair": (row, 1)}
+            return {"data": row, "others": [row]}
 
     fr.include_view(client.app, View)
     _with_row(client)
 
     row = {"id": 1, "name": "a"}
-    assert client.get("/users/1/wrapped").json() == {
-        "data": row,
-        "others": [row],
-        "pair": [row, 1],
-    }
+    assert client.get("/users/1/wrapped").json() == {"data": row, "others": [row]}
 
 
 @pytest.mark.parametrize("declared", ["none", "any"])
@@ -324,39 +320,101 @@ def test_a_type_with_fields_stays_as_it_is(client, User):
     }
 
 
+def test_a_map_of_many_rows_sends_the_view_response(client, User):
+    """Restly looks at the first values of a dict, whatever its size, so a route
+    does not change with the number of rows."""
+
+    class View(_user_view(User)):
+        @fr.get("/map")
+        async def by_id(self):
+            result = await self.session.scalars(select(self.model))
+            return {row.id: row for row in result.all()}
+
+    fr.include_view(client.app, View)
+    _with_row(client)
+    for index in range(30):
+        client.post("/users", json={"name": f"u{index}", "password": "SECRET"})
+
+    response = client.get("/users/map")
+    assert "SECRET" not in response.text
+    assert len(response.json()) == 31
+
+
+def test_a_dict_with_a_list_of_rows_sends_the_view_response(client, User):
+    class View(_user_view(User)):
+        @fr.get("/wrapped")
+        async def wrapped(self):
+            result = await self.session.scalars(select(self.model))
+            return {"total": 1, "data": result.all()}
+
+    fr.include_view(client.app, View)
+    _with_row(client)
+
+    assert client.get("/users/wrapped").json() == {
+        "total": 1,
+        "data": [{"id": 1, "name": "a"}],
+    }
+
+
+def test_a_list_keeps_an_item_that_is_not_a_row(client, User):
+    class View(_user_view(User)):
+        @fr.get("/mixed")
+        async def mixed(self):
+            return [await self.handle_get_one(1), {"note": "x"}]
+
+    fr.include_view(client.app, View)
+    _with_row(client)
+
+    assert client.get("/users/mixed").json() == [{"id": 1, "name": "a"}, {"note": "x"}]
+
+
 @pytest.mark.parametrize(
     "shape",
-    [set, frozenset, collections.deque, lambda rows: (row for row in rows)],
-    ids=["set", "frozenset", "deque", "generator"],
+    [
+        lambda row: {"a": {"b": row}},
+        lambda row: {"a": [{"b": row}]},
+        lambda row: [{"user": row}],
+        lambda row: [1, row],
+        lambda row: (row,),
+        lambda row: {row},
+        lambda row: (item for item in [row]),
+        lambda row: {**{f"k{index}": index for index in range(20)}, "user": row},
+    ],
+    ids=[
+        "nested-dict",
+        "dict-list-dict",
+        "list-of-dicts",
+        "row-not-first",
+        "tuple",
+        "set",
+        "generator",
+        "dict-value-21",
+    ],
 )
-def test_a_container_of_rows_does_not_send_each_column(client, User, shape):
+def test_what_restly_does_not_look_at_goes_out_as_fastapi_sends_it(client, User, shape):
+    """The docs name these. Restly checks the sensible shapes, and no more."""
+
     class View(_user_view(User)):
-        @fr.get("/all")
-        async def all_rows(self):
-            result = await self.session.scalars(select(self.model))
-            return shape(result.all())
+        @fr.get("/first")
+        async def first(self):
+            return shape(await self.handle_get_one(1))
 
     fr.include_view(client.app, View)
     _with_row(client)
 
-    response = client.get("/users/all")
-    assert "SECRET" not in response.text
-    assert [user["name"] for user in response.json()] == ["a"]
+    assert "SECRET" in client.get("/users/first").text
 
 
-def test_the_mappings_of_a_result_do_not_send_each_column(client, User):
-    class View(_user_view(User)):
-        @fr.get("/all")
-        async def all_rows(self):
-            result = await self.session.execute(select(self.model))
-            return result.mappings().all()
+@pytest.mark.parametrize(
+    "payload",
+    [[{"a": 1}] * 3, {"data": [{"a": 1}]}, {"a": {"b": 1}}, (1, 2), [], {}],
+    ids=str,
+)
+def test_a_payload_without_rows_stays_the_same_object(User, payload):
+    class View:
+        model = User
 
-    fr.include_view(client.app, View)
-    _with_row(client)
-
-    response = client.get("/users/all")
-    assert "SECRET" not in response.text
-    assert [row["User"]["name"] for row in response.json()] == ["a"]
+    assert _with_view_responses(View(), payload) is payload
 
 
 def test_a_list_result_in_a_dict_on_a_react_admin_view_sends_the_items(client, User):

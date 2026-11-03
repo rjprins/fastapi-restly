@@ -8,10 +8,9 @@ with its tags and operation id.
 import dataclasses
 import functools
 import inspect
+import itertools
 import re
-import types
 import warnings
-from collections import deque
 from collections.abc import Iterable, Mapping, Sequence
 from enum import Enum
 from typing import (
@@ -76,8 +75,8 @@ _OPEN_TYPES = (
     Sequence,
     Iterable,
 )
-#: What FastAPI's encoder writes as a list.
-_ENCODED_AS_A_LIST = (list, tuple, set, frozenset, deque, types.GeneratorType)
+#: How many values of a dict Restly looks at for a row.
+_DICT_VALUES_TO_CHECK = 20
 
 
 @overload
@@ -402,7 +401,7 @@ def _with_view_response(
     it is.
 
     A route that declares no response does the same for a row of the view's
-    model and for a ``ListResult``, also inside a dict or a list.
+    model and for a ``ListResult``, see :func:`_with_view_responses`.
     """
     kind, response_model = _view_response_kind(view_cls, endpoint)
     function = inspect.unwrap(endpoint)
@@ -462,27 +461,47 @@ def _with_view_response(
     return wrapped, route_kwargs
 
 
-def _with_view_responses(view: Any, value: Any, nested: bool = False) -> Any:
-    """``value`` with the view's response in place of each row of the view's model
-    and each ``ListResult``, also inside the containers that FastAPI's encoder goes
-    through. A response object cannot go inside a container, so a ``ListResult``
-    there gives its items if ``to_list_response`` returns one, as on a react-admin
-    view."""
+def _with_view_responses(view: Any, value: Any, in_dict: bool = False) -> Any:
+    """``value`` with the view's response in place of a row of the view's model and
+    a ``ListResult``.
+
+    Restly looks at what a route would sensibly return, and no further: the value
+    itself, a list whose first item is a row, and a dict that has one of these in
+    its first values. So a large payload without rows costs nothing, and stays the
+    same object.
+
+    A response object cannot go inside a dict, so a ``ListResult`` there gives its
+    items if ``to_list_response`` returns one, as on a react-admin view.
+    """
     if isinstance(value, view.model):
         return view._single_response(value)
     if isinstance(value, ListResult):
         response = view.to_list_response(value)
-        if nested and isinstance(response, Response):
+        if in_dict and isinstance(response, Response):
             return [view._single_response(row) for row in value.objects]
         return response
-    if isinstance(value, Mapping):
+    if _is_list_of_rows(view, value):
+        return [
+            view._single_response(item) if isinstance(item, view.model) else item
+            for item in value
+        ]
+    if (
+        not in_dict
+        and isinstance(value, dict)
+        and any(
+            isinstance(item, (view.model, ListResult)) or _is_list_of_rows(view, item)
+            for item in itertools.islice(value.values(), _DICT_VALUES_TO_CHECK)
+        )
+    ):
         return {
-            key: _with_view_responses(view, item, nested=True)
+            key: _with_view_responses(view, item, in_dict=True)
             for key, item in value.items()
         }
-    if isinstance(value, _ENCODED_AS_A_LIST):
-        return [_with_view_responses(view, item, nested=True) for item in value]
     return value
+
+
+def _is_list_of_rows(view: Any, value: Any) -> bool:
+    return isinstance(value, list) and bool(value) and isinstance(value[0], view.model)
 
 
 def _is_row(value: Any) -> bool:

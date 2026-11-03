@@ -39,8 +39,9 @@ marked "Silent" gives no error when you miss it.
    result gets a row, not the response. Call `to_single_response` or
    `to_list_response` if you need the response, also in a test.
 6. Silent: a route that declares no response, or a type without fields such as
-   `dict[str, Any]`, and returns a row of the view's model, also inside a dict or a
-   list, sends the fields of the response class. Before, FastAPI sent each column
+   `dict[str, Any]`, and returns a row of the view's model, a list of rows, or a
+   dict with these as values, sends the fields of the response class. A row further
+   down still goes out as FastAPI sends it. Before, FastAPI sent each column
    of the row, also a `WriteOnly` column. To send more fields, declare a class. In
    async code, a relationship that the response class names and your own `select`
    did not load now raises `MissingGreenlet`, so load it.
