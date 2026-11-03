@@ -33,7 +33,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=643d5ecc" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=ea69bafe" />
   
   <!-- So that users can add custom icons -->
   <script defer src="_static/scripts/fontawesome.js?digest=18bd87630a240e9c25be"></script>
@@ -533,8 +533,8 @@ duplicate unique value, becomes one of these errors too: a <code class="docutils
 view, and the request stops there. If the error comes before the commit,
 Restly does not commit the write.</p>
 <p>Errors do not pass through
-<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_response" title="fastapi_restly.views.BaseRestView.to_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_response</span></code></a>. That
-method shapes only successful responses (see
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_single_response" title="fastapi_restly.views.BaseRestView.to_single_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_single_response</span></code></a>.
+That method shapes only successful responses (see
 <a class="reference internal" href="responses.html"><span class="std std-doc">Responses</span></a>). To change the error body, change the
 exception handlers of the app, as in any FastAPI app.</p>
 <section id="raise-an-http-error">
@@ -692,15 +692,15 @@ catches <code class="docutils literal notranslate"><span class="pre">fr.exc.Conf
                 <span class="n">tag</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
         <span class="k">except</span> <span class="n">fr</span><span class="o">.</span><span class="n">exc</span><span class="o">.</span><span class="n">Conflict</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">fr</span><span class="o">.</span><span class="n">exc</span><span class="o">.</span><span class="n">Conflict</span><span class="p">(</span><span class="sa">f</span><span class="s2">"A tag named </span><span class="si">{</span><span class="n">name</span><span class="si">!r}</span><span class="s2"> already exists"</span><span class="p">)</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_response</span><span class="p">(</span><span class="n">tag</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_single_response</span><span class="p">(</span><span class="n">tag</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Restly rolls back the change of the action that caused the conflict, so the
 route can catch the conflict and write again in the same request; see
 <a class="reference internal" href="lifecycle.html#write-action-error"><span class="std std-ref">When a write action raises</span></a>.</p>
 <p>A <code class="docutils literal notranslate"><span class="pre">null</span></code> reaches the database only when the type of the schema field allows
-<code class="docutils literal notranslate"><span class="pre">None</span></code>. Otherwise validation rejects it first, with <code class="docutils literal notranslate"><span class="pre">422</span></code>, in the create body
-and in the update body; see <a class="reference internal" href="schemas.html#validation"><span class="std std-ref">Validation</span></a>.</p>
+<code class="docutils literal notranslate"><span class="pre">None</span></code>. Otherwise validation rejects it first, with <code class="docutils literal notranslate"><span class="pre">422</span></code>, in the create schema
+and in the update schema; see <a class="reference internal" href="schemas.html#validation"><span class="std std-ref">Validation</span></a>.</p>
 </div>
 </section>
 <section id="change-the-error-body-for-the-whole-app">

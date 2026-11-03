@@ -33,7 +33,7 @@
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=643d5ecc" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=ea69bafe" />
   
   <!-- So that users can add custom icons -->
   <script defer src="../_static/scripts/fontawesome.js?digest=18bd87630a240e9c25be"></script>
@@ -517,8 +517,7 @@ either on a FastAPI app.</p>
 methods. The handler handles the steps, and you override a step:</p>
 <ol class="arabic simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">&lt;verb&gt;_endpoint</span></code>, the endpoint method: the <code class="docutils literal notranslate"><span class="pre">&#64;route</span></code>, FastAPI
-signature, <code class="docutils literal notranslate"><span class="pre">response_model</span></code>, and <code class="docutils literal notranslate"><span class="pre">to_response</span></code>. Replace only to change
-the HTTP contract.</p></li>
+signature and <code class="docutils literal notranslate"><span class="pre">response_model</span></code>. Replace only to change the HTTP contract.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code>, the handler: handles the steps, <code class="docutils literal notranslate"><span class="pre">authorize</span></code>, the
 load or the business method, and the commit bracket
 (<code class="docutils literal notranslate"><span class="pre">before_action_commit</span></code> -&gt; commit -&gt; <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code>). Final:
@@ -533,7 +532,8 @@ flush.</p></li>
 <p>Cross-cutting seams: <code class="docutils literal notranslate"><span class="pre">scope</span></code> (read visibility), <code class="docutils literal notranslate"><span class="pre">where_id</span></code> (the row an
 id names), <code class="docutils literal notranslate"><span class="pre">not_found</span></code> (the error for a missing row),
 <code class="docutils literal notranslate"><span class="pre">get_loader_options</span></code> (what a read loads), <code class="docutils literal notranslate"><span class="pre">authorize</span></code> (policy),
-<code class="docutils literal notranslate"><span class="pre">apply_list_params</span></code> (list params), <code class="docutils literal notranslate"><span class="pre">to_response</span></code> (response shape),
+<code class="docutils literal notranslate"><span class="pre">apply_list_params</span></code> (list params), <code class="docutils literal notranslate"><span class="pre">to_single_response</span></code> and
+<code class="docutils literal notranslate"><span class="pre">to_list_response</span></code> (the response),
 <code class="docutils literal notranslate"><span class="pre">write_action</span></code> (custom write actions), <code class="docutils literal notranslate"><span class="pre">shared_write_action_commit</span></code>
 (one commit over several writes). After a write business method, the
 commit bracket saves: it adds a new object, flushes, refreshes the object
@@ -558,8 +558,7 @@ Basic usage:</p>
 in the docs):</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">&lt;verb&gt;_endpoint</span></code>: the endpoint method. Owns the HTTP signature,
-<code class="docutils literal notranslate"><span class="pre">response_model</span></code>, and <code class="docutils literal notranslate"><span class="pre">to_response</span></code>. Override it to change the
-HTTP contract.</p></li>
+and <code class="docutils literal notranslate"><span class="pre">response_model</span></code>. Override it to change the HTTP contract.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code>: the handler. Handles the steps: <code class="docutils literal notranslate"><span class="pre">authorize</span></code>, the
 load or the business method, and the commit bracket
 (<code class="docutils literal notranslate"><span class="pre">before_action_commit</span></code> -&gt; commit -&gt; <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code>);
@@ -585,42 +584,43 @@ annotation; see <a class="reference internal" href="../database.html#session-dep
 
 <dl class="py method">
 <dt class="sig sig-object py" id="fastapi_restly.views.RestView.get_many_endpoint">
-<span class="sig-name descname"><span class="pre">get_many_endpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">list_params</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.15)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#fastapi_restly.views.ViewListResponse" title="fastapi_restly.views.ViewListResponse"><span class="pre">ViewListResponse</span></a></span></span><a class="headerlink" href="#fastapi_restly.views.RestView.get_many_endpoint" title="Link to this definition">#</a></dt>
-<dd><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code> endpoint method. Put the rows in <code class="docutils literal notranslate"><span class="pre">scope</span></code>, the list
-params in <code class="docutils literal notranslate"><span class="pre">apply_list_params</span></code>, and the response shape in
-<code class="docutils literal notranslate"><span class="pre">to_response</span></code>; replace this method only to change the HTTP
+<span class="sig-name descname"><span class="pre">get_many_endpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">list_params</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.15)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#fastapi_restly.views.ListResponseSchema" title="fastapi_restly.views.ListResponseSchema"><span class="pre">ListResponseSchema</span></a></span></span><a class="headerlink" href="#fastapi_restly.views.RestView.get_many_endpoint" title="Link to this definition">#</a></dt>
+<dd><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code> endpoint method. Put the rows in <code class="docutils literal notranslate"><span class="pre">scope</span></code>, and the list
+params in <code class="docutils literal notranslate"><span class="pre">apply_list_params</span></code>. Restly builds the response with
+<code class="docutils literal notranslate"><span class="pre">to_list_response</span></code>. Replace this method only to change the HTTP
 contract.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="fastapi_restly.views.RestView.get_one_endpoint">
-<span class="sig-name descname"><span class="pre">get_one_endpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#fastapi_restly.views.ViewID" title="fastapi_restly.views.ViewID"><span class="pre">ViewID</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#fastapi_restly.views.ViewResponse" title="fastapi_restly.views.ViewResponse"><span class="pre">ViewResponse</span></a></span></span><a class="headerlink" href="#fastapi_restly.views.RestView.get_one_endpoint" title="Link to this definition">#</a></dt>
-<dd><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/{id}</span></code> endpoint method. Put the rows in <code class="docutils literal notranslate"><span class="pre">scope</span></code>, the
-lookup of the id in <code class="docutils literal notranslate"><span class="pre">where_id</span></code>, and the response shape in
-<code class="docutils literal notranslate"><span class="pre">to_response</span></code>; replace this method only to change the HTTP
+<span class="sig-name descname"><span class="pre">get_one_endpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#fastapi_restly.views.IDType" title="fastapi_restly.views.IDType"><span class="pre">IDType</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#fastapi_restly.views.ResponseSchema" title="fastapi_restly.views.ResponseSchema"><span class="pre">ResponseSchema</span></a></span></span><a class="headerlink" href="#fastapi_restly.views.RestView.get_one_endpoint" title="Link to this definition">#</a></dt>
+<dd><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/{id}</span></code> endpoint method. Put the rows in <code class="docutils literal notranslate"><span class="pre">scope</span></code>, and the
+lookup of the id in <code class="docutils literal notranslate"><span class="pre">where_id</span></code>. Restly builds the response with
+<code class="docutils literal notranslate"><span class="pre">to_single_response</span></code>. Replace this method only to change the HTTP
 contract.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="fastapi_restly.views.RestView.create_endpoint">
-<span class="sig-name descname"><span class="pre">create_endpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#fastapi_restly.views.ViewCreate" title="fastapi_restly.views.ViewCreate"><span class="pre">ViewCreate</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#fastapi_restly.views.ViewResponse" title="fastapi_restly.views.ViewResponse"><span class="pre">ViewResponse</span></a></span></span><a class="headerlink" href="#fastapi_restly.views.RestView.create_endpoint" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">create_endpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#fastapi_restly.views.CreateSchema" title="fastapi_restly.views.CreateSchema"><span class="pre">CreateSchema</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#fastapi_restly.views.ResponseSchema" title="fastapi_restly.views.ResponseSchema"><span class="pre">ResponseSchema</span></a></span></span><a class="headerlink" href="#fastapi_restly.views.RestView.create_endpoint" title="Link to this definition">#</a></dt>
 <dd><p><code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/</span></code> endpoint method. Override <code class="docutils literal notranslate"><span class="pre">create</span></code> for domain
-logic (it is commit-free; the handler owns the commit),
-<code class="docutils literal notranslate"><span class="pre">to_response</span></code> for the response shape; replace this method only to
+logic (it is commit-free; the handler owns the commit). Restly builds
+the response with <code class="docutils literal notranslate"><span class="pre">to_single_response</span></code>. Replace this method only to
 change the HTTP contract.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="fastapi_restly.views.RestView.update_endpoint">
-<span class="sig-name descname"><span class="pre">update_endpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#fastapi_restly.views.ViewID" title="fastapi_restly.views.ViewID"><span class="pre">ViewID</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#fastapi_restly.views.ViewUpdate" title="fastapi_restly.views.ViewUpdate"><span class="pre">ViewUpdate</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#fastapi_restly.views.ViewResponse" title="fastapi_restly.views.ViewResponse"><span class="pre">ViewResponse</span></a></span></span><a class="headerlink" href="#fastapi_restly.views.RestView.update_endpoint" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">update_endpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#fastapi_restly.views.IDType" title="fastapi_restly.views.IDType"><span class="pre">IDType</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#fastapi_restly.views.UpdateSchema" title="fastapi_restly.views.UpdateSchema"><span class="pre">UpdateSchema</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#fastapi_restly.views.ResponseSchema" title="fastapi_restly.views.ResponseSchema"><span class="pre">ResponseSchema</span></a></span></span><a class="headerlink" href="#fastapi_restly.views.RestView.update_endpoint" title="Link to this definition">#</a></dt>
 <dd><p><code class="docutils literal notranslate"><span class="pre">PATCH</span> <span class="pre">/{id}</span></code> endpoint method. Override <code class="docutils literal notranslate"><span class="pre">update</span></code> for
-domain logic, <code class="docutils literal notranslate"><span class="pre">to_response</span></code> for the response shape; replace this
-method only to change the HTTP contract.</p>
+domain logic. Restly builds the response with
+<code class="docutils literal notranslate"><span class="pre">to_single_response</span></code>. Replace this method only to change the HTTP
+contract.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="fastapi_restly.views.RestView.delete_endpoint">
-<span class="sig-name descname"><span class="pre">delete_endpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#fastapi_restly.views.ViewID" title="fastapi_restly.views.ViewID"><span class="pre">ViewID</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://fastapi.tiangolo.com/reference/response/#fastapi.Response" title="(in FastAPI v0.0.0)"><span class="pre">Response</span></a></span></span><a class="headerlink" href="#fastapi_restly.views.RestView.delete_endpoint" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">delete_endpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#fastapi_restly.views.IDType" title="fastapi_restly.views.IDType"><span class="pre">IDType</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://fastapi.tiangolo.com/reference/response/#fastapi.Response" title="(in FastAPI v0.0.0)"><span class="pre">Response</span></a></span></span><a class="headerlink" href="#fastapi_restly.views.RestView.delete_endpoint" title="Link to this definition">#</a></dt>
 <dd><p><code class="docutils literal notranslate"><span class="pre">DELETE</span> <span class="pre">/{id}</span></code> endpoint method. Override <code class="docutils literal notranslate"><span class="pre">delete</span></code> for
 domain logic (e.g. soft delete); replace this method only to change the
 HTTP contract (e.g. return the deleted object instead of 204).</p>
@@ -853,7 +853,7 @@ each row.</p>
 <li><p><strong>list_params</strong> – the list params (filter, sort, page) as the
 endpoint receives them. A <code class="docutils literal notranslate"><span class="pre">QueryParams</span></code> or a mapping goes
 through
-<a class="reference internal" href="#fastapi_restly.views.BaseRestView.schema_list_params" title="fastapi_restly.views.BaseRestView.schema_list_params"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_list_params</span></code></a>
+<a class="reference internal" href="#fastapi_restly.views.BaseRestView.list_params_schema" title="fastapi_restly.views.BaseRestView.list_params_schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">list_params_schema</span></code></a>
 first, as on the list route.</p></li>
 <li><p><strong>scope</strong> – a clause that replaces the view scope for this read;
 <code class="docutils literal notranslate"><span class="pre">fr.clauses.UNSCOPED</span></code> reads unscoped.</p></li>
@@ -952,7 +952,7 @@ delete elsewhere is <code class="docutils literal notranslate"><span class="pre"
 sort, then the page.</p>
 <p>Override for list params of your own; the common case is driven by
 configuration. A <code class="docutils literal notranslate"><span class="pre">QueryParams</span></code> or a mapping goes through
-<a class="reference internal" href="#fastapi_restly.views.BaseRestView.schema_list_params" title="fastapi_restly.views.BaseRestView.schema_list_params"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_list_params</span></code></a> first,
+<a class="reference internal" href="#fastapi_restly.views.BaseRestView.list_params_schema" title="fastapi_restly.views.BaseRestView.list_params_schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">list_params_schema</span></code></a> first,
 as on the list route. In a <code class="docutils literal notranslate"><span class="pre">QueryParams</span></code>, a key that the route
 reads is left out. Any other key that the list params do not have
 raises <code class="docutils literal notranslate"><span class="pre">RequestValidationError</span></code>, as on the list route (see
@@ -969,7 +969,7 @@ no rows to page, such as a count per category with <code class="docutils literal
 Like every custom read route, such a route calls <a class="reference internal" href="#fastapi_restly.views.RestView.authorize" title="fastapi_restly.views.RestView.authorize"><code class="xref py py-meth docutils literal notranslate"><span class="pre">authorize()</span></code></a>
 and starts from <a class="reference internal" href="#fastapi_restly.views.BaseRestView.select" title="fastapi_restly.views.BaseRestView.select"><code class="xref py py-meth docutils literal notranslate"><span class="pre">select()</span></code></a>, which applies the scope. <a class="reference internal" href="#fastapi_restly.views.RestView.apply_list_params" title="fastapi_restly.views.RestView.apply_list_params"><code class="xref py py-meth docutils literal notranslate"><span class="pre">apply_list_params()</span></code></a> calls this
 method first. A <code class="docutils literal notranslate"><span class="pre">QueryParams</span></code> or a mapping goes through
-<a class="reference internal" href="#fastapi_restly.views.BaseRestView.schema_list_params" title="fastapi_restly.views.BaseRestView.schema_list_params"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_list_params</span></code></a> first,
+<a class="reference internal" href="#fastapi_restly.views.BaseRestView.list_params_schema" title="fastapi_restly.views.BaseRestView.list_params_schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">list_params_schema</span></code></a> first,
 as on the list route. In a <code class="docutils literal notranslate"><span class="pre">QueryParams</span></code>, a key that the route
 reads is left out. Any other key that the list params do not have
 raises <code class="docutils literal notranslate"><span class="pre">RequestValidationError</span></code>, as on the list route (see
@@ -1053,8 +1053,7 @@ Basic usage:</p>
 in the docs):</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">&lt;verb&gt;_endpoint</span></code>: the endpoint method. Owns the HTTP signature,
-<code class="docutils literal notranslate"><span class="pre">response_model</span></code>, and <code class="docutils literal notranslate"><span class="pre">to_response</span></code>. Override it to change the
-HTTP contract.</p></li>
+and <code class="docutils literal notranslate"><span class="pre">response_model</span></code>. Override it to change the HTTP contract.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code>: the handler. Handles the steps: <code class="docutils literal notranslate"><span class="pre">authorize</span></code>, the
 load or the business method, and the commit bracket
 (<code class="docutils literal notranslate"><span class="pre">before_action_commit</span></code> -&gt; commit -&gt; <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code>);
@@ -1080,42 +1079,43 @@ annotation; see <a class="reference internal" href="../database.html#session-dep
 
 <dl class="py method">
 <dt class="sig sig-object py" id="fastapi_restly.views.AsyncRestView.get_many_endpoint">
-<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_many_endpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">list_params</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.15)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#fastapi_restly.views.ViewListResponse" title="fastapi_restly.views.ViewListResponse"><span class="pre">ViewListResponse</span></a></span></span><a class="headerlink" href="#fastapi_restly.views.AsyncRestView.get_many_endpoint" title="Link to this definition">#</a></dt>
-<dd><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code> endpoint method. Put the rows in <code class="docutils literal notranslate"><span class="pre">scope</span></code>, the list
-params in <code class="docutils literal notranslate"><span class="pre">apply_list_params</span></code>, and the response shape in
-<code class="docutils literal notranslate"><span class="pre">to_response</span></code>; replace this method only to change the HTTP
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_many_endpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">list_params</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.15)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#fastapi_restly.views.ListResponseSchema" title="fastapi_restly.views.ListResponseSchema"><span class="pre">ListResponseSchema</span></a></span></span><a class="headerlink" href="#fastapi_restly.views.AsyncRestView.get_many_endpoint" title="Link to this definition">#</a></dt>
+<dd><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code> endpoint method. Put the rows in <code class="docutils literal notranslate"><span class="pre">scope</span></code>, and the list
+params in <code class="docutils literal notranslate"><span class="pre">apply_list_params</span></code>. Restly builds the response with
+<code class="docutils literal notranslate"><span class="pre">to_list_response</span></code>. Replace this method only to change the HTTP
 contract.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="fastapi_restly.views.AsyncRestView.get_one_endpoint">
-<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_one_endpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#fastapi_restly.views.ViewID" title="fastapi_restly.views.ViewID"><span class="pre">ViewID</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#fastapi_restly.views.ViewResponse" title="fastapi_restly.views.ViewResponse"><span class="pre">ViewResponse</span></a></span></span><a class="headerlink" href="#fastapi_restly.views.AsyncRestView.get_one_endpoint" title="Link to this definition">#</a></dt>
-<dd><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/{id}</span></code> endpoint method. Put the rows in <code class="docutils literal notranslate"><span class="pre">scope</span></code>, the
-lookup of the id in <code class="docutils literal notranslate"><span class="pre">where_id</span></code>, and the response shape in
-<code class="docutils literal notranslate"><span class="pre">to_response</span></code>; replace this method only to change the HTTP
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_one_endpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#fastapi_restly.views.IDType" title="fastapi_restly.views.IDType"><span class="pre">IDType</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#fastapi_restly.views.ResponseSchema" title="fastapi_restly.views.ResponseSchema"><span class="pre">ResponseSchema</span></a></span></span><a class="headerlink" href="#fastapi_restly.views.AsyncRestView.get_one_endpoint" title="Link to this definition">#</a></dt>
+<dd><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/{id}</span></code> endpoint method. Put the rows in <code class="docutils literal notranslate"><span class="pre">scope</span></code>, and the
+lookup of the id in <code class="docutils literal notranslate"><span class="pre">where_id</span></code>. Restly builds the response with
+<code class="docutils literal notranslate"><span class="pre">to_single_response</span></code>. Replace this method only to change the HTTP
 contract.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="fastapi_restly.views.AsyncRestView.create_endpoint">
-<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">create_endpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#fastapi_restly.views.ViewCreate" title="fastapi_restly.views.ViewCreate"><span class="pre">ViewCreate</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#fastapi_restly.views.ViewResponse" title="fastapi_restly.views.ViewResponse"><span class="pre">ViewResponse</span></a></span></span><a class="headerlink" href="#fastapi_restly.views.AsyncRestView.create_endpoint" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">create_endpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#fastapi_restly.views.CreateSchema" title="fastapi_restly.views.CreateSchema"><span class="pre">CreateSchema</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#fastapi_restly.views.ResponseSchema" title="fastapi_restly.views.ResponseSchema"><span class="pre">ResponseSchema</span></a></span></span><a class="headerlink" href="#fastapi_restly.views.AsyncRestView.create_endpoint" title="Link to this definition">#</a></dt>
 <dd><p><code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/</span></code> endpoint method. Override <code class="docutils literal notranslate"><span class="pre">create</span></code> for domain
-logic (it is commit-free; the handler owns the commit),
-<code class="docutils literal notranslate"><span class="pre">to_response</span></code> for the response shape; replace this method only to
+logic (it is commit-free; the handler owns the commit). Restly builds
+the response with <code class="docutils literal notranslate"><span class="pre">to_single_response</span></code>. Replace this method only to
 change the HTTP contract.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="fastapi_restly.views.AsyncRestView.update_endpoint">
-<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">update_endpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#fastapi_restly.views.ViewID" title="fastapi_restly.views.ViewID"><span class="pre">ViewID</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#fastapi_restly.views.ViewUpdate" title="fastapi_restly.views.ViewUpdate"><span class="pre">ViewUpdate</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#fastapi_restly.views.ViewResponse" title="fastapi_restly.views.ViewResponse"><span class="pre">ViewResponse</span></a></span></span><a class="headerlink" href="#fastapi_restly.views.AsyncRestView.update_endpoint" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">update_endpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#fastapi_restly.views.IDType" title="fastapi_restly.views.IDType"><span class="pre">IDType</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#fastapi_restly.views.UpdateSchema" title="fastapi_restly.views.UpdateSchema"><span class="pre">UpdateSchema</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#fastapi_restly.views.ResponseSchema" title="fastapi_restly.views.ResponseSchema"><span class="pre">ResponseSchema</span></a></span></span><a class="headerlink" href="#fastapi_restly.views.AsyncRestView.update_endpoint" title="Link to this definition">#</a></dt>
 <dd><p><code class="docutils literal notranslate"><span class="pre">PATCH</span> <span class="pre">/{id}</span></code> endpoint method. Override <code class="docutils literal notranslate"><span class="pre">update</span></code> for
-domain logic, <code class="docutils literal notranslate"><span class="pre">to_response</span></code> for the response shape; replace this
-method only to change the HTTP contract.</p>
+domain logic. Restly builds the response with
+<code class="docutils literal notranslate"><span class="pre">to_single_response</span></code>. Replace this method only to change the HTTP
+contract.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="fastapi_restly.views.AsyncRestView.delete_endpoint">
-<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">delete_endpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#fastapi_restly.views.ViewID" title="fastapi_restly.views.ViewID"><span class="pre">ViewID</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://fastapi.tiangolo.com/reference/response/#fastapi.Response" title="(in FastAPI v0.0.0)"><span class="pre">Response</span></a></span></span><a class="headerlink" href="#fastapi_restly.views.AsyncRestView.delete_endpoint" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">delete_endpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#fastapi_restly.views.IDType" title="fastapi_restly.views.IDType"><span class="pre">IDType</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://fastapi.tiangolo.com/reference/response/#fastapi.Response" title="(in FastAPI v0.0.0)"><span class="pre">Response</span></a></span></span><a class="headerlink" href="#fastapi_restly.views.AsyncRestView.delete_endpoint" title="Link to this definition">#</a></dt>
 <dd><p><code class="docutils literal notranslate"><span class="pre">DELETE</span> <span class="pre">/{id}</span></code> endpoint method. Override <code class="docutils literal notranslate"><span class="pre">delete</span></code> for
 domain logic (e.g. soft delete); replace this method only to change the
 HTTP contract (e.g. return the deleted object instead of 204).</p>
@@ -1348,7 +1348,7 @@ each row.</p>
 <li><p><strong>list_params</strong> – the list params (filter, sort, page) as the
 endpoint receives them. A <code class="docutils literal notranslate"><span class="pre">QueryParams</span></code> or a mapping goes
 through
-<a class="reference internal" href="#fastapi_restly.views.BaseRestView.schema_list_params" title="fastapi_restly.views.BaseRestView.schema_list_params"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_list_params</span></code></a>
+<a class="reference internal" href="#fastapi_restly.views.BaseRestView.list_params_schema" title="fastapi_restly.views.BaseRestView.list_params_schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">list_params_schema</span></code></a>
 first, as on the list route.</p></li>
 <li><p><strong>scope</strong> – a clause that replaces the view scope for this read;
 <code class="docutils literal notranslate"><span class="pre">fr.clauses.UNSCOPED</span></code> reads unscoped.</p></li>
@@ -1448,7 +1448,7 @@ sort, then the page.</p>
 <p>Async, as <a class="reference internal" href="#fastapi_restly.views.AsyncRestView.apply_filters" title="fastapi_restly.views.AsyncRestView.apply_filters"><code class="xref py py-meth docutils literal notranslate"><span class="pre">apply_filters()</span></code></a> is: call it with <code class="docutils literal notranslate"><span class="pre">await</span></code>. Override
 for list params of your own; the common case is driven by
 configuration. A <code class="docutils literal notranslate"><span class="pre">QueryParams</span></code> or a mapping goes through
-<a class="reference internal" href="#fastapi_restly.views.BaseRestView.schema_list_params" title="fastapi_restly.views.BaseRestView.schema_list_params"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_list_params</span></code></a> first,
+<a class="reference internal" href="#fastapi_restly.views.BaseRestView.list_params_schema" title="fastapi_restly.views.BaseRestView.list_params_schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">list_params_schema</span></code></a> first,
 as on the list route. In a <code class="docutils literal notranslate"><span class="pre">QueryParams</span></code>, a key that the route
 reads is left out. Any other key that the list params do not have
 raises <code class="docutils literal notranslate"><span class="pre">RequestValidationError</span></code>, as on the list route (see
@@ -1465,7 +1465,7 @@ no rows to page, such as a count per category with <code class="docutils literal
 Like every custom read route, such a route calls <a class="reference internal" href="#fastapi_restly.views.AsyncRestView.authorize" title="fastapi_restly.views.AsyncRestView.authorize"><code class="xref py py-meth docutils literal notranslate"><span class="pre">authorize()</span></code></a>
 and starts from <a class="reference internal" href="#fastapi_restly.views.BaseRestView.select" title="fastapi_restly.views.BaseRestView.select"><code class="xref py py-meth docutils literal notranslate"><span class="pre">select()</span></code></a>, which applies the scope. <a class="reference internal" href="#fastapi_restly.views.AsyncRestView.apply_list_params" title="fastapi_restly.views.AsyncRestView.apply_list_params"><code class="xref py py-meth docutils literal notranslate"><span class="pre">apply_list_params()</span></code></a> calls this
 method first. A <code class="docutils literal notranslate"><span class="pre">QueryParams</span></code> or a mapping goes through
-<a class="reference internal" href="#fastapi_restly.views.BaseRestView.schema_list_params" title="fastapi_restly.views.BaseRestView.schema_list_params"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_list_params</span></code></a> first,
+<a class="reference internal" href="#fastapi_restly.views.BaseRestView.list_params_schema" title="fastapi_restly.views.BaseRestView.list_params_schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">list_params_schema</span></code></a> first,
 as on the list route. In a <code class="docutils literal notranslate"><span class="pre">QueryParams</span></code>, a key that the route
 reads is left out. Any other key that the list params do not have
 raises <code class="docutils literal notranslate"><span class="pre">RequestValidationError</span></code>, as on the list route (see
@@ -1542,10 +1542,10 @@ an outbox row in <code class="docutils literal notranslate"><span class="pre">be
 with ra-data-simple-rest.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="fastapi_restly.views.AsyncReactAdminView.get_many_endpoint">
-<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_many_endpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">list_params</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.15)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://fastapi.tiangolo.com/reference/response/#fastapi.Response" title="(in FastAPI v0.0.0)"><span class="pre">Response</span></a></span></span><a class="headerlink" href="#fastapi_restly.views.AsyncReactAdminView.get_many_endpoint" title="Link to this definition">#</a></dt>
-<dd><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code> endpoint method. Put the rows in <code class="docutils literal notranslate"><span class="pre">scope</span></code>, the list
-params in <code class="docutils literal notranslate"><span class="pre">apply_list_params</span></code>, and the response shape in
-<code class="docutils literal notranslate"><span class="pre">to_response</span></code>; replace this method only to change the HTTP
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_many_endpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">list_params</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.15)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#fastapi_restly.views.ListResponseSchema" title="fastapi_restly.views.ListResponseSchema"><span class="pre">ListResponseSchema</span></a></span></span><a class="headerlink" href="#fastapi_restly.views.AsyncReactAdminView.get_many_endpoint" title="Link to this definition">#</a></dt>
+<dd><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code> endpoint method. Put the rows in <code class="docutils literal notranslate"><span class="pre">scope</span></code>, and the list
+params in <code class="docutils literal notranslate"><span class="pre">apply_list_params</span></code>. Restly builds the response with
+<code class="docutils literal notranslate"><span class="pre">to_list_response</span></code>. Replace this method only to change the HTTP
 contract.</p>
 </dd></dl>
 
@@ -1565,21 +1565,21 @@ the range.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="fastapi_restly.views.AsyncReactAdminView.put">
-<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">put</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#fastapi_restly.views.ViewID" title="fastapi_restly.views.ViewID"><span class="pre">ViewID</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#fastapi_restly.views.ViewUpdate" title="fastapi_restly.views.ViewUpdate"><span class="pre">ViewUpdate</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#fastapi_restly.views.ViewResponse" title="fastapi_restly.views.ViewResponse"><span class="pre">ViewResponse</span></a></span></span><a class="headerlink" href="#fastapi_restly.views.AsyncReactAdminView.put" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">put</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#fastapi_restly.views.IDType" title="fastapi_restly.views.IDType"><span class="pre">IDType</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#fastapi_restly.views.UpdateSchema" title="fastapi_restly.views.UpdateSchema"><span class="pre">UpdateSchema</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#fastapi_restly.views.ResponseSchema" title="fastapi_restly.views.ResponseSchema"><span class="pre">ResponseSchema</span></a></span></span><a class="headerlink" href="#fastapi_restly.views.AsyncReactAdminView.put" title="Link to this definition">#</a></dt>
 <dd><p><code class="docutils literal notranslate"><span class="pre">PUT</span> <span class="pre">/{id}</span></code> endpoint method, for react-admin’s <code class="docutils literal notranslate"><span class="pre">update</span></code>. It
 runs the same steps as <code class="docutils literal notranslate"><span class="pre">PATCH</span></code>:
 <a class="reference internal" href="#fastapi_restly.views.AsyncRestView.handle_update" title="fastapi_restly.views.AsyncRestView.handle_update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_update()</span></code></a>, with the
-view’s <code class="docutils literal notranslate"><span class="pre">schema_update</span></code> body. An <code class="docutils literal notranslate"><span class="pre">update</span></code> override changes both
+view’s <code class="docutils literal notranslate"><span class="pre">update_schema</span></code> body. An <code class="docutils literal notranslate"><span class="pre">update</span></code> override changes both
 routes. Replace this method to give <code class="docutils literal notranslate"><span class="pre">PUT</span></code> its own rules; see
 <a class="reference internal" href="../react_admin.html#react-admin-put"><span class="std std-ref">Give PUT its own rules</span></a>.</p>
 </dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="fastapi_restly.views.AsyncReactAdminView.schema_list_params">
-<span class="sig-name descname"><span class="pre">schema_list_params</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ClassVar</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.15)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://pydantic.dev/docs/validation/latest/api/pydantic/base_model/#pydantic.BaseModel" title="(in Pydantic v0.0.0)"><span class="pre">pydantic.BaseModel</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">ReactAdminListParams</span></em><a class="headerlink" href="#fastapi_restly.views.AsyncReactAdminView.schema_list_params" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="fastapi_restly.views.AsyncReactAdminView.list_params_schema">
+<span class="sig-name descname"><span class="pre">list_params_schema</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ClassVar</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.15)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://pydantic.dev/docs/validation/latest/api/pydantic/base_model/#pydantic.BaseModel" title="(in Pydantic v0.0.0)"><span class="pre">pydantic.BaseModel</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">ReactAdminListParams</span></em><a class="headerlink" href="#fastapi_restly.views.AsyncReactAdminView.list_params_schema" title="Link to this definition">#</a></dt>
 <dd><p>The list params (filter, sort, page) as a pydantic model, generated
-from <code class="docutils literal notranslate"><span class="pre">schema_response</span></code> and <code class="docutils literal notranslate"><span class="pre">model</span></code> by
-<a class="reference internal" href="query.html#fastapi_restly.query.derive_schema_list_params" title="fastapi_restly.query.derive_schema_list_params"><code class="xref py py-func docutils literal notranslate"><span class="pre">derive_schema_list_params()</span></code></a>. Any route
+from <code class="docutils literal notranslate"><span class="pre">response_schema</span></code> and <code class="docutils literal notranslate"><span class="pre">model</span></code> by
+<a class="reference internal" href="query.html#fastapi_restly.query.derive_list_params_schema" title="fastapi_restly.query.derive_list_params_schema"><code class="xref py py-func docutils literal notranslate"><span class="pre">derive_list_params_schema()</span></code></a>. Any route
 method on the view that declares a <code class="docutils literal notranslate"><span class="pre">list_params</span></code> parameter takes it:
 typed for FastAPI and OpenAPI, and guarded against unknown keys like
 <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code>, so a custom list route (a trash route naming its own scope)
@@ -1593,6 +1593,12 @@ beside it.</p>
 <dd><p>Only <code class="docutils literal notranslate"><span class="pre">default_page_size</span></code> and <code class="docutils literal notranslate"><span class="pre">max_page_size</span></code> apply: the implicit
 page size when no <code class="docutils literal notranslate"><span class="pre">range</span></code> parameter is sent, and the most rows one
 <code class="docutils literal notranslate"><span class="pre">range</span></code> may ask for. Override per view.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="fastapi_restly.views.AsyncReactAdminView.list_response_schema">
+<span class="sig-name descname"><span class="pre">list_response_schema</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ClassVar</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#fastapi_restly.views.AsyncReactAdminView.list_response_schema" title="Link to this definition">#</a></dt>
+<dd><p>A react-admin list is a JSON array, without an envelope.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -1628,10 +1634,10 @@ are added to FastAPI.</p>
 with ra-data-simple-rest.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="fastapi_restly.views.ReactAdminView.get_many_endpoint">
-<span class="sig-name descname"><span class="pre">get_many_endpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">list_params</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.15)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://fastapi.tiangolo.com/reference/response/#fastapi.Response" title="(in FastAPI v0.0.0)"><span class="pre">Response</span></a></span></span><a class="headerlink" href="#fastapi_restly.views.ReactAdminView.get_many_endpoint" title="Link to this definition">#</a></dt>
-<dd><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code> endpoint method. Put the rows in <code class="docutils literal notranslate"><span class="pre">scope</span></code>, the list
-params in <code class="docutils literal notranslate"><span class="pre">apply_list_params</span></code>, and the response shape in
-<code class="docutils literal notranslate"><span class="pre">to_response</span></code>; replace this method only to change the HTTP
+<span class="sig-name descname"><span class="pre">get_many_endpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">list_params</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.15)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#fastapi_restly.views.ListResponseSchema" title="fastapi_restly.views.ListResponseSchema"><span class="pre">ListResponseSchema</span></a></span></span><a class="headerlink" href="#fastapi_restly.views.ReactAdminView.get_many_endpoint" title="Link to this definition">#</a></dt>
+<dd><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code> endpoint method. Put the rows in <code class="docutils literal notranslate"><span class="pre">scope</span></code>, and the list
+params in <code class="docutils literal notranslate"><span class="pre">apply_list_params</span></code>. Restly builds the response with
+<code class="docutils literal notranslate"><span class="pre">to_list_response</span></code>. Replace this method only to change the HTTP
 contract.</p>
 </dd></dl>
 
@@ -1651,21 +1657,21 @@ the range.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="fastapi_restly.views.ReactAdminView.put">
-<span class="sig-name descname"><span class="pre">put</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#fastapi_restly.views.ViewID" title="fastapi_restly.views.ViewID"><span class="pre">ViewID</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#fastapi_restly.views.ViewUpdate" title="fastapi_restly.views.ViewUpdate"><span class="pre">ViewUpdate</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#fastapi_restly.views.ViewResponse" title="fastapi_restly.views.ViewResponse"><span class="pre">ViewResponse</span></a></span></span><a class="headerlink" href="#fastapi_restly.views.ReactAdminView.put" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">put</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#fastapi_restly.views.IDType" title="fastapi_restly.views.IDType"><span class="pre">IDType</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#fastapi_restly.views.UpdateSchema" title="fastapi_restly.views.UpdateSchema"><span class="pre">UpdateSchema</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#fastapi_restly.views.ResponseSchema" title="fastapi_restly.views.ResponseSchema"><span class="pre">ResponseSchema</span></a></span></span><a class="headerlink" href="#fastapi_restly.views.ReactAdminView.put" title="Link to this definition">#</a></dt>
 <dd><p><code class="docutils literal notranslate"><span class="pre">PUT</span> <span class="pre">/{id}</span></code> endpoint method, for react-admin’s <code class="docutils literal notranslate"><span class="pre">update</span></code>. It
 runs the same steps as <code class="docutils literal notranslate"><span class="pre">PATCH</span></code>:
 <a class="reference internal" href="#fastapi_restly.views.RestView.handle_update" title="fastapi_restly.views.RestView.handle_update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_update()</span></code></a>, with the view’s
-<code class="docutils literal notranslate"><span class="pre">schema_update</span></code> body. An <code class="docutils literal notranslate"><span class="pre">update</span></code> override changes both routes.
+<code class="docutils literal notranslate"><span class="pre">update_schema</span></code> body. An <code class="docutils literal notranslate"><span class="pre">update</span></code> override changes both routes.
 Replace this method to give <code class="docutils literal notranslate"><span class="pre">PUT</span></code> its own rules; see
 <a class="reference internal" href="../react_admin.html#react-admin-put"><span class="std std-ref">Give PUT its own rules</span></a>.</p>
 </dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="fastapi_restly.views.ReactAdminView.schema_list_params">
-<span class="sig-name descname"><span class="pre">schema_list_params</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ClassVar</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.15)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://pydantic.dev/docs/validation/latest/api/pydantic/base_model/#pydantic.BaseModel" title="(in Pydantic v0.0.0)"><span class="pre">pydantic.BaseModel</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">ReactAdminListParams</span></em><a class="headerlink" href="#fastapi_restly.views.ReactAdminView.schema_list_params" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="fastapi_restly.views.ReactAdminView.list_params_schema">
+<span class="sig-name descname"><span class="pre">list_params_schema</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ClassVar</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.15)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://pydantic.dev/docs/validation/latest/api/pydantic/base_model/#pydantic.BaseModel" title="(in Pydantic v0.0.0)"><span class="pre">pydantic.BaseModel</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">ReactAdminListParams</span></em><a class="headerlink" href="#fastapi_restly.views.ReactAdminView.list_params_schema" title="Link to this definition">#</a></dt>
 <dd><p>The list params (filter, sort, page) as a pydantic model, generated
-from <code class="docutils literal notranslate"><span class="pre">schema_response</span></code> and <code class="docutils literal notranslate"><span class="pre">model</span></code> by
-<a class="reference internal" href="query.html#fastapi_restly.query.derive_schema_list_params" title="fastapi_restly.query.derive_schema_list_params"><code class="xref py py-func docutils literal notranslate"><span class="pre">derive_schema_list_params()</span></code></a>. Any route
+from <code class="docutils literal notranslate"><span class="pre">response_schema</span></code> and <code class="docutils literal notranslate"><span class="pre">model</span></code> by
+<a class="reference internal" href="query.html#fastapi_restly.query.derive_list_params_schema" title="fastapi_restly.query.derive_list_params_schema"><code class="xref py py-func docutils literal notranslate"><span class="pre">derive_list_params_schema()</span></code></a>. Any route
 method on the view that declares a <code class="docutils literal notranslate"><span class="pre">list_params</span></code> parameter takes it:
 typed for FastAPI and OpenAPI, and guarded against unknown keys like
 <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code>, so a custom list route (a trash route naming its own scope)
@@ -1679,6 +1685,12 @@ beside it.</p>
 <dd><p>Only <code class="docutils literal notranslate"><span class="pre">default_page_size</span></code> and <code class="docutils literal notranslate"><span class="pre">max_page_size</span></code> apply: the implicit
 page size when no <code class="docutils literal notranslate"><span class="pre">range</span></code> parameter is sent, and the most rows one
 <code class="docutils literal notranslate"><span class="pre">range</span></code> may ask for. Override per view.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="fastapi_restly.views.ReactAdminView.list_response_schema">
+<span class="sig-name descname"><span class="pre">list_response_schema</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ClassVar</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#fastapi_restly.views.ReactAdminView.list_response_schema" title="Link to this definition">#</a></dt>
+<dd><p>A react-admin list is a JSON array, without an envelope.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -1718,7 +1730,7 @@ values: <code class="docutils literal notranslate"><span class="pre">sort</span>
 <code class="docutils literal notranslate"><span class="pre">filter</span></code> as a dict. JSON that does not have this shape gets a <code class="docutils literal notranslate"><span class="pre">422</span></code>
 that names the place, as a bad value of other list params does.</p>
 <p>To add a query key, such as a search key, subclass this class and set the
-subclass as the view’s <code class="docutils literal notranslate"><span class="pre">schema_list_params</span></code>.</p>
+subclass as the view’s <code class="docutils literal notranslate"><span class="pre">list_params_schema</span></code>.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.views.ReactAdminListParams.sort">
 <span class="sig-name descname"><span class="pre">sort</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Annotated" title="(in Python v3.15)"><span class="pre">Annotated</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.15)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.15)"><span class="pre">Literal</span></a><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'ASC'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'DESC'</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Json</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.15)"><span class="pre">None</span></a></em><a class="headerlink" href="#fastapi_restly.views.ReactAdminListParams.sort" title="Link to this definition">#</a></dt>
@@ -1761,39 +1773,53 @@ adds its own, and a subclass’s entry for a status code wins.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.views.BaseRestView.schema">
 <span class="sig-name descname"><span class="pre">schema</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.15)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.15)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://pydantic.dev/docs/validation/latest/api/pydantic/base_model/#pydantic.BaseModel" title="(in Pydantic v0.0.0)"><span class="pre">BaseModel</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#fastapi_restly.views.BaseRestView.schema" title="Link to this definition">#</a></dt>
-<dd><p>The view’s schema: the Pydantic class that lists the fields of the
-resource. Restly builds <a class="reference internal" href="#fastapi_restly.views.BaseRestView.schema_response" title="fastapi_restly.views.BaseRestView.schema_response"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_response</span></code></a>, <a class="reference internal" href="#fastapi_restly.views.BaseRestView.schema_create" title="fastapi_restly.views.BaseRestView.schema_create"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_create</span></code></a>
-and <a class="reference internal" href="#fastapi_restly.views.BaseRestView.schema_update" title="fastapi_restly.views.BaseRestView.schema_update"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_update</span></code></a> from it. When a view sets none, Restly
+<dd><p>The main schema: the Pydantic class that lists the fields of the
+resource. Restly builds <a class="reference internal" href="#fastapi_restly.views.BaseRestView.response_schema" title="fastapi_restly.views.BaseRestView.response_schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">response_schema</span></code></a>, <a class="reference internal" href="#fastapi_restly.views.BaseRestView.create_schema" title="fastapi_restly.views.BaseRestView.create_schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">create_schema</span></code></a>
+and <a class="reference internal" href="#fastapi_restly.views.BaseRestView.update_schema" title="fastapi_restly.views.BaseRestView.update_schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">update_schema</span></code></a> from it. When a view sets none, Restly
 generates it from <a class="reference internal" href="#fastapi_restly.views.BaseRestView.model" title="fastapi_restly.views.BaseRestView.model"><code class="xref py py-attr docutils literal notranslate"><span class="pre">model</span></code></a> with
 <a class="reference internal" href="schemas.html#fastapi_restly.schemas.derive_schema" title="fastapi_restly.schemas.derive_schema"><code class="xref py py-func docutils literal notranslate"><span class="pre">derive_schema()</span></code></a>.</p>
 </dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="fastapi_restly.views.BaseRestView.schema_response">
-<span class="sig-name descname"><span class="pre">schema_response</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.15)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.15)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://pydantic.dev/docs/validation/latest/api/pydantic/base_model/#pydantic.BaseModel" title="(in Pydantic v0.0.0)"><span class="pre">BaseModel</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#fastapi_restly.views.BaseRestView.schema_response" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="fastapi_restly.views.BaseRestView.response_schema">
+<span class="sig-name descname"><span class="pre">response_schema</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.15)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.15)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://pydantic.dev/docs/validation/latest/api/pydantic/base_model/#pydantic.BaseModel" title="(in Pydantic v0.0.0)"><span class="pre">BaseModel</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#fastapi_restly.views.BaseRestView.response_schema" title="Link to this definition">#</a></dt>
 <dd><p>The class of everything that goes out: the single responses, the
 items of the list response, and the fields the list params filter and
 sort on. The relationships it names are the ones the view loads. When
 a view sets none, Restly builds it with
-<a class="reference internal" href="schemas.html#fastapi_restly.schemas.derive_schema_response" title="fastapi_restly.schemas.derive_schema_response"><code class="xref py py-func docutils literal notranslate"><span class="pre">derive_schema_response()</span></code></a>: the view’s
+<a class="reference internal" href="schemas.html#fastapi_restly.schemas.derive_response_schema" title="fastapi_restly.schemas.derive_response_schema"><code class="xref py py-func docutils literal notranslate"><span class="pre">derive_response_schema()</span></code></a>: the main
 schema without its <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> fields, named <code class="docutils literal notranslate"><span class="pre">&lt;Resource&gt;Response</span></code>.
 A class that a view sets is used as it is.</p>
 </dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="fastapi_restly.views.BaseRestView.schema_create">
-<span class="sig-name descname"><span class="pre">schema_create</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.15)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.15)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://pydantic.dev/docs/validation/latest/api/pydantic/base_model/#pydantic.BaseModel" title="(in Pydantic v0.0.0)"><span class="pre">BaseModel</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#fastapi_restly.views.BaseRestView.schema_create" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="fastapi_restly.views.BaseRestView.list_response_schema">
+<span class="sig-name descname"><span class="pre">list_response_schema</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.15)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.15)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#fastapi_restly.views.BaseRestView.list_response_schema" title="Link to this definition">#</a></dt>
+<dd><p>The class of the list response: what <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code> and a route that
+declares <a class="reference internal" href="#fastapi_restly.views.ListResponseSchema" title="fastapi_restly.views.ListResponseSchema"><code class="xref py py-data docutils literal notranslate"><span class="pre">ListResponseSchema</span></code></a> send. When a
+view sets none, Restly builds it with
+<a class="reference internal" href="schemas.html#fastapi_restly.schemas.derive_list_response_schema" title="fastapi_restly.schemas.derive_list_response_schema"><code class="xref py py-func docutils literal notranslate"><span class="pre">derive_list_response_schema()</span></code></a>: the
+envelope of the view’s <a class="reference internal" href="#fastapi_restly.views.BaseRestView.pagination" title="fastapi_restly.views.BaseRestView.pagination"><code class="xref py py-attr docutils literal notranslate"><span class="pre">pagination</span></code></a>, with the response schema as
+its items, named <code class="docutils literal notranslate"><span class="pre">&lt;Resource&gt;ListResponse</span></code>. Restly fills a class that
+a view sets as it fills an envelope: by field name, from <code class="docutils literal notranslate"><span class="pre">data</span></code>,
+<code class="docutils literal notranslate"><span class="pre">total_count</span></code>, <code class="docutils literal notranslate"><span class="pre">page</span></code>, <code class="docutils literal notranslate"><span class="pre">page_size</span></code> and <code class="docutils literal notranslate"><span class="pre">total_pages</span></code>. A view
+that replaces <code class="docutils literal notranslate"><span class="pre">get_many_endpoint</span></code> can set any type here.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="fastapi_restly.views.BaseRestView.create_schema">
+<span class="sig-name descname"><span class="pre">create_schema</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.15)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.15)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://pydantic.dev/docs/validation/latest/api/pydantic/base_model/#pydantic.BaseModel" title="(in Pydantic v0.0.0)"><span class="pre">BaseModel</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#fastapi_restly.views.BaseRestView.create_schema" title="Link to this definition">#</a></dt>
 <dd><p>The class of the <code class="docutils literal notranslate"><span class="pre">POST</span></code> body. When a view sets none, Restly builds
-it from the view’s schema without its <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> fields and without
+it from the main schema without its <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> fields and without
 a primary key that the server generates. It is named
 <code class="docutils literal notranslate"><span class="pre">&lt;Resource&gt;Create</span></code>. A class that a view sets is used as it is.</p>
 </dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="fastapi_restly.views.BaseRestView.schema_update">
-<span class="sig-name descname"><span class="pre">schema_update</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.15)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.15)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://pydantic.dev/docs/validation/latest/api/pydantic/base_model/#pydantic.BaseModel" title="(in Pydantic v0.0.0)"><span class="pre">BaseModel</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#fastapi_restly.views.BaseRestView.schema_update" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="fastapi_restly.views.BaseRestView.update_schema">
+<span class="sig-name descname"><span class="pre">update_schema</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.15)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.15)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://pydantic.dev/docs/validation/latest/api/pydantic/base_model/#pydantic.BaseModel" title="(in Pydantic v0.0.0)"><span class="pre">BaseModel</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#fastapi_restly.views.BaseRestView.update_schema" title="Link to this definition">#</a></dt>
 <dd><p>The class of the <code class="docutils literal notranslate"><span class="pre">PATCH</span></code> body. When a view sets none, Restly builds
-it from the view’s schema without its <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> fields and without
+it from the main schema without its <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> fields and without
 a primary key that the server generates, and makes every other field
 optional. It is named <code class="docutils literal notranslate"><span class="pre">&lt;Resource&gt;Update</span></code>. A class that a view sets
 is used as it is.</p>
@@ -1888,7 +1914,7 @@ shape no envelope model can express, such as a header, replace
 <dt class="sig sig-object py" id="fastapi_restly.views.BaseRestView.include_filters">
 <span class="sig-name descname"><span class="pre">include_filters</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.15)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.15)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">('*',)</span></em><a class="headerlink" href="#fastapi_restly.views.BaseRestView.include_filters" title="Link to this definition">#</a></dt>
 <dd><p>The filter keys that the list params keep, from the keys that Restly
-generates from <a class="reference internal" href="#fastapi_restly.views.BaseRestView.schema_response" title="fastapi_restly.views.BaseRestView.schema_response"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_response</span></code></a>. An entry is a key as the
+generates from <a class="reference internal" href="#fastapi_restly.views.BaseRestView.response_schema" title="fastapi_restly.views.BaseRestView.response_schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">response_schema</span></code></a>. An entry is a key as the
 client sends it, such as <code class="docutils literal notranslate"><span class="pre">&quot;name__icontains&quot;</span></code>, or a pattern. <code class="docutils literal notranslate"><span class="pre">*</span></code>
 matches any characters except <code class="docutils literal notranslate"><span class="pre">.</span></code>, so <code class="docutils literal notranslate"><span class="pre">&quot;created_at__*&quot;</span></code> is every
 filter on <code class="docutils literal notranslate"><span class="pre">created_at</span></code> with a suffix, and <code class="docutils literal notranslate"><span class="pre">&quot;vendor.*&quot;</span></code> is every
@@ -1937,7 +1963,7 @@ filter key.</p>
 <dd><p>The sort when the request has none, as a client writes it in
 <code class="docutils literal notranslate"><span class="pre">?sort=</span></code>, such as <code class="docutils literal notranslate"><span class="pre">&quot;-created_at&quot;</span></code>. It becomes the default of the
 sort parameter, so OpenAPI shows it. A key must be a field of
-<a class="reference internal" href="#fastapi_restly.views.BaseRestView.schema_response" title="fastapi_restly.views.BaseRestView.schema_response"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_response</span></code></a> that a sort key could have, but
+<a class="reference internal" href="#fastapi_restly.views.BaseRestView.response_schema" title="fastapi_restly.views.BaseRestView.response_schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">response_schema</span></code></a> that a sort key could have, but
 <a class="reference internal" href="#fastapi_restly.views.BaseRestView.include_sort_keys" title="fastapi_restly.views.BaseRestView.include_sort_keys"><code class="xref py py-attr docutils literal notranslate"><span class="pre">include_sort_keys</span></code></a> does not have to keep it. Use each key only
 once. <code class="docutils literal notranslate"><span class="pre">None</span></code> (the default) sorts by the primary key. The primary key
 is always the last term. A view that inherits it and does not have all
@@ -1954,11 +1980,11 @@ ascending sort, SQLite and MySQL first.</p>
 </dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="fastapi_restly.views.BaseRestView.schema_list_params">
-<span class="sig-name descname"><span class="pre">schema_list_params</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.15)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.15)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://pydantic.dev/docs/validation/latest/api/pydantic/base_model/#pydantic.BaseModel" title="(in Pydantic v0.0.0)"><span class="pre">BaseModel</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#fastapi_restly.views.BaseRestView.schema_list_params" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="fastapi_restly.views.BaseRestView.list_params_schema">
+<span class="sig-name descname"><span class="pre">list_params_schema</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.15)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.15)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://pydantic.dev/docs/validation/latest/api/pydantic/base_model/#pydantic.BaseModel" title="(in Pydantic v0.0.0)"><span class="pre">BaseModel</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#fastapi_restly.views.BaseRestView.list_params_schema" title="Link to this definition">#</a></dt>
 <dd><p>The list params (filter, sort, page) as a pydantic model, generated
-from <code class="docutils literal notranslate"><span class="pre">schema_response</span></code> and <code class="docutils literal notranslate"><span class="pre">model</span></code> by
-<a class="reference internal" href="query.html#fastapi_restly.query.derive_schema_list_params" title="fastapi_restly.query.derive_schema_list_params"><code class="xref py py-func docutils literal notranslate"><span class="pre">derive_schema_list_params()</span></code></a>. Any route
+from <code class="docutils literal notranslate"><span class="pre">response_schema</span></code> and <code class="docutils literal notranslate"><span class="pre">model</span></code> by
+<a class="reference internal" href="query.html#fastapi_restly.query.derive_list_params_schema" title="fastapi_restly.query.derive_list_params_schema"><code class="xref py py-func docutils literal notranslate"><span class="pre">derive_list_params_schema()</span></code></a>. Any route
 method on the view that declares a <code class="docutils literal notranslate"><span class="pre">list_params</span></code> parameter takes it:
 typed for FastAPI and OpenAPI, and guarded against unknown keys like
 <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code>, so a custom list route (a trash route naming its own scope)
@@ -2017,7 +2043,7 @@ it with <code class="docutils literal notranslate"><span class="pre">def</span><
 <span class="sig-name descname"><span class="pre">not_found</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.15)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#Exception" title="(in Python v3.15)"><span class="pre">Exception</span></a></span></span><a class="headerlink" href="#fastapi_restly.views.BaseRestView.not_found" title="Link to this definition">#</a></dt>
 <dd><p>The exception for an id that names no row: a 404 by default, such
 as <code class="docutils literal notranslate"><span class="pre">User</span> <span class="pre">with</span> <span class="pre">id</span> <span class="pre">5</span> <span class="pre">was</span> <span class="pre">not</span> <span class="pre">found</span></code>. The name is the resource of the
-view’s schema, as in the names of the classes that Restly generates.</p>
+main schema, as in the names of the schemas that Restly generates.</p>
 <p><code class="docutils literal notranslate"><span class="pre">get_one</span></code> raises what this returns, so an override can change the
 text or the status, such as <code class="docutils literal notranslate"><span class="pre">410</span></code> for a row that was deleted. On
 an async view it may be <code class="docutils literal notranslate"><span class="pre">async</span> <span class="pre">def</span></code>, and Restly awaits it. <code class="docutils literal notranslate"><span class="pre">id</span></code>
@@ -2030,10 +2056,10 @@ expression, such as <code class="docutils literal notranslate"><span class="pre"
 <span class="sig-name descname"><span class="pre">get_loader_options</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.15)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.15)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#fastapi_restly.views.BaseRestView.get_loader_options" title="Link to this definition">#</a></dt>
 <dd><p>The loader options of every read: what each row loads.</p>
 <p>The default is a recursive <code class="docutils literal notranslate"><span class="pre">selectinload(...)</span></code> for each
-relationship that <a class="reference internal" href="#fastapi_restly.views.BaseRestView.schema_response" title="fastapi_restly.views.BaseRestView.schema_response"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_response</span></code></a> names. <a class="reference internal" href="#fastapi_restly.views.BaseRestView.select" title="fastapi_restly.views.BaseRestView.select"><code class="xref py py-meth docutils literal notranslate"><span class="pre">select()</span></code></a>
+relationship that <a class="reference internal" href="#fastapi_restly.views.BaseRestView.response_schema" title="fastapi_restly.views.BaseRestView.response_schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">response_schema</span></code></a> names. <a class="reference internal" href="#fastapi_restly.views.BaseRestView.select" title="fastapi_restly.views.BaseRestView.select"><code class="xref py py-meth docutils literal notranslate"><span class="pre">select()</span></code></a>
 applies them, so <code class="docutils literal notranslate"><span class="pre">get_one</span></code>, <code class="docutils literal notranslate"><span class="pre">get_many</span></code> and your routes load the
 same, and so does the reload after the save of a write. Override to
-load more: a relationship that the response class does not name, or
+load more: a relationship that the response schema does not name, or
 a <code class="docutils literal notranslate"><span class="pre">query_expression</span></code> through <code class="docutils literal notranslate"><span class="pre">with_expression(...)</span></code>. Add to
 <code class="docutils literal notranslate"><span class="pre">super().get_loader_options()</span></code> to keep the default loads. See
 “Return related objects in a response” on the Relationships guide
@@ -2043,23 +2069,23 @@ page.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="fastapi_restly.views.BaseRestView.to_single_response">
 <span class="sig-name descname"><span class="pre">to_single_response</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obj</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ModelT</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">ResponseSchemaT</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ResponseSchemaT</span></span></span><a class="headerlink" href="#fastapi_restly.views.BaseRestView.to_single_response" title="Link to this definition">#</a></dt>
-<dd><p>Serialize one ORM object to the view’s <a class="reference internal" href="#fastapi_restly.views.BaseRestView.schema_response" title="fastapi_restly.views.BaseRestView.schema_response"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_response</span></code></a>.</p>
-<p>By default the response class is the view’s schema without its
+<dd><p>Serialize one ORM object to the view’s <a class="reference internal" href="#fastapi_restly.views.BaseRestView.response_schema" title="fastapi_restly.views.BaseRestView.response_schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">response_schema</span></code></a>.</p>
+<p>By default the response schema is the main schema without its
 WriteOnly fields, named like <code class="docutils literal notranslate"><span class="pre">UserResponse</span></code>. An override may return
 an instance of another model, such as <a class="reference internal" href="#fastapi_restly.views.BaseRestView.schema" title="fastapi_restly.views.BaseRestView.schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema</span></code></a>. Only the fields
-of the response class go out. Restly copies the values of an instance
-of a subclass of the response class, and of <a class="reference internal" href="#fastapi_restly.views.BaseRestView.schema" title="fastapi_restly.views.BaseRestView.schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema</span></code></a> when
-Restly derived the response class, without validating them again. It
-validates any other model into the response class from its
+of the response schema go out. Restly copies the values of an instance
+of a subclass of the response schema, and of <a class="reference internal" href="#fastapi_restly.views.BaseRestView.schema" title="fastapi_restly.views.BaseRestView.schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema</span></code></a> when
+Restly derived the response schema, without validating them again. It
+validates any other model into the response schema from its
 attributes.</p>
-<p>The view loads only the relationships that the response class names.
+<p>The view loads only the relationships that the response schema names.
 An override that builds <a class="reference internal" href="#fastapi_restly.views.BaseRestView.schema" title="fastapi_restly.views.BaseRestView.schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema</span></code></a> from the ORM object also reads
 the relationships of its WriteOnly fields. On an async view that fails
 with <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code>: add them in
-<a class="reference internal" href="#fastapi_restly.views.BaseRestView.get_loader_options" title="fastapi_restly.views.BaseRestView.get_loader_options"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_loader_options()</span></code></a>, or build the response class
+<a class="reference internal" href="#fastapi_restly.views.BaseRestView.get_loader_options" title="fastapi_restly.views.BaseRestView.get_loader_options"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_loader_options()</span></code></a>, or build the response schema
 instead.</p>
-<p>The ORM path below validates through the response class, so a view’s
-schema that declares a WriteOnly field the ORM object doesn’t carry
+<p>The ORM path below validates through the response schema, so a view’s
+main schema that declares a WriteOnly field the ORM object doesn’t carry
 (e.g. <code class="docutils literal notranslate"><span class="pre">password</span></code> backed by a <code class="docutils literal notranslate"><span class="pre">password_hash</span></code> column) doesn’t fail
 response validation. It validates in lax mode, also for a strict
 class, so a strict <code class="docutils literal notranslate"><span class="pre">float</span></code> field reads the text <code class="docutils literal notranslate"><span class="pre">&quot;NaN&quot;</span></code> that a
@@ -2069,30 +2095,18 @@ JSON column stores.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="fastapi_restly.views.BaseRestView.to_list_response">
 <span class="sig-name descname"><span class="pre">to_list_response</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">list_result</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#fastapi_restly.views.ListResult" title="fastapi_restly.views._base.ListResult"><span class="pre">ListResult</span></a><span class="p"><span class="pre">[</span></span><span class="pre">ModelT</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.15)"><span class="pre">Any</span></a></span></span><a class="headerlink" href="#fastapi_restly.views.BaseRestView.to_list_response" title="Link to this definition">#</a></dt>
-<dd><p>Build the list response body: an instance of the envelope model.</p>
-<p>The view fills its <a class="reference internal" href="#fastapi_restly.views.BaseRestView.pagination" title="fastapi_restly.views.BaseRestView.pagination"><code class="xref py py-attr docutils literal notranslate"><span class="pre">pagination</span></code></a>’s <code class="docutils literal notranslate"><span class="pre">envelope</span></code>: by default a
-<a class="reference internal" href="#fastapi_restly.views.PaginatedEnvelope" title="fastapi_restly.views.PaginatedEnvelope"><code class="xref py py-class docutils literal notranslate"><span class="pre">PaginatedEnvelope</span></code></a> (<code class="docutils literal notranslate"><span class="pre">data</span></code> plus <code class="docutils literal notranslate"><span class="pre">total_count</span></code> / <code class="docutils literal notranslate"><span class="pre">page</span></code> /
-<code class="docutils literal notranslate"><span class="pre">page_size</span></code> / <code class="docutils literal notranslate"><span class="pre">total_pages</span></code>), or an <a class="reference internal" href="#fastapi_restly.views.Envelope" title="fastapi_restly.views.Envelope"><code class="xref py py-class docutils literal notranslate"><span class="pre">Envelope</span></code></a> (<code class="docutils literal notranslate"><span class="pre">data</span></code>
-only) for a view without pagination. The route’s <code class="docutils literal notranslate"><span class="pre">response_model</span></code> is
-the same envelope, fixed from <a class="reference internal" href="#fastapi_restly.views.BaseRestView.pagination" title="fastapi_restly.views.BaseRestView.pagination"><code class="xref py py-attr docutils literal notranslate"><span class="pre">pagination</span></code></a> at registration. To
-change the shape, set the pagination’s <code class="docutils literal notranslate"><span class="pre">envelope</span></code>. For a
-<code class="docutils literal notranslate"><span class="pre">Content-Range</span></code> header, replace <code class="docutils literal notranslate"><span class="pre">get_many_endpoint</span></code> with a matching
-<code class="docutils literal notranslate"><span class="pre">response_model</span></code> (as <a class="reference internal" href="#fastapi_restly.views.AsyncReactAdminView" title="fastapi_restly.views.AsyncReactAdminView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncReactAdminView</span></code></a> does), not by
-overriding this method alone, which would fail response validation.</p>
+<dd><p>Build the list response body: an instance of
+<a class="reference internal" href="#fastapi_restly.views.BaseRestView.list_response_schema" title="fastapi_restly.views.BaseRestView.list_response_schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">list_response_schema</span></code></a>.</p>
+<p>By default this class is the <code class="docutils literal notranslate"><span class="pre">envelope</span></code> of the view’s
+<a class="reference internal" href="#fastapi_restly.views.BaseRestView.pagination" title="fastapi_restly.views.BaseRestView.pagination"><code class="xref py py-attr docutils literal notranslate"><span class="pre">pagination</span></code></a>: a <a class="reference internal" href="#fastapi_restly.views.PaginatedEnvelope" title="fastapi_restly.views.PaginatedEnvelope"><code class="xref py py-class docutils literal notranslate"><span class="pre">PaginatedEnvelope</span></code></a> (<code class="docutils literal notranslate"><span class="pre">data</span></code> plus
+<code class="docutils literal notranslate"><span class="pre">total_count</span></code> / <code class="docutils literal notranslate"><span class="pre">page</span></code> / <code class="docutils literal notranslate"><span class="pre">page_size</span></code> / <code class="docutils literal notranslate"><span class="pre">total_pages</span></code>), or an
+<a class="reference internal" href="#fastapi_restly.views.Envelope" title="fastapi_restly.views.Envelope"><code class="xref py py-class docutils literal notranslate"><span class="pre">Envelope</span></code></a> (<code class="docutils literal notranslate"><span class="pre">data</span></code> only) for a view without pagination. To
+change the shape, set <a class="reference internal" href="#fastapi_restly.views.BaseRestView.list_response_schema" title="fastapi_restly.views.BaseRestView.list_response_schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">list_response_schema</span></code></a> or the pagination’s
+<code class="docutils literal notranslate"><span class="pre">envelope</span></code>. A list type, such as <code class="docutils literal notranslate"><span class="pre">list[UserSummary]</span></code>, gives a list
+without the page values. For a <code class="docutils literal notranslate"><span class="pre">Content-Range</span></code> header, see
+<a class="reference internal" href="#fastapi_restly.views.AsyncReactAdminView" title="fastapi_restly.views.AsyncReactAdminView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncReactAdminView</span></code></a>: it overrides this method and sets
+<a class="reference internal" href="#fastapi_restly.views.BaseRestView.list_response_schema" title="fastapi_restly.views.BaseRestView.list_response_schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">list_response_schema</span></code></a> to match.</p>
 <p>The page and page size come from <code class="docutils literal notranslate"><span class="pre">list_result.list_params</span></code>.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="fastapi_restly.views.BaseRestView.to_response">
-<span class="sig-name descname"><span class="pre">to_response</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">result</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.15)"><span class="pre">Any</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">shape</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#fastapi_restly.views.ResponseShape" title="fastapi_restly.views._base.ResponseShape"><span class="pre">ResponseShape</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">ResponseShape.SINGLE</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.15)"><span class="pre">Any</span></a></span></span><a class="headerlink" href="#fastapi_restly.views.BaseRestView.to_response" title="Link to this definition">#</a></dt>
-<dd><p>Endpoint-method response boundary.</p>
-<p><code class="docutils literal notranslate"><span class="pre">shape</span></code> selects the response form, and with it what <code class="docutils literal notranslate"><span class="pre">result</span></code> is: one
-object for <code class="docutils literal notranslate"><span class="pre">SINGLE</span></code> (<a class="reference internal" href="#fastapi_restly.views.BaseRestView.to_single_response" title="fastapi_restly.views.BaseRestView.to_single_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_single_response()</span></code></a>), a
-<a class="reference internal" href="#fastapi_restly.views.ListResult" title="fastapi_restly.views.ListResult"><code class="xref py py-class docutils literal notranslate"><span class="pre">ListResult</span></code></a> for <code class="docutils literal notranslate"><span class="pre">LIST</span></code> (<a class="reference internal" href="#fastapi_restly.views.BaseRestView.to_list_response" title="fastapi_restly.views.BaseRestView.to_list_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_list_response()</span></code></a>), and
-nothing for <code class="docutils literal notranslate"><span class="pre">EMPTY</span></code>. A plain Python list is not a valid <code class="docutils literal notranslate"><span class="pre">result</span></code>.
-<code class="docutils literal notranslate"><span class="pre">shape</span></code> is not the write-action name. Override for envelopes or
-shape-wide status behavior; per-endpoint projections belong in the
-endpoint method.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -2282,9 +2296,9 @@ every row. A paginated view uses its pagination’s <code class="docutils litera
 <dt class="sig sig-object py" id="fastapi_restly.views.Envelope.data">
 <span class="sig-name descname"><span class="pre">data</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.15)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><span class="pre">DataT</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#fastapi_restly.views.Envelope.data" title="Link to this definition">#</a></dt>
 <dd><p>The rows of the list, each as an instance of the view’s response
-class. A list, not a <code class="docutils literal notranslate"><span class="pre">Sequence</span></code>: Pydantic writes the rows of a
+schema. A list, not a <code class="docutils literal notranslate"><span class="pre">Sequence</span></code>: Pydantic writes the rows of a
 <code class="docutils literal notranslate"><span class="pre">Sequence</span></code> field with the settings of the envelope, not with the
-settings of the response class, such as <code class="docutils literal notranslate"><span class="pre">ser_json_inf_nan</span></code>.</p>
+settings of the response schema, such as <code class="docutils literal notranslate"><span class="pre">ser_json_inf_nan</span></code>.</p>
 </dd></dl>
 
 </dd></dl>
@@ -2383,37 +2397,6 @@ for that read, or <code class="docutils literal notranslate"><span class="pre">f
 </dd></dl>
 
 <dl class="py class">
-<dt class="sig sig-object py" id="fastapi_restly.views.ResponseShape">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.views.</span></span><span class="sig-name descname"><span class="pre">ResponseShape</span></span><a class="headerlink" href="#fastapi_restly.views.ResponseShape" title="Link to this definition">#</a></dt>
-<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/enum.html#enum.Enum" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></a></p>
-<p>The response shape an endpoint method asks <a class="reference internal" href="#fastapi_restly.views.BaseRestView.to_response" title="fastapi_restly.views.BaseRestView.to_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">BaseRestView.to_response()</span></code></a> to
-produce.</p>
-<p>This is separate from write-action names such as <code class="docutils literal notranslate"><span class="pre">&quot;publish&quot;</span></code>. Endpoint
-methods choose one of these three response shapes; custom actions remain an
-open string namespace.</p>
-<dl class="py attribute">
-<dt class="sig sig-object py" id="fastapi_restly.views.ResponseShape.SINGLE">
-<span class="sig-name descname"><span class="pre">SINGLE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'single'</span></em><a class="headerlink" href="#fastapi_restly.views.ResponseShape.SINGLE" title="Link to this definition">#</a></dt>
-<dd><p>One object: <code class="docutils literal notranslate"><span class="pre">result</span></code> is a row, and the response is an instance of
-the response class, from <a class="reference internal" href="#fastapi_restly.views.BaseRestView.to_single_response" title="fastapi_restly.views.BaseRestView.to_single_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">BaseRestView.to_single_response()</span></code></a>.</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="fastapi_restly.views.ResponseShape.LIST">
-<span class="sig-name descname"><span class="pre">LIST</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'list'</span></em><a class="headerlink" href="#fastapi_restly.views.ResponseShape.LIST" title="Link to this definition">#</a></dt>
-<dd><p>A list: <code class="docutils literal notranslate"><span class="pre">result</span></code> is a <a class="reference internal" href="#fastapi_restly.views.ListResult" title="fastapi_restly.views.ListResult"><code class="xref py py-class docutils literal notranslate"><span class="pre">ListResult</span></code></a>, and the response is the
-list envelope, from <a class="reference internal" href="#fastapi_restly.views.BaseRestView.to_list_response" title="fastapi_restly.views.BaseRestView.to_list_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">BaseRestView.to_list_response()</span></code></a>.</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="fastapi_restly.views.ResponseShape.EMPTY">
-<span class="sig-name descname"><span class="pre">EMPTY</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'empty'</span></em><a class="headerlink" href="#fastapi_restly.views.ResponseShape.EMPTY" title="Link to this definition">#</a></dt>
-<dd><p>No body: <code class="docutils literal notranslate"><span class="pre">result</span></code> is not used, and the response is <code class="docutils literal notranslate"><span class="pre">204</span> <span class="pre">No</span> <span class="pre">Content</span></code>.</p>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="py class">
 <dt class="sig sig-object py" id="fastapi_restly.views.View">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.views.</span></span><span class="sig-name descname"><span class="pre">View</span></span><a class="headerlink" href="#fastapi_restly.views.View" title="Link to this definition">#</a></dt>
 <dd><p>Class-based view primitive for FastAPI.</p>
@@ -2501,6 +2484,56 @@ registered. A no-op here; override to adjust route methods first.</p>
 <dt class="sig sig-object py" id="fastapi_restly.views.ViewRoute.DELETE">
 <span class="sig-name descname"><span class="pre">DELETE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'delete_endpoint'</span></em><a class="headerlink" href="#fastapi_restly.views.ViewRoute.DELETE" title="Link to this definition">#</a></dt>
 <dd><p><code class="docutils literal notranslate"><span class="pre">DELETE</span> <span class="pre">/{id}</span></code>: delete a row.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="fastapi_restly.views.SchemaType">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.views.</span></span><span class="sig-name descname"><span class="pre">SchemaType</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fn</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.15)"><span class="pre">Callable</span></a><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.15)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.15)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fastapi_restly.views.SchemaType" title="Link to this definition">#</a></dt>
+<dd><p>A type that depends on the view: a function that gets the view class
+and returns the type.</p>
+<p>A setting that takes a schema class also takes a <code class="docutils literal notranslate"><span class="pre">SchemaType</span></code>. Here each
+view gets a create schema of its own:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ApiView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">create_schema</span> <span class="o">=</span> <span class="n">SchemaType</span><span class="p">(</span><span class="k">lambda</span> <span class="n">view</span><span class="p">:</span> <span class="n">with_tenant</span><span class="p">(</span><span class="n">view</span><span class="o">.</span><span class="n">schema</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>A setting can also use it as a decorator:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ApiView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="nd">@SchemaType</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">create_schema</span><span class="p">(</span><span class="n">view</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">with_tenant</span><span class="p">(</span><span class="n">view</span><span class="o">.</span><span class="n">schema</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>In a route, it goes in the metadata of an annotation:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Single</span> <span class="o">=</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">SchemaType</span><span class="p">(</span><span class="k">lambda</span> <span class="n">view</span><span class="p">:</span> <span class="n">Data</span><span class="p">[</span><span class="n">view</span><span class="o">.</span><span class="n">response_schema</span><span class="p">])]</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">ApiView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/</span><span class="si">{id}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_one_endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="n">IDType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Single</span><span class="p">:</span> <span class="o">...</span>
+</pre></div>
+</div>
+<p>Restly calls the function once for each view class, when something first
+reads the type. It can read any setting of the view, in any order. A setting
+must get a Pydantic class, and <code class="docutils literal notranslate"><span class="pre">list_response_schema</span></code> also takes a list type.
+A route can get any type that FastAPI accepts. The function can use a marker
+in what it returns, as in <code class="docutils literal notranslate"><span class="pre">Data[ResponseSchema]</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>fn</strong> – The function. It gets the view class and returns the type.</p>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="fastapi_restly.views.SchemaType.fn">
+<span class="sig-name descname"><span class="pre">fn</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.15)"><span class="pre">Callable</span></a><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.15)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.15)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#fastapi_restly.views.SchemaType.fn" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="fastapi_restly.views.SchemaType.name">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.15)"><span class="pre">None</span></a></em><a class="headerlink" href="#fastapi_restly.views.SchemaType.name" title="Link to this definition">#</a></dt>
+<dd><p>The name of a marker of this module.</p>
 </dd></dl>
 
 </dd></dl>
@@ -2669,13 +2702,15 @@ FastAPI. <a class="reference internal" href="#fastapi_restly.views.get" title="f
 
 <section id="markers-for-the-view-s-own-types">
 <h2>Markers for the view’s own types<a class="headerlink" href="#markers-for-the-view-s-own-types" title="Link to this heading">#</a></h2>
-<p>A route names the classes of its view with these markers. When the view
-registers, Restly puts the view’s class in place of each marker, so a route
-on a base view gets the classes of each subclass. A type checker reads each
-marker as <code class="docutils literal notranslate"><span class="pre">Any</span></code>. See <a class="reference internal" href="../schemas.html#name-the-response-classes"><span class="std std-ref">Name the view’s classes in a custom route</span></a>.</p>
+<p>A route names the types of its view with these markers. When the view
+registers, Restly puts the view’s own type in place of each marker, so a route
+on a base view gets the types of each subclass. A type checker reads each
+marker as <code class="docutils literal notranslate"><span class="pre">Any</span></code>. See <a class="reference internal" href="../schemas.html#name-the-view-schemas"><span class="std std-ref">Name the view’s schemas in a custom route</span></a>. To build another type
+for each view, use <a class="reference internal" href="#fastapi_restly.views.SchemaType" title="fastapi_restly.views.SchemaType"><code class="xref py py-class docutils literal notranslate"><span class="pre">SchemaType</span></code></a>; see
+<a class="reference internal" href="../schemas.html#schema-type"><span class="std std-ref">Make dynamic schemas that depend on the view</span></a>.</p>
 <dl class="py data">
-<dt class="sig sig-object py" id="fastapi_restly.views.ViewID">
-<span class="sig-prename descclassname"><span class="pre">fastapi_restly.views.</span></span><span class="sig-name descname"><span class="pre">ViewID</span></span><a class="headerlink" href="#fastapi_restly.views.ViewID" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="fastapi_restly.views.IDType">
+<span class="sig-prename descclassname"><span class="pre">fastapi_restly.views.</span></span><span class="sig-name descname"><span class="pre">IDType</span></span><a class="headerlink" href="#fastapi_restly.views.IDType" title="Link to this definition">#</a></dt>
 <dd><p>The view’s id type: <a class="reference internal" href="#fastapi_restly.views.BaseRestView.id_type" title="fastapi_restly.views.BaseRestView.id_type"><code class="xref py py-attr docutils literal notranslate"><span class="pre">id_type</span></code></a>,
 else the type of the model’s primary key. A path parameter with this type
 gets the view’s path converter: <code class="docutils literal notranslate"><span class="pre">{id:int}</span></code> for <code class="docutils literal notranslate"><span class="pre">int</span></code> and
@@ -2683,31 +2718,33 @@ gets the view’s path converter: <code class="docutils literal notranslate"><sp
 </dd></dl>
 
 <dl class="py data">
-<dt class="sig sig-object py" id="fastapi_restly.views.ViewResponse">
-<span class="sig-prename descclassname"><span class="pre">fastapi_restly.views.</span></span><span class="sig-name descname"><span class="pre">ViewResponse</span></span><a class="headerlink" href="#fastapi_restly.views.ViewResponse" title="Link to this definition">#</a></dt>
-<dd><p>The view’s response class,
-<a class="reference internal" href="#fastapi_restly.views.BaseRestView.schema_response" title="fastapi_restly.views.BaseRestView.schema_response"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_response</span></code></a>.</p>
+<dt class="sig sig-object py" id="fastapi_restly.views.ResponseSchema">
+<span class="sig-prename descclassname"><span class="pre">fastapi_restly.views.</span></span><span class="sig-name descname"><span class="pre">ResponseSchema</span></span><a class="headerlink" href="#fastapi_restly.views.ResponseSchema" title="Link to this definition">#</a></dt>
+<dd><p>The view’s response schema,
+<a class="reference internal" href="#fastapi_restly.views.BaseRestView.response_schema" title="fastapi_restly.views.BaseRestView.response_schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">response_schema</span></code></a>.</p>
 </dd></dl>
 
 <dl class="py data">
-<dt class="sig sig-object py" id="fastapi_restly.views.ViewListResponse">
-<span class="sig-prename descclassname"><span class="pre">fastapi_restly.views.</span></span><span class="sig-name descname"><span class="pre">ViewListResponse</span></span><a class="headerlink" href="#fastapi_restly.views.ViewListResponse" title="Link to this definition">#</a></dt>
-<dd><p>The view’s list response: the envelope of the view’s pagination, with
-items of the view’s response class.</p>
+<dt class="sig sig-object py" id="fastapi_restly.views.ListResponseSchema">
+<span class="sig-prename descclassname"><span class="pre">fastapi_restly.views.</span></span><span class="sig-name descname"><span class="pre">ListResponseSchema</span></span><a class="headerlink" href="#fastapi_restly.views.ListResponseSchema" title="Link to this definition">#</a></dt>
+<dd><p>The view’s list response,
+<a class="reference internal" href="#fastapi_restly.views.BaseRestView.list_response_schema" title="fastapi_restly.views.BaseRestView.list_response_schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">list_response_schema</span></code></a>. Unless the
+view sets another class, this is the envelope of the view’s pagination, with
+items of the view’s response schema.</p>
 </dd></dl>
 
 <dl class="py data">
-<dt class="sig sig-object py" id="fastapi_restly.views.ViewCreate">
-<span class="sig-prename descclassname"><span class="pre">fastapi_restly.views.</span></span><span class="sig-name descname"><span class="pre">ViewCreate</span></span><a class="headerlink" href="#fastapi_restly.views.ViewCreate" title="Link to this definition">#</a></dt>
-<dd><p>The view’s create body,
-<a class="reference internal" href="#fastapi_restly.views.BaseRestView.schema_create" title="fastapi_restly.views.BaseRestView.schema_create"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_create</span></code></a>.</p>
+<dt class="sig sig-object py" id="fastapi_restly.views.CreateSchema">
+<span class="sig-prename descclassname"><span class="pre">fastapi_restly.views.</span></span><span class="sig-name descname"><span class="pre">CreateSchema</span></span><a class="headerlink" href="#fastapi_restly.views.CreateSchema" title="Link to this definition">#</a></dt>
+<dd><p>The view’s create schema,
+<a class="reference internal" href="#fastapi_restly.views.BaseRestView.create_schema" title="fastapi_restly.views.BaseRestView.create_schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">create_schema</span></code></a>.</p>
 </dd></dl>
 
 <dl class="py data">
-<dt class="sig sig-object py" id="fastapi_restly.views.ViewUpdate">
-<span class="sig-prename descclassname"><span class="pre">fastapi_restly.views.</span></span><span class="sig-name descname"><span class="pre">ViewUpdate</span></span><a class="headerlink" href="#fastapi_restly.views.ViewUpdate" title="Link to this definition">#</a></dt>
-<dd><p>The view’s update body,
-<a class="reference internal" href="#fastapi_restly.views.BaseRestView.schema_update" title="fastapi_restly.views.BaseRestView.schema_update"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_update</span></code></a>.</p>
+<dt class="sig sig-object py" id="fastapi_restly.views.UpdateSchema">
+<span class="sig-prename descclassname"><span class="pre">fastapi_restly.views.</span></span><span class="sig-name descname"><span class="pre">UpdateSchema</span></span><a class="headerlink" href="#fastapi_restly.views.UpdateSchema" title="Link to this definition">#</a></dt>
+<dd><p>The view’s update schema,
+<a class="reference internal" href="#fastapi_restly.views.BaseRestView.update_schema" title="fastapi_restly.views.BaseRestView.update_schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">update_schema</span></code></a>.</p>
 </dd></dl>
 
 <div class="admonition seealso">
@@ -2825,8 +2862,9 @@ and collects the task-shaped override recipes.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.AsyncReactAdminView.apply_list_params"><code class="docutils literal notranslate"><span class="pre">AsyncReactAdminView.apply_list_params()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.AsyncReactAdminView.apply_filters"><code class="docutils literal notranslate"><span class="pre">AsyncReactAdminView.apply_filters()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.AsyncReactAdminView.put"><code class="docutils literal notranslate"><span class="pre">AsyncReactAdminView.put()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.AsyncReactAdminView.schema_list_params"><code class="docutils literal notranslate"><span class="pre">AsyncReactAdminView.schema_list_params</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.AsyncReactAdminView.list_params_schema"><code class="docutils literal notranslate"><span class="pre">AsyncReactAdminView.list_params_schema</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.AsyncReactAdminView.pagination"><code class="docutils literal notranslate"><span class="pre">AsyncReactAdminView.pagination</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.AsyncReactAdminView.list_response_schema"><code class="docutils literal notranslate"><span class="pre">AsyncReactAdminView.list_response_schema</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.AsyncReactAdminView.get_react_admin_range_unit"><code class="docutils literal notranslate"><span class="pre">AsyncReactAdminView.get_react_admin_range_unit()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.AsyncReactAdminView.to_list_response"><code class="docutils literal notranslate"><span class="pre">AsyncReactAdminView.to_list_response()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.AsyncReactAdminView.before_include_view"><code class="docutils literal notranslate"><span class="pre">AsyncReactAdminView.before_include_view()</span></code></a></li>
@@ -2837,8 +2875,9 @@ and collects the task-shaped override recipes.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.ReactAdminView.apply_list_params"><code class="docutils literal notranslate"><span class="pre">ReactAdminView.apply_list_params()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.ReactAdminView.apply_filters"><code class="docutils literal notranslate"><span class="pre">ReactAdminView.apply_filters()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.ReactAdminView.put"><code class="docutils literal notranslate"><span class="pre">ReactAdminView.put()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.ReactAdminView.schema_list_params"><code class="docutils literal notranslate"><span class="pre">ReactAdminView.schema_list_params</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.ReactAdminView.list_params_schema"><code class="docutils literal notranslate"><span class="pre">ReactAdminView.list_params_schema</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.ReactAdminView.pagination"><code class="docutils literal notranslate"><span class="pre">ReactAdminView.pagination</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.ReactAdminView.list_response_schema"><code class="docutils literal notranslate"><span class="pre">ReactAdminView.list_response_schema</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.ReactAdminView.get_react_admin_range_unit"><code class="docutils literal notranslate"><span class="pre">ReactAdminView.get_react_admin_range_unit()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.ReactAdminView.to_list_response"><code class="docutils literal notranslate"><span class="pre">ReactAdminView.to_list_response()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.ReactAdminView.before_include_view"><code class="docutils literal notranslate"><span class="pre">ReactAdminView.before_include_view()</span></code></a></li>
@@ -2853,9 +2892,10 @@ and collects the task-shaped override recipes.</p>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView"><code class="docutils literal notranslate"><span class="pre">BaseRestView</span></code></a><ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.responses"><code class="docutils literal notranslate"><span class="pre">BaseRestView.responses</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.schema"><code class="docutils literal notranslate"><span class="pre">BaseRestView.schema</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.schema_response"><code class="docutils literal notranslate"><span class="pre">BaseRestView.schema_response</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.schema_create"><code class="docutils literal notranslate"><span class="pre">BaseRestView.schema_create</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.schema_update"><code class="docutils literal notranslate"><span class="pre">BaseRestView.schema_update</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.response_schema"><code class="docutils literal notranslate"><span class="pre">BaseRestView.response_schema</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.list_response_schema"><code class="docutils literal notranslate"><span class="pre">BaseRestView.list_response_schema</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.create_schema"><code class="docutils literal notranslate"><span class="pre">BaseRestView.create_schema</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.update_schema"><code class="docutils literal notranslate"><span class="pre">BaseRestView.update_schema</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.model"><code class="docutils literal notranslate"><span class="pre">BaseRestView.model</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.scope"><code class="docutils literal notranslate"><span class="pre">BaseRestView.scope</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.id_type"><code class="docutils literal notranslate"><span class="pre">BaseRestView.id_type</span></code></a></li>
@@ -2870,7 +2910,7 @@ and collects the task-shaped override recipes.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.sort_query_param"><code class="docutils literal notranslate"><span class="pre">BaseRestView.sort_query_param</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.default_sort"><code class="docutils literal notranslate"><span class="pre">BaseRestView.default_sort</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.sort_nulls"><code class="docutils literal notranslate"><span class="pre">BaseRestView.sort_nulls</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.schema_list_params"><code class="docutils literal notranslate"><span class="pre">BaseRestView.schema_list_params</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.list_params_schema"><code class="docutils literal notranslate"><span class="pre">BaseRestView.list_params_schema</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.request"><code class="docutils literal notranslate"><span class="pre">BaseRestView.request</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.select"><code class="docutils literal notranslate"><span class="pre">BaseRestView.select()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.where_id"><code class="docutils literal notranslate"><span class="pre">BaseRestView.where_id()</span></code></a></li>
@@ -2878,7 +2918,6 @@ and collects the task-shaped override recipes.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.get_loader_options"><code class="docutils literal notranslate"><span class="pre">BaseRestView.get_loader_options()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.to_single_response"><code class="docutils literal notranslate"><span class="pre">BaseRestView.to_single_response()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.to_list_response"><code class="docutils literal notranslate"><span class="pre">BaseRestView.to_list_response()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.to_response"><code class="docutils literal notranslate"><span class="pre">BaseRestView.to_response()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.snapshot"><code class="docutils literal notranslate"><span class="pre">BaseRestView.snapshot()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.before_include_view"><code class="docutils literal notranslate"><span class="pre">BaseRestView.before_include_view()</span></code></a></li>
 </ul>
@@ -2924,12 +2963,6 @@ and collects the task-shaped override recipes.</p>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.ReadScope"><code class="docutils literal notranslate"><span class="pre">ReadScope</span></code></a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.ResponseShape"><code class="docutils literal notranslate"><span class="pre">ResponseShape</span></code></a><ul class="pst-show_toc_level nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.ResponseShape.SINGLE"><code class="docutils literal notranslate"><span class="pre">ResponseShape.SINGLE</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.ResponseShape.LIST"><code class="docutils literal notranslate"><span class="pre">ResponseShape.LIST</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.ResponseShape.EMPTY"><code class="docutils literal notranslate"><span class="pre">ResponseShape.EMPTY</span></code></a></li>
-</ul>
-</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.View"><code class="docutils literal notranslate"><span class="pre">View</span></code></a><ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.View.prefix"><code class="docutils literal notranslate"><span class="pre">View.prefix</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.View.tags"><code class="docutils literal notranslate"><span class="pre">View.tags</span></code></a></li>
@@ -2946,6 +2979,11 @@ and collects the task-shaped override recipes.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.ViewRoute.DELETE"><code class="docutils literal notranslate"><span class="pre">ViewRoute.DELETE</span></code></a></li>
 </ul>
 </li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.SchemaType"><code class="docutils literal notranslate"><span class="pre">SchemaType</span></code></a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.SchemaType.fn"><code class="docutils literal notranslate"><span class="pre">SchemaType.fn</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.SchemaType.name"><code class="docutils literal notranslate"><span class="pre">SchemaType.name</span></code></a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.resolve_scope"><code class="docutils literal notranslate"><span class="pre">resolve_scope()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.delete"><code class="docutils literal notranslate"><span class="pre">delete()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.get"><code class="docutils literal notranslate"><span class="pre">get()</span></code></a></li>
@@ -2956,11 +2994,11 @@ and collects the task-shaped override recipes.</p>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.put"><code class="docutils literal notranslate"><span class="pre">put()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.route"><code class="docutils literal notranslate"><span class="pre">route()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#markers-for-the-view-s-own-types">Markers for the view’s own types</a><ul class="pst-show_toc_level nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.ViewID"><code class="docutils literal notranslate"><span class="pre">ViewID</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.ViewResponse"><code class="docutils literal notranslate"><span class="pre">ViewResponse</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.ViewListResponse"><code class="docutils literal notranslate"><span class="pre">ViewListResponse</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.ViewCreate"><code class="docutils literal notranslate"><span class="pre">ViewCreate</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.ViewUpdate"><code class="docutils literal notranslate"><span class="pre">ViewUpdate</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.IDType"><code class="docutils literal notranslate"><span class="pre">IDType</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.ResponseSchema"><code class="docutils literal notranslate"><span class="pre">ResponseSchema</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.ListResponseSchema"><code class="docutils literal notranslate"><span class="pre">ListResponseSchema</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.CreateSchema"><code class="docutils literal notranslate"><span class="pre">CreateSchema</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.UpdateSchema"><code class="docutils literal notranslate"><span class="pre">UpdateSchema</span></code></a></li>
 </ul>
 </li>
 </ul>

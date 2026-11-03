@@ -33,7 +33,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=643d5ecc" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=ea69bafe" />
   
   <!-- So that users can add custom icons -->
   <script defer src="_static/scripts/fontawesome.js?digest=18bd87630a240e9c25be"></script>
@@ -571,7 +571,7 @@ a view. Type checkers do not see that step; see
 </section>
 <section id="type-the-schema-and-its-reference-fields">
 <span id="typing-schemas"></span><h2>Type the schema and its reference fields<a class="headerlink" href="#type-the-schema-and-its-reference-fields" title="Link to this heading">#</a></h2>
-<p>The view’s schema usually subclasses
+<p>The view’s main schema usually subclasses
 <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDSchema</span></code></a>; see
 <a class="reference internal" href="schemas.html#schema-base-classes"><span class="std std-ref">Choose a base class</span></a>. You can also give the base class
 the model, as in <code class="docutils literal notranslate"><span class="pre">fr.IDSchema[User]</span></code>:</p>
@@ -633,11 +633,11 @@ in this order:</p>
 <td><p>the return value of <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_single_response" title="fastapi_restly.views.BaseRestView.to_single_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_single_response</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">BaseSchema</span></code></p></td>
 </tr>
-<tr class="row-even"><td><p>the create body</p></td>
+<tr class="row-even"><td><p>the create schema</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">data</span></code> in <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create" title="fastapi_restly.views.RestView.create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">pydantic.BaseModel</span></code></p></td>
 </tr>
-<tr class="row-odd"><td><p>the update body</p></td>
+<tr class="row-odd"><td><p>the update schema</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">data</span></code> in <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.update" title="fastapi_restly.views.RestView.update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">update</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">pydantic.BaseModel</span></code></p></td>
 </tr>
@@ -686,8 +686,8 @@ typed overrides:</p>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">"/users"</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
     <span class="n">schema</span> <span class="o">=</span> <span class="n">UserSchema</span>
-    <span class="n">schema_create</span> <span class="o">=</span> <span class="n">UserCreate</span>
-    <span class="n">schema_update</span> <span class="o">=</span> <span class="n">UserUpdate</span>
+    <span class="n">create_schema</span> <span class="o">=</span> <span class="n">UserCreate</span>
+    <span class="n">update_schema</span> <span class="o">=</span> <span class="n">UserUpdate</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">where_id</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ColumnElement</span><span class="p">[</span><span class="nb">bool</span><span class="p">]:</span>
         <span class="k">return</span> <span class="n">User</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="nb">id</span>
@@ -703,10 +703,10 @@ typed overrides:</p>
 <code class="docutils literal notranslate"><span class="pre">update</span></code> is a <code class="docutils literal notranslate"><span class="pre">User</span></code>, and the type checker checks the return types too. Note
 these points:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">create</span></code> takes the create body and returns the model. <code class="docutils literal notranslate"><span class="pre">update</span></code> takes the
-loaded <code class="docutils literal notranslate"><span class="pre">obj</span></code> and the update body. The handler
-<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_update" title="fastapi_restly.views.RestView.handle_update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_update</span></code></a> loads
-the row, and returns 404 if it does not exist, before <code class="docutils literal notranslate"><span class="pre">update</span></code> runs.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">create</span></code> takes an instance of the create schema and returns the model.
+<code class="docutils literal notranslate"><span class="pre">update</span></code> takes the loaded <code class="docutils literal notranslate"><span class="pre">obj</span></code> and an instance of the update schema. The
+handler <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_update" title="fastapi_restly.views.RestView.handle_update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_update</span></code></a>
+loads the row, and returns 404 if it does not exist, before <code class="docutils literal notranslate"><span class="pre">update</span></code> runs.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">where_id</span></code> gets the id from the path, so its type is the id type, the last
 parameter. It returns a SQL condition, a <code class="docutils literal notranslate"><span class="pre">ColumnElement[bool]</span></code>; see
 <a class="reference internal" href="lifecycle.html#natural-key-route"><span class="std std-ref">Look a row up by another key</span></a>.</p></li>
@@ -714,9 +714,9 @@ parameter. It returns a SQL condition, a <code class="docutils literal notransla
 them. A type checker reports an override, as it does for a handler. Their
 return types follow the model parameter: <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">self.get_one(id)</span></code> is a
 <code class="docutils literal notranslate"><span class="pre">User</span></code>, and so is each row of <code class="docutils literal notranslate"><span class="pre">self.select()</span></code>.</p></li>
-<li><p>For the response type, give the view’s schema: the response class that
+<li><p>For the response type, give the main schema: the response schema that
 Restly builds is a subclass of it. A view that sets its own
-<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_response" title="fastapi_restly.views.BaseRestView.schema_response"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_response</span></code></a>
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.response_schema" title="fastapi_restly.views.BaseRestView.response_schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">response_schema</span></code></a>
 gives that class instead, as in <code class="docutils literal notranslate"><span class="pre">fr.AsyncRestView[User,</span> <span class="pre">UserResponse]</span></code>.</p></li>
 </ul>
 <div class="details admonition">
@@ -758,13 +758,13 @@ enough:</p>
 calls too: <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one" title="fastapi_restly.views.RestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one(id)</span></code></a>
 returns the model, and
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_update" title="fastapi_restly.views.RestView.handle_update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_update(id,</span> <span class="pre">data)</span></code></a>
-takes the update body.</p>
+takes an instance of the update schema.</p>
 <p>The classes that
-<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.derive_schema_response" title="fastapi_restly.schemas.derive_schema_response"><code class="xref py py-func docutils literal notranslate"><span class="pre">derive_schema_response()</span></code></a>
+<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.derive_response_schema" title="fastapi_restly.schemas.derive_response_schema"><code class="xref py py-func docutils literal notranslate"><span class="pre">derive_response_schema()</span></code></a>
 returns cannot be used in an annotation. In a route, use the markers of
-<code class="docutils literal notranslate"><span class="pre">fastapi_restly.views</span></code> instead, such as <code class="docutils literal notranslate"><span class="pre">ViewResponse</span></code>: a type checker reads
+<code class="docutils literal notranslate"><span class="pre">fastapi_restly.views</span></code> instead, such as <code class="docutils literal notranslate"><span class="pre">ResponseSchema</span></code>: a type checker reads
 each marker as <code class="docutils literal notranslate"><span class="pre">Any</span></code>. See
-<a class="reference internal" href="schemas.html#name-the-response-classes"><span class="std std-ref">Name the view’s classes in a custom route</span></a>.</p>
+<a class="reference internal" href="schemas.html#name-the-view-schemas"><span class="std std-ref">Name the view’s schemas in a custom route</span></a>.</p>
 </section>
 <section id="what-a-type-checker-cannot-see">
 <span id="typing-limits"></span><h2>What a type checker cannot see<a class="headerlink" href="#what-a-type-checker-cannot-see" title="Link to this heading">#</a></h2>
@@ -815,7 +815,7 @@ each change.</p></li>
 <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDSchema[Model]</span></code></a> do at
 runtime.</p></li>
 <li><p><a class="reference internal" href="schemas.html"><span class="std std-doc">Schemas &amp; Validation</span></a>: the schema base classes and
-the response class.</p></li>
+the response schema.</p></li>
 </ul>
 </section>
 </section>

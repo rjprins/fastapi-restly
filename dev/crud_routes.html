@@ -33,7 +33,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=643d5ecc" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=ea69bafe" />
   
   <!-- So that users can add custom icons -->
   <script defer src="_static/scripts/fontawesome.js?digest=18bd87630a240e9c25be"></script>
@@ -584,20 +584,20 @@ The examples on this page use <code class="docutils literal notranslate"><span c
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/users</span></code></p></td>
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView.create_endpoint" title="fastapi_restly.views.AsyncRestView.create_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create_endpoint</span></code></a></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">schema_create</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">schema_response</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">create_schema</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">response_schema</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">201</span></code></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/users/{id}</span></code></p></td>
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView.get_one_endpoint" title="fastapi_restly.views.AsyncRestView.get_one_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one_endpoint</span></code></a></p></td>
 <td><p>The id in the path</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">schema_response</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">response_schema</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">200</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">PATCH</span> <span class="pre">/users/{id}</span></code></p></td>
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView.update_endpoint" title="fastapi_restly.views.AsyncRestView.update_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">update_endpoint</span></code></a></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">schema_update</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">schema_response</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">update_schema</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">response_schema</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">200</span></code></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">DELETE</span> <span class="pre">/users/{id}</span></code></p></td>
@@ -670,8 +670,8 @@ exists. OpenAPI still shows the path as <code class="docutils literal notranslat
 parameter.</p>
 <p>A route that you declare yourself keeps the path you give it. Restly adds
 the converter only to a path parameter annotated
-<a class="reference internal" href="api/views.html#fastapi_restly.views.ViewID" title="fastapi_restly.views.ViewID"><code class="xref py py-data docutils literal notranslate"><span class="pre">ViewID</span></code></a>; see
-<a class="reference internal" href="schemas.html#name-the-response-classes"><span class="std std-ref">Name the view’s classes in a custom route</span></a>. To
+<a class="reference internal" href="api/views.html#fastapi_restly.views.IDType" title="fastapi_restly.views.IDType"><code class="xref py py-data docutils literal notranslate"><span class="pre">IDType</span></code></a>; see
+<a class="reference internal" href="schemas.html#name-the-view-schemas"><span class="std std-ref">Name the view’s schemas in a custom route</span></a>. To
 accept negative integer ids, replace each item endpoint you need with an
 untyped path such as <code class="docutils literal notranslate"><span class="pre">&#64;fr.get(&quot;/{id}&quot;)</span></code>, and annotate its <code class="docutils literal notranslate"><span class="pre">id</span></code> parameter as
 <code class="docutils literal notranslate"><span class="pre">int</span></code>; see
@@ -691,16 +691,16 @@ mapped class that the routes read and write.</p></li>
 <p>Normal models built on SQLAlchemy’s <code class="docutils literal notranslate"><span class="pre">DeclarativeBase</span></code> work. Restly’s model
 defaults, <a class="reference internal" href="api/models.html#fastapi_restly.models.ModelDefaults" title="fastapi_restly.models.ModelDefaults"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.ModelDefaults</span></code></a>, are
 optional; see <a class="reference internal" href="models.html"><span class="std std-doc">Models</span></a>.</p>
-<p>If the view does not declare <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema" title="fastapi_restly.views.BaseRestView.schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema</span></code></a>, Restly generates the view’s
-schema from <code class="docutils literal notranslate"><span class="pre">model</span></code> when you register the view. From the view’s schema, it
-derives the request bodies and the response class:
-<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_create" title="fastapi_restly.views.BaseRestView.schema_create"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_create</span></code></a>,
-<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_update" title="fastapi_restly.views.BaseRestView.schema_update"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_update</span></code></a> and
-<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_response" title="fastapi_restly.views.BaseRestView.schema_response"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_response</span></code></a>.
+<p>If the view does not declare <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema" title="fastapi_restly.views.BaseRestView.schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema</span></code></a>, Restly generates the view’s main
+schema from <code class="docutils literal notranslate"><span class="pre">model</span></code> when you register the view. From the main schema, it
+derives the create, update and response schemas:
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.create_schema" title="fastapi_restly.views.BaseRestView.create_schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">create_schema</span></code></a>,
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.update_schema" title="fastapi_restly.views.BaseRestView.update_schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">update_schema</span></code></a> and
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.response_schema" title="fastapi_restly.views.BaseRestView.response_schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">response_schema</span></code></a>.
 <a class="reference internal" href="schemas.html#write-or-generate"><span class="std std-ref">Generate the schema or write it</span></a> shows when to write the
 schema yourself, and
 <a class="reference internal" href="schemas.html#readonly-and-writeonly"><span class="std std-ref">Hide a field from requests or from responses</span></a>
-shows which fields each class takes.</p>
+shows which fields each schema takes.</p>
 </section>
 <section id="configure-a-crud-view">
 <span id="id2"></span><h2>Configure a CRUD view<a class="headerlink" href="#configure-a-crud-view" title="Link to this heading">#</a></h2>
@@ -716,7 +716,7 @@ shows which fields each class takes.</p>
 <td><p>Declare <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema" title="fastapi_restly.views.BaseRestView.schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema</span></code></a></p></td>
 </tr>
 <tr class="row-odd"><td><p>Other fields or validation on create or update</p></td>
-<td><p>Declare <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_create" title="fastapi_restly.views.BaseRestView.schema_create"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_create</span></code></a> or <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_update" title="fastapi_restly.views.BaseRestView.schema_update"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_update</span></code></a> (<a class="reference internal" href="schemas.html#explicit-write-schemas"><span class="std std-ref">Explicit write schemas</span></a>)</p></td>
+<td><p>Declare <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.create_schema" title="fastapi_restly.views.BaseRestView.create_schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">create_schema</span></code></a> or <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.update_schema" title="fastapi_restly.views.BaseRestView.update_schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">update_schema</span></code></a> (<a class="reference internal" href="schemas.html#explicit-write-schemas"><span class="std std-ref">Explicit write schemas</span></a>)</p></td>
 </tr>
 <tr class="row-even"><td><p>Another type for the <code class="docutils literal notranslate"><span class="pre">{id}</span></code> path parameter</p></td>
 <td><p>Set <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.id_type" title="fastapi_restly.views.BaseRestView.id_type"><code class="xref py py-attr docutils literal notranslate"><span class="pre">id_type</span></code></a> (<a class="reference internal" href="#item-route-matching">Item paths</a>)</p></td>
@@ -1126,7 +1126,7 @@ such as the tasks of other users, still show under the nested URL. To hide
 them there too, use <code class="docutils literal notranslate"><span class="pre">fr.resolve_scope(TaskView)</span></code> instead of
 <code class="docutils literal notranslate"><span class="pre">fr.resolve_scope(Task)</span></code> in the scope of <code class="docutils literal notranslate"><span class="pre">ProjectTaskView</span></code>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">TaskView</span></code> cannot create tasks with <code class="docutils literal notranslate"><span class="pre">TaskSchema</span></code>, because <code class="docutils literal notranslate"><span class="pre">project_id</span></code> is
-read-only there. Give <code class="docutils literal notranslate"><span class="pre">TaskView</span></code> its own <code class="docutils literal notranslate"><span class="pre">schema_create</span></code>, a
+read-only there. Give <code class="docutils literal notranslate"><span class="pre">TaskView</span></code> its own <code class="docutils literal notranslate"><span class="pre">create_schema</span></code>, a
 <code class="docutils literal notranslate"><span class="pre">fr.BaseSchema</span></code> with <code class="docutils literal notranslate"><span class="pre">project_id:</span> <span class="pre">fr.MustExist[int,</span> <span class="pre">Project]</span></code>. Keep
 <code class="docutils literal notranslate"><span class="pre">project_id</span></code> read-only in <code class="docutils literal notranslate"><span class="pre">TaskSchema</span></code>; see <a class="reference internal" href="#nested-create">Create a child</a>.</p></li>
 <li><p>Both views appear under the “Tasks” tag in OpenAPI, unless you set

@@ -44,7 +44,6 @@ through `fr`.
 | {class}`fr.ReactAdminView <fastapi_restly.views.ReactAdminView>` | Synchronous CRUD view for the react-admin simple REST protocol. |
 | {data}`fr.ReadOnly <fastapi_restly.schemas.ReadOnly>` | Mark a field as excluded from generated create and update schemas. |
 | {func}`fr.resolve_scope <fastapi_restly.views.resolve_scope>` | Resolve the read scope for a view or model. |
-| {class}`fr.ResponseShape <fastapi_restly.views.ResponseShape>` | Response forms for one object, a list, or an empty body. |
 | {class}`fr.RestView <fastapi_restly.views.RestView>` | CRUD view using a synchronous SQLAlchemy session. |
 | {func}`fr.route <fastapi_restly.views.route>` | Decorate an endpoint method for any HTTP method. |
 | {data}`fr.SessionDep <fastapi_restly.db.SessionDep>` | FastAPI dependency annotation for a synchronous session. |

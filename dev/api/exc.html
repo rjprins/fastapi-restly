@@ -33,7 +33,7 @@
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=643d5ecc" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=ea69bafe" />
   
   <!-- So that users can add custom icons -->
   <script defer src="../_static/scripts/fontawesome.js?digest=18bd87630a240e9c25be"></script>
@@ -709,7 +709,7 @@ its filter methods.</p>
 only for its own list params: those of a list route, or a dict or a
 <code class="docutils literal notranslate"><span class="pre">QueryParams</span></code> that a method gets. A Pydantic model of another class,
 such as one of your own, does not run them. Then the list can have rows
-that a method would leave out. Pass the view’s <code class="docutils literal notranslate"><span class="pre">schema_list_params</span></code>, a
+that a method would leave out. Pass the view’s <code class="docutils literal notranslate"><span class="pre">list_params_schema</span></code>, a
 dict or a <code class="docutils literal notranslate"><span class="pre">QueryParams</span></code> instead. To skip the methods on purpose, turn
 the warning off with <code class="docutils literal notranslate"><span class="pre">warnings.filterwarnings</span></code>.</p>
 </dd></dl>

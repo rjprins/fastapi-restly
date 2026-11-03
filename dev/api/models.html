@@ -33,7 +33,7 @@
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=643d5ecc" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=ea69bafe" />
   
   <!-- So that users can add custom icons -->
   <script defer src="../_static/scripts/fontawesome.js?digest=18bd87630a240e9c25be"></script>
@@ -686,7 +686,7 @@ migration.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">awaitable_attrs</span></code> from SQLAlchemy’s <code class="docutils literal notranslate"><span class="pre">AsyncAttrs</span></code>. An unloaded
 attribute can then be reached from plain async code,
 <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">obj.awaitable_attrs.items</span></code>, where a bare <code class="docutils literal notranslate"><span class="pre">obj.items</span></code> would
-raise <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code>. Views eager-load what the response class
+raise <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code>. Views eager-load what the response schema
 names, so this is for the code that runs outside that: an
 <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code> hook, a custom business method.</p></li>
 </ul>

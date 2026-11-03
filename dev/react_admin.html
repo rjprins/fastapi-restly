@@ -33,7 +33,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=643d5ecc" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=ea69bafe" />
   
   <!-- So that users can add custom icons -->
   <script defer src="_static/scripts/fontawesome.js?digest=18bd87630a240e9c25be"></script>
@@ -649,6 +649,12 @@ holds the total:</p>
 </div>
 <div class="details admonition">
 <p class="admonition-title">Details</p>
+<p>OpenAPI shows the array of the response schema, and
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.list_response_schema" title="fastapi_restly.views.BaseRestView.list_response_schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">list_response_schema</span></code></a>
+holds this type. For smaller items, set it to another list, such as
+<code class="docutils literal notranslate"><span class="pre">list[ProductSummary]</span></code>. Restly fills the items from the response schema. A value
+that is not a list raises at registration, unless the view replaces
+<code class="docutils literal notranslate"><span class="pre">get_many_endpoint</span></code> or <code class="docutils literal notranslate"><span class="pre">to_list_response</span></code>.</p>
 <p>Any other query key gets a 422, so a typo cannot return more rows than you
 asked for without notice. The <code class="docutils literal notranslate"><span class="pre">page</span></code>, <code class="docutils literal notranslate"><span class="pre">page_size</span></code> and field filters of the
 list params that Restly generates are unknown keys here too. A key that the
@@ -675,7 +681,7 @@ with size 3. A field on a JSON column takes only <code class="docutils literal n
 generated filters; see <a class="reference internal" href="filtering.html"><span class="std std-doc">Filtering, Sorting &amp; Pagination</span></a>.
 A time follows the same rule as in the other filters; see
 <a class="reference internal" href="schemas.html#utc-times"><span class="std std-ref">Keep times in UTC</span></a>.</p>
-<p>Only fields that the view’s response class sends are accepted, by their
+<p>Only fields that the view’s response schema sends are accepted, by their
 alias when they have one. The model must have the field in SQL: as a
 column, a <code class="docutils literal notranslate"><span class="pre">column_property</span></code> or a hybrid property with an SQL expression.
 Other fields, also a Python <code class="docutils literal notranslate"><span class="pre">&#64;property</span></code>, a hybrid property that is plain
@@ -765,12 +771,15 @@ the fields that it does not accept, and does not reject the request.</p>
 <p>The <code class="docutils literal notranslate"><span class="pre">PUT</span></code> route calls the same
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_update" title="fastapi_restly.views.RestView.handle_update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_update</span></code></a> handler
 as <code class="docutils literal notranslate"><span class="pre">PATCH</span></code>, with the view’s standard
-<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_update" title="fastapi_restly.views.BaseRestView.schema_update"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_update</span></code></a>
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.update_schema" title="fastapi_restly.views.BaseRestView.update_schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">update_schema</span></code></a>
 payload. So an <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.update" title="fastapi_restly.views.RestView.update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">update</span></code></a> business
 method that you override changes both routes. To give <code class="docutils literal notranslate"><span class="pre">PUT</span></code> its own rules,
 <a class="reference internal" href="lifecycle.html#replace-endpoint-method"><span class="std std-ref">replace</span></a> its endpoint method <code class="docutils literal notranslate"><span class="pre">put</span></code>. This version
 requires the complete record, while <code class="docutils literal notranslate"><span class="pre">PATCH</span></code> still accepts a part of it:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ProductReplace</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">BaseSchema</span><span class="p">):</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi_restly.views</span><span class="w"> </span><span class="kn">import</span> <span class="n">ResponseSchema</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">ProductReplace</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">BaseSchema</span><span class="p">):</span>
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">price</span><span class="p">:</span> <span class="nb">float</span>
 
@@ -780,9 +789,8 @@ requires the complete record, while <code class="docutils literal notranslate"><
     <span class="n">model</span> <span class="o">=</span> <span class="n">Product</span>
 
     <span class="nd">@fr</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="s2">"/</span><span class="si">{id}</span><span class="s2">"</span><span class="p">)</span>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">put</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">payload</span><span class="p">:</span> <span class="n">ProductReplace</span><span class="p">):</span>
-        <span class="n">obj</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_update</span><span class="p">(</span><span class="nb">id</span><span class="p">,</span> <span class="n">payload</span><span class="p">)</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_response</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">put</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">payload</span><span class="p">:</span> <span class="n">ProductReplace</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ResponseSchema</span><span class="p">:</span>
+        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_update</span><span class="p">(</span><span class="nb">id</span><span class="p">,</span> <span class="n">payload</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>A <code class="docutils literal notranslate"><span class="pre">PUT</span></code> with a missing field returns 422. Keys that the schema does not
@@ -924,7 +932,7 @@ inherit from it, as
 small subclass of
 <a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestView</span></code></a> with
 <a class="reference internal" href="filtering.html#own-list-params"><span class="std std-ref">list params of its own</span></a>. Its
-<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_list_params" title="fastapi_restly.views.BaseRestView.schema_list_params"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_list_params</span></code></a>
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.list_params_schema" title="fastapi_restly.views.BaseRestView.list_params_schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">list_params_schema</span></code></a>
 is <a class="reference internal" href="api/views.html#fastapi_restly.views.ReactAdminListParams" title="fastapi_restly.views.ReactAdminListParams"><code class="xref py py-class docutils literal notranslate"><span class="pre">ReactAdminListParams</span></code></a>,
 a Pydantic model with three fields: <code class="docutils literal notranslate"><span class="pre">sort</span></code>, <code class="docutils literal notranslate"><span class="pre">range</span></code> and <code class="docutils literal notranslate"><span class="pre">filter</span></code>. React-admin
 sends each one as JSON. The fields are
@@ -948,7 +956,7 @@ describes. They find each field of <code class="docutils literal notranslate"><s
 list params of its own can use too; see
 <a class="reference internal" href="filtering.html#own-list-params-keys"><span class="std std-ref">Filter and sort on the fields of the response</span></a>.</p>
 <p>To add a query key, subclass <code class="docutils literal notranslate"><span class="pre">ReactAdminListParams</span></code> and set the subclass as
-<code class="docutils literal notranslate"><span class="pre">schema_list_params</span></code>. A subclass of the view keeps it. List params that are
+<code class="docutils literal notranslate"><span class="pre">list_params_schema</span></code>. A subclass of the view keeps it. List params that are
 not a <code class="docutils literal notranslate"><span class="pre">ReactAdminListParams</span></code> fail when Python defines the view class.</p>
 <p>The views <a class="reference internal" href="lifecycle.html#replace-endpoint-method"><span class="std std-ref">replace the endpoint method</span></a>
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many_endpoint" title="fastapi_restly.views.RestView.get_many_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many_endpoint</span></code></a>,

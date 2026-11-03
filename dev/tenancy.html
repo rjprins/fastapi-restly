@@ -33,7 +33,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=643d5ecc" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=ea69bafe" />
   
   <!-- So that users can add custom icons -->
   <script defer src="_static/scripts/fontawesome.js?digest=18bd87630a240e9c25be"></script>
@@ -526,17 +526,32 @@
   <section id="multi-tenancy">
 <span id="tenant-row-scoping"></span><h1>Multi-Tenancy<a class="headerlink" href="#multi-tenancy" title="Link to this heading">#</a></h1>
 <p>In a multi-tenant app, each organization reads and writes only its own rows.
-The rule has two halves: a filter on every read, and a column that every write
-stamps. Both read the tenant from <a class="reference internal" href="context.html"><span class="std std-doc"><code class="docutils literal notranslate"><span class="pre">Current</span></code></span></a>.</p>
-<p>The tenant rule is not a <a class="reference internal" href="scopes.html#default-scope"><span class="std std-ref">scope</span></a>. A view or a route can
-replace its scope, but the tenant rule must hold under every scope, also
-under <code class="docutils literal notranslate"><span class="pre">fr.clauses.UNSCOPED</span></code>, and for every reference check. So it lives on
-the SQLAlchemy session. A <code class="docutils literal notranslate"><span class="pre">do_orm_execute</span></code> listener adds a
-<a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/queryguide/api.html#sqlalchemy.orm.with_loader_criteria"><code class="docutils literal notranslate"><span class="pre">with_loader_criteria</span></code></a>
-option to every ORM read of an entity or a relationship. Restly’s views,
-the <a class="reference internal" href="api/objects.html#module-fastapi_restly.objects" title="fastapi_restly.objects"><code class="xref py py-mod docutils literal notranslate"><span class="pre">fr.objects</span></code></a> helpers and your own ORM
-queries all read through a session. So the rule reaches each of them, with
-the limits in <a class="reference internal" href="#tenant-listener-limits">What the listener does not cover</a>.</p>
+This page calls that the tenant rule.</p>
+<p>Multi-tenancy is best implemented using a SQLAlchemy pattern: a
+<a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/events.html#sqlalchemy.orm.SessionEvents.do_orm_execute" title="(in SQLAlchemy v2.0)"><code class="xref py py-meth docutils literal notranslate"><span class="pre">do_orm_execute</span></code></a> listener
+on the session adds a
+<a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/queryguide/api.html#sqlalchemy.orm.with_loader_criteria" title="(in SQLAlchemy v2.0)"><code class="xref py py-func docutils literal notranslate"><span class="pre">with_loader_criteria</span></code></a> option to
+every ORM read of an entity or a relationship. The SQLAlchemy docs describe
+this pattern in
+<a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/session_events.html#do-orm-execute-global-criteria">Adding global WHERE / ON criteria</a>.</p>
+<p>The pattern needs no special support in Restly, and it combines with what
+Restly provides:</p>
+<ul class="simple">
+<li><p><strong>Reads.</strong> Restly’s views, the <a class="reference internal" href="api/objects.html#module-fastapi_restly.objects" title="fastapi_restly.objects"><code class="xref py py-mod docutils literal notranslate"><span class="pre">fr.objects</span></code></a>
+helpers, the reference checks and your own ORM queries all read through a
+session. So the listener reaches each of them, with the limits in
+<a class="reference internal" href="#tenant-listener-limits">What the listener does not cover</a>.</p></li>
+<li><p><strong>The tenant of the request.</strong> <a class="reference internal" href="context.html"><span class="std std-doc"><code class="docutils literal notranslate"><span class="pre">Current</span></code></span></a> holds it. The listener
+and the tenant column both read it.</p></li>
+<li><p><strong>Writes.</strong> The listener only filters reads. A tenant column with
+<code class="docutils literal notranslate"><span class="pre">Current.org_id</span></code> as its insert default stamps every new row, and
+<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.ReadOnly" title="fastapi_restly.schemas.ReadOnly"><code class="xref py py-data docutils literal notranslate"><span class="pre">fr.ReadOnly</span></code></a> on the schema stops a
+client from setting it.</p></li>
+<li><p><strong>Scopes.</strong> A <a class="reference internal" href="scopes.html#default-scope"><span class="std std-ref">scope</span></a> holds a rule that a view or a route can
+replace, such as soft delete. The tenant rule stays on the session, because
+it must hold under every scope, also under <code class="docutils literal notranslate"><span class="pre">fr.clauses.UNSCOPED</span></code>.
+<a class="reference internal" href="#composing-on-a-view">Put the parts together</a> uses both on one view.</p></li>
+</ul>
 <p>The <a class="reference external" href="https://github.com/rjprins/fastapi-restly/tree/main/example-projects/saas">SaaS example</a>
 runs this rule on all of its tenant models.</p>
 <section id="set-up-the-tenant-rule">
@@ -603,7 +618,7 @@ runs this rule on all of its tenant models.</p>
     <span class="n">name</span><span class="p">:</span> <span class="n">orm</span><span class="o">.</span><span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
 </pre></div>
 </div>
-<p>The column is the write half. It is a stamped field, as in
+<p>The column handles the writes. It is a stamped field, as in
 <a class="reference internal" href="models.html#server-stamped-fields"><span class="std std-ref">Stamp the fields the server owns</span></a>: an insert default
 with <code class="docutils literal notranslate"><span class="pre">init=False</span></code>, and <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.ReadOnly" title="fastapi_restly.schemas.ReadOnly"><code class="xref py py-data docutils literal notranslate"><span class="pre">fr.ReadOnly</span></code></a>
 on the schema. It reads the same member as the listener, so a row lands in

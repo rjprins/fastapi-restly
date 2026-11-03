@@ -25,7 +25,7 @@ PATCH /projects/1
        │    ├─ before_action_commit(...)
        │    ├─ commit
        │    └─ after_action_commit(...)
-       └─ to_response(obj)                # the response class, as JSON
+       └─ to_single_response(obj)         # the response schema, as JSON
 ```
 
 The highlighted lines are the methods that you can override in your view.
@@ -43,10 +43,10 @@ These are the parts, and the page that explains each one:
   `fr.RestView`, also names a `model`,
   and serves five routes for it. See [Views](https://www.fastapi-restly.org/dev/views.html) and
   [CRUD Routes](https://www.fastapi-restly.org/dev/crud_routes.html).
-- **The view's schema**: a Pydantic class that lists the fields of the
-  resource. Restly builds the request bodies, such as `ProjectUpdate`, and the
-  response class, `ProjectResponse`, from it. A view without a schema gets one
-  that Restly generates from the model. See
+- **The main schema**: a Pydantic class that lists the fields of the
+  resource. Restly builds the other schemas from it, such as the update schema
+  `ProjectUpdate` and the response schema `ProjectResponse`. A view without a
+  schema gets one that Restly generates from the model. See
   [Schemas & Validation](https://www.fastapi-restly.org/dev/schemas.html).
 - **Endpoint method, handler and business method**: the three layers of each
   CRUD route. To change what an action does, override the business method,
@@ -70,7 +70,7 @@ These are the parts, and the page that explains each one:
   for the request. Scopes, column defaults and your `authorize` can read it.
   See [Request Context](https://www.fastapi-restly.org/dev/context.html).
 - **List params**: the filter, sort and page parameters of the list route.
-  Restly builds them from the response class. See
+  Restly builds them from the response schema. See
   [Filtering, Sorting & Pagination](https://www.fastapi-restly.org/dev/filtering.html).
 - **Session**: each request gets a database session from the source that
   `fr.configure()` sets. See
@@ -98,9 +98,9 @@ These are the parts, and the page that explains each one:
 
 ## Requests & Responses
 
-- [Schemas & Validation](https://www.fastapi-restly.org/dev/schemas.html): generate the schema or write it, keep a field out of the requests or the responses, validate input, keep times in UTC, keep NaN and infinity, store a Pydantic model in a JSON column, and use other field names in JSON, such as camelCase.
+- [Schemas & Validation](https://www.fastapi-restly.org/dev/schemas.html): generate the schema or write it, keep a field out of the requests or the responses, validate input, keep times in UTC, keep NaN and infinity, store a Pydantic model in a JSON column, use other field names in JSON, such as camelCase, and build a class for each view with `SchemaType`.
 - [Relationships](https://www.fastapi-restly.org/dev/relationships.html): accept the id of another row, check that the row exists, link many rows to many rows, return related objects, and fix `MissingGreenlet`.
-- [Responses](https://www.fastapi-restly.org/dev/responses.html): what each route returns, the list envelope, the response of a custom route, and how to change the shape of one route or of all routes.
+- [Responses](https://www.fastapi-restly.org/dev/responses.html): what each route returns, the list envelope and the list response schema, the response of a custom route, and how to change the shape of one route or of all routes.
 - [Filtering, Sorting & Pagination](https://www.fastapi-restly.org/dev/filtering.html): the filters, the sort order and the pages that a client can use on a list, the keys that a view chooses, filters of your own, and list params that you write yourself.
 - [Errors](https://www.fastapi-restly.org/dev/errors.html): raise a 404 or a 403, see why a duplicate value gives a 409, and change the error body.
 - [OpenAPI](https://www.fastapi-restly.org/dev/openapi.html): the tags, names and operation IDs of the routes, and how to document a custom route.

@@ -33,7 +33,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=643d5ecc" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=ea69bafe" />
   
   <!-- So that users can add custom icons -->
   <script defer src="_static/scripts/fontawesome.js?digest=18bd87630a240e9c25be"></script>
@@ -917,7 +917,7 @@ the row, as
 explains.</p></li>
 </ul>
 <p>Then mark each field
-<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.ReadOnly" title="fastapi_restly.schemas.ReadOnly"><code class="xref py py-data docutils literal notranslate"><span class="pre">fr.ReadOnly</span></code></a> on the view’s schema,
+<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.ReadOnly" title="fastapi_restly.schemas.ReadOnly"><code class="xref py py-data docutils literal notranslate"><span class="pre">fr.ReadOnly</span></code></a> on the view’s main schema,
 and leave it out of any <a class="reference internal" href="schemas.html#explicit-write-schemas"><span class="std std-ref">explicit write schema</span></a>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">DocumentSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">TimestampsSchemaMixin</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
     <span class="n">title</span><span class="p">:</span> <span class="nb">str</span>

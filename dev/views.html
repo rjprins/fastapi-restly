@@ -33,7 +33,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=643d5ecc" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=ea69bafe" />
   
   <!-- So that users can add custom icons -->
   <script defer src="_static/scripts/fontawesome.js?digest=18bd87630a240e9c25be"></script>
@@ -817,7 +817,7 @@ nothing:</p>
 <p>When the shared code calls methods of the view, such as <code class="docutils literal notranslate"><span class="pre">get_one</span></code> or a
 handler, write a base view instead of a mixin. A base view subclasses the
 view class, so it has the real methods, with their types:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi_restly.views</span><span class="w"> </span><span class="kn">import</span> <span class="n">ViewID</span><span class="p">,</span> <span class="n">ViewResponse</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi_restly.views</span><span class="w"> </span><span class="kn">import</span> <span class="n">IDType</span><span class="p">,</span> <span class="n">ResponseSchema</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">ArchiveView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
@@ -827,7 +827,7 @@ view class, so it has the real methods, with their types:</p>
         <span class="n">ARCHIVE</span> <span class="o">=</span> <span class="s2">"archive"</span>
 
     <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">"/</span><span class="si">{id}</span><span class="s2">/archive"</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">archive</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="n">ViewID</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ViewResponse</span><span class="p">:</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">archive</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="n">IDType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ResponseSchema</span><span class="p">:</span>
         <span class="n">obj</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_one</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
         <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">write_action</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">ARCHIVE</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="n">obj</span><span class="p">):</span>
             <span class="n">obj</span><span class="o">.</span><span class="n">archived</span> <span class="o">=</span> <span class="kc">True</span>
@@ -873,8 +873,8 @@ override for each change. Two shared concerns have their own sections:
 <a class="reference internal" href="models.html#write-path-values"><span class="std std-ref">values that every write path must set</span></a>, such as an
 owner id, on Models, and <a class="reference internal" href="scopes.html#soft-delete-mixin"><span class="std std-ref">soft delete</span></a> on Scopes.</p>
 <p>A route on a base view names the classes of each subclass with markers, such
-as <code class="docutils literal notranslate"><span class="pre">ViewResponse</span></code>; see
-<a class="reference internal" href="schemas.html#name-the-response-classes"><span class="std std-ref">Name the view’s classes in a custom route</span></a>.</p>
+as <code class="docutils literal notranslate"><span class="pre">ResponseSchema</span></code>; see
+<a class="reference internal" href="schemas.html#name-the-view-schemas"><span class="std std-ref">Name the view’s schemas in a custom route</span></a>.</p>
 <section id="one-base-view-for-the-whole-app">
 <span id="app-wide-base-view"></span><h3>One base view for the whole app<a class="headerlink" href="#one-base-view-for-the-whole-app" title="Link to this heading">#</a></h3>
 <p>A base view for the whole app declares the request context once. Every view
@@ -1053,7 +1053,7 @@ Here, two resources store a password hash:</p>
 </pre></div>
 </div>
 <p>Here, only the HTTP routes receive a plain password, so the hash belongs in
-<code class="docutils literal notranslate"><span class="pre">create</span></code> and <code class="docutils literal notranslate"><span class="pre">update</span></code>. The generated update body accepts <code class="docutils literal notranslate"><span class="pre">password</span></code> too, so
+<code class="docutils literal notranslate"><span class="pre">create</span></code> and <code class="docutils literal notranslate"><span class="pre">update</span></code>. The generated update schema accepts <code class="docutils literal notranslate"><span class="pre">password</span></code> too, so
 without the <code class="docutils literal notranslate"><span class="pre">update</span></code> override a <code class="docutils literal notranslate"><span class="pre">PATCH</span></code> request would store the new password
 without a hash. <a class="reference internal" href="lifecycle.html#password-hash-example"><span class="std std-ref">Hash a password</span></a> explains these
 overrides for one view.</p>
@@ -1084,7 +1084,7 @@ happens when the hook fails.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">FieldsRouteView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/fields"</span><span class="p">)</span>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">fields</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
-        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">schema_response</span><span class="o">.</span><span class="n">model_fields</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">response_schema</span><span class="o">.</span><span class="n">model_fields</span><span class="p">)</span>
 
 
 <span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
@@ -1237,10 +1237,12 @@ the view class, <code class="docutils literal notranslate"><span class="pre">Dep
 each request.</p></li>
 <li><p>It calls
 <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.before_include_view" title="fastapi_restly.views.BaseRestView.before_include_view"><code class="xref py py-meth docutils literal notranslate"><span class="pre">before_include_view()</span></code></a>.
-On a CRUD view, this builds the schemas that the view does not declare and
-the <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema_list_params" title="fastapi_restly.views.BaseRestView.schema_list_params"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_list_params</span></code></a>.
-It sets the item path from <code class="docutils literal notranslate"><span class="pre">id_type</span></code>, fills in the types of the endpoint
-methods, and removes the route marker of each excluded route.</p></li>
+On a CRUD view, this reads the schemas and the
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.list_params_schema" title="fastapi_restly.views.BaseRestView.list_params_schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">list_params_schema</span></code></a>,
+and checks them. Restly builds a class that the view does not declare at the
+first read, also before registration. It sets the item path from <code class="docutils literal notranslate"><span class="pre">id_type</span></code>,
+fills in the types of the endpoint methods, and removes the route marker of
+each excluded route.</p></li>
 <li><p>It turns the dependency attributes into keyword parameters of the view’s
 <code class="docutils literal notranslate"><span class="pre">__init__</span></code>. FastAPI then resolves them, and the new instance stores them.</p></li>
 <li><p>It builds an <code class="docutils literal notranslate"><span class="pre">APIRouter</span></code>. The prefix joins the prefixes of all classes in

@@ -316,7 +316,7 @@ handler, write a base view instead of a mixin. A base view subclasses the
 view class, so it has the real methods, with their types:
 
 ```python
-from fastapi_restly.views import ViewID, ViewResponse
+from fastapi_restly.views import IDType, ResponseSchema
 
 
 class ArchiveView(fr.AsyncRestView):
@@ -326,7 +326,7 @@ class ArchiveView(fr.AsyncRestView):
         ARCHIVE = "archive"
 
     @fr.post("/{id}/archive", status_code=200)
-    async def archive(self, id: ViewID) -> ViewResponse:
+    async def archive(self, id: IDType) -> ResponseSchema:
         obj = await self.get_one(id)
         async with self.write_action(self.Action.ARCHIVE, obj=obj):
             obj.archived = True
@@ -377,8 +377,8 @@ override for each change. Two shared concerns have their own sections:
 owner id, on Models, and [soft delete](#soft-delete-mixin) on Scopes.
 
 A route on a base view names the classes of each subclass with markers, such
-as `ViewResponse`; see
-[Name the view's classes in a custom route](#name-the-response-classes).
+as `ResponseSchema`; see
+[Name the view's schemas in a custom route](#name-the-view-schemas).
 
 (app-wide-base-view)=
 ### One base view for the whole app
@@ -572,7 +572,7 @@ class ServiceAccountView(PasswordHashingView):
 ```
 
 Here, only the HTTP routes receive a plain password, so the hash belongs in
-`create` and `update`. The generated update body accepts `password` too, so
+`create` and `update`. The generated update schema accepts `password` too, so
 without the `update` override a `PATCH` request would store the new password
 without a hash. [Hash a password](#password-hash-example) explains these
 overrides for one view.
@@ -608,7 +608,7 @@ Every registered subclass inherits the custom routes of its base:
 class FieldsRouteView(fr.AsyncRestView):
     @fr.get("/fields")
     async def fields(self) -> list[str]:
-        return list(self.schema_response.model_fields)
+        return list(self.response_schema.model_fields)
 
 
 @fr.include_view(app)
@@ -774,10 +774,12 @@ these steps:
    each request.
 4. It calls
    {meth}`before_include_view() <fastapi_restly.views.BaseRestView.before_include_view>`.
-   On a CRUD view, this builds the schemas that the view does not declare and
-   the {attr}`schema_list_params <fastapi_restly.views.BaseRestView.schema_list_params>`.
-   It sets the item path from `id_type`, fills in the types of the endpoint
-   methods, and removes the route marker of each excluded route.
+   On a CRUD view, this reads the schemas and the
+   {attr}`list_params_schema <fastapi_restly.views.BaseRestView.list_params_schema>`,
+   and checks them. Restly builds a class that the view does not declare at the
+   first read, also before registration. It sets the item path from `id_type`,
+   fills in the types of the endpoint methods, and removes the route marker of
+   each excluded route.
 5. It turns the dependency attributes into keyword parameters of the view's
    `__init__`. FastAPI then resolves them, and the new instance stores them.
 6. It builds an `APIRouter`. The prefix joins the prefixes of all classes in

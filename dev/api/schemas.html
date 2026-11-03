@@ -33,7 +33,7 @@
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=643d5ecc" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=ea69bafe" />
   
   <!-- So that users can add custom icons -->
   <script defer src="../_static/scripts/fontawesome.js?digest=18bd87630a240e9c25be"></script>
@@ -595,7 +595,7 @@ rows can a reference reach?” on the Relationships guide page.</p>
 <dt class="sig sig-object py" id="fastapi_restly.schemas.IDSchema">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.schemas.</span></span><span class="sig-name descname"><span class="pre">IDSchema</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#fastapi_restly.schemas.ReadOnly" title="fastapi_restly.schemas.ReadOnly"><span class="pre">ReadOnly</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.15)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fastapi_restly.schemas.IDSchema" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#fastapi_restly.schemas.BaseSchema" title="fastapi_restly.schemas._base.BaseSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseSchema</span></code></a></p>
-<p>The base of a view’s schema, which adds a read-only <code class="docutils literal notranslate"><span class="pre">id</span></code>. As the
+<p>The base of a view’s main schema, which adds a read-only <code class="docutils literal notranslate"><span class="pre">id</span></code>. As the
 type of a field, <code class="docutils literal notranslate"><span class="pre">IDSchema[Model]</span></code> is a reference to a related row.</p>
 <ul class="simple">
 <li><p>As a BASE CLASS (<code class="docutils literal notranslate"><span class="pre">class</span> <span class="pre">UserSchema(IDSchema):</span> <span class="pre">...</span></code>) it adds the resource’s
@@ -611,7 +611,7 @@ instead of turning a <code class="docutils literal notranslate"><span class="pre
 <dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.schemas.IDSchema.id">
 <span class="sig-name descname"><span class="pre">id</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#fastapi_restly.schemas.ReadOnly" title="fastapi_restly.schemas.ReadOnly"><span class="pre">ReadOnly</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.15)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#fastapi_restly.schemas.IDSchema.id" title="Link to this definition">#</a></dt>
-<dd><p>The id of the row. In a view’s schema, it is <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>: the
+<dd><p>The id of the row. In a view’s main schema, it is <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code>: the
 responses show it, and the create and update bodies that Restly
 generates leave it out. In a reference field, such as
 <code class="docutils literal notranslate"><span class="pre">author:</span> <span class="pre">fr.IDSchema[Author]</span></code>, the client sends it.</p>
@@ -685,7 +685,7 @@ These fields are marked <code class="docutils literal notranslate"><span class="
 that the constructor does not take (<code class="docutils literal notranslate"><span class="pre">init=False</span></code>).</p>
 <p>A time column gets a field of type <a class="reference internal" href="#fastapi_restly.schemas.UTCDatetime" title="fastapi_restly.schemas.UTCDatetime"><code class="xref py py-data docutils literal notranslate"><span class="pre">UTCDatetime</span></code></a>, which holds the
 time in UTC.</p>
-<p>A field allows <code class="docutils literal notranslate"><span class="pre">None</span></code> only when its column is nullable. The create body
+<p>A field allows <code class="docutils literal notranslate"><span class="pre">None</span></code> only when its column is nullable. The create schema
 follows the constructor: the client may leave out a field when its
 column is nullable, or when the constructor does not require it and the
 model then still gives the column a value. That value comes from the
@@ -708,16 +708,43 @@ model name followed by <code class="docutils literal notranslate"><span class="p
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="fastapi_restly.schemas.derive_schema_list_response">
-<span class="sig-prename descclassname"><span class="pre">fastapi_restly.schemas.</span></span><span class="sig-name descname"><span class="pre">derive_schema_list_response</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">schema_response</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.15)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://pydantic.dev/docs/validation/latest/api/pydantic/base_model/#pydantic.BaseModel" title="(in Pydantic v0.0.0)"><span class="pre">BaseModel</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">pagination</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="views.html#fastapi_restly.views.NumberedPagination" title="fastapi_restly._pagination.NumberedPagination"><span class="pre">NumberedPagination</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="views.html#fastapi_restly.views.NoPagination" title="fastapi_restly._pagination.NoPagination"><span class="pre">NoPagination</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.15)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">NumberedPagination()</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.15)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://pydantic.dev/docs/validation/latest/api/pydantic/base_model/#pydantic.BaseModel" title="(in Pydantic v0.0.0)"><span class="pre">BaseModel</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#fastapi_restly.schemas.derive_schema_list_response" title="Link to this definition">#</a></dt>
-<dd><p>Build the list response class of a view: the envelope of its
-pagination, filled with its response class, named
+<dt class="sig sig-object py" id="fastapi_restly.schemas.derive_create_schema">
+<span class="sig-prename descclassname"><span class="pre">fastapi_restly.schemas.</span></span><span class="sig-name descname"><span class="pre">derive_create_schema</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">schema</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.15)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><span class="pre">_SchemaT</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.15)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.15)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.15)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><span class="pre">_SchemaT</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#fastapi_restly.schemas.derive_create_schema" title="Link to this definition">#</a></dt>
+<dd><p>Build the create schema from a view’s main schema: the schema without its
+<code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> fields, named <code class="docutils literal notranslate"><span class="pre">&lt;Resource&gt;Create</span></code>.</p>
+<p>A view without its own
+<a class="reference internal" href="views.html#fastapi_restly.views.BaseRestView.create_schema" title="fastapi_restly.views.BaseRestView.create_schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">create_schema</span></code></a> gets this class.
+The class is a subclass of <code class="docutils literal notranslate"><span class="pre">schema</span></code>. Each call with the same arguments
+returns the same class, so a custom route can name the class that the view
+uses:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">UserCreate</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">schemas</span><span class="o">.</span><span class="n">derive_create_schema</span><span class="p">(</span><span class="n">UserSchema</span><span class="p">,</span> <span class="n">User</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>schema</strong> – The main schema.</p></li>
+<li><p><strong>model</strong> – The view’s model. The class also leaves out a primary key that
+the server generates, as a view does.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The create schema.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="fastapi_restly.schemas.derive_list_response_schema">
+<span class="sig-prename descclassname"><span class="pre">fastapi_restly.schemas.</span></span><span class="sig-name descname"><span class="pre">derive_list_response_schema</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">response_schema</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.15)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://pydantic.dev/docs/validation/latest/api/pydantic/base_model/#pydantic.BaseModel" title="(in Pydantic v0.0.0)"><span class="pre">BaseModel</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">pagination</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="views.html#fastapi_restly.views.NumberedPagination" title="fastapi_restly._pagination.NumberedPagination"><span class="pre">NumberedPagination</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="views.html#fastapi_restly.views.NoPagination" title="fastapi_restly._pagination.NoPagination"><span class="pre">NoPagination</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.15)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">NumberedPagination()</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.15)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://pydantic.dev/docs/validation/latest/api/pydantic/base_model/#pydantic.BaseModel" title="(in Pydantic v0.0.0)"><span class="pre">BaseModel</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#fastapi_restly.schemas.derive_list_response_schema" title="Link to this definition">#</a></dt>
+<dd><p>Build the list response schema of a view: the envelope of its
+pagination, filled with its response schema, named
 <code class="docutils literal notranslate"><span class="pre">&lt;Resource&gt;ListResponse</span></code>.</p>
-<p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code> of a view returns this class, except on a react-admin view,
-which returns a plain list. A custom list route names it, so OpenAPI
-shows one type for both routes:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">UserResponse</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">schemas</span><span class="o">.</span><span class="n">derive_schema_response</span><span class="p">(</span><span class="n">UserSchema</span><span class="p">)</span>
-<span class="n">UserListResponse</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">schemas</span><span class="o">.</span><span class="n">derive_schema_list_response</span><span class="p">(</span>
+<p>This is what a view’s <code class="docutils literal notranslate"><span class="pre">list_response_schema</span></code> is unless it sets another
+class. On a react-admin view it is a plain list. A route on a router, or
+outside the view, can name it, so OpenAPI shows one type for both routes:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">UserResponse</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">schemas</span><span class="o">.</span><span class="n">derive_response_schema</span><span class="p">(</span><span class="n">UserSchema</span><span class="p">)</span>
+<span class="n">UserListResponse</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">schemas</span><span class="o">.</span><span class="n">derive_list_response_schema</span><span class="p">(</span>
     <span class="n">UserResponse</span><span class="p">,</span> <span class="n">pagination</span><span class="o">=</span><span class="n">AppView</span><span class="o">.</span><span class="n">pagination</span>
 <span class="p">)</span>
 
@@ -729,39 +756,37 @@ shows one type for both routes:</p>
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">inactive</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">list_params</span><span class="p">):</span> <span class="o">...</span>
 </pre></div>
 </div>
-<p>Each call with the same response class and envelope returns the same
+<p>Each call with the same response schema and envelope returns the same
 class. Only the envelope of the pagination matters: two paginations with
-the same envelope give the same class. A view has no attribute for this
-class. To change it, change the view’s <code class="docutils literal notranslate"><span class="pre">schema_response</span></code> or the
-envelope of its <code class="docutils literal notranslate"><span class="pre">pagination</span></code>.</p>
+the same envelope give the same class.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>schema_response</strong> – The view’s response class, such as the one from
-<a class="reference internal" href="#fastapi_restly.schemas.derive_schema_response" title="fastapi_restly.schemas.derive_schema_response"><code class="xref py py-func docutils literal notranslate"><span class="pre">derive_schema_response()</span></code></a>.</p></li>
+<li><p><strong>response_schema</strong> – The view’s response schema, such as the one from
+<a class="reference internal" href="#fastapi_restly.schemas.derive_response_schema" title="fastapi_restly.schemas.derive_response_schema"><code class="xref py py-func docutils literal notranslate"><span class="pre">derive_response_schema()</span></code></a>.</p></li>
 <li><p><strong>pagination</strong> – The view’s pagination. <code class="docutils literal notranslate"><span class="pre">None</span></code> is a view without
 pagination, as on the view. The default is the default pagination.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The list response class.</p>
+<dd class="field-even"><p>The list response schema.</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="fastapi_restly.schemas.derive_schema_response">
-<span class="sig-prename descclassname"><span class="pre">fastapi_restly.schemas.</span></span><span class="sig-name descname"><span class="pre">derive_schema_response</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">schema</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.15)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><span class="pre">_SchemaT</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.15)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><span class="pre">_SchemaT</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#fastapi_restly.schemas.derive_schema_response" title="Link to this definition">#</a></dt>
-<dd><p>Build the response class of a view’s schema: the schema without its
+<dt class="sig sig-object py" id="fastapi_restly.schemas.derive_response_schema">
+<span class="sig-prename descclassname"><span class="pre">fastapi_restly.schemas.</span></span><span class="sig-name descname"><span class="pre">derive_response_schema</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">schema</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.15)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><span class="pre">_SchemaT</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.15)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><span class="pre">_SchemaT</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#fastapi_restly.schemas.derive_response_schema" title="Link to this definition">#</a></dt>
+<dd><p>Build the response schema from a view’s main schema: the schema without its
 <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> fields, named <code class="docutils literal notranslate"><span class="pre">&lt;Resource&gt;Response</span></code>.</p>
 <p>A view without its own
-<a class="reference internal" href="views.html#fastapi_restly.views.BaseRestView.schema_response" title="fastapi_restly.views.BaseRestView.schema_response"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema_response</span></code></a> gets this
+<a class="reference internal" href="views.html#fastapi_restly.views.BaseRestView.response_schema" title="fastapi_restly.views.BaseRestView.response_schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">response_schema</span></code></a> gets this
 class. Restly builds it also when the schema has no <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> fields,
-so OpenAPI shows <code class="docutils literal notranslate"><span class="pre">UserResponse</span></code> and not the view’s schema.</p>
+so OpenAPI shows <code class="docutils literal notranslate"><span class="pre">UserResponse</span></code> and not the main schema.</p>
 <p>The class is a subclass of <code class="docutils literal notranslate"><span class="pre">schema</span></code>. Each call with the same schema
 returns the same class, so a custom route can name the class that the
 view uses:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">UserResponse</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">schemas</span><span class="o">.</span><span class="n">derive_schema_response</span><span class="p">(</span><span class="n">UserSchema</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">UserResponse</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">schemas</span><span class="o">.</span><span class="n">derive_response_schema</span><span class="p">(</span><span class="n">UserSchema</span><span class="p">)</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
@@ -773,10 +798,46 @@ view uses:</p>
 </div>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>schema</strong> – The view’s schema.</p>
+<dd class="field-odd"><p><strong>schema</strong> – The main schema.</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The response class.</p>
+<dd class="field-even"><p>The response schema.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="fastapi_restly.schemas.derive_update_schema">
+<span class="sig-prename descclassname"><span class="pre">fastapi_restly.schemas.</span></span><span class="sig-name descname"><span class="pre">derive_update_schema</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">schema</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.15)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><span class="pre">_SchemaT</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.15)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.15)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.15)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><span class="pre">_SchemaT</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#fastapi_restly.schemas.derive_update_schema" title="Link to this definition">#</a></dt>
+<dd><p>Build the update schema from a view’s main schema: the schema without its
+<code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> fields, with each other field optional, named
+<code class="docutils literal notranslate"><span class="pre">&lt;Resource&gt;Update</span></code>.</p>
+<p>A view without its own
+<a class="reference internal" href="views.html#fastapi_restly.views.BaseRestView.update_schema" title="fastapi_restly.views.BaseRestView.update_schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">update_schema</span></code></a> gets this class.
+The class is a subclass of <code class="docutils literal notranslate"><span class="pre">schema</span></code>. Each call with the same arguments
+returns the same class, so a custom route can name the class that the view
+uses.</p>
+<p><code class="docutils literal notranslate"><span class="pre">schema</span></code> can be a class of your own, such as the create schema of a view that
+sets <code class="docutils literal notranslate"><span class="pre">create_schema</span></code>, so that <code class="docutils literal notranslate"><span class="pre">PATCH</span></code> follows that body:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserCreate</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">BaseSchema</span><span class="p">):</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">create_schema</span> <span class="o">=</span> <span class="n">UserCreate</span>
+    <span class="n">update_schema</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">schemas</span><span class="o">.</span><span class="n">derive_update_schema</span><span class="p">(</span><span class="n">UserCreate</span><span class="p">,</span> <span class="n">User</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>schema</strong> – The main schema, or another class to start from.</p></li>
+<li><p><strong>model</strong> – The view’s model. The class also leaves out a primary key that
+the server generates, as a view does.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The update schema.</p>
 </dd>
 </dl>
 </dd></dl>
@@ -864,8 +925,10 @@ time has one. See <a class="reference internal" href="../schemas.html#utc-times"
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.schemas.UTCDatetime"><code class="docutils literal notranslate"><span class="pre">UTCDatetime</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.schemas.derive_schema"><code class="docutils literal notranslate"><span class="pre">derive_schema()</span></code></a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.schemas.derive_schema_list_response"><code class="docutils literal notranslate"><span class="pre">derive_schema_list_response()</span></code></a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.schemas.derive_schema_response"><code class="docutils literal notranslate"><span class="pre">derive_schema_response()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.schemas.derive_create_schema"><code class="docutils literal notranslate"><span class="pre">derive_create_schema()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.schemas.derive_list_response_schema"><code class="docutils literal notranslate"><span class="pre">derive_list_response_schema()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.schemas.derive_response_schema"><code class="docutils literal notranslate"><span class="pre">derive_response_schema()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.schemas.derive_update_schema"><code class="docutils literal notranslate"><span class="pre">derive_update_schema()</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.schemas.in_utc"><code class="docutils literal notranslate"><span class="pre">in_utc()</span></code></a></li>
 </ul>
   </nav></div>

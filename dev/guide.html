@@ -33,7 +33,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=643d5ecc" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=ea69bafe" />
   
   <!-- So that users can add custom icons -->
   <script defer src="_static/scripts/fontawesome.js?digest=18bd87630a240e9c25be"></script>
@@ -542,7 +542,7 @@ FastAPI first checks the request body against the update schema,
 <span class="hll">       │    ├─ before_action_commit(...)
 </span>       │    ├─ commit
 <span class="hll">       │    └─ after_action_commit(...)
-</span><span class="hll">       └─ to_response(obj)                # the response class, as JSON
+</span><span class="hll">       └─ to_single_response(obj)         # the response schema, as JSON
 </span></pre></div>
 </div>
 <p>The highlighted lines are the methods that you can override in your view.
@@ -559,10 +559,10 @@ routes on an app or a router. A CRUD view,
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.RestView</span></code></a>, also names a <code class="docutils literal notranslate"><span class="pre">model</span></code>,
 and serves five routes for it. See <a class="reference internal" href="views.html"><span class="std std-doc">Views</span></a> and
 <a class="reference internal" href="crud_routes.html"><span class="std std-doc">CRUD Routes</span></a>.</p></li>
-<li><p><strong>The view’s schema</strong>: a Pydantic class that lists the fields of the
-resource. Restly builds the request bodies, such as <code class="docutils literal notranslate"><span class="pre">ProjectUpdate</span></code>, and the
-response class, <code class="docutils literal notranslate"><span class="pre">ProjectResponse</span></code>, from it. A view without a schema gets one
-that Restly generates from the model. See
+<li><p><strong>The main schema</strong>: a Pydantic class that lists the fields of the
+resource. Restly builds the other schemas from it, such as the update schema
+<code class="docutils literal notranslate"><span class="pre">ProjectUpdate</span></code> and the response schema <code class="docutils literal notranslate"><span class="pre">ProjectResponse</span></code>. A view without a
+schema gets one that Restly generates from the model. See
 <a class="reference internal" href="schemas.html"><span class="std std-doc">Schemas &amp; Validation</span></a>.</p></li>
 <li><p><strong>Endpoint method, handler and business method</strong>: the three layers of each
 CRUD route. To change what an action does, override the business method,
@@ -586,7 +586,7 @@ is a 403. See <a class="reference internal" href="authorization.html"><span clas
 for the request. Scopes, column defaults and your <code class="docutils literal notranslate"><span class="pre">authorize</span></code> can read it.
 See <a class="reference internal" href="context.html"><span class="std std-doc">Request Context</span></a>.</p></li>
 <li><p><strong>List params</strong>: the filter, sort and page parameters of the list route.
-Restly builds them from the response class. See
+Restly builds them from the response schema. See
 <a class="reference internal" href="filtering.html"><span class="std std-doc">Filtering, Sorting &amp; Pagination</span></a>.</p></li>
 <li><p><strong>Session</strong>: each request gets a database session from the source that
 <a class="reference internal" href="api/db.html#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.configure()</span></code></a> sets. See
@@ -644,20 +644,21 @@ override and your custom routes.</p></li>
 <p>A view has several schemas. The main one is the view’s
 <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema" title="fastapi_restly.views.BaseRestView.schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema</span></code></a>, a Pydantic class
 that lists the fields of the resource. Restly builds the other schemas
-from it: the request bodies and the response class. So the view’s schema
+from it: the response, create and update schemas. So the main schema
 decides what clients send and what they get back. The list route adds
 filter, sort and page parameters to the URL.</p>
 <ul class="simple">
 <li><p><a class="reference internal" href="schemas.html"><span class="std std-doc">Schemas &amp; Validation</span></a>: generate the schema or write it, keep
 a field out of the requests or the responses, validate input, keep times
-in UTC, keep NaN and infinity, store a Pydantic model in a JSON column, and
-use other field names in JSON, such as camelCase.</p></li>
+in UTC, keep NaN and infinity, store a Pydantic model in a JSON column, use
+other field names in JSON, such as camelCase, and build a class for each view
+with <code class="docutils literal notranslate"><span class="pre">SchemaType</span></code>.</p></li>
 <li><p><a class="reference internal" href="relationships.html"><span class="std std-doc">Relationships</span></a>: accept the id of another row, check
 that the row exists, link many rows to many rows, return related objects,
 and fix <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code>.</p></li>
-<li><p><a class="reference internal" href="responses.html"><span class="std std-doc">Responses</span></a>: what each route returns, the list envelope,
-the response of a custom route, and how to change the shape of one route
-or of all routes.</p></li>
+<li><p><a class="reference internal" href="responses.html"><span class="std std-doc">Responses</span></a>: what each route returns, the list envelope and
+the list response schema, the response of a custom route, and how to change
+the shape of one route or of all routes.</p></li>
 <li><p><a class="reference internal" href="filtering.html"><span class="std std-doc">Filtering, Sorting &amp; Pagination</span></a>: the filters, the sort
 order and the pages that a client can use on a list, the keys that a view
 chooses, filters of your own, and list params that you write yourself.</p></li>

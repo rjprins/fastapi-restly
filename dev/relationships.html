@@ -33,7 +33,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=643d5ecc" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=ea69bafe" />
   
   <!-- So that users can add custom icons -->
   <script defer src="_static/scripts/fontawesome.js?digest=18bd87630a240e9c25be"></script>
@@ -532,7 +532,7 @@ directions:</p>
 update, Restly looks the id up. If the row does not exist, the request
 returns <code class="docutils literal notranslate"><span class="pre">404</span></code>. Otherwise Restly writes the foreign key or the relationship.</p></li>
 <li><p>In a response, the field shows the other row as an id or as a full object.
-Restly loads every relationship that the response class names before it
+Restly loads every relationship that the response schema names before it
 serializes the response, so this also works on an async view.</p></li>
 </ul>
 <p>Restly reads the SQLAlchemy mapper to decide what a field writes. A field
@@ -867,13 +867,13 @@ SQLAlchemy’s <code class="docutils literal notranslate"><span class="pre">seco
 <code class="docutils literal notranslate"><span class="pre">&quot;tags&quot;:</span> <span class="pre">[1,</span> <span class="pre">2]</span></code> links the post to those tags. A <code class="docutils literal notranslate"><span class="pre">PATCH</span></code> with <code class="docutils literal notranslate"><span class="pre">&quot;tags&quot;:</span> <span class="pre">[2]</span></code>
 replaces the whole list.</p>
 <p>Responses show the ids, also on an async view. Restly loads each relationship
-that the response class names. So the relationship needs no <code class="docutils literal notranslate"><span class="pre">lazy</span></code> option.</p>
+that the response schema names. So the relationship needs no <code class="docutils literal notranslate"><span class="pre">lazy</span></code> option.</p>
 <p>The schema of a tag can show the ids of its posts with
 <code class="docutils literal notranslate"><span class="pre">posts:</span> <span class="pre">fr.ReadOnly[list[fr.IDRef[Post]]]</span></code>. The field is read-only here.</p>
 <div class="details admonition">
 <p class="admonition-title">Details</p>
 <p>To return the tags as objects, while clients still send ids, set your own
-<a class="reference internal" href="schemas.html#own-response-class"><span class="std std-ref">response class</span></a>:</p>
+<a class="reference internal" href="schemas.html#own-response-schema"><span class="std std-ref">response schema</span></a>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">PostResponse</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
     <span class="n">title</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">tags</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">TagSchema</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
@@ -883,7 +883,7 @@ that the response class names. So the relationship needs no <code class="docutil
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">"/posts"</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Post</span>
     <span class="n">schema</span> <span class="o">=</span> <span class="n">PostSchema</span>
-    <span class="n">schema_response</span> <span class="o">=</span> <span class="n">PostResponse</span>
+    <span class="n">response_schema</span> <span class="o">=</span> <span class="n">PostResponse</span>
 </pre></div>
 </div>
 <p>A link with columns of its own, such as the position of a tag on a post, is
@@ -1036,7 +1036,7 @@ the plain id:</p>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">async_make_new_object</span></code> still checks that the rows exist, and writes the
 foreign key columns. A schema that validates, such as
-<code class="docutils literal notranslate"><span class="pre">self.schema_create(task_id=...,</span> <span class="pre">label_id=...)</span></code>, needs none of this, and a
+<code class="docutils literal notranslate"><span class="pre">self.create_schema(task_id=...,</span> <span class="pre">label_id=...)</span></code>, needs none of this, and a
 handler can take it. The SaaS example’s <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/task-labels/create-and-attach</span></code>
 route does that, in
 <a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/labels/views.py"><code class="docutils literal notranslate"><span class="pre">app/labels/views.py</span></code></a>.</p>
@@ -1067,8 +1067,8 @@ view load it first:</p>
 </pre></div>
 </div>
 <p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_single_response" title="fastapi_restly.views.BaseRestView.to_single_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">self.to_single_response(obj)</span></code></a>
-returns the response class of the view, not this route’s class. Use it only
-when the route returns the view’s own response class.</p>
+returns the response schema of the view, not this route’s class. Use it only
+when the route returns the view’s own response schema.</p>
 </div>
 </section>
 <section id="return-related-objects-in-a-response">
@@ -1076,12 +1076,13 @@ when the route returns the view’s own response class.</p>
 <p>On an async view, serializing the response cannot use the database. So every
 field that a relationship fills must be loaded first. An unloaded
 relationship raises <code class="docutils literal notranslate"><span class="pre">MissingGreenlet</span></code>. Restly loads them for you in most
-cases: it eager-loads each relationship that the view’s response class names,
-on reads and on writes. By default the response class is the view’s schema
-without its <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> fields; see <a class="reference internal" href="schemas.html#own-response-class"><span class="std std-ref">Set your own response class</span></a>.</p>
+cases: it eager-loads each relationship that the view’s response schema names,
+on reads and on writes. By default the response schema is the view’s main schema
+without its <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> fields; see <a class="reference internal" href="schemas.html#own-response-schema"><span class="std std-ref">Set your own response
+schema</span></a>.</p>
 <section id="what-restly-loads-for-you">
 <h3>What Restly loads for you<a class="headerlink" href="#what-restly-loads-for-you" title="Link to this heading">#</a></h3>
-<p>A field of the response class whose name matches a relationship of the model
+<p>A field of the response schema whose name matches a relationship of the model
 is loaded. Take an article with an author and comments:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Article</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDMixin</span><span class="p">,</span> <span class="n">Base</span><span class="p">):</span>
     <span class="n">title</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
@@ -1090,7 +1091,7 @@ is loaded. Take an article with an author and comments:</p>
     <span class="n">comments</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="s2">"Comment"</span><span class="p">]]</span> <span class="o">=</span> <span class="n">relationship</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">,</span> <span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Name <code class="docutils literal notranslate"><span class="pre">author</span></code> and <code class="docutils literal notranslate"><span class="pre">comments</span></code> on the view’s schema, and Restly loads them.
+<p>Name <code class="docutils literal notranslate"><span class="pre">author</span></code> and <code class="docutils literal notranslate"><span class="pre">comments</span></code> on the main schema, and Restly loads them.
 Mark them <code class="docutils literal notranslate"><span class="pre">fr.ReadOnly</span></code>, so they stay out of the create and update bodies:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ArticleSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
     <span class="n">title</span><span class="p">:</span> <span class="nb">str</span>
@@ -1113,7 +1114,7 @@ the same missing load raises <code class="docutils literal notranslate"><span cl
 <section id="embedded-objects-are-read-only">
 <h3>Embedded objects are read-only<a class="headerlink" href="#embedded-objects-are-read-only" title="Link to this heading">#</a></h3>
 <p>A nested schema shows a related object in responses. It cannot take one in a
-create or update body: Restly would pass the nested Pydantic object to the
+create or update schema: Restly would pass the nested Pydantic object to the
 model as it is, and the model does not accept it. That is why the fields
 above are <code class="docutils literal notranslate"><span class="pre">fr.ReadOnly</span></code>.</p>
 <p>To let clients choose the related row, send its id with <code class="docutils literal notranslate"><span class="pre">MustExist</span></code>, <code class="docutils literal notranslate"><span class="pre">IDRef</span></code>
@@ -1151,7 +1152,7 @@ your own routes. The save after a write applies them too, so the create and
 update responses have the same loads.</p>
 <div class="details admonition">
 <p class="admonition-title">Details</p>
-<p>The default returns the loads that the response class needs. Adding to it
+<p>The default returns the loads that the response schema needs. Adding to it
 keeps those loads. To replace them, return a new list, for example to use
 <code class="docutils literal notranslate"><span class="pre">joinedload</span></code> instead of <code class="docutils literal notranslate"><span class="pre">selectinload</span></code>.</p>
 <p>The method holds every loader option of a read, not only relationships. A
@@ -1182,7 +1183,7 @@ to your base, so you can await such an attribute:</p>
 </pre></div>
 </div>
 <p>Use <code class="docutils literal notranslate"><span class="pre">awaitable_attrs</span></code> for one read. If every request needs the relationship,
-add it to the response class or to <code class="docutils literal notranslate"><span class="pre">get_loader_options</span></code>
+add it to the response schema or to <code class="docutils literal notranslate"><span class="pre">get_loader_options</span></code>
 instead. Then it loads in one query for all rows, not with one query per
 attribute.</p>
 </section>
@@ -1199,8 +1200,8 @@ Restly view, the cause is almost always a response that reads a relationship
 that is not loaded. When it comes from a nested model, Pydantic can wrap it
 in a <code class="docutils literal notranslate"><span class="pre">ValidationError</span></code>. Check these in order:</p>
 <ol class="arabic simple">
-<li><p><strong>Is the field in the response class?</strong> A field that names a relationship
-is enough to load it. A <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> field is not in the response class, so
+<li><p><strong>Is the field in the response schema?</strong> A field that names a relationship
+is enough to load it. A <code class="docutils literal notranslate"><span class="pre">WriteOnly</span></code> field is not in the response schema, so
 its relationship does not load. A field that should load but does not
 usually has the wrong name; see the note below.</p></li>
 <li><p><strong>Does a hook, a property or <code class="docutils literal notranslate"><span class="pre">to_single_response</span></code> read it?</strong> Load it with
@@ -1250,7 +1251,7 @@ SQLAlchemy’s
 <section id="how-restly-loads-the-relationships-of-a-response">
 <span id="nested-response-internals"></span><h3>How Restly loads the relationships of a response<a class="headerlink" href="#how-restly-loads-the-relationships-of-a-response" title="Link to this heading">#</a></h3>
 <p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.get_loader_options" title="fastapi_restly.views.BaseRestView.get_loader_options"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_loader_options()</span></code></a>
-walks the fields of the response class. For each field whose name is a
+walks the fields of the response schema. For each field whose name is a
 relationship of the model, it adds a <code class="docutils literal notranslate"><span class="pre">selectinload(...)</span></code> option. When the
 field type is a nested schema, it walks that schema against the related
 model in the same way, and adds the result as child options.</p>

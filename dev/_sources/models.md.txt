@@ -418,7 +418,7 @@ Each argument has one job:
   explains.
 
 Then mark each field
-{data}`fr.ReadOnly <fastapi_restly.schemas.ReadOnly>` on the view's schema,
+{data}`fr.ReadOnly <fastapi_restly.schemas.ReadOnly>` on the view's main schema,
 and leave it out of any [explicit write schema](#explicit-write-schemas):
 
 ```python

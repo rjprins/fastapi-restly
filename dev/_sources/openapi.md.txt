@@ -7,9 +7,9 @@ the CRUD routes included. Restly fills in a few things for you:
 - the tag of each route: the view's `tags`, or else a tag made from the last
   segment of the prefix, so `/order-items` gives `Order Items`;
 - the name, the summary and the operation ID of each CRUD route;
-- the request and response types of the CRUD routes: the classes that Restly
-  builds from the view's schema, named as in
-  [The names of the generated classes](#generated-class-names);
+- the request and response types of the CRUD routes: the schemas that Restly
+  builds from the view's main schema, named as in
+  [The names of the generated schemas](#generated-schema-names);
 - the filter, sort and page parameters of each list route;
 - an `x-resource-ref` on each field that points to another resource.
 
@@ -103,7 +103,7 @@ decorator, as in FastAPI. The method calls the method of the base class, so
 the route works as before:
 
 ```python
-from fastapi_restly.views import ViewListResponse
+from fastapi_restly.views import ListResponseSchema
 
 
 class InvoiceView(fr.AsyncRestView):
@@ -112,12 +112,12 @@ class InvoiceView(fr.AsyncRestView):
     schema = InvoiceSchema
 
     @fr.get("/", summary="List invoices", operation_id="billing_list_invoices")
-    async def get_many_endpoint(self, list_params) -> ViewListResponse:
+    async def get_many_endpoint(self, list_params) -> ListResponseSchema:
         return await super().get_many_endpoint(list_params)
 ```
 
-`ViewListResponse` keeps the view's list response as the response model; see
-[Name the view's classes in a custom route](#name-the-response-classes).
+`ListResponseSchema` keeps the view's list response as the response model; see
+[Name the view's schemas in a custom route](#name-the-view-schemas).
 Restly still fills in the rest of the route: the list params, and the name
 and the summary that you do not pass. A keyword argument
 that you pass wins over Restly's default. The table in
@@ -132,13 +132,13 @@ FastAPI route works. For example, `dependencies` adds a check to one route:
 
 ```python
     @fr.post("/", dependencies=[Depends(require_admin)])
-    async def create_endpoint(self, data: ViewCreate) -> ViewResponse:
+    async def create_endpoint(self, data: CreateSchema) -> ResponseSchema:
         return await super().create_endpoint(data)
 ```
 
 An item route that you declare, such as `GET /{id}`, keeps the path that you
 give it. Restly adds the `int` or `uuid` converter only to a path parameter
-annotated `ViewID`; see [Item paths and static routes](#item-route-matching).
+annotated `IDType`; see [Item paths and static routes](#item-route-matching).
 
 A subclass inherits the method and its decorator, so it also inherits an
 explicit `operation_id`. Each `operation_id` must be unique in the app's
@@ -174,8 +174,8 @@ The `response_model` of a CRUD route, and so its schema in the spec, comes
 from the classes that Restly builds from the view's
 {attr}`schema <fastapi_restly.views.BaseRestView.schema>`, such as
 `UserResponse` and `UserCreate`. To change the fields of every route, set
-the view's response class; see
-[Set your own response class](#own-response-class). To document and return
+the view's response schema; see
+[Set your own response schema](#own-response-schema). To document and return
 another shape on one route, replace its endpoint method with your own
 decorator and `response_model`; see
 [Change the shape of one route](#one-route-shape) and

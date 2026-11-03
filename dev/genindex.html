@@ -32,7 +32,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=643d5ecc" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=ea69bafe" />
   
   <!-- So that users can add custom icons -->
   <script defer src="_static/scripts/fontawesome.js?digest=18bd87630a240e9c25be"></script>
@@ -614,14 +614,14 @@
 </li>
       <li><a href="api/clauses.html#fastapi_restly.clauses.ContextParam">ContextParam (class in fastapi_restly.clauses)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/views.html#fastapi_restly.views.AsyncRestView.count">count() (fastapi_restly.views.AsyncRestView method)</a>
 
       <ul>
         <li><a href="api/views.html#fastapi_restly.views.RestView.count">(fastapi_restly.views.RestView method)</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/views.html#fastapi_restly.views.Action.CREATE">CREATE (fastapi_restly.views.Action attribute)</a>
 
       <ul>
@@ -642,12 +642,16 @@
         <li><a href="api/views.html#fastapi_restly.views.RestView.create_endpoint">(fastapi_restly.views.RestView method)</a>
 </li>
       </ul></li>
+      <li><a href="api/views.html#fastapi_restly.views.BaseRestView.create_schema">create_schema (fastapi_restly.views.BaseRestView attribute)</a>
+</li>
       <li><a href="api/models.html#fastapi_restly.models.TimestampsMixin.created_at">created_at (fastapi_restly.models.TimestampsMixin attribute)</a>
 
       <ul>
         <li><a href="api/schemas.html#fastapi_restly.schemas.TimestampsSchemaMixin.created_at">(fastapi_restly.schemas.TimestampsSchemaMixin attribute)</a>
 </li>
       </ul></li>
+      <li><a href="api/views.html#fastapi_restly.views.CreateSchema">CreateSchema (in module fastapi_restly.views)</a>
+</li>
   </ul></td>
 </tr></table>
 
@@ -708,13 +712,17 @@
 </li>
       <li><a href="api/clauses.html#fastapi_restly.clauses.ContextNamespace.depends">depends() (fastapi_restly.clauses.ContextNamespace class method)</a>
 </li>
+      <li><a href="api/schemas.html#fastapi_restly.schemas.derive_create_schema">derive_create_schema() (in module fastapi_restly.schemas)</a>
+</li>
+      <li><a href="api/query.html#fastapi_restly.query.derive_list_params_schema">derive_list_params_schema() (in module fastapi_restly.query)</a>
+</li>
+      <li><a href="api/schemas.html#fastapi_restly.schemas.derive_list_response_schema">derive_list_response_schema() (in module fastapi_restly.schemas)</a>
+</li>
+      <li><a href="api/schemas.html#fastapi_restly.schemas.derive_response_schema">derive_response_schema() (in module fastapi_restly.schemas)</a>
+</li>
       <li><a href="api/schemas.html#fastapi_restly.schemas.derive_schema">derive_schema() (in module fastapi_restly.schemas)</a>
 </li>
-      <li><a href="api/query.html#fastapi_restly.query.derive_schema_list_params">derive_schema_list_params() (in module fastapi_restly.query)</a>
-</li>
-      <li><a href="api/schemas.html#fastapi_restly.schemas.derive_schema_list_response">derive_schema_list_response() (in module fastapi_restly.schemas)</a>
-</li>
-      <li><a href="api/schemas.html#fastapi_restly.schemas.derive_schema_response">derive_schema_response() (in module fastapi_restly.schemas)</a>
+      <li><a href="api/schemas.html#fastapi_restly.schemas.derive_update_schema">derive_update_schema() (in module fastapi_restly.schemas)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -722,8 +730,6 @@
 <h2 id="E">E</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/views.html#fastapi_restly.views.ResponseShape.EMPTY">EMPTY (fastapi_restly.views.ResponseShape attribute)</a>
-</li>
       <li><a href="api/views.html#fastapi_restly.views.Envelope">Envelope (class in fastapi_restly.views)</a>
 </li>
       <li><a href="api/views.html#fastapi_restly.views.NoPagination.envelope">envelope (fastapi_restly.views.NoPagination attribute)</a>
@@ -831,6 +837,8 @@
       <li><a href="api/views.html#fastapi_restly.views.ReactAdminListParams.filter">filter (fastapi_restly.views.ReactAdminListParams attribute)</a>
 </li>
       <li><a href="api/query.html#fastapi_restly.query.FilterKey">FilterKey (class in fastapi_restly.query)</a>
+</li>
+      <li><a href="api/views.html#fastapi_restly.views.SchemaType.fn">fn (fastapi_restly.views.SchemaType attribute)</a>
 </li>
       <li><a href="api/exc.html#fastapi_restly.exc.Forbidden">Forbidden</a>
 </li>
@@ -962,9 +970,11 @@
 </li>
       <li><a href="api/schemas.html#fastapi_restly.schemas.IDRef">IDRef (class in fastapi_restly.schemas)</a>
 </li>
+      <li><a href="api/schemas.html#fastapi_restly.schemas.IDSchema">IDSchema (class in fastapi_restly.schemas)</a>
+</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/schemas.html#fastapi_restly.schemas.IDSchema">IDSchema (class in fastapi_restly.schemas)</a>
+      <li><a href="api/views.html#fastapi_restly.views.IDType">IDType (in module fastapi_restly.views)</a>
 </li>
       <li><a href="api/schemas.html#fastapi_restly.schemas.in_utc">in_utc() (in module fastapi_restly.schemas)</a>
 </li>
@@ -994,13 +1004,29 @@
 <h2 id="L">L</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/views.html#fastapi_restly.views.ResponseShape.LIST">LIST (fastapi_restly.views.ResponseShape attribute)</a>
-</li>
       <li><a href="api/views.html#fastapi_restly.views.list_filter">list_filter() (in module fastapi_restly.views)</a>
 </li>
+      <li><a href="api/views.html#fastapi_restly.views.ListResult.list_params">list_params (fastapi_restly.views.ListResult attribute)</a>
+</li>
+      <li><a href="api/views.html#fastapi_restly.views.AsyncReactAdminView.list_params_schema">list_params_schema (fastapi_restly.views.AsyncReactAdminView attribute)</a>
+
+      <ul>
+        <li><a href="api/views.html#fastapi_restly.views.BaseRestView.list_params_schema">(fastapi_restly.views.BaseRestView attribute)</a>
+</li>
+        <li><a href="api/views.html#fastapi_restly.views.ReactAdminView.list_params_schema">(fastapi_restly.views.ReactAdminView attribute)</a>
+</li>
+      </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/views.html#fastapi_restly.views.ListResult.list_params">list_params (fastapi_restly.views.ListResult attribute)</a>
+      <li><a href="api/views.html#fastapi_restly.views.AsyncReactAdminView.list_response_schema">list_response_schema (fastapi_restly.views.AsyncReactAdminView attribute)</a>
+
+      <ul>
+        <li><a href="api/views.html#fastapi_restly.views.BaseRestView.list_response_schema">(fastapi_restly.views.BaseRestView attribute)</a>
+</li>
+        <li><a href="api/views.html#fastapi_restly.views.ReactAdminView.list_response_schema">(fastapi_restly.views.ReactAdminView attribute)</a>
+</li>
+      </ul></li>
+      <li><a href="api/views.html#fastapi_restly.views.ListResponseSchema">ListResponseSchema (in module fastapi_restly.views)</a>
 </li>
       <li><a href="api/views.html#fastapi_restly.views.ListResult">ListResult (class in fastapi_restly.views)</a>
 </li>
@@ -1061,6 +1087,8 @@
 <h2 id="N">N</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/views.html#fastapi_restly.views.SchemaType.name">name (fastapi_restly.views.SchemaType attribute)</a>
+</li>
       <li><a href="api/clauses.html#fastapi_restly.clauses.none_of">none_of() (in module fastapi_restly.clauses)</a>
 </li>
       <li><a href="api/views.html#fastapi_restly.views.NoPagination">NoPagination (class in fastapi_restly.views)</a>
@@ -1187,16 +1215,18 @@
 </li>
       <li><a href="api/views.html#fastapi_restly.views.resolve_scope">resolve_scope() (in module fastapi_restly.views)</a>
 </li>
+      <li><a href="api/views.html#fastapi_restly.views.BaseRestView.response_schema">response_schema (fastapi_restly.views.BaseRestView attribute)</a>
+</li>
       <li><a href="api/views.html#fastapi_restly.views.BaseRestView.responses">responses (fastapi_restly.views.BaseRestView attribute)</a>
 
       <ul>
         <li><a href="api/views.html#fastapi_restly.views.View.responses">(fastapi_restly.views.View attribute)</a>
 </li>
       </ul></li>
-      <li><a href="api/views.html#fastapi_restly.views.ResponseShape">ResponseShape (class in fastapi_restly.views)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/views.html#fastapi_restly.views.ResponseSchema">ResponseSchema (in module fastapi_restly.views)</a>
+</li>
       <li><a href="api/exc.html#fastapi_restly.exc.RestlyConfigurationError">RestlyConfigurationError</a>
 </li>
       <li><a href="api/exc.html#fastapi_restly.exc.RestlyDuplicateSchemaNameWarning">RestlyDuplicateSchemaNameWarning</a>
@@ -1229,19 +1259,7 @@
 </li>
       <li><a href="api/views.html#fastapi_restly.views.BaseRestView.schema">schema (fastapi_restly.views.BaseRestView attribute)</a>
 </li>
-      <li><a href="api/views.html#fastapi_restly.views.BaseRestView.schema_create">schema_create (fastapi_restly.views.BaseRestView attribute)</a>
-</li>
-      <li><a href="api/views.html#fastapi_restly.views.AsyncReactAdminView.schema_list_params">schema_list_params (fastapi_restly.views.AsyncReactAdminView attribute)</a>
-
-      <ul>
-        <li><a href="api/views.html#fastapi_restly.views.BaseRestView.schema_list_params">(fastapi_restly.views.BaseRestView attribute)</a>
-</li>
-        <li><a href="api/views.html#fastapi_restly.views.ReactAdminView.schema_list_params">(fastapi_restly.views.ReactAdminView attribute)</a>
-</li>
-      </ul></li>
-      <li><a href="api/views.html#fastapi_restly.views.BaseRestView.schema_response">schema_response (fastapi_restly.views.BaseRestView attribute)</a>
-</li>
-      <li><a href="api/views.html#fastapi_restly.views.BaseRestView.schema_update">schema_update (fastapi_restly.views.BaseRestView attribute)</a>
+      <li><a href="api/views.html#fastapi_restly.views.SchemaType">SchemaType (class in fastapi_restly.views)</a>
 </li>
       <li><a href="api/views.html#fastapi_restly.views.BaseRestView.scope">scope (fastapi_restly.views.BaseRestView attribute)</a>
 </li>
@@ -1259,16 +1277,14 @@
         <li><a href="api/views.html#fastapi_restly.views.RestView.shared_write_action_commit">(fastapi_restly.views.RestView method)</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/views.html#fastapi_restly.views.ResponseShape.SINGLE">SINGLE (fastapi_restly.views.ResponseShape attribute)</a>
-</li>
       <li><a href="api/views.html#fastapi_restly.views.BaseRestView.snapshot">snapshot() (fastapi_restly.views.BaseRestView method)</a>
 
       <ul>
         <li><a href="api/objects.html#fastapi_restly.objects.snapshot">(in module fastapi_restly.objects)</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/views.html#fastapi_restly.views.ReactAdminListParams.sort">sort (fastapi_restly.views.ReactAdminListParams attribute)</a>
 </li>
       <li><a href="api/views.html#fastapi_restly.views.BaseRestView.sort_nulls">sort_nulls (fastapi_restly.views.BaseRestView attribute)</a>
@@ -1315,8 +1331,6 @@
       </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/views.html#fastapi_restly.views.BaseRestView.to_response">to_response() (fastapi_restly.views.BaseRestView method)</a>
-</li>
       <li><a href="api/views.html#fastapi_restly.views.BaseRestView.to_single_response">to_single_response() (fastapi_restly.views.BaseRestView method)</a>
 </li>
       <li><a href="api/views.html#fastapi_restly.views.ListResult.total_count">total_count (fastapi_restly.views.ListResult attribute)</a>
@@ -1361,12 +1375,16 @@
       </ul></li>
       <li><a href="api/objects.html#fastapi_restly.objects.update_object">update_object() (in module fastapi_restly.objects)</a>
 </li>
+      <li><a href="api/views.html#fastapi_restly.views.BaseRestView.update_schema">update_schema (fastapi_restly.views.BaseRestView attribute)</a>
+</li>
       <li><a href="api/models.html#fastapi_restly.models.TimestampsMixin.updated_at">updated_at (fastapi_restly.models.TimestampsMixin attribute)</a>
 
       <ul>
         <li><a href="api/schemas.html#fastapi_restly.schemas.TimestampsSchemaMixin.updated_at">(fastapi_restly.schemas.TimestampsSchemaMixin attribute)</a>
 </li>
       </ul></li>
+      <li><a href="api/views.html#fastapi_restly.views.UpdateSchema">UpdateSchema (in module fastapi_restly.views)</a>
+</li>
       <li><a href="api/schemas.html#fastapi_restly.schemas.UTCDatetime">UTCDatetime (in module fastapi_restly.schemas)</a>
 </li>
   </ul></td>
@@ -1377,19 +1395,9 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/views.html#fastapi_restly.views.View">View (class in fastapi_restly.views)</a>
 </li>
-      <li><a href="api/views.html#fastapi_restly.views.ViewCreate">ViewCreate (in module fastapi_restly.views)</a>
-</li>
-      <li><a href="api/views.html#fastapi_restly.views.ViewID">ViewID (in module fastapi_restly.views)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/views.html#fastapi_restly.views.ViewListResponse">ViewListResponse (in module fastapi_restly.views)</a>
-</li>
-      <li><a href="api/views.html#fastapi_restly.views.ViewResponse">ViewResponse (in module fastapi_restly.views)</a>
-</li>
       <li><a href="api/views.html#fastapi_restly.views.ViewRoute">ViewRoute (class in fastapi_restly.views)</a>
-</li>
-      <li><a href="api/views.html#fastapi_restly.views.ViewUpdate">ViewUpdate (in module fastapi_restly.views)</a>
 </li>
   </ul></td>
 </tr></table>

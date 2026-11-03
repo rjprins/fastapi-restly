@@ -33,7 +33,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=643d5ecc" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=ea69bafe" />
   
   <!-- So that users can add custom icons -->
   <script defer src="_static/scripts/fontawesome.js?digest=18bd87630a240e9c25be"></script>
@@ -651,7 +651,7 @@ the database error into an HTTP error. That is correct, but it comes after
 the insert was tried, and it does not say which field was wrong. A missing
 post should answer <code class="docutils literal notranslate"><span class="pre">404</span></code>, and name the field. So comments need to check the
 post before the insert.</p>
-<p>Until now, Restly generated the view’s schema from the model. For comments we
+<p>Until now, Restly generated the schema from the model. For comments we
 write the schema ourselves, and mark <code class="docutils literal notranslate"><span class="pre">post_id</span></code> as a checked reference. Put
 the schema above <code class="docutils literal notranslate"><span class="pre">CommentView</span></code>, and point the view at it:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">CommentSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>

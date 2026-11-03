@@ -33,7 +33,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=643d5ecc" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=ea69bafe" />
   
   <!-- So that users can add custom icons -->
   <script defer src="_static/scripts/fontawesome.js?digest=18bd87630a240e9c25be"></script>
@@ -444,7 +444,7 @@
                 <article class="bd-article">
                   
   <section id="fastapi-restly">
-<h1><img alt="" src="_images/fr-monogram.svg" /> FastAPI-Restly<a class="headerlink" href="#fastapi-restly" title="Link to this heading">#</a></h1>
+<h1><img alt="" src="_images/fr-wordmark.svg" /> FastAPI-Restly<a class="headerlink" href="#fastapi-restly" title="Link to this heading">#</a></h1>
 <p><strong>Class-based REST resources for FastAPI and SQLAlchemy 2.0. Minimal
 boilerplate, full control.</strong></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
@@ -576,8 +576,8 @@ caller may do with a row that they can see, and a refusal is a 403. See
 <p>Write one Pydantic schema for the resource.
 <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.ReadOnly" title="fastapi_restly.schemas.ReadOnly"><code class="xref py py-data docutils literal notranslate"><span class="pre">fr.ReadOnly</span></code></a> marks a field that only
 goes out, and <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.WriteOnly" title="fastapi_restly.schemas.WriteOnly"><code class="xref py py-data docutils literal notranslate"><span class="pre">fr.WriteOnly</span></code></a> marks a
-field that only comes in. Restly builds the response class and the two
-request bodies from it, with names that OpenAPI and generated clients show.
+field that only comes in. Restly builds the response, create and update
+schemas from it, with names that OpenAPI and generated clients show.
 Here the <code class="docutils literal notranslate"><span class="pre">User</span></code> model also has <code class="docutils literal notranslate"><span class="pre">password</span></code>, <code class="docutils literal notranslate"><span class="pre">team_id</span></code> and <code class="docutils literal notranslate"><span class="pre">created_at</span></code>
 columns:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
@@ -641,7 +641,7 @@ something that Restly does not do, write it as a plain FastAPI route.</p>
 custom routes, such as login or webhooks, and declares their dependencies
 once. See <a class="reference internal" href="views.html"><span class="std std-doc">Views</span></a>.</p></li>
 <li><p>List params: <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/users?name=John&amp;sort=-id&amp;page=2</span></code>, and operators such as
-<code class="docutils literal notranslate"><span class="pre">email__icontains=example.com</span></code>. The keys come from the response class, and
+<code class="docutils literal notranslate"><span class="pre">email__icontains=example.com</span></code>. The keys come from the response schema, and
 an unknown key is a 422. See <a class="reference internal" href="filtering.html"><span class="std std-doc">Filtering, Sorting &amp; Pagination</span></a>.</p></li>
 <li><p>Tests: <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">&quot;fastapi-restly[testing]&quot;</span></code> adds pytest fixtures. Each
 test runs in a transaction that rolls back, so a test needs no cleanup code.
