@@ -276,7 +276,7 @@ def get_model_fields(model_cls: type[Any]) -> dict[str, Any]:
             # Only a response has the field, and the row has a value.
             is_optional = is_nullable
         else:
-            # The create body follows the constructor: the client may leave
+            # The create schema follows the constructor: the client may leave
             # out a field that the constructor may leave out, when the model
             # then still gives the column a value. A None default gives a
             # NOT NULL column no value.
@@ -326,7 +326,7 @@ def derive_schema(model: type[Any], *, name: str | None = None) -> type[BaseSche
     A time column gets a field of type :data:`UTCDatetime`, which holds the
     time in UTC.
 
-    A field allows ``None`` only when its column is nullable. The create body
+    A field allows ``None`` only when its column is nullable. The create schema
     follows the constructor: the client may leave out a field when its
     column is nullable, or when the constructor does not require it and the
     model then still gives the column a value. That value comes from the

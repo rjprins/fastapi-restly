@@ -1,7 +1,7 @@
 """``fr.query.FilterKey`` and ``fr.query.SortKey``: one key of list params of
 your own.
 
-Each finds the field of the response class that a client's key names, and
+Each finds the field of the response schema that a client's key names, and
 the column of the model. As in the generated list params, a field with an
 alias has only its alias as a key, and a field that a response never shows
 is no key. A hybrid property is a key too, when it has SQL.
@@ -248,7 +248,7 @@ def test_a_key_names_a_hybrid_property_with_a_comparator(key_class, kind):
 
 
 def test_generated_list_params_skip_a_hybrid_that_fails_on_the_class():
-    """A view with generated list params registers when its response class
+    """A view with generated list params registers when its response schema
     has a field for a hybrid property that fails on the class. As for
     FilterKey and SortKey, the field gets no filters and no sort key."""
 

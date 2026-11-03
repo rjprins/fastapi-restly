@@ -27,7 +27,7 @@ from ._guards import _owner
 from ._list_params import _LIST_SETTING_DEFAULTS, _list_setting, _own_filters
 from ._schema_types import SchemaType
 
-#: What Restly builds each class of a view from.
+#: What Restly builds each schema of a view from.
 _BUILT_FROM = {
     "schema": "model",
     "response_schema": "schema",
@@ -159,7 +159,7 @@ def _uses_default(cls: type, name: str) -> bool:
 
 def _derive_view_list_params(view_cls: Any) -> type[pydantic.BaseModel]:
     """The list params that Restly generates for a view: from its response
-    class, its pagination, its list settings and its filter methods."""
+    schema, its pagination, its list settings and its filter methods."""
     return _derive_list_params(
         view_cls.response_schema,
         view_cls.model,

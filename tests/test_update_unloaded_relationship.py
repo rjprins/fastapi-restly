@@ -1,8 +1,8 @@
 """An update can write a relationship that the view does not load.
 
-The view loads the relationships of its response class. An update can write
+The view loads the relationships of its response schema. An update can write
 others: a ``WriteOnly`` field, or a field of a ``update_schema`` that the
-response class does not have. To replace a collection, SQLAlchemy reads the
+response schema does not have. To replace a collection, SQLAlchemy reads the
 old one first. On an async session that fails inside the assignment, and a
 relationship with ``lazy="raise"`` refuses it on both. So the update loads
 such a collection before it writes it. A scalar relationship needs no load.

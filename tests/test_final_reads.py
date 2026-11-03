@@ -680,7 +680,7 @@ def test_a_route_that_declares_view_list_response_returns_the_list_result(client
 
 def test_a_route_that_returns_the_model_gets_the_view_response(client):
     """``-> Book`` and ``-> list[Book]`` for the view's own model: the view
-    sets its response class as the response model, and each row goes
+    sets its response schema as the response model, and each row goes
     through ``to_single_response``. The view's response is set on the class,
     so the model alone means that response."""
     Shelf, Book, ShelfSchema, BookSchema = _models()
@@ -745,9 +745,9 @@ def test_a_route_may_return_the_result_of_scalars_or_none(client):
 
 def test_a_route_that_names_the_views_own_response_class(client):
     """The 0.11 form ``response_model=fr.schemas.derive_response_schema(...)``
-    names the view's own response class: each call returns that same class.
+    names the view's own response schema: each call returns that same class.
     So the route declares the view's response, as with ``ResponseSchema``, and
-    ``to_single_response`` runs. The list response class works the same."""
+    ``to_single_response`` runs. The list response schema works the same."""
     Shelf, Book, ShelfSchema, BookSchema = _models()
     BookResponse = fr.schemas.derive_response_schema(BookSchema)
     # the view keeps the default pagination, so the default envelope

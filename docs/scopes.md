@@ -103,7 +103,7 @@ reach through relationships. A response that embeds a related model, such as
 the comments of an item, loads those rows through the relationship, without
 their scope. A filter or sort on a relationship field, such as
 `?items.name=x`, also joins the related table without its scope. Where
-embedded rows must be filtered, shape the view's schema, or override
+embedded rows must be filtered, shape the view's main schema, or override
 {meth}`get_loader_options <fastapi_restly.views.BaseRestView.get_loader_options>`.
 
 For the same reason, a model does not follow the scope of a related model.
@@ -306,10 +306,10 @@ route reads only the trash, so a row that is not deleted returns 404 here. To
 read without any scope on one route, pass `scope=fr.clauses.UNSCOPED`.
 
 The markers `ListResponseSchema`, `ResponseSchema` and `IDType` give the two
-routes the view's classes, `ItemListResponse` and `ItemResponse`, and its id
+routes the view's schemas, `ItemListResponse` and `ItemResponse`, and its id
 type. So OpenAPI shows the same types as for the CRUD routes, and Restly
 sends the list result and the row through the view's response step.
-[Name the view's classes in a custom route](#name-the-response-classes)
+[Name the view's schemas in a custom route](#name-the-view-schemas)
 explains the markers.
 
 `get_one`, `get_many` and `select()` take the same `scope=` argument. A

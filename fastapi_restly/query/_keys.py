@@ -1,4 +1,4 @@
-"""One key of list params of your own: a field of the response class, and the
+"""One key of list params of your own: a field of the response schema, and the
 column of the model that it names."""
 
 from collections.abc import Iterable
@@ -54,7 +54,7 @@ def _find_column(
 
 class FilterKey:
     """One filter key of list params of your own: the field of the response
-    class that the client's key names, and the column of the model.
+    schema that the client's key names, and the column of the model.
 
     .. code-block:: python
 
@@ -75,7 +75,7 @@ class FilterKey:
     react-admin views use this class for their ``filter``.
 
     :param model: The model of the rows, such as the view's ``model``.
-    :param response_schema: The response class. A view passes its
+    :param response_schema: The response schema. A view passes its
         ``response_schema``, so a client can filter only on a field of that class.
     :param key: The key, as the client sends it.
     :raises fastapi_restly.exc.BadQueryParam: ``Unknown filter key``.
@@ -131,7 +131,7 @@ class FilterKey:
 
 class SortKey:
     """One sort key of list params of your own: the field of the response
-    class that the client's key names, and the column of the model.
+    schema that the client's key names, and the column of the model.
 
     .. code-block:: python
 
@@ -147,7 +147,7 @@ class SortKey:
     views use this class for their ``sort``.
 
     :param model: The model of the rows, such as the view's ``model``.
-    :param response_schema: The response class. A view passes its
+    :param response_schema: The response schema. A view passes its
         ``response_schema``, so a client can sort only on a field of that class.
     :param key: The key, as the client sends it.
     :raises fastapi_restly.exc.BadQueryParam: ``Unknown sort key``.

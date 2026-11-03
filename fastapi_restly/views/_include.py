@@ -317,7 +317,7 @@ def _view_response_kind(view_cls: Any, endpoint: Callable) -> tuple[str | None, 
     ``"list"`` for a ``ListResult``. It comes from the response that the route
     declares: the ``response_model`` of its decorator, else its return
     annotation. A marker of the view's response, the view's own response
-    class, or the view's model in the return annotation, declares the view's
+    schema, or the view's model in the return annotation, declares the view's
     response, also with ``| None``. Another class that the route names keeps
     FastAPI's behaviour.
 
@@ -364,7 +364,7 @@ def _declared_view_response(
     declared response without ``None``.
 
     A marker declares the view's response, and so does the view's own
-    response class or list response class, such as the one from
+    response schema or list response schema, such as the one from
     :func:`~fastapi_restly.schemas.derive_response_schema`: each call with
     the same schema returns that same class.
     """

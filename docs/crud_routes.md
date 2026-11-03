@@ -114,7 +114,7 @@ parameter.
 A route that you declare yourself keeps the path you give it. Restly adds
 the converter only to a path parameter annotated
 {data}`IDType <fastapi_restly.views.IDType>`; see
-[Name the view's classes in a custom route](#name-the-response-classes). To
+[Name the view's schemas in a custom route](#name-the-view-schemas). To
 accept negative integer ids, replace each item endpoint you need with an
 untyped path such as `@fr.get("/{id}")`, and annotate its `id` parameter as
 `int`; see
@@ -136,16 +136,16 @@ defaults, {class}`fr.ModelDefaults <fastapi_restly.models.ModelDefaults>`, are
 optional; see [Models](models.md).
 
 If the view does not declare {attr}`schema
-<fastapi_restly.views.BaseRestView.schema>`, Restly generates the view's
-schema from `model` when you register the view. From the view's schema, it
-derives the request bodies and the response class:
+<fastapi_restly.views.BaseRestView.schema>`, Restly generates the view's main
+schema from `model` when you register the view. From the main schema, it
+derives the create, update and response schemas:
 {attr}`create_schema <fastapi_restly.views.BaseRestView.create_schema>`,
 {attr}`update_schema <fastapi_restly.views.BaseRestView.update_schema>` and
 {attr}`response_schema <fastapi_restly.views.BaseRestView.response_schema>`.
 [Generate the schema or write it](#write-or-generate) shows when to write the
 schema yourself, and
 [Hide a field from requests or from responses](#readonly-and-writeonly)
-shows which fields each class takes.
+shows which fields each schema takes.
 
 (configure-a-crud-view)=
 ## Configure a CRUD view

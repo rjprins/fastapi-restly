@@ -474,7 +474,7 @@ class BaseRestView(
     # with this name. (The docs show fr.Action, not this attribute.)
     Action = Action
 
-    #: The view's schema: the Pydantic class that lists the fields of the
+    #: The main schema: the Pydantic class that lists the fields of the
     #: resource. Restly builds :attr:`response_schema`, :attr:`create_schema`
     #: and :attr:`update_schema` from it. When a view sets none, Restly
     #: generates it from :attr:`model` with
@@ -484,7 +484,7 @@ class BaseRestView(
     #: items of the list response, and the fields the list params filter and
     #: sort on. The relationships it names are the ones the view loads. When
     #: a view sets none, Restly builds it with
-    #: :func:`~fastapi_restly.schemas.derive_response_schema`: the view's
+    #: :func:`~fastapi_restly.schemas.derive_response_schema`: the main
     #: schema without its ``WriteOnly`` fields, named ``<Resource>Response``.
     #: A class that a view sets is used as it is.
     response_schema: ClassVar[type[pydantic.BaseModel]] = _DEFAULT_SETTINGS[
@@ -494,21 +494,21 @@ class BaseRestView(
     #: declares :data:`~fastapi_restly.views.ListResponseSchema` send. When a
     #: view sets none, Restly builds it with
     #: :func:`~fastapi_restly.schemas.derive_list_response_schema`: the
-    #: envelope of the view's :attr:`pagination`, with the response class as
+    #: envelope of the view's :attr:`pagination`, with the response schema as
     #: its items, named ``<Resource>ListResponse``. Restly fills a class that
     #: a view sets as it fills an envelope: by field name, from ``data``,
     #: ``total_count``, ``page``, ``page_size`` and ``total_pages``. A view
     #: that replaces ``get_many_endpoint`` can set any type here.
     list_response_schema: ClassVar[Any] = _DEFAULT_SETTINGS["list_response_schema"]
     #: The class of the ``POST`` body. When a view sets none, Restly builds
-    #: it from the view's schema without its ``ReadOnly`` fields and without
+    #: it from the main schema without its ``ReadOnly`` fields and without
     #: a primary key that the server generates. It is named
     #: ``<Resource>Create``. A class that a view sets is used as it is.
     create_schema: ClassVar[type[pydantic.BaseModel]] = _DEFAULT_SETTINGS[
         "create_schema"
     ]
     #: The class of the ``PATCH`` body. When a view sets none, Restly builds
-    #: it from the view's schema without its ``ReadOnly`` fields and without
+    #: it from the main schema without its ``ReadOnly`` fields and without
     #: a primary key that the server generates, and makes every other field
     #: optional. It is named ``<Resource>Update``. A class that a view sets
     #: is used as it is.
@@ -800,7 +800,7 @@ class BaseRestView(
     def not_found(self, id: Any) -> Exception:
         """The exception for an id that names no row: a 404 by default, such
         as ``User with id 5 was not found``. The name is the resource of the
-        view's schema, as in the names of the classes that Restly generates.
+        main schema, as in the names of the schemas that Restly generates.
 
         ``get_one`` raises what this returns, so an override can change the
         text or the status, such as ``410`` for a row that was deleted. On
@@ -836,7 +836,7 @@ class BaseRestView(
         relationship that :attr:`response_schema` names. :meth:`select`
         applies them, so ``get_one``, ``get_many`` and your routes load the
         same, and so does the reload after the save of a write. Override to
-        load more: a relationship that the response class does not name, or
+        load more: a relationship that the response schema does not name, or
         a ``query_expression`` through ``with_expression(...)``. Add to
         ``super().get_loader_options()`` to keep the default loads. See
         "Return related objects in a response" on the Relationships guide
@@ -970,24 +970,24 @@ class BaseRestView(
     def to_single_response(self, obj: ModelT | ResponseSchemaT) -> ResponseSchemaT:
         """Serialize one ORM object to the view's :attr:`response_schema`.
 
-        By default the response class is the view's schema without its
+        By default the response schema is the main schema without its
         WriteOnly fields, named like ``UserResponse``. An override may return
         an instance of another model, such as :attr:`schema`. Only the fields
-        of the response class go out. Restly copies the values of an instance
-        of a subclass of the response class, and of :attr:`schema` when
-        Restly derived the response class, without validating them again. It
-        validates any other model into the response class from its
+        of the response schema go out. Restly copies the values of an instance
+        of a subclass of the response schema, and of :attr:`schema` when
+        Restly derived the response schema, without validating them again. It
+        validates any other model into the response schema from its
         attributes.
 
-        The view loads only the relationships that the response class names.
+        The view loads only the relationships that the response schema names.
         An override that builds :attr:`schema` from the ORM object also reads
         the relationships of its WriteOnly fields. On an async view that fails
         with ``MissingGreenlet``: add them in
-        :meth:`get_loader_options`, or build the response class
+        :meth:`get_loader_options`, or build the response schema
         instead.
 
-        The ORM path below validates through the response class, so a view's
-        schema that declares a WriteOnly field the ORM object doesn't carry
+        The ORM path below validates through the response schema, so a view's
+        main schema that declares a WriteOnly field the ORM object doesn't carry
         (e.g. ``password`` backed by a ``password_hash`` column) doesn't fail
         response validation. It validates in lax mode, also for a strict
         class, so a strict ``float`` field reads the text ``"NaN"`` that a
@@ -1022,7 +1022,7 @@ class BaseRestView(
         )
 
     def _single_response(self, obj: Any) -> pydantic.BaseModel:
-        """One object as an instance of the response class. An override of
+        """One object as an instance of the response schema. An override of
         :meth:`to_single_response` may return an instance of another model."""
         return _as_response(type(self).response_schema, self.to_single_response(obj))
 
@@ -1172,7 +1172,7 @@ class BaseRestView(
             raise RestlyConfigurationError(
                 f"The items of {label} have fields that {response.__name__} does "
                 f"not have: {', '.join(lacking)}. Restly fills the items from the "
-                f"response class, so add these fields to it.{other_shape}"
+                f"response schema, so add these fields to it.{other_shape}"
             )
 
     @classmethod

@@ -15,10 +15,10 @@ either on a FastAPI app.
 Markers for the view's own types
 --------------------------------
 
-A route names the classes of its view with these markers. When the view
-registers, Restly puts the view's class in place of each marker, so a route
-on a base view gets the classes of each subclass. A type checker reads each
-marker as ``Any``. See :ref:`name-the-response-classes`. To build another type
+A route names the types of its view with these markers. When the view
+registers, Restly puts the view's own type in place of each marker, so a route
+on a base view gets the types of each subclass. A type checker reads each
+marker as ``Any``. See :ref:`name-the-view-schemas`. To build another type
 for each view, use :class:`~fastapi_restly.views.SchemaType`; see
 :ref:`schema-type`.
 
@@ -31,7 +31,7 @@ for each view, use :class:`~fastapi_restly.views.SchemaType`; see
 
 .. py:data:: ResponseSchema
 
-   The view's response class,
+   The view's response schema,
    :attr:`~fastapi_restly.views.BaseRestView.response_schema`.
 
 .. py:data:: ListResponseSchema
@@ -39,16 +39,16 @@ for each view, use :class:`~fastapi_restly.views.SchemaType`; see
    The view's list response,
    :attr:`~fastapi_restly.views.BaseRestView.list_response_schema`. Unless the
    view sets another class, this is the envelope of the view's pagination, with
-   items of the view's response class.
+   items of the view's response schema.
 
 .. py:data:: CreateSchema
 
-   The view's create body,
+   The view's create schema,
    :attr:`~fastapi_restly.views.BaseRestView.create_schema`.
 
 .. py:data:: UpdateSchema
 
-   The view's update body,
+   The view's update schema,
    :attr:`~fastapi_restly.views.BaseRestView.update_schema`.
 
 .. seealso::

@@ -356,7 +356,7 @@ def test_writable_field_on_a_model_set_column_warns():
         schema = StampedNoteSchema
 
     messages = _register(StampedNoteView)
-    # The create and update classes come from one schema: one warning.
+    # The create and update schemas come from one schema: one warning.
     assert len(messages) == 1
     assert "StampedNoteSchema.tenant_id is writable" in messages[0]
     assert "`StampedNote.tenant_id` has `init=False` and a default" in messages[0]
@@ -390,7 +390,7 @@ def test_declared_write_class_with_a_model_set_column_warns():
 
     messages = _register(DeclaredCreateView)
     # The generated schema marks the column ReadOnly, so only the declared
-    # create class warns.
+    # create schema warns.
     assert len(messages) == 1
     assert "StampCreate.tenant_id is writable" in messages[0]
     assert "Leave the field out of StampCreate" in messages[0]
@@ -475,7 +475,7 @@ def test_the_write_routes_that_include_routes_leaves_out_are_not_linted():
 
 
 def test_the_put_route_of_a_react_admin_view_lints_the_update_class():
-    """``PUT /{id}`` of a react-admin view takes the update body, as
+    """``PUT /{id}`` of a react-admin view takes the update schema, as
     ``PATCH /{id}`` does, so it is linted when the view serves it alone."""
 
     class PutStampSchema(fr.IDSchema):
@@ -525,7 +525,7 @@ def test_an_inherited_schema_and_a_declared_update_class_are_linted():
             warnings.simplefilter("always")
             fr.include_view(app, ChildStampView)
     caught = [w for w in caught if issubclass(w.category, RestlyMisuseWarning)]
-    # The create class comes from the inherited schema.
+    # The create schema comes from the inherited schema.
     assert [str(w.message).split(" is ")[0] for w in caught] == [
         "BaseStampSchema.tenant_id",
         "StampUpdate.tenant_id",

@@ -5,20 +5,20 @@ the view's response, so Restly knows what to do with this value:
 
 | The endpoint method returns | Restly calls | Which gives |
 |---|---|---|
-| one ORM object | {meth}`to_single_response(obj) <fastapi_restly.views.BaseRestView.to_single_response>` | an instance of the response class |
-| a {class}`ListResult <fastapi_restly.views.ListResult>` | {meth}`to_list_response(result) <fastapi_restly.views.BaseRestView.to_list_response>` | the list envelope, filled with instances of the response class |
+| one ORM object | {meth}`to_single_response(obj) <fastapi_restly.views.BaseRestView.to_single_response>` | an instance of the response schema |
+| a {class}`ListResult <fastapi_restly.views.ListResult>` | {meth}`to_list_response(result) <fastapi_restly.views.BaseRestView.to_list_response>` | the list envelope, filled with instances of the response schema |
 
 `DELETE` returns an empty `204 No Content` response.
 
 FastAPI then serializes the value with the route's `response_model`. Restly
-sets it when the view registers: the response class for a single object, and
-the list response class for the list. So the response and OpenAPI show the same
+sets it when the view registers: the response schema for a single object, and
+the list response schema for the list. So the response and OpenAPI show the same
 shape.
 
-The response class decides which fields go out. By default it is the view's
-schema without its `WriteOnly` fields; see
-[Set your own response class](#own-response-class). This page covers what is
-around the fields, and where each change goes:
+The response schema decides which fields go out. By default it is the view's
+main schema without its `WriteOnly` fields; see [Set your own response
+schema](#own-response-schema). This page covers what is around the fields, and
+where each change goes:
 
 - the envelope of every list: the pagination's envelope; see
   [Change the list envelope](#change-list-envelope);
@@ -41,7 +41,7 @@ Errors do not pass through these methods. To change the error shape, see
 
 | Route | Response body |
 |---|---|
-| `GET /{id}`, `POST`, `PATCH` | The bare object, an instance of the response class |
+| `GET /{id}`, `POST`, `PATCH` | The bare object, an instance of the response schema |
 | `GET /` | A `data` envelope around the page, with `total_count`, `page`, `page_size` and `total_pages` |
 | `DELETE /{id}` | `204 No Content`, with an empty body |
 
@@ -65,10 +65,10 @@ the page size limits, are on
 The list route's `response_model` is the view's
 {attr}`list_response_schema <fastapi_restly.views.BaseRestView.list_response_schema>`.
 Unless the view sets another class, this is the pagination's envelope, filled
-with the response class. By default that envelope is a
+with the response schema. By default that envelope is a
 {class}`PaginatedEnvelope <fastapi_restly.views.PaginatedEnvelope>`, and a
 plain {class}`Envelope <fastapi_restly.views.Envelope>` for a view without
-pagination. OpenAPI names the filled class after the response class:
+pagination. OpenAPI names the filled class after the response schema:
 `TagListResponse` for `TagResponse`, which Restly derives from `TagSchema`.
 
 (change-list-envelope)=
@@ -112,9 +112,9 @@ class UserView(fr.AsyncRestView):
 
 To give every list the same envelope, set the pagination on a project base
 view; see [Set the pagination once for every view](#set-pagination-once). A custom list
-route can then name the view's list response class, so OpenAPI shows the same
+route can then name the view's list response schema, so OpenAPI shows the same
 type as for `GET /`; see
-[Name the view's classes in a custom route](#name-the-response-classes).
+[Name the view's schemas in a custom route](#name-the-view-schemas).
 [Coming from fastapi-pagination](#fastapi-pagination-migration) shows the
 envelope that keeps fastapi-pagination's field names.
 
@@ -206,7 +206,7 @@ class TagView(fr.AsyncRestView):
 (custom-route-response)=
 ## The response of a custom route
 
-A custom route that declares the view's response class goes through the same
+A custom route that declares the view's response schema goes through the same
 response step as the CRUD routes. So it can return the row itself:
 
 ```python
@@ -242,7 +242,7 @@ annotation or in `response_model=`:
 | {data}`ResponseSchema <fastapi_restly.views.ResponseSchema>` | a row of the view's model | `to_single_response(row)` |
 | `list[ResponseSchema]` | a list of rows, or another iterable of rows, such as `await self.session.scalars(stmt)` | `to_single_response(row)` for each row |
 | {data}`ListResponseSchema <fastapi_restly.views.ListResponseSchema>` | a {class}`ListResult <fastapi_restly.views.ListResult>` | `to_list_response(result)` |
-| the view's response class itself, as in `response_model=ProjectResponse` | a row | the same as for `ResponseSchema` |
+| the view's response schema itself, as in `response_model=ProjectResponse` | a row | the same as for `ResponseSchema` |
 | the view's model, as in `-> Project` | a row | the same as for `ResponseSchema` |
 | `list[Project]` | a list of rows | the same as for `list[ResponseSchema]` |
 | nothing, `response_model=None`, or a type without fields, such as `Any`, `dict` or `dict[str, Any]` | a row of the view's model, a list of rows, a `ListResult`, or a dict with one of these as a value | the same as for `ResponseSchema` and `ListResponseSchema`, and any other value goes out as it is |
@@ -265,7 +265,7 @@ a column holds a secret.
 :::{admonition} Details
 :class: details
 
-Restly reads the fields of the response class from the row, so the row must
+Restly reads the fields of the response schema from the row, so the row must
 have what they need. In async code, a relationship that your own `select` did
 not load raises `MissingGreenlet`. A `ListResult` inside a dict gives only its
 items if `to_list_response` returns a `Response`, as on a react-admin view.
@@ -280,14 +280,14 @@ validation of the response, and the client gets a `500`. To run
 `to_single_response`, declare the view's response.
 
 The view's model counts only in the return annotation, not in
-`response_model=`. Restly then sets the view's response class as the
+`response_model=`. Restly then sets the view's response schema as the
 `response_model`. This is not what plain FastAPI does: FastAPI cannot use a
-SQLAlchemy class as a response model. But the view sets the response class
+SQLAlchemy class as a response model. But the view sets the response schema
 for its model, so a route that returns the model returns the view's
 response.
 
 The markers also give a custom route the view's types in OpenAPI; see
-[Name the view's classes in a custom route](#name-the-response-classes).
+[Name the view's schemas in a custom route](#name-the-view-schemas).
 :::
 
 (one-route-shape)=
@@ -335,15 +335,15 @@ class UserView(fr.AsyncRestView):
 ```
 
 Call `to_single_response(obj)` before you put the object in the envelope.
-The markers keep the view's classes; see
-[Name the view's classes in a custom route](#name-the-response-classes).
+The markers keep the view's schemas; see
+[Name the view's schemas in a custom route](#name-the-view-schemas).
 
 :::{admonition} Details
 :class: details
 
-It turns the ORM object into an instance of the response class, which has no
+It turns the ORM object into an instance of the response schema, which has no
 `WriteOnly` fields. The ORM object often has no value for those fields, such
-as a plain `password`, so it may not validate as the view's schema.
+as a plain `password`, so it may not validate as the main schema.
 
 A replacement for
 {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>`
@@ -379,15 +379,15 @@ class ApiView(fr.AsyncRestView):
 view that subclasses `ApiView` gets `Data[UserResponse]` in OpenAPI, and another
 view gets `Data[TagResponse]`. For a shape that differs per view, such as a root
 key, as in `{"article": {...}}`, write a function that builds the class; see
-[Build a class for each view](#schema-type). To change the status code or the
-headers of one route, replace that endpoint method; see
+[Make dynamic schemas that depend on the view](#schema-type). To change the
+status code or the headers of one route, replace that endpoint method; see
 [Change the status code or headers of one route](#replace-endpoint-method).
 
 (to-single-response)=
 ## Change how one object is serialized
 
 {meth}`to_single_response(obj) <fastapi_restly.views.BaseRestView.to_single_response>`
-turns one ORM object into an instance of the response class. It reads the
+turns one ORM object into an instance of the response schema. It reads the
 attributes of the object and validates them with Pydantic. It runs for each
 row that a route returns, and for each item of a list.
 
@@ -404,15 +404,15 @@ trust the data:
 ```
 
 `model_construct()` skips the validators and the check for required fields.
-So make sure that the values match the response class. Build an instance of
-the response class, not of the view's schema: Restly sends an instance of the
-response class as it is, and converts an instance of any other class first.
+So make sure that the values match the response schema. Build an instance of
+the response schema, not of the main schema: Restly sends an instance of the
+response schema as it is, and converts an instance of any other class first.
 
 :::{admonition} Details
 :class: details
 
-An override may return an instance of another model, such as the view's
-schema. Only the fields of the response class go out; see
+An override may return an instance of another model, such as the main
+schema. Only the fields of the response schema go out; see
 [Internals](#response-conversion) for how Restly converts it.
 :::
 
@@ -439,7 +439,7 @@ class UserView(fr.AsyncRestView):
 ```
 
 This class changes what the list sends, and nothing else. The filters and sort
-keys follow the response class, not `UserSummary`. So a client can still filter
+keys follow the response schema, not `UserSummary`. So a client can still filter
 and sort on a field that the items do not show. To hide a field, make it
 `WriteOnly`, or take it out of the list with `exclude_filters` and
 `exclude_sort_keys`.
@@ -454,18 +454,18 @@ other field keeps its default. Registration raises for a class that `GET /`
 cannot fill: a class with page fields on a view without pagination, or a class
 without a field named `data`.
 
-Restly fills the items from the response class, so an item can have fewer
-fields than the response class. An item must be a Pydantic class, and
-registration raises for a field without a default that the response class does
-not have. The view still loads what the response class needs, so a smaller class
-makes the response smaller, not the query.
+Restly fills the items from the response schema, so an item can have fewer
+fields than the response schema. An item must be a Pydantic class, and
+registration raises for a field without a default that the response schema does
+not have. The view still loads what the response schema needs, so a smaller
+class makes the response smaller, not the query.
 
 A list type, such as `list[UserSummary]`, sends a JSON array without the page
 values.
 
 The setting also takes a function, so a base view can give each view other keys,
 as in `{"articles": [...], "articlesCount": 2}`; see
-[Build a class for each view](#schema-type).
+[Make dynamic schemas that depend on the view](#schema-type).
 
 A subclass of the view keeps the class. A subclass that sets a new `schema` or
 `response_schema` gets the default again, as for the
@@ -498,25 +498,25 @@ class UserView(fr.AsyncRestView):
 (response-conversion)=
 ### How Restly converts the value of `to_single_response`
 
-The response class that Restly builds is a subclass of the view's schema.
+The response schema that Restly builds is a subclass of the main schema.
 Restly passes the value of `to_single_response()` through one more step before
 it sends it:
 
-- An instance of the response class goes out as it is.
-- An instance of a subclass of the response class, or of the view's schema
-  when Restly built the response class, is copied into the response class.
+- An instance of the response schema goes out as it is.
+- An instance of a subclass of the response schema, or of the main schema
+  when Restly built the response schema, is copied into the response schema.
   Restly does not validate the values again: they are already valid, and a
   validator that changes a value would change it twice.
-- An instance of another Pydantic model is validated into the response class
-  from its attributes. A response class that the view sets itself can have
+- An instance of another Pydantic model is validated into the response schema
+  from its attributes. A response schema that the view sets itself can have
   other fields and types, so Restly cannot copy into it.
 
-In each case only the fields of the response class go out.
+In each case only the fields of the response schema go out.
 
 ## See also
 
 - [Schemas & Validation](schemas.md): which fields the response
-  class has.
+  schema has.
 - [Request Lifecycle & Hooks](#replace-endpoint-method): how to replace an
   endpoint method.
 - [Filtering, Sorting & Pagination](filtering.md): the page parameters

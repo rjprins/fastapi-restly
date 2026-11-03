@@ -249,7 +249,7 @@ def _annotate_spec(
     for entry in entries:
         # Each class gets the refs of its own fields: a class that the view
         # sets can give a field another type, such as a nested object for an
-        # id. The view's schema is in the spec only when another schema nests
+        # id. The main schema is in the spec only when another schema nests
         # it or a custom route names it.
         for schema_cls in dict.fromkeys(
             (

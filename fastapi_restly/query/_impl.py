@@ -526,7 +526,7 @@ def derive_list_params_schema(
     or ``None``, no pagination parameters are emitted at all -- the endpoint
     returns every matching row -- while sorting and filtering stay available.
 
-    :param response_schema: The response class whose fields decide the
+    :param response_schema: The response schema whose fields decide the
         available filter parameters. A view passes its ``response_schema``, so
         a client can filter only on a field of that class.
     :param model: The SQLAlchemy model the list endpoint queries. Used to verify
@@ -1073,11 +1073,11 @@ def apply_list_params(
     bounds. This function still checks each filter value itself, with the
     validation of its field.
     ``response_schema`` decides the fields a client can filter and sort on.
-    A view passes its response class.
+    A view passes its response schema.
 
     The arguments match the view method
     :meth:`~fastapi_restly.views.RestView.apply_list_params`, which calls this
-    function with the view's model, response class and pagination.
+    function with the view's model, response schema and pagination.
 
     With list params from :func:`derive_list_params_schema`, the sort
     parameter has the name that the model was created with, and accepts only
@@ -1382,8 +1382,8 @@ def _apply_sorting(
 
 
 def _written_name(schema_cls: _SchemaClass) -> str:
-    """The name of the class that the user wrote: for a response class that
-    Restly derived, the view's schema."""
+    """The name of the class that the user wrote: for a response schema that
+    Restly derived, the main schema."""
     return schema_cls.__dict__.get("__restly_response_of__", schema_cls).__name__
 
 

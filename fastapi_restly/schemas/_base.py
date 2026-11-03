@@ -448,7 +448,7 @@ def _model_id_type(sql_model: type[Any]) -> Any:
 
 
 class IDSchema(BaseSchema, Generic[SQLAlchemyModel]):
-    """The base of a view's schema, which adds a read-only ``id``. As the
+    """The base of a view's main schema, which adds a read-only ``id``. As the
     type of a field, ``IDSchema[Model]`` is a reference to a related row.
 
     - As a BASE CLASS (``class UserSchema(IDSchema): ...``) it adds the resource's
@@ -464,7 +464,7 @@ class IDSchema(BaseSchema, Generic[SQLAlchemyModel]):
     """
 
     # Keep this broad so relation-id payloads can target non-int primary keys.
-    #: The id of the row. In a view's schema, it is ``ReadOnly``: the
+    #: The id of the row. In a view's main schema, it is ``ReadOnly``: the
     #: responses show it, and the create and update bodies that Restly
     #: generates leave it out. In a reference field, such as
     #: ``author: fr.IDSchema[Author]``, the client sends it.
@@ -1806,7 +1806,7 @@ class OmitReadOnlyMixin(pydantic.BaseModel):
 
 
 class _OmitWriteOnlyMixin(pydantic.BaseModel):
-    """Mixin for the response class: removes the WriteOnly fields."""
+    """Mixin for the response schema: removes the WriteOnly fields."""
 
     #: The names and aliases of the removed WriteOnly fields.
     __restly_writeonly_keys__: ClassVar[frozenset[str]] = frozenset()
@@ -1894,7 +1894,7 @@ def _brought_back_fields(cls: type[pydantic.BaseModel]) -> set[str]:
     parents. A field that is no longer in the fields of the parent, it builds
     again from the annotation, without its ``ReadOnly`` or ``WriteOnly`` marker
     and its default. So a ``ReadOnly`` field would become writable in a subclass
-    of the update class.
+    of the update schema.
 
     A field that ``cls`` declares itself, or that another parent has, is a real
     field and stays.
@@ -1919,10 +1919,10 @@ def _skip_field_checks(cls: type[pydantic.BaseModel], removed: set[str]) -> None
     """Let validators and serializers of the removed fields stay on ``cls``.
 
     Pydantic checks that each field validator and serializer names a field of
-    the class. A ``@field_validator("password")`` on the view's schema would
-    then fail the response class, which has no ``password``, and a
-    ``@field_validator("slug")`` on a ``ReadOnly`` slug would fail the request
-    bodies. Without the check, pydantic does not use it there.
+    the class. A ``@field_validator("password")`` on the main schema would
+    then fail the response schema, which has no ``password``, and a
+    ``@field_validator("slug")`` on a ``ReadOnly`` slug would fail the create
+    and update schemas. Without the check, pydantic does not use it there.
     """
     decorators = cls.__pydantic_decorators__
     for group in (
@@ -1937,18 +1937,18 @@ def _skip_field_checks(cls: type[pydantic.BaseModel], removed: set[str]) -> None
 
 
 def _as_response(cls: type[pydantic.BaseModel], value: Any) -> Any:
-    """An instance of another model as an instance of the response class
+    """An instance of another model as an instance of the response schema
     ``cls``. Fields that ``cls`` does not have stay behind, also on a route
     without a response model, such as the list of a react-admin view.
 
     Restly copies the values of an instance of a subclass of ``cls``, and of
-    an instance of the view's schema for a response class that
+    an instance of the main schema for a response schema that
     :func:`derive_response_schema` built. It does not validate them again:
     they are already valid, and a validator that changes a value would
     change it twice.
 
     Any other model is validated into ``cls`` from its attributes. A response
-    class that a view sets itself can have other fields and types, so Restly
+    schema that a view sets itself can have other fields and types, so Restly
     cannot copy into it.
 
     A value that is not a model comes back as it is. So does an ORM object,
@@ -1986,7 +1986,7 @@ def _as_response(cls: type[pydantic.BaseModel], value: Any) -> Any:
 def _response_adapter(
     response_schema: type[pydantic.BaseModel],
 ) -> pydantic.TypeAdapter[pydantic.BaseModel]:
-    """Validates into a response class. Through an adapter, not
+    """Validates into a response schema. Through an adapter, not
     ``model_validate``: a schema may narrow that classmethod's signature
     (SQLModel drops ``by_alias`` and ``by_name``)."""
     return pydantic.TypeAdapter(response_schema)
@@ -1996,13 +1996,13 @@ _SchemaT = TypeVar("_SchemaT", bound=pydantic.BaseModel)
 
 
 def derive_response_schema(schema: type[_SchemaT]) -> type[_SchemaT]:
-    """Build the response class of a view's schema: the schema without its
+    """Build the response schema from a view's main schema: the schema without its
     ``WriteOnly`` fields, named ``<Resource>Response``.
 
     A view without its own
     :attr:`~fastapi_restly.views.BaseRestView.response_schema` gets this
     class. Restly builds it also when the schema has no ``WriteOnly`` fields,
-    so OpenAPI shows ``UserResponse`` and not the view's schema.
+    so OpenAPI shows ``UserResponse`` and not the main schema.
 
     The class is a subclass of ``schema``. Each call with the same schema
     returns the same class, so a custom route can name the class that the
@@ -2017,8 +2017,8 @@ def derive_response_schema(schema: type[_SchemaT]) -> type[_SchemaT]:
             @fr.get("/me", response_model=UserResponse)
             async def me(self): ...
 
-    :param schema: The view's schema.
-    :returns: The response class.
+    :param schema: The main schema.
+    :returns: The response schema.
     """
     return cast(type[_SchemaT], _derive_response_schema(schema))
 
@@ -2041,7 +2041,7 @@ def _derive_response_schema(
     )
     # A recursive schema refers to itself by name, like list["NodeSchema"].
     # Pydantic finds a class's own name, but not the name of a parent class
-    # that was defined in a function. So the response class gets that name.
+    # that was defined in a function. So the response schema gets that name.
     namespace = {**(schema.__pydantic_parent_namespace__ or {})}
     namespace[schema.__name__] = schema
     cls.model_rebuild(force=True, raise_errors=False, _types_namespace=namespace)
@@ -2049,7 +2049,7 @@ def _derive_response_schema(
 
 
 def derive_create_schema(schema: type[_SchemaT], model: type[Any]) -> type[_SchemaT]:
-    """Build the create body of a view's schema: the schema without its
+    """Build the create schema from a view's main schema: the schema without its
     ``ReadOnly`` fields, named ``<Resource>Create``.
 
     A view without its own
@@ -2060,10 +2060,10 @@ def derive_create_schema(schema: type[_SchemaT], model: type[Any]) -> type[_Sche
 
         UserCreate = fr.schemas.derive_create_schema(UserSchema, User)
 
-    :param schema: The view's schema.
+    :param schema: The main schema.
     :param model: The view's model. The class also leaves out a primary key that
         the server generates, as a view does.
-    :returns: The create body.
+    :returns: The create schema.
     """
     return cast(type[_SchemaT], _derive_create_schema(schema, model))
 
@@ -2078,7 +2078,7 @@ def _derive_create_schema(
 
 
 def derive_update_schema(schema: type[_SchemaT], model: type[Any]) -> type[_SchemaT]:
-    """Build the update body of a view's schema: the schema without its
+    """Build the update schema from a view's main schema: the schema without its
     ``ReadOnly`` fields, with each other field optional, named
     ``<Resource>Update``.
 
@@ -2088,7 +2088,7 @@ def derive_update_schema(schema: type[_SchemaT], model: type[Any]) -> type[_Sche
     returns the same class, so a custom route can name the class that the view
     uses.
 
-    ``schema`` can be a class of your own, such as the create body of a view that
+    ``schema`` can be a class of your own, such as the create schema of a view that
     sets ``create_schema``, so that ``PATCH`` follows that body::
 
         class UserCreate(fr.BaseSchema):
@@ -2099,10 +2099,10 @@ def derive_update_schema(schema: type[_SchemaT], model: type[Any]) -> type[_Sche
             create_schema = UserCreate
             update_schema = fr.schemas.derive_update_schema(UserCreate, User)
 
-    :param schema: The view's schema, or another class to start from.
+    :param schema: The main schema, or another class to start from.
     :param model: The view's model. The class also leaves out a primary key that
         the server generates, as a view does.
-    :returns: The update body.
+    :returns: The update schema.
     """
     return cast(type[_SchemaT], _derive_update_schema(schema, model))
 
@@ -2149,8 +2149,8 @@ def derive_list_response_schema(
     *,
     pagination: NumberedPagination | NoPagination | None = _DEFAULT_PAGINATION,
 ) -> type[pydantic.BaseModel]:
-    """Build the list response class of a view: the envelope of its
-    pagination, filled with its response class, named
+    """Build the list response schema of a view: the envelope of its
+    pagination, filled with its response schema, named
     ``<Resource>ListResponse``.
 
     This is what a view's ``list_response_schema`` is unless it sets another
@@ -2169,15 +2169,15 @@ def derive_list_response_schema(
             @fr.get("/inactive", response_model=UserListResponse)
             async def inactive(self, list_params): ...
 
-    Each call with the same response class and envelope returns the same
+    Each call with the same response schema and envelope returns the same
     class. Only the envelope of the pagination matters: two paginations with
     the same envelope give the same class.
 
-    :param response_schema: The view's response class, such as the one from
+    :param response_schema: The view's response schema, such as the one from
         :func:`derive_response_schema`.
     :param pagination: The view's pagination. ``None`` is a view without
         pagination, as on the view. The default is the default pagination.
-    :returns: The list response class.
+    :returns: The list response schema.
     """
     envelope = Envelope if pagination is None else pagination.envelope
     return _named_list_envelope(envelope, response_schema)
@@ -2188,7 +2188,7 @@ def _named_list_envelope(
     envelope: type[pydantic.BaseModel], response_schema: type[pydantic.BaseModel]
 ) -> type[pydantic.BaseModel]:
     """Cached, so the route and every request use the same class, and two
-    views with the same response class and envelope share it.
+    views with the same response schema and envelope share it.
 
     It is a subclass, so OpenAPI shows ``UserListResponse`` and not
     ``PaginatedEnvelope_UserResponse_``.

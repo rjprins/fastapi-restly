@@ -1,7 +1,7 @@
-"""A field of the update body keeps its type.
+"""A field of the update schema keeps its type.
 
 The client may leave out each field of ``PATCH``, but ``null`` is valid only
-where the type allows ``None``, as for ``POST``. Before, the update body made
+where the type allows ``None``, as for ``POST``. Before, the update schema made
 each type ``Optional``. Then ``{"title": null}`` passed validation, and the
 database rejected the ``NULL``: 409 instead of 422.
 """
@@ -62,7 +62,7 @@ def test_a_generated_field_with_a_default_allows_null_only_when_nullable(client)
         count: Mapped[int] = mapped_column(default=3)
         # SQLAlchemy's way to say that the database fills a column.
         label: Mapped[str] = mapped_column(server_default="x", default=None)
-        # The constructor requires it, so the create body requires it too.
+        # The constructor requires it, so the create schema requires it too.
         stamp: Mapped[str] = mapped_column(server_default="s")
         note: Mapped[str | None] = mapped_column(default="n")
         # As in SQLAlchemy, nullable= wins over the annotation.
@@ -131,13 +131,13 @@ def test_the_update_body_has_no_defaults_and_no_required_fields(client):
         "x-note": True,
     }
     assert fields["secret"] == {"type": "string", "title": "Secret", "writeOnly": True}
-    # The create body keeps the defaults of the schema.
+    # The create schema keeps the defaults of the schema.
     assert schemas["CardCreate"]["properties"]["count"]["default"] == 3
 
 
 def test_a_v1_validator_with_always_does_not_validate_a_left_out_field(client):
     """Pydantic validates the default of a field with a v1
-    ``@validator(..., always=True)``. In the update body, the ``None``
+    ``@validator(..., always=True)``. In the update schema, the ``None``
     default of ``title: str`` then failed, and each PATCH that left the title
     out returned 422."""
 
@@ -169,5 +169,5 @@ def test_a_v1_validator_with_always_does_not_validate_a_left_out_field(client):
     assert client.patch(url, json={"body": "c"}).json()["title"] == "a"
     assert client.patch(url, json={"title": " d "}).json()["title"] == "d"
     client.patch(url, json={"title": None}, assert_status_code=422)
-    # The create body still validates the default.
+    # The create schema still validates the default.
     assert NoteView.create_schema.model_fields["title"].validate_default

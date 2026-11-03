@@ -7,9 +7,9 @@ the CRUD routes included. Restly fills in a few things for you:
 - the tag of each route: the view's `tags`, or else a tag made from the last
   segment of the prefix, so `/order-items` gives `Order Items`;
 - the name, the summary and the operation ID of each CRUD route;
-- the request and response types of the CRUD routes: the classes that Restly
-  builds from the view's schema, named as in
-  [The names of the generated classes](#generated-class-names);
+- the request and response types of the CRUD routes: the schemas that Restly
+  builds from the view's main schema, named as in
+  [The names of the generated schemas](#generated-schema-names);
 - the filter, sort and page parameters of each list route;
 - an `x-resource-ref` on each field that points to another resource.
 
@@ -117,7 +117,7 @@ class InvoiceView(fr.AsyncRestView):
 ```
 
 `ListResponseSchema` keeps the view's list response as the response model; see
-[Name the view's classes in a custom route](#name-the-response-classes).
+[Name the view's schemas in a custom route](#name-the-view-schemas).
 Restly still fills in the rest of the route: the list params, and the name
 and the summary that you do not pass. A keyword argument
 that you pass wins over Restly's default. The table in
@@ -174,8 +174,8 @@ The `response_model` of a CRUD route, and so its schema in the spec, comes
 from the classes that Restly builds from the view's
 {attr}`schema <fastapi_restly.views.BaseRestView.schema>`, such as
 `UserResponse` and `UserCreate`. To change the fields of every route, set
-the view's response class; see
-[Set your own response class](#own-response-class). To document and return
+the view's response schema; see
+[Set your own response schema](#own-response-schema). To document and return
 another shape on one route, replace its endpoint method with your own
 decorator and `response_model`; see
 [Change the shape of one route](#one-route-shape) and

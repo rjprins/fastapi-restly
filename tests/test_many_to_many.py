@@ -113,7 +113,7 @@ def _assert_tagged_posts(client):
     assert client.get(f"/tags/{tech}").json()["posts"] == [post["id"]]
     assert client.get(f"/tags/{news}").json()["posts"] == []
 
-    # Ids in, objects out, with a response class of its own.
+    # Ids in, objects out, with a response schema of its own.
     with_tags = client.post(
         "/posts-with-tags", json={"title": "c", "tags": [news]}
     ).json()

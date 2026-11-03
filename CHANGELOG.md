@@ -8,9 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 This release adds `SchemaType`, a type that depends on the view, and a setting
-for the list response. Each name of a view's schema now ends with what it is. To
-upgrade, work through these steps. A missed step fails with an error. A step
-marked "Silent" gives no error when you miss it.
+for the list response. The settings and markers for a view's schemas now have
+names that end with what they are. To upgrade, work through these steps. A
+missed step fails with an error. A step marked "Silent" gives no error when you
+miss it.
 
 1. Rename these settings of a view: `schema_response` to `response_schema`,
    `schema_create` to `create_schema`, `schema_update` to `update_schema`, and
@@ -40,10 +41,10 @@ marked "Silent" gives no error when you miss it.
    `to_list_response` if you need the response, also in a test.
 6. Silent: a route that declares no response, or a type without fields such as
    `dict[str, Any]`, and returns a row of the view's model, a list of rows, or a
-   dict with these as values, sends the fields of the response class. A row further
+   dict with these as values, sends the fields of the response schema. A row further
    down still goes out as FastAPI sends it. Before, FastAPI sent each column
    of the row, also a `WriteOnly` column. To send more fields, declare a class. In
-   async code, a relationship that the response class names and your own `select`
+   async code, a relationship that the response schema names and your own `select`
    did not load now raises `MissingGreenlet`, so load it.
 7. Silent: on a react-admin view, `GET /` now has a response model, the list type.
    An override of `to_list_response` that returns data, and not a `Response`, loses
@@ -51,7 +52,7 @@ marked "Silent" gives no error when you miss it.
    that you send.
 8. Silent: a custom route without a response model, which calls an override of
    `to_single_response` that returns another model, sends all fields of that
-   model. Before, `to_response` copied the value into the response class. Declare
+   model. Before, `to_response` copied the value into the response schema. Declare
    `-> ResponseSchema` on the route.
 
 ### Added
@@ -59,7 +60,7 @@ marked "Silent" gives no error when you miss it.
 - `fastapi_restly.views.SchemaType(fn)`: a type that depends on the view. The
   function gets the view class and returns the type. It goes on a setting that
   takes a schema class, as a decorator on such a setting, or in the annotation of
-  a route. OpenAPI shows the type of each view; see "Build a class for each view"
+  a route. OpenAPI shows the type of each view; see "Make dynamic schemas that depend on the view"
   in the guide.
 - `list_response_schema`, a setting for the class of the list response. Restly
   fills it as it fills an envelope. So a view can send smaller items, or other
@@ -69,12 +70,12 @@ marked "Silent" gives no error when you miss it.
   build the classes of a view from a schema and a model.
 - A marker in the `model` of `responses=`, on a route or on a view, gets the type
   of the view.
-- You can read a view's classes before the view registers, as in
+- You can read a view's schemas before the view registers, as in
   `UserView.response_schema`.
 
 ### Changed
 
-- Restly builds a view's classes when something first reads them, once for each
+- Restly builds a view's schemas when something first reads them, once for each
   view. Registration no longer writes them on the view class.
 - Registration raises `RestlyConfigurationError` for a schema setting that is not
   a Pydantic class or a `SchemaType`, and for a function that gives another type.
@@ -85,9 +86,9 @@ marked "Silent" gives no error when you miss it.
   `list_response_schema = list[ResponseSchema]`, for a function that returns
   `None`, and for `list_response_schema = PaginatedEnvelope` without a type for
   the items. OpenAPI showed items without a type.
-- Registration raises `RestlyConfigurationError` for an own list response class
+- Registration raises `RestlyConfigurationError` for an own list response schema
   that `GET /` cannot fill: items that are not a Pydantic class, an item field that
-  the response class does not have, `list[X] | None`, or a class without a field
+  the response schema does not have, `list[X] | None`, or a class without a field
   named `data`. Before, the first row gave a `500`, or the list was always empty.
   The check on a field named `data` also holds for the `envelope` of a pagination.
   A `RootModel` and a class with a `mode="before"` validator read the page values
@@ -95,8 +96,8 @@ marked "Silent" gives no error when you miss it.
 - Registration raises `RestlyConfigurationError` for a marker in a field of a class
   in `responses=` of a view, and for a type alias that names itself and holds a
   marker. OpenAPI showed no type for these.
-- Two views with the same schema and model share one create class and one update
-  class.
+- Two views with the same schema and model share one create schema and one update
+  schema.
 - A subclass of a view with a new `schema` gets the function of a base view back,
   if a base view has one, and otherwise Restly's default. A function on the
   subclass counts as a new `schema`.
@@ -110,12 +111,12 @@ marked "Silent" gives no error when you miss it.
   OpenAPI showed an empty class, and a row went out with all its columns.
 - A generic class in a view's response, such as `Page[int]`, gets `x-resource-ref`
   in OpenAPI. Before, Restly looked for it under the wrong name.
-- The list route of a react-admin view shows an array of the response class in
+- The list route of a react-admin view shows an array of the response schema in
   OpenAPI. Before, it showed an empty schema. A custom route with the list marker
   no longer shows an envelope while it sends an array.
 - A subclass of a derived class keeps out the fields that the class dropped.
-  Before, a subclass of the update class could write a `ReadOnly` field, and a
-  subclass of the response class required a `WriteOnly` field and failed on each
+  Before, a subclass of the update schema could write a `ReadOnly` field, and a
+  subclass of the response schema required a `WriteOnly` field and failed on each
   response.
 
 ## [0.13.0] - 2026-11-01

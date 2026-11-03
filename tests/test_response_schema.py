@@ -1,4 +1,4 @@
-"""The response class and the list response class of a view.
+"""The response schema and the list response schema of a view.
 
 ``fr.schemas.derive_response_schema`` and
 ``fr.schemas.derive_list_response_schema`` return the classes that a view
@@ -206,13 +206,13 @@ def test_the_wrong_pagination_gives_a_second_class_and_a_warning():
     ]
     assert "More than one class has the name ShelfListResponse." in message
     # The class that the route built says where it comes from, and the
-    # warning says how to get the view's class.
+    # warning says how to get the view's response schema.
     assert "a list response with the envelope PaginatedEnvelope" in message
     assert "passes the view's pagination to derive_list_response_schema" in message
 
 
 # A view whose own response_schema differs from its schema. The schema is
-# what comes in; the response class is what goes out. The response class
+# what comes in; the response schema is what goes out. The response schema
 # leaves out email, score and team_id, names the team relationship, and has
 # a computed field, so each test can see which class a response went through.
 
@@ -352,7 +352,7 @@ def test_the_list_params_follow_the_response_class(members):
 def test_the_view_loads_the_relationships_the_response_class_names(members):
     view, _ = members
 
-    # The view's schema names no relationship. Without this load, the async
+    # The main schema names no relationship. Without this load, the async
     # view could not send the team: it would fail with MissingGreenlet.
     instance = object.__new__(view)
     assert len(instance.get_loader_options()) == 1
@@ -413,7 +413,7 @@ def test_a_subclass_keeps_or_rebuilds_the_response_class():
     assert PlantView.response_schema is fr.schemas.derive_response_schema(PlantSchema)
     assert OwnResponseView.response_schema is PlantResponse
     assert InheritsOwnResponseView.response_schema is PlantResponse
-    # A schema set nearer than the response class rebuilds it, as it rebuilds
+    # A schema set nearer than the response schema rebuilds it, as it rebuilds
     # create_schema and update_schema.
     assert NewSchemaView.response_schema is fr.schemas.derive_response_schema(
         SecretPlantSchema
@@ -456,8 +456,8 @@ def test_a_react_admin_view_follows_the_response_class(client):
 def test_an_instance_of_the_schema_goes_out_through_the_view_s_response_class(
     client, base
 ):
-    """An override returns an instance of the view's schema. Restly validates
-    it into the view's own response class, on every route: also on the list
+    """An override returns an instance of the main schema. Restly validates
+    it into the view's own response schema, on every route: also on the list
     of a react-admin view, which has no response model to do it."""
     runs: collections.Counter[str] = collections.Counter()
 
@@ -504,7 +504,7 @@ def test_an_instance_of_the_schema_goes_out_through_the_view_s_response_class(
             body = body[0] if isinstance(body, list) else body["data"][0]
         assert body == {"id": 1, "name": "tit"}, path
         # Each class validates once: the override into the schema, and Restly
-        # into the response class.
+        # into the response schema.
         assert runs == {"schema": 1, "response": 1}, path
 
 
@@ -512,8 +512,8 @@ def test_an_instance_of_the_schema_goes_out_through_the_view_s_response_class(
     "base", [fr.AsyncRestView, fr.AsyncReactAdminView], ids=["rest", "react-admin"]
 )
 def test_an_instance_of_a_subclass_goes_out_without_its_other_fields(client, base):
-    """The view's schema adds fields to its own response class. An override
-    returns an instance of the schema: only the fields of the response class
+    """The main schema adds fields to its own response schema. An override
+    returns an instance of the schema: only the fields of the response schema
     go out, also on the react-admin list, which writes its own body."""
 
     class Eel(fr.IDMixin, SharedBase):
@@ -584,9 +584,9 @@ def test_a_sqlmodel_table_row_goes_out_as_an_orm_object():
 
 
 def test_an_instance_of_another_model_goes_out_through_the_response_class(client):
-    """Also on a view whose response class Restly derives: an instance of a
-    model that is neither the schema nor the response class is validated
-    into the response class, so its other fields stay behind."""
+    """Also on a view whose response schema Restly derives: an instance of a
+    model that is neither the schema nor the response schema is validated
+    into the response schema, so its other fields stay behind."""
 
     class Fish(fr.IDMixin, SharedBase):
         name: Mapped[str]

@@ -282,7 +282,7 @@ the override replaces it with the hash. The save comes after `create`
 returns, so the database only gets the hash. `fr.WriteOnly` keeps the field
 out of every response.
 
-The generated update body takes `password` too. Without more code,
+The generated update schema takes `password` too. Without more code,
 `PATCH /users/{id}` stores a new password as plain text. So hash it in
 `update` as well:
 
@@ -384,7 +384,7 @@ row after a write, and a custom route that returns the row:
 ```
 
 `Current.user_id()` is the id of the caller
-([Request Context](context.md)). The view's schema declares the
+([Request Context](context.md)). The view's main schema declares the
 field:
 
 ```python
@@ -410,7 +410,7 @@ Project.task_count = column_property(
 )
 ```
 
-Declare `task_count: fr.ReadOnly[int] = 0` in the view's schema, as for
+Declare `task_count: fr.ReadOnly[int] = 0` in the main schema, as for
 `can_edit`. The save after a write loads the value again, so the create and
 update responses show it too. The list gets filters and a sort key for it,
 such as `?sort=-task_count`; see [Filter a list](#filter-a-list). The SaaS
@@ -518,7 +518,7 @@ call `authorize` or the hooks. `async_make_new_object` and
 `async_update_object` check the references too. In a CRUD route the handler
 has checked them first, and the second check does not query the database
 again. `async_save_object` refreshes the object, but it does not load the
-relationships that the view's response class names.
+relationships that the view's response schema names.
 
 The save writes every change in the session. It refreshes the object that the
 business method returns, and every other row of the view's model that the
@@ -849,7 +849,7 @@ class ProductView(fr.AsyncRestView):
 The default `DELETE /{id}` answers `204 No Content`. This version answers
 `200` with the deleted row, as React Admin's `ra-data-simple-rest` expects
 ([React Admin](react_admin.md)). It builds the response before the row is
-gone. `ResponseSchema` makes the response class the `response_model`, so only
+gone. `ResponseSchema` makes the response schema the `response_model`, so only
 its fields go out, as from `GET /{id}`, and OpenAPI shows them.
 
 :::{admonition} Details
@@ -862,7 +862,7 @@ endpoint methods stay.
 The built-in endpoint methods get the view's types from markers, such as
 `get_one_endpoint(self, id: IDType) -> ResponseSchema`. A replacement gets the
 view's types only where it uses the markers too; see
-[Name the view's classes in a custom route](#name-the-response-classes). A
+[Name the view's schemas in a custom route](#name-the-view-schemas). A
 parameter or a return without an annotation gets no type. Restly keeps an
 annotation that you write, so `data: ProductReplace` validates the
 request body against `ProductReplace`. `list_params` is the exception: it
@@ -906,10 +906,10 @@ class ProductView(fr.AsyncRestView):
 ```
 
 The route sends a plain list, not the default envelope, so it names its
-`response_model`: a list of the view's response class. Without it, OpenAPI
+`response_model`: a list of the view's response schema. Without it, OpenAPI
 shows no schema for the response. The route builds the body itself, so it
 dumps each row `by_alias=True`, as FastAPI does for a response model.
-[Name the view's classes in a custom route](#name-the-response-classes)
+[Name the view's schemas in a custom route](#name-the-view-schemas)
 explains the markers, such as `ResponseSchema`.
 
 ### Share a changed route across views
@@ -938,7 +938,7 @@ class ProductView(DeleteReturnsObjectMixin, fr.AsyncRestView):
 ```
 
 `IDType` and `ResponseSchema` give each view that uses the mixin its own id
-type and response class.
+type and response schema.
 
 The [React Admin](react_admin.md) views use this pattern. They replace
 {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>`
@@ -971,7 +971,7 @@ the view shows, and each row loads what the response needs:
 ```
 
 `ResponseSchema` from `fastapi_restly.views` stands for the view's response
-class. The route declares a list of it, so Restly passes each row through
+schema. The route declares a list of it, so Restly passes each row through
 `to_single_response`, as the list route does; see
 [The response of a custom route](#custom-route-response). The route builds
 its own read, so it calls `authorize` itself.
@@ -989,7 +989,7 @@ The SaaS example's `GET /users/me` returns the caller's own row:
 :::{admonition} Details
 :class: details
 
-`ResponseSchema` stands for the view's response class, `UserResponse`, so
+`ResponseSchema` stands for the view's response schema, `UserResponse`, so
 OpenAPI shows the same type as for `GET /users/{id}`, and the row goes
 through the view's response step
 ([The response of a custom route](#custom-route-response)). The
@@ -1370,7 +1370,7 @@ Inside every method and custom route, you can use these attributes:
 | {attr}`self.session <fastapi_restly.views.RestView.session>` | `AsyncSession`, or `Session` on `RestView` | The database session of the request |
 | {attr}`self.request <fastapi_restly.views.BaseRestView.request>` | `fastapi.Request` | The HTTP request |
 | {attr}`self.model <fastapi_restly.views.BaseRestView.model>` | the model class | The SQLAlchemy model of the view |
-| {attr}`self.schema <fastapi_restly.views.BaseRestView.schema>` | `type[pydantic.BaseModel]` | The view's schema |
+| {attr}`self.schema <fastapi_restly.views.BaseRestView.schema>` | `type[pydantic.BaseModel]` | The main schema |
 
 A class attribute that you declare with `Annotated[..., Depends(...)]`, such
 as the current user, is also set on `self` for each request. See

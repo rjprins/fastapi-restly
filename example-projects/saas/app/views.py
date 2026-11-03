@@ -151,7 +151,7 @@ class TrashView(SoftDeleteMixin, AuthenticatedView[SoftDeletableT]):
     such as ``ProjectClauses.is_deleted``. The view's own scope hides the
     deleted rows, so the trash is the only surface for them, and a live row
     is a 404 on restore. ``IDType``, ``ResponseSchema`` and ``ListResponseSchema``
-    give each view its own id type and response classes when it registers.
+    give each view its own id type and response schemas when it registers.
     """
 
     trash_scope: ClassVar[fr.WhereClause]

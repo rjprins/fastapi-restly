@@ -40,7 +40,7 @@ class TaskSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
     updated_by_id: fr.ReadOnly[int | None] = None
 
 
-# The response class that TaskView builds from TaskSchema. A route of
+# The response schema that TaskView builds from TaskSchema. A route of
 # another view that answers with tasks names it, so OpenAPI shows
 # TaskResponse there, as on the CRUD routes of TaskView.
 TaskResponse = fr.schemas.derive_response_schema(TaskSchema)

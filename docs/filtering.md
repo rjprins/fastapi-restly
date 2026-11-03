@@ -14,11 +14,11 @@ GET /users?page=2&page_size=50
 ```
 
 Restly builds these list params once for each view. It reads the view's
-response class, and gives each field that maps to a column one filter,
+response schema, and gives each field that maps to a column one filter,
 plus filters with an operator suffix such as `__gte`. So a client can filter
-and sort only on the fields that go out. By default the response class is
-the view's schema without its `WriteOnly` fields; see
-[Set your own response class](#own-response-class).
+and sort only on the fields that go out. By default the response schema is
+the view's main schema without its `WriteOnly` fields; see
+[Set your own response schema](#own-response-schema).
 
 By default a list has the keys of the resource's own fields. A view chooses
 other keys with four settings; see [Choose the keys of a list](#choose-list-keys).
@@ -251,9 +251,9 @@ repeated from one page to the next.
 :::{admonition} Details
 :class: details
 
-A key of `default_sort` must be a field of the response class that can be a
+A key of `default_sort` must be a field of the response schema that can be a
 sort key. `include_sort_keys` does not have to keep it, so a view can sort by
-a field that the client cannot sort by. A key that the response class does
+a field that the client cannot sort by. A key that the response schema does
 not have fails when the view registers, also when the view gets
 `default_sort` from a base view. A key that appears twice, such as in
 `"name,-name"`, fails when the class is defined, or when the view registers
@@ -264,7 +264,7 @@ default too. An override of
 finds the default in `list_params.sort`. With `include_sort_keys = ()`, the
 list params have no sort parameter, but the default still applies.
 
-For a default order on a column that the response class does not have,
+For a default order on a column that the response schema does not have,
 such as a `position` that an admin sets, order the statement when the
 client sends no sort:
 
@@ -567,7 +567,7 @@ outside a view can build the same list params.
 
 A key that clients use is part of your API. Removing it later breaks those
 clients. A key also goes away when you remove its field from the response
-class.
+schema.
 :::
 
 (relation-filtering)=
@@ -590,7 +590,7 @@ GET /orders?user.name__contains=ali
 ```
 
 The relation must be a `relationship` on the SQLAlchemy model and a nested
-schema on the response class, as in
+schema on the response schema, as in
 [Return related objects in a response](#relationship-loading). A nested schema
 that can be `None` (`UserSchema | None`) works, and so do several steps
 (`?blog.author.name=Alice`). Each step needs its own `*` in the setting:
@@ -641,7 +641,7 @@ stays, and its value counts as NULL in the sort.
 
 Aliases apply to every part of the path, the relationship and the field,
 because the list params always use the public names of the response
-class:
+schema:
 
 ```python
 from pydantic import Field
@@ -696,7 +696,7 @@ A relationship reference filters differently (see
   `include_filters = ("*", "author.*")`.
 - A flat {class}`IDRef[Model] <fastapi_restly.schemas.IDRef>` field on a
   relationship gets no filter. To filter by it, also put the foreign key
-  column in the response class, for example as `author_id: fr.ReadOnly[int]`.
+  column in the response schema, for example as `author_id: fr.ReadOnly[int]`.
 :::
 
 (public-names)=

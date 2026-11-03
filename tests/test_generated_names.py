@@ -1,8 +1,8 @@
 """The names of the classes that Restly generates for a view.
 
-A generated class is named ``<Resource><Role>``. Resource is the class name
-of the view's schema without a final ``Schema`` or ``Response``. The client
-sees these names in OpenAPI. It sees the view's schema only when another
+A generated schema is named ``<Resource><Role>``. Resource is the class name
+of the main schema without a final ``Schema`` or ``Response``. The client
+sees these names in OpenAPI. It sees the main schema only when another
 schema nests it or a custom route names it. When two different classes get
 the same name, Restly warns.
 """
@@ -111,7 +111,7 @@ def test_a_final_response_is_dropped_from_the_resource_name():
 
 
 def test_the_response_class_is_built_without_write_only_fields_too():
-    """The response class is a subclass of the view's schema, so a response
+    """The response schema is a subclass of the main schema, so a response
     is also an instance of the schema."""
 
     class Note(fr.IDMixin, SharedBase):
@@ -158,7 +158,7 @@ def test_react_admin_put_returns_the_response_class():
 
 
 # ---------------------------------------------------------------------------
-# An override that returns an instance of the view's schema
+# An override that returns an instance of the main schema
 # ---------------------------------------------------------------------------
 
 
@@ -220,7 +220,7 @@ class _Priced(pydantic.BaseModel):
 
 
 def test_a_schema_instance_goes_out_without_a_second_validation(client):
-    """The response class copies an instance of the view's schema. It does
+    """The response schema copies an instance of the main schema. It does
     not read the instance again by its aliases, and it does not run the
     validators again."""
 
@@ -253,7 +253,7 @@ def test_a_schema_instance_goes_out_without_a_second_validation(client):
 
 
 def test_a_forward_reference_can_be_defined_after_the_response_class():
-    """Restly builds the response class when it includes the view. A name that
+    """Restly builds the response schema when it includes the view. A name that
     the schema's module defines later does not stop it, also when the class
     has WriteOnly fields to remove."""
     from . import _forward_ref_schemas as schemas
@@ -355,7 +355,7 @@ def test_two_list_responses_with_one_name_warn_and_stay_in_openapi():
     schema_path = "tests.test_generated_names._shop_views.<locals>"
     assert generated.format(schema_path, "ShopView") in message
     assert generated.format(schema_path, "AllShopsView") in message
-    assert "the list response after the response class" in message
+    assert "the list response after the response schema" in message
     assert "passes the view's pagination to derive_list_response_schema" in message
 
 
@@ -484,12 +484,12 @@ def test_a_create_body_that_a_subclass_sets_is_its_own():
     [warning] = record
     message = str(warning.message)
     assert re.search(
-        r"<locals>\.ItemCreate: the create body of QuickItemView$",
+        r"<locals>\.ItemCreate: the create schema of QuickItemView$",
         message,
         re.MULTILINE,
     )
     assert re.search(
-        r"the create body that Restly generates from \S+ItemSchema for ItemView$",
+        r"the create schema that Restly generates from \S+ItemSchema for ItemView$",
         message,
         re.MULTILINE,
     )
@@ -587,7 +587,7 @@ def test_a_hand_written_class_with_a_generated_name_warns_and_stays_in_openapi()
     message = str(warning.message)
     assert message.startswith("More than one class has the name OrderCreate.")
     assert (
-        "the create body that Restly generates from "
+        "the create schema that Restly generates from "
         "tests.test_generated_names._order_app.<locals>.OrderSchema for OrderView"
     ) in message
     assert re.search(r"<locals>\.OrderCreate$", message, re.MULTILINE)

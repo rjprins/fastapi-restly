@@ -122,10 +122,10 @@ Content-Range: items 0-24/315
 :::{admonition} Details
 :class: details
 
-OpenAPI shows the array of the response class, and
+OpenAPI shows the array of the response schema, and
 {attr}`list_response_schema <fastapi_restly.views.BaseRestView.list_response_schema>`
 holds this type. For smaller items, set it to another list, such as
-`list[ProductSummary]`. Restly fills the items from the response class. A value
+`list[ProductSummary]`. Restly fills the items from the response schema. A value
 that is not a list raises at registration, unless the view replaces
 `get_many_endpoint` or `to_list_response`.
 
@@ -159,7 +159,7 @@ generated filters; see [Filtering, Sorting & Pagination](filtering.md).
 A time follows the same rule as in the other filters; see
 [Keep times in UTC](#utc-times).
 
-Only fields that the view's response class sends are accepted, by their
+Only fields that the view's response schema sends are accepted, by their
 alias when they have one. The model must have the field in SQL: as a
 column, a `column_property` or a hybrid property with an SQL expression.
 Other fields, also a Python `@property`, a hybrid property that is plain

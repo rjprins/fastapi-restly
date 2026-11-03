@@ -645,7 +645,7 @@ def test_a_class_decorator_that_sets_the_schema(client, Lamp):
         model = Lamp
 
     create_tables()
-    # the response class of the base view was built for the old schema
+    # the response schema of the base view was built for the old schema
     assert client.post("/lamps/", json={"name": "a"}).json()["note"] == "noted"
 
 

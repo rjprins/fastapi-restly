@@ -175,8 +175,8 @@ route can catch the conflict and write again in the same request; see
 [When a write action raises](#write-action-error).
 
 A `null` reaches the database only when the type of the schema field allows
-`None`. Otherwise validation rejects it first, with `422`, in the create body
-and in the update body; see [Validation](#validation).
+`None`. Otherwise validation rejects it first, with `422`, in the create schema
+and in the update schema; see [Validation](#validation).
 :::
 
 (error-envelope)=

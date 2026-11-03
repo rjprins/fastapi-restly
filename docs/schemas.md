@@ -2,36 +2,36 @@
 
 :::{note}
 Restly says **schema** for a Pydantic class and **model** for a SQLAlchemy
-class. A `User` model is the database table. `UserSchema`, the view's schema,
-is the public API.
+class. A `User` model is the database table. `UserSchema`, the main schema of
+the view, is the public API.
 :::
 
-A view has several schemas. The main one is the view's
+A view has several schemas, one for each use. Together they are "the view's
+schemas". The main schema is the view's
 {attr}`schema <fastapi_restly.views.BaseRestView.schema>`, a Pydantic class
-that lists the fields of the resource. When you register the view,
-Restly builds the other schemas from it, one for each use:
+that lists the fields of the resource. When you register the view, Restly
+builds the other schemas from it:
 
-| Class | Used for | What Restly leaves out of the view's schema |
-|---|---|---|
-| response class, `UserResponse` | everything that goes out | the `WriteOnly` fields |
-| create body, `UserCreate` | the body of `POST` | the `ReadOnly` fields |
-| update body, `UserUpdate` | the body of `PATCH` | the `ReadOnly` fields; every other field is optional |
+| Schema | Setting | Generated name | Used for |
+|---|---|---|---|
+| main schema | {attr}`schema <fastapi_restly.views.BaseRestView.schema>` | `UserSchema` | the fields of the resource |
+| response schema | {attr}`response_schema <fastapi_restly.views.BaseRestView.response_schema>` | `UserResponse` | everything that goes out: the main schema without the `WriteOnly` fields |
+| list response schema | {attr}`list_response_schema <fastapi_restly.views.BaseRestView.list_response_schema>` | `UserListResponse` | the response of the list route: the response schema in an envelope |
+| create schema | {attr}`create_schema <fastapi_restly.views.BaseRestView.create_schema>` | `UserCreate` | the body of `POST`: the main schema without the `ReadOnly` fields |
+| update schema | {attr}`update_schema <fastapi_restly.views.BaseRestView.update_schema>` | `UserUpdate` | the body of `PATCH`: the main schema without the `ReadOnly` fields, with every other field optional |
+| list params schema | {attr}`list_params_schema <fastapi_restly.views.BaseRestView.list_params_schema>` | `UserListParams` | the keys that the list route reads from the URL: filters, sort and page |
 
-Each of these classes is a subclass of the view's schema. So each one keeps
-the field types, the aliases and the validators of the view's schema. Two
-markers decide which class keeps a field: {data}`fr.ReadOnly
-<fastapi_restly.schemas.ReadOnly>` keeps it out of the request bodies, and
-{data}`fr.WriteOnly <fastapi_restly.schemas.WriteOnly>` keeps it out of the
-responses. The filters and sort keys of the list route come from the
-response class too; [Filtering, Sorting & Pagination](filtering.md)
+The response, create and update schemas are subclasses of the main schema. So
+each one keeps the field types, the aliases and the validators of the main
+schema. Two markers decide which schema keeps a field: {data}`fr.ReadOnly
+<fastapi_restly.schemas.ReadOnly>` keeps it out of the create and update
+schemas, and {data}`fr.WriteOnly <fastapi_restly.schemas.WriteOnly>` keeps it
+out of the response schema. The filters and sort keys of the list route come
+from the response schema too; [Filtering, Sorting & Pagination](filtering.md)
 covers them.
 
-You can set each class on the view yourself, as
-{attr}`response_schema <fastapi_restly.views.BaseRestView.response_schema>`,
-{attr}`create_schema <fastapi_restly.views.BaseRestView.create_schema>` or
-{attr}`update_schema <fastapi_restly.views.BaseRestView.update_schema>`.
-Restly then uses your class as you wrote it. A view without a
-{attr}`schema <fastapi_restly.views.BaseRestView.schema>` gets one that
+You can set each schema on the view yourself, through its setting. Restly then
+uses your class as you wrote it. A view without a main schema gets one that
 Restly generates from the model.
 
 Find the section for your goal:
@@ -41,19 +41,19 @@ Find the section for your goal:
 | A public API that differs from the table | [Write the schema](#write-or-generate) |
 | An input field that responses never show | [`WriteOnly`](#readonly-and-writeonly) |
 | A field that the server owns and clients cannot set | [`ReadOnly`](#readonly-and-writeonly) |
-| A field set on create and frozen afterwards | [Your own request body](#explicit-write-schemas) |
+| A field set on create and frozen afterwards | [Your own create and update schemas](#explicit-write-schemas) |
 | A rule that a value must follow | [Validation](#validation) |
 | Times from clients in other time zones | [`UTCDatetime`](#utc-times) |
 | Other field names in the JSON | [Aliases](#field-aliases) |
-| A response that differs from the input | [Your own response class](#own-response-class) |
+| A response that differs from the input | [Your own response schema](#own-response-schema) |
 | Clear type names in OpenAPI and generated clients | [Name your schemas](#name-your-schemas) |
-| A custom route that returns the view's classes | [Name the classes in a custom route](#name-the-response-classes) |
+| A custom route that returns the view's schemas | [Name the schemas in a custom route](#name-the-view-schemas) |
 | A foreign key, or a relationship as an id or an object | [Relationships](relationships.md) |
 
 (write-or-generate)=
 ## Generate the schema or write it
 
-Without a schema, Restly generates the view's schema from the model. This is
+Without a schema, Restly generates the main schema from the model. This is
 enough when the table is already the API you want:
 
 ```python
@@ -121,8 +121,8 @@ response as text; see [Keep NaN and infinity](#nan-and-infinity). It also
 checks that the markers are used in the right place; see
 [the next section](#readonly-and-writeonly).
 
-A request body that you set on the view, such as `create_schema`, can also be
-a plain `pydantic.BaseModel`. Its fields can still use `ReadOnly`,
+A create or update schema that you set on the view can also be a plain
+`pydantic.BaseModel`. Its fields can still use `ReadOnly`,
 `WriteOnly` and {class}`fr.MustExist <fastapi_restly.schemas.MustExist>`.
 
 `fr.IDSchema[User]`, with the model as a type parameter, gives the schema the
@@ -194,17 +194,17 @@ A JSON column has its own rules for `ReadOnly` and `WriteOnly` fields; see
 :::
 
 (explicit-write-schemas)=
-## Write the request body yourself
+## Write the create and update schemas yourself
 
 A {attr}`create_schema <fastapi_restly.views.BaseRestView.create_schema>` or
 {attr}`update_schema <fastapi_restly.views.BaseRestView.update_schema>` that
 you set on the view is the whole contract for its request. Restly writes every
 field that it declares, except the fields that the class itself marks
-`ReadOnly`. The markers on the view's schema only shape the bodies that Restly
+`ReadOnly`. The markers on the main schema only shape the bodies that Restly
 generates.
 
 So you can set a field on create and freeze it afterwards. Mark it `ReadOnly`
-on the view's schema, and declare it in your own create body:
+on the main schema, and declare it in your own create schema:
 
 ```python
 class CommentSchema(fr.IDSchema):
@@ -224,11 +224,11 @@ class CommentView(fr.AsyncRestView):
     create_schema = CommentCreate
 ```
 
-`POST /comments` sets `story_id`. The generated update body leaves it out, so
+`POST /comments` sets `story_id`. The generated update schema leaves it out, so
 `PATCH` ignores it.
 
 Keep a field that the server stamps, such as a tenant id, out of every
-request body that you write. Otherwise a client can set it.
+create or update schema that you write. Otherwise a client can set it.
 
 (validation)=
 ## Validate input
@@ -238,7 +238,7 @@ Each kind of rule has one place:
 | Rule | Where it goes | What the client gets |
 |---|---|---|
 | The format or the range of one value | A Pydantic validator or a `Field` constraint on the schema | 422 |
-| A field that a client cannot set | [`ReadOnly`](#readonly-and-writeonly), or [your own request body](#explicit-write-schemas) | The value is ignored |
+| A field that a client cannot set | [`ReadOnly`](#readonly-and-writeonly), or [your own create and update schemas](#explicit-write-schemas) | The value is ignored |
 | The shape of a JSON document | A Pydantic model as the type of the column; see [Store a Pydantic model in a JSON column](#json-document-columns) | 422 |
 | A value that its column can hold, such as a number in the range of `Integer` | Nothing for the generic types of SQLAlchemy, a `Field` constraint for other types; see [Column validation](#column-validation) | 422, or 400 in a filter |
 | A referenced row must exist | {class}`fr.MustExist <fastapi_restly.schemas.MustExist>` or a reference field; see [Relationships](#reference-exists) | 404 |
@@ -251,8 +251,8 @@ policy, and it goes in
 
 ### Value validation
 
-Put a validator or a `Field` constraint on the view's schema. The create
-body, the update body and the response class are subclasses of the view's
+Put a validator or a `Field` constraint on the main schema. The create
+schema, the update schema and the response schema are subclasses of the main
 schema, so all three run it:
 
 ```python
@@ -276,37 +276,37 @@ class OrganizationSchema(fr.IDSchema):
 A value that fails returns 422, with Pydantic's list of errors.
 
 A rule that compares two fields, in a `model_validator`, works on the create
-body. The update body holds only the fields that the client sends, and the
-other fields are `None`. Check such a rule in `update`, where you have the
-stored row too. Otherwise a `PATCH` that sends one of the two fields can save
-a row that breaks the rule. The response class runs the validator too, so
-every read of that row, and every list that holds it, then fails with a
-server error.
+schema. An instance of the update schema holds only the fields that the client
+sends, and the other fields are `None`. Check such a rule in `update`, where
+you have the stored row too. Otherwise a `PATCH` that sends one of the two
+fields can save a row that breaks the rule. The response schema runs the
+validator too, so every read of that row, and every list that holds it, then
+fails with a server error.
 
 :::{admonition} Details
 :class: details
 
 The validator also runs in these places:
 
-- In the update body, the client may leave out each field. Pydantic does not
+- In the update schema, the client may leave out each field. Pydantic does not
   validate a field that the client leaves out, so the validator does not
   run for it. Each field keeps its type, so `null` is valid only where the
-  type allows `None`, as in the create body. `{"slug": null}` returns 422
+  type allows `None`, as in the create schema. `{"slug": null}` returns 422
   before the validator runs, so the validator above never gets `None`. A
   validator with `mode="before"` runs before that check, so it still gets
   the client's `null`.
-- The response class runs the validator when Restly builds a response from a
+- The response schema runs the validator when Restly builds a response from a
   row. A row that breaks the rule, for example one that a script wrote, then
   fails with a server error.
 - List filters run it on each filter value; see
   [Filter values go through the field's validation](#filter-value-validation).
 
-A class without the field does not run its validator. The request bodies
-have no `ReadOnly` fields and no primary key that the server generates. The
-response class has no `WriteOnly` fields.
+A schema without the field does not run its validator. The create and update
+schemas have no `ReadOnly` fields and no primary key that the server generates.
+The response schema has no `WriteOnly` fields.
 
-To check only what comes in, put the validator on a request body that you set
-on the view. The SaaS example does this for organizations
+To check only what comes in, put the validator on a create or update schema
+that you set on the view. The SaaS example does this for organizations
 ([`app/organizations/schemas.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/organizations/schemas.py)).
 :::
 
@@ -597,7 +597,7 @@ text: FastAPI cannot write an error message that holds `NaN` without quotes,
 so such a body can get an error 500 instead of 422. A strict field, with
 `strict=True`, refuses the text in a request.
 
-Restly reads a row into the response class in lax mode, also for a strict
+Restly reads a row into the response schema in lax mode, also for a strict
 class, as a `PydanticJSON` column reads its document. So a strict `float`
 field reads the stored text back.
 
@@ -631,10 +631,10 @@ Python name stays `first_name`, and Restly writes the value to the model
 attribute with that name. List filters use the alias as well; see
 [Filtering, Sorting & Pagination](filtering.md).
 
-(own-response-class)=
-## Set your own response class
+(own-response-schema)=
+## Set your own response schema
 
-By default, the response class is the view's schema without its `WriteOnly`
+By default, the response schema is the main schema without its `WriteOnly`
 fields. Restly builds this class even when the schema has no `WriteOnly`
 fields, so OpenAPI always shows `UserResponse`.
 
@@ -647,8 +647,7 @@ on the view. Everything that goes out follows it:
   only on the fields that go out;
 - the relationships that the view loads.
 
-The request bodies still follow `create_schema` and `update_schema`, which
-Restly derives from `schema`:
+The create and update schemas still come from the main schema:
 
 ```python
 class AccountSchema(fr.IDSchema):
@@ -687,22 +686,24 @@ parameter of the view, as in `fr.AsyncRestView[Account, AccountResponse]`; see
 [Type Annotations](#view-generics).
 :::
 
-(generated-class-names)=
-## The names of the generated classes
+(generated-schema-names)=
+## The names of the generated schemas
 
-A class that Restly generates is named `<Resource><Role>`. Resource is the
-class name of the view's schema without a final `Schema` or `Response`. For
-the view's schema `UserSchema`, the resource is `User`:
+A schema that Restly generates is named `<Resource><Role>`. Resource is the
+class name of the main schema without a final `Schema` or `Response`. For
+the main schema `UserSchema`, the resource is `User`. So Restly generates
+`UserResponse`, `UserListResponse`, `UserCreate`, `UserUpdate` and
+`UserListParams`.
 
 | Role | Class | View attribute |
 |---|---|---|
 | response | `UserResponse` | {attr}`response_schema <fastapi_restly.views.BaseRestView.response_schema>` |
-| create body | `UserCreate` | {attr}`create_schema <fastapi_restly.views.BaseRestView.create_schema>` |
-| update body | `UserUpdate` | {attr}`update_schema <fastapi_restly.views.BaseRestView.update_schema>` |
+| create schema | `UserCreate` | {attr}`create_schema <fastapi_restly.views.BaseRestView.create_schema>` |
+| update schema | `UserUpdate` | {attr}`update_schema <fastapi_restly.views.BaseRestView.update_schema>` |
 | list response | `UserListResponse` | none |
 | list params | `UserListParams` | {attr}`list_params_schema <fastapi_restly.views.BaseRestView.list_params_schema>` |
 
-A client sees these names in OpenAPI. It does not see the view's schema,
+A client sees these names in OpenAPI. It does not see the main schema,
 unless another schema nests it or a custom route names it. The list params
 are not a class in OpenAPI either: OpenAPI shows them as separate query
 parameters.
@@ -717,9 +718,9 @@ The `404` for a row that does not exist names the resource too, such as
 The list response has no view attribute, because it has nothing of its own
 to set. It is the envelope of the view's
 {attr}`pagination <fastapi_restly.views.BaseRestView.pagination>`, filled with
-the response class. To change it, change one of those two; see
+the response schema. To change it, change one of those two; see
 [Change the list envelope](#change-list-envelope). A react-admin view has no
-list response class: its list route returns a plain JSON list.
+list response schema: its list route returns a plain JSON list.
 
 A view without a schema gets a generated one. For a model named `User` it is
 `UserSchema`, so the names above stay the same. A schema with another name
@@ -734,16 +735,15 @@ generated client uses these names as type names. So each class in your API
 needs its own name, even when Python keeps two classes apart in different
 modules.
 
-Restly names the classes that it generates after the view's schema; see
-[the names of the generated classes](#generated-class-names). Follow these
-rules for the classes that you write:
+Restly names the schemas that it generates after the main schema; see
+[the names of the generated schemas](#generated-schema-names). Follow these
+rules for the schemas that you write:
 
-- Name the view's schema after the resource that the client sees:
+- Name the main schema after the resource that the client sees:
   `UserSchema`, or `AdminUserSchema` for an admin view of users. Two schemas
   named `UserSchema` in different modules clash.
 - Use the names `UserResponse`, `UserCreate` and `UserUpdate` only for a
-  view's response class and its create and update body, and set the class on
-  the view:
+  view's response, create and update schemas, and set the class on the view:
 
   ```python
   class TaskCreate(fr.BaseSchema):
@@ -768,8 +768,8 @@ rules for the classes that you write:
       pass
   ```
 
-  The list response takes its name from the response class. So when the two
-  views set the same `response_schema`, give one view a response class of
+  The list response takes its name from the response schema. So when the two
+  views set the same `response_schema`, give one view a response schema of
   its own in the same way.
 
 :::{admonition} Details
@@ -793,15 +793,16 @@ when their JSON schemas are the same, docstrings and defaults included:
 OpenAPI then shows them as one.
 :::
 
-(name-the-response-classes)=
-## Name the view's classes in a custom route
+(name-the-view-schemas)=
+## Name the view's schemas in a custom route
 
 A custom route can show the same types in OpenAPI as the CRUD routes. A route
-decorator runs in the class body, before Restly builds the view's classes.
+decorator runs in the class body, before Restly builds the view's schemas.
 So a custom route names them with markers from `fastapi_restly.views`. When
-the view registers, Restly puts the view's class in place of each marker:
+the view registers, Restly puts the view's own schema or type in place of each
+marker:
 
-| Marker | The view's class | On `UserView` |
+| Marker | What it stands for | On `UserView` |
 |---|---|---|
 | {data}`ResponseSchema <fastapi_restly.views.ResponseSchema>` | {attr}`response_schema <fastapi_restly.views.BaseRestView.response_schema>` | `UserResponse` |
 | {data}`ListResponseSchema <fastapi_restly.views.ListResponseSchema>` | {attr}`list_response_schema <fastapi_restly.views.BaseRestView.list_response_schema>` | `UserListResponse` |
@@ -848,7 +849,7 @@ as for the CRUD routes; see
 [The response of a custom route](#custom-route-response).
 
 A marker stands for the class of the view that registers. So a route on a
-base view works for each view that subclasses it, with that view's classes.
+base view works for each view that subclasses it, with that view's schemas.
 The `TrashView` of the SaaS example adds a trash list and a restore route to
 two views this way, in
 [`app/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/views.py).
@@ -899,10 +900,10 @@ generic, or [build it in a function](#schema-type).
 :::
 
 (schema-type)=
-## Build a class for each view
+## Make dynamic schemas that depend on the view
 
-A marker names a class that the view already has. To build another class for
-each view, write a function.
+Write a function when a schema differs for each view, in a way that you can
+describe once on a base view. An example is a JSON key named after the resource.
 {class}`SchemaType <fastapi_restly.views.SchemaType>` gives the function the
 view class, and uses the type that the function returns. It goes where a class
 goes: on a setting of the view, or in the annotation of a route. OpenAPI shows
@@ -991,8 +992,8 @@ view class. It does not call the function when Python creates the class. So the
 function can read any setting of the view, in any order, and it can use a class
 that the module defines later. A function that reads its own result raises
 {class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`,
-and so does a function that returns `None`. A marker in what it returns gets the
-type of the view, as in `Data[ResponseSchema]`.
+and so does a function that returns `None`. A [marker](#name-the-view-schemas)
+in what it returns gets the type of the view, as in `Data[ResponseSchema]`.
 
 Restly keeps one result for each function. So define `Single` once, or use a
 named function. Two lambdas are two functions, even when they look the same, so
@@ -1004,12 +1005,12 @@ its type argument, such as `Data_UserResponse_`. For another class, use
 `pydantic.create_model(name, ...)`, as above. A class that you rename later, with
 `__name__`, keeps its first name in OpenAPI.
 
-A setting holds a function or a class. It cannot hold a marker, because Restly
-fills a marker in a route. So `list_response_schema = list[ResponseSchema]`
-raises at registration. Write
+A setting holds a function or a class. It cannot hold a
+[marker](#name-the-view-schemas), because Restly fills a marker in a route. So
+`list_response_schema = list[ResponseSchema]` raises at registration. Write
 `list_response_schema = SchemaType(lambda view: list[view.response_schema])`.
-In this lambda, mypy reports `name-defined`, so add
-`# type: ignore[name-defined]`, or write a `def` with `view: Any`.
+In this lambda, mypy reports `name-defined`, so add `# type:
+ignore[name-defined]`, or write a `def` with `view: Any`.
 
 A subclass that sets a class on the setting uses that class. The function stays
 for the other subclasses. A subclass with a new `schema` gets the function
@@ -1191,10 +1192,10 @@ inside a union or a container is rejected. `BaseSchema` checks this when the
 class is defined. A view checks its own classes again when it registers, which
 also covers classes that do not derive from `BaseSchema`.
 
-### How Restly builds the request bodies and the response class
+### How Restly builds the response, create and update schemas
 
-Restly builds each class the first time something reads it, once for each view.
-For the view's schema `UserSchema`:
+Restly builds each schema the first time something reads it, once for each view.
+For the main schema `UserSchema`:
 
 - {attr}`response_schema <fastapi_restly.views.BaseRestView.response_schema>`
   comes from
@@ -1216,21 +1217,21 @@ For the view's schema `UserSchema`:
   also when the class sets `validate_default=True` or a validator sets
   `always=True`. A field that the client does not send is not written:
   Restly writes only the fields in `model_fields_set`. In OpenAPI, no field
-  of the update body is required.
+  of the update schema is required.
 
-Both request bodies also leave out a primary key that the server generates,
-even when the schema does not mark it `ReadOnly`. Generated means an
+The create and update schemas also leave out a primary key that the server
+generates, even when the schema does not mark it `ReadOnly`. Generated means an
 autoincrement column, a column with a default, or a dataclass field outside
-`__init__`. A primary key without any of these is a natural key, and the
-client sends it.
+`__init__`. A primary key without any of these is a natural key, and the client
+sends it.
 
-The classes are subclasses, so they keep the validators and serializers of
-`UserSchema`. When a class deletes a field, it keeps the validators and
+These schemas are subclasses, so they keep the validators and serializers of
+`UserSchema`. When a schema deletes a field, it keeps the validators and
 serializers of that field too, and Pydantic does not run them there. So a
 validator for a `ReadOnly` field, a `WriteOnly` field or a generated primary
 key does not need `check_fields=False`.
 
-A subclass of one of these classes keeps the fields out that the class deleted,
+A subclass of one of these schemas keeps the fields out that the schema deleted,
 unless the subclass declares such a field itself. So `class MyUpdate(UserUpdate)`
 cannot write a `ReadOnly` field by accident.
 
@@ -1277,7 +1278,7 @@ Python) only when its column is nullable. `mapped_column(nullable=...)`
 decides this, as it does for SQLAlchemy, even when the `Mapped[...]`
 annotation says otherwise.
 
-The create body follows the model's constructor, as SQLAlchemy does. The
+The create schema follows the model's constructor, as SQLAlchemy does. The
 client may leave out a field when its column is nullable, or when the
 constructor does not require it and the model then still gives the column a
 value. That value comes from the column, such as `insert_default` or
@@ -1368,5 +1369,5 @@ the schema yourself.
 - [Responses](responses.md): how one object becomes a response,
   envelopes, and [a different schema for the list route](#list-schema).
 - [Filtering, Sorting & Pagination](filtering.md): the filters and sort
-  keys that come from the response class.
+  keys that come from the response schema.
 - [Models](models.md): values that the server sets on every write path.

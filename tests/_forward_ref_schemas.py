@@ -1,6 +1,6 @@
 """Schemas whose forward reference is defined after Restly builds their
-response class, as when a module includes a view before it defines a schema
-that the view's schema refers to."""
+response schema, as when a module includes a view before it defines a schema
+that the main schema refers to."""
 
 from typing import Optional
 

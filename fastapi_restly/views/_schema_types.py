@@ -34,7 +34,7 @@ class SchemaType:
     and returns the type.
 
     A setting that takes a schema class also takes a ``SchemaType``. Here each
-    view gets a create body of its own::
+    view gets a create schema of its own::
 
         class ApiView(fr.AsyncRestView):
             create_schema = SchemaType(lambda view: with_tenant(view.schema))
@@ -176,7 +176,7 @@ def _view_id_type(view_cls: type) -> Any:
 #: for ``int`` and ``{id:uuid}`` for ``UUID``.
 IDType: TypeAlias = Annotated[Any, _marker("IDType", _view_id_type)]
 
-#: The view's response class,
+#: The view's response schema,
 #: :attr:`~fastapi_restly.views.BaseRestView.response_schema`.
 ResponseSchema: TypeAlias = Annotated[
     Any, _marker("ResponseSchema", lambda view: view.response_schema)
@@ -188,13 +188,13 @@ ListResponseSchema: TypeAlias = Annotated[
     Any, _marker("ListResponseSchema", lambda view: view.list_response_schema)
 ]
 
-#: The view's create body,
+#: The view's create schema,
 #: :attr:`~fastapi_restly.views.BaseRestView.create_schema`.
 CreateSchema: TypeAlias = Annotated[
     Any, _marker("CreateSchema", lambda view: view.create_schema)
 ]
 
-#: The view's update body,
+#: The view's update schema,
 #: :attr:`~fastapi_restly.views.BaseRestView.update_schema`.
 UpdateSchema: TypeAlias = Annotated[
     Any, _marker("UpdateSchema", lambda view: view.update_schema)
@@ -202,7 +202,7 @@ UpdateSchema: TypeAlias = Annotated[
 
 
 def _fill_schema_types(func: Callable, view_cls: type, list_params: Any) -> None:
-    """Put the view's classes in place of the markers in ``func.__signature__``.
+    """Put the view's schemas in place of the markers in ``func.__signature__``.
 
     A parameter named ``list_params`` always takes the view's list params,
     whatever its annotation says: the unknown-key guard checks the keys
@@ -233,7 +233,7 @@ def _fill_schema_types(func: Callable, view_cls: type, list_params: Any) -> None
 
 
 def _with_schema_types(annotation: Any, func: Callable, view_cls: type) -> Any:
-    """``annotation`` with the view's classes in place of its markers.
+    """``annotation`` with the view's schemas in place of its markers.
 
     It is ``annotation`` itself when it holds no marker. So an annotation
     that is a string, under ``from __future__ import annotations``, stays a

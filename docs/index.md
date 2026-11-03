@@ -142,8 +142,8 @@ caller may do with a row that they can see, and a refusal is a 403. See
 Write one Pydantic schema for the resource.
 {data}`fr.ReadOnly <fastapi_restly.schemas.ReadOnly>` marks a field that only
 goes out, and {data}`fr.WriteOnly <fastapi_restly.schemas.WriteOnly>` marks a
-field that only comes in. Restly builds the response class and the two
-request bodies from it, with names that OpenAPI and generated clients show.
+field that only comes in. Restly builds the response, create and update
+schemas from it, with names that OpenAPI and generated clients show.
 Here the `User` model also has `password`, `team_id` and `created_at`
 columns:
 
@@ -192,7 +192,7 @@ See [Existing Projects](existing_projects.md).
   custom routes, such as login or webhooks, and declares their dependencies
   once. See [Views](views.md).
 - List params: `GET /users?name=John&sort=-id&page=2`, and operators such as
-  `email__icontains=example.com`. The keys come from the response class, and
+  `email__icontains=example.com`. The keys come from the response schema, and
   an unknown key is a 422. See [Filtering, Sorting & Pagination](filtering.md).
 - Tests: `pip install "fastapi-restly[testing]"` adds pytest fixtures. Each
   test runs in a transaction that rolls back, so a test needs no cleanup code.

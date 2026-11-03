@@ -179,9 +179,9 @@ def test_writeonly_optional_recommended_form_is_stripped():
 
 
 def test_writeonly_keys_in_a_dict_do_not_go_out_as_extra_fields(client):
-    """The response class has no ``password`` field. With ``extra="allow"``, a
+    """The response schema has no ``password`` field. With ``extra="allow"``, a
     ``password`` key in a dict would go out as an extra field, so the response
-    class drops it first."""
+    schema drops it first."""
 
     class Vault(fr.IDMixin, SharedBase):
         name: Mapped[str]
@@ -209,7 +209,7 @@ def test_writeonly_keys_in_a_dict_do_not_go_out_as_extra_fields(client):
 
 
 def test_a_validator_on_a_writeonly_field_stays_on_the_request_side(client):
-    """The response class has no ``password`` field, and pydantic rejects a
+    """The response schema has no ``password`` field, and pydantic rejects a
     validator or serializer for a field that a class does not have. Restly
     keeps them for the request, where the field is."""
 

@@ -184,7 +184,7 @@ value each time it applies the scope. Another user's draft is a 404 on `GET`,
 
 Write one Pydantic schema for the resource. `fr.ReadOnly` marks a field that
 only goes out, and `fr.WriteOnly` marks a field that only comes in. Restly
-builds the response class and the two request bodies from it, with names that
+builds the response, create and update schemas from it, with names that
 OpenAPI and generated clients show. Here the `User` model also has
 `password`, `team_id` and `created_at` columns:
 
@@ -257,7 +257,7 @@ of routes such as login or webhooks. See
 ## Also in Restly
 
 - List params: `GET /users?name=John&sort=-id&page=2`, and operators such as
-  `email__icontains=example.com`. The keys come from the response class, and
+  `email__icontains=example.com`. The keys come from the response schema, and
   an unknown key is a 422. See
   [Filtering, Sorting & Pagination](https://www.fastapi-restly.org/filtering.html).
 - Tests: `pip install "fastapi-restly[testing]"` adds pytest fixtures. Each

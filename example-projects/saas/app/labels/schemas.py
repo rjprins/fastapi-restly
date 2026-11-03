@@ -30,6 +30,6 @@ class TaskLabelSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
     added_by_id: fr.ReadOnly[int | None] = None  # stamped from Current.user_id
 
 
-# The response class that the view builds from TaskLabelSchema. A custom route
+# The response schema that the view builds from TaskLabelSchema. A custom route
 # names it, so OpenAPI shows TaskLabelResponse there, as on the CRUD routes.
 TaskLabelResponse = fr.schemas.derive_response_schema(TaskLabelSchema)

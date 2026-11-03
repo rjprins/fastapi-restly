@@ -152,7 +152,7 @@ def _uuid_thing():
 
 
 def _pk_case(kind):
-    """(model, schema, create body, an id that fails validation, id schema)."""
+    """(model, schema, create schema, an id that fails validation, id schema)."""
     if kind == "int":
 
         class IntThing(fr.IDMixin, SharedBase):

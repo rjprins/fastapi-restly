@@ -46,9 +46,9 @@ class Envelope(pydantic.BaseModel, Generic[DataT]):
     """
 
     #: The rows of the list, each as an instance of the view's response
-    #: class. A list, not a ``Sequence``: Pydantic writes the rows of a
+    #: schema. A list, not a ``Sequence``: Pydantic writes the rows of a
     #: ``Sequence`` field with the settings of the envelope, not with the
-    #: settings of the response class, such as ``ser_json_inf_nan``.
+    #: settings of the response schema, such as ``ser_json_inf_nan``.
     data: list[DataT]
 
 

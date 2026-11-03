@@ -27,14 +27,14 @@ class AccountResponse(fr.IDSchema):
     name: str
 
 
-# A custom route names the list response class through the function, because
+# A custom route names the list response schema through the function, because
 # the view builds it only when it is registered.
 AccountListResponse = fr.schemas.derive_list_response_schema(AccountResponse)
 
 
 @fr.include_view(app)
 class AccountView(fr.AsyncRestView[Account, AccountResponse]):
-    """A view with its own response class puts it in the second parameter."""
+    """A view with its own response schema puts it in the second parameter."""
 
     prefix = "/accounts"
     model = Account
@@ -60,7 +60,7 @@ class NoteSchema(fr.IDSchema):
     text: str
 
 
-# The derived response class is a subclass of the schema.
+# The derived response schema is a subclass of the schema.
 NoteResponse = fr.schemas.derive_response_schema(NoteSchema)
 assert_type(NoteResponse, type[NoteSchema])
 NoteListResponse = fr.schemas.derive_list_response_schema(NoteResponse, pagination=None)
@@ -68,7 +68,7 @@ NoteListResponse = fr.schemas.derive_list_response_schema(NoteResponse, paginati
 
 @fr.include_view(app)
 class NoteView(fr.RestView[Note, NoteSchema]):
-    """A view without its own response class keeps its schema there."""
+    """A view without its own response schema keeps its schema there."""
 
     prefix = "/notes"
     model = Note

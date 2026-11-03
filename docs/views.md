@@ -378,7 +378,7 @@ owner id, on Models, and [soft delete](#soft-delete-mixin) on Scopes.
 
 A route on a base view names the classes of each subclass with markers, such
 as `ResponseSchema`; see
-[Name the view's classes in a custom route](#name-the-response-classes).
+[Name the view's schemas in a custom route](#name-the-view-schemas).
 
 (app-wide-base-view)=
 ### One base view for the whole app
@@ -572,7 +572,7 @@ class ServiceAccountView(PasswordHashingView):
 ```
 
 Here, only the HTTP routes receive a plain password, so the hash belongs in
-`create` and `update`. The generated update body accepts `password` too, so
+`create` and `update`. The generated update schema accepts `password` too, so
 without the `update` override a `PATCH` request would store the new password
 without a hash. [Hash a password](#password-hash-example) explains these
 overrides for one view.

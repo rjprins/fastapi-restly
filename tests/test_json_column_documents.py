@@ -975,7 +975,7 @@ def test_a_left_out_json_field_gets_the_column_default(request, asynchronous):
         data: Mapped[dict[str, Any]] = mapped_column(
             sqlalchemy.JSON, default_factory=dict
         )
-        # The constructor requires it, so the create body requires it too.
+        # The constructor requires it, so the create schema requires it too.
         tags: Mapped[list[str]] = mapped_column(
             sqlalchemy.JSON, server_default=sqlalchemy.text("'[]'")
         )

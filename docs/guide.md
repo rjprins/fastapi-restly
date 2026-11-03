@@ -27,7 +27,7 @@ PATCH /projects/1
        │    ├─ before_action_commit(...)
        │    ├─ commit
        │    └─ after_action_commit(...)
-       └─ to_single_response(obj)         # the response class, as JSON
+       └─ to_single_response(obj)         # the response schema, as JSON
 ```
 
 The highlighted lines are the methods that you can override in your view.
@@ -45,10 +45,10 @@ These are the parts, and the page that explains each one:
   {class}`fr.RestView <fastapi_restly.views.RestView>`, also names a `model`,
   and serves five routes for it. See [Views](views.md) and
   [CRUD Routes](crud_routes.md).
-- **The view's schema**: a Pydantic class that lists the fields of the
-  resource. Restly builds the request bodies, such as `ProjectUpdate`, and the
-  response class, `ProjectResponse`, from it. A view without a schema gets one
-  that Restly generates from the model. See
+- **The main schema**: a Pydantic class that lists the fields of the
+  resource. Restly builds the other schemas from it, such as the update schema
+  `ProjectUpdate` and the response schema `ProjectResponse`. A view without a
+  schema gets one that Restly generates from the model. See
   [Schemas & Validation](schemas.md).
 - **Endpoint method, handler and business method**: the three layers of each
   CRUD route. To change what an action does, override the business method,
@@ -72,7 +72,7 @@ These are the parts, and the page that explains each one:
   for the request. Scopes, column defaults and your `authorize` can read it.
   See [Request Context](context.md).
 - **List params**: the filter, sort and page parameters of the list route.
-  Restly builds them from the response class. See
+  Restly builds them from the response schema. See
   [Filtering, Sorting & Pagination](filtering.md).
 - **Session**: each request gets a database session from the source that
   {func}`fr.configure() <fastapi_restly.db.configure>` sets. See
@@ -127,7 +127,7 @@ set, override or call on a view.
 A view has several schemas. The main one is the view's
 {attr}`schema <fastapi_restly.views.BaseRestView.schema>`, a Pydantic class
 that lists the fields of the resource. Restly builds the other schemas
-from it: the request bodies and the response class. So the view's schema
+from it: the response, create and update schemas. So the main schema
 decides what clients send and what they get back. The list route adds
 filter, sort and page parameters to the URL.
 
@@ -140,7 +140,7 @@ filter, sort and page parameters to the URL.
   that the row exists, link many rows to many rows, return related objects,
   and fix `MissingGreenlet`.
 - [Responses](responses.md): what each route returns, the list envelope and
-  the list response class, the response of a custom route, and how to change
+  the list response schema, the response of a custom route, and how to change
   the shape of one route or of all routes.
 - [Filtering, Sorting & Pagination](filtering.md): the filters, the sort
   order and the pages that a client can use on a list, the keys that a view

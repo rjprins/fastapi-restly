@@ -410,9 +410,9 @@ def test_readonly_field_validation():
 
 
 def test_a_validator_on_a_removed_field_does_not_fail_the_request_bodies():
-    """The request bodies have no ``slug`` and no ``code``, and pydantic
+    """The create and update schemas have no ``slug`` and no ``code``, and pydantic
     rejects a validator or serializer for a field that a class does not have.
-    Restly lets the request bodies build anyway. A validator that also names
+    Restly lets these schemas build anyway. A validator that also names
     a kept field still runs for that field."""
 
     class PostSchema(BaseSchema):
@@ -535,7 +535,7 @@ def test_mixed_readonly_writeonly_fields():
 
 
 def test_a_view_with_a_validator_on_a_readonly_field_registers(client):
-    """The request bodies have no ``slug``. The response has it, so the
+    """The create and update schemas have no ``slug``. The response has it, so the
     validator runs there."""
 
     class Article(fr.IDMixin, SharedBase):

@@ -3,7 +3,7 @@ Query API
 
 ``fastapi_restly.query`` implements list-endpoint filtering, sorting, and
 pagination: ``derive_list_params_schema()`` derives the list params, a model
-of the URL parameters, from the view's response class and its model, and
+of the URL parameters, from the view's response schema and its model, and
 ``apply_list_params()`` applies validated list params to a SQLAlchemy select.
 For list params of your own, ``PagedListParams`` gives the page fields of
 the view's pagination, ``FilterKey`` and ``SortKey`` find the field and the
@@ -20,7 +20,7 @@ params, not raw ``QueryParams``. Pass the view's settings to
 in the same order as the view method ``apply_list_params(stmt, list_params)``,
 and the view's ``sort_nulls=self.sort_nulls``.
 Pass the view's ``self.response_schema``, not ``self.schema``: the list params
-follow the response class.
+follow the response schema.
 
 .. automodule:: fastapi_restly.query
    :members:

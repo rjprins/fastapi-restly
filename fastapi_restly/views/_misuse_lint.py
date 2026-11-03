@@ -174,7 +174,7 @@ def _model_set_fields(model: type[Any]) -> dict[str, str]:
     ``server_default`` on the column. A many-to-one relationship maps to its
     foreign key column, because a write to the relationship sets it. A
     primary key that the server generates is left out, because Restly already
-    leaves it out of the request bodies.
+    leaves it out of the create and update schemas.
     """
     if not dataclasses.is_dataclass(model):
         return {}
@@ -229,7 +229,7 @@ def _warn_writable_model_set_fields(view_cls: type[View]) -> None:
     write_classes: dict[type[pydantic.BaseModel], bool] = {}
     for attr, routes in (
         ("create_schema", (ViewRoute.CREATE.value,)),
-        # the PUT route of a react-admin view takes the update body too
+        # the PUT route of a react-admin view takes the update schema too
         ("update_schema", (ViewRoute.UPDATE.value, "put")),
     ):
         if not any(_serves_route(view_cls, route) for route in routes):

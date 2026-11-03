@@ -196,7 +196,7 @@ def test_plain_view_with_a_model_is_not_a_resource():
 
 
 def test_each_class_gets_the_refs_of_its_own_fields():
-    """The view's schema takes a team id, its own response class sends the
+    """The main schema takes a team id, its own response schema sends the
     nested team. Only the id gets x-resource-ref."""
 
     class Team(fr.IDMixin, SharedBase):

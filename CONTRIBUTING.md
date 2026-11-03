@@ -166,48 +166,54 @@ add it.
      UTC, and `key.term()` the term of a sort.
    - A decorator is named after what it declares: `@fr.get` declares a `GET`
      route, and `@fr.list_filter` a filter of the list.
-5. A function that builds one of a view's classes is named `derive_` plus the
+5. A function that builds one of a view's schemas is named `derive_` plus the
    name of the setting: `derive_response_schema` builds `response_schema`, and
    `derive_list_params_schema` builds `list_params_schema`. `derive_schema`
    builds `schema`.
-6. A class that Restly generates is named `<Resource><Role>`. Resource is the
-   class name of the view's schema without a final `Schema` or `Response`.
-   The list response and the list params take it from the response class,
+6. A schema that Restly generates is named `<Resource><Role>`. Resource is the
+   class name of the main schema without a final `Schema` or `Response`.
+   The list response and the list params take it from the response schema,
    which gives the same resource when it follows these names.
    The client sees these names: `UserResponse`, `UserCreate`, `UserUpdate`
-   and `UserListResponse`. It sees the view's schema only when another schema
+   and `UserListResponse`. It sees the main schema only when another schema
    nests it or a custom route names it. A view without a schema gets a
    generated `UserSchema`.
 7. One word per thing. "Response" is what goes out. "List params" are the
    keys that a list reads from the URL, such as its filters, sort and page,
    and their values. "Query params" only means raw keys from the URL, as in
-   `unknown_query_params`.
+   `unknown_query_params`. The main schema is `schema`. Next to it are the
+   response schema, the list response schema, the create schema, the update
+   schema and the list params schema. Together these six are "the view's
+   schemas". Say "class" only for the Python object, as in "a class that you
+   rename later", and "request body" only for what a client really sends.
 
 A public function takes the same argument names as the view: `schema`, not
 `schema_cls`; `stmt`, not `query` or `select_query`; `list_params`, not
-`params`. An argument that takes the response class is `response_schema`.
+`params`. An argument that takes the response schema is `response_schema`.
 When a view method and a public function do the same thing, they share the
 name, and the arguments they share come in the same order: the view method
 `apply_list_params(stmt, list_params)` and the function
 `fr.query.apply_list_params(stmt, list_params, model, response_schema)`.
 
-### The view's schema
+### The main schema
 
-`schema` is the view's schema, next to `model`. It is not the response
+`schema` is the main schema of the view, next to `model`. It is not the response
 schema: it can hold `WriteOnly` fields, and those never go out. Restly
 derives the response, create and update schemas from it. Everything that
 goes out follows `response_schema`, which a view can also set itself: the
 responses, the list params and the relationships the view loads. The
 request bodies follow `create_schema` and `update_schema`.
 
-- In docs, call it "the view's schema". Do not call it "resource schema":
-  "resource" and "response" look too much alike. Use "response schema" only
-  for what really goes out.
+- In docs, call it "the main schema", or "the view's main schema" where the
+  reader needs more. Do not call it "resource schema": "resource" and
+  "response" look too much alike. Do not call it "root schema": Pydantic has
+  `RootModel`, and JSON Schema uses the same words for something else. Use
+  "response schema" only for what really goes out.
 - Schemas written by hand use the same names as generated ones: `UserSchema`
-  for the view's schema, and `UserResponse`, `UserCreate` and `UserUpdate`
+  for the main schema, and `UserResponse`, `UserCreate` and `UserUpdate`
   for the roles. A view can also use a hand-written `UserResponse` as its
   `schema`: Restly drops the final `Response` from the resource name, so the
-  response class keeps that name. The docs and examples teach these names.
+  response schema keeps that name. The docs and examples teach these names.
 - A class with a role name is set on the view, as in `create_schema`, so
   there is only one. A class for another purpose gets a name that says what
   it is, such as `UserSummary`. OpenAPI has no modules, so each class name
