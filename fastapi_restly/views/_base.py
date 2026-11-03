@@ -121,6 +121,7 @@ from ._reads import (
 )
 from ._schema_types import (
     SchemaType,
+    _bare,
     _fill_schema_types,
     _schema_type_in,
     _without_none,
@@ -1153,10 +1154,17 @@ class BaseRestView(
                 else _unpaginated_page_info([])
             )
             _check_fillable(label, value, sample, other_shape)
-        elif _list_item_type(value) is None:
+        elif get_origin(value) not in (list, collections.abc.Sequence):
             raise RestlyConfigurationError(
                 f"{label} must be a Pydantic class or a list type for the default "
                 f"GET /, got {value!r}.{other_shape}"
+            )
+        item = _list_item_annotation(value)
+        if item is not None and item is not Any and _list_item_class(value) is None:
+            raise RestlyConfigurationError(
+                f"The items of {label} must be a Pydantic class for the default "
+                f"GET /, got {item!r}. Restly fills the items from the response "
+                f"class.{other_shape}"
             )
         response = cls.response_schema
         lacking = _fields_the_items_lack(value, response)
@@ -1556,14 +1564,21 @@ def _has_items_without_a_type(list_response: Any) -> bool:
     return field is not None and isinstance(_list_item_type(field.annotation), TypeVar)
 
 
-def _list_item_class(list_response: Any) -> type[pydantic.BaseModel] | None:
-    """The Pydantic class of the items of a list response: ``X`` for ``list[X]``
-    and for a class with a field ``data: list[X]``. Or ``None``."""
+def _list_item_annotation(list_response: Any) -> Any:
+    """The type of the items of a list response: ``X`` for ``list[X]`` and for a
+    class with a field ``data: list[X]``. Or ``None``."""
     annotation = list_response
     if _is_pydantic_class(list_response):
         field = list_response.model_fields.get("data")
         annotation = None if field is None else field.annotation
-    item = _list_item_type(annotation)
+    return _list_item_type(annotation)
+
+
+def _list_item_class(list_response: Any) -> type[pydantic.BaseModel] | None:
+    """The Pydantic class of the items of a list response, also for ``X | None``
+    or ``Annotated[X, ...]``. Or ``None``."""
+    item, _ = _without_none(_bare(_list_item_annotation(list_response)))
+    item = _bare(item)
     return item if _is_pydantic_class(item) else None
 
 

@@ -258,6 +258,13 @@ def _evaluated(annotation: Any, func: Callable) -> Any:
         return annotation
 
 
+def _bare(annotation: Any) -> Any:
+    """``annotation`` without its ``Annotated``: the class that it names."""
+    if get_origin(annotation) is Annotated:
+        return get_args(annotation)[0]
+    return annotation
+
+
 def _without_none(annotation: Any) -> tuple[Any, bool]:
     """``annotation`` without ``None``, and whether it allowed ``None``:
     ``ResponseSchema | None`` gives ``(ResponseSchema, True)``."""
@@ -292,20 +299,32 @@ def _schema_type_in(annotation: Any, seen: set[Any] | None = None) -> SchemaType
     return None
 
 
-def _replace_schema_types(
-    annotation: Any, view_cls: type, aliases: set[Any] | None = None
-) -> Any:
+def _replace_schema_types(annotation: Any, view_cls: type) -> Any:
     """Replace each marker in ``annotation``, also inside a type such as
     ``list[ResponseSchema]`` or ``Data[ResponseSchema]``, or in a type alias.
     Returns ``annotation`` itself when it holds no marker.
 
-    ``aliases`` are the type aliases on the way to ``annotation``, so an alias
-    that names itself ends.
+    A type alias that names itself ends where it comes back. A marker that it
+    holds stays there, and would have no type in OpenAPI.
     """
-    aliases = set(aliases or ())
+    filled = _replace_markers(annotation, view_cls, set())
+    if _schema_type_in(filled) is not None:
+        raise RestlyConfigurationError(
+            f"{annotation!r} is a type alias that names itself and holds a marker. "
+            "Restly cannot fill that marker, so OpenAPI would show no type for it. "
+            "Write the type with the classes that it needs, or use a "
+            "fastapi_restly.views.SchemaType function."
+        )
+    return filled
+
+
+def _replace_markers(annotation: Any, view_cls: type, aliases: set[Any]) -> Any:
+    """See :func:`_replace_schema_types`. ``aliases`` are the type aliases on the
+    way to ``annotation``."""
+    aliases = set(aliases)
     value = _alias_value(annotation, aliases)
     if value is not annotation:
-        filled = _replace_schema_types(value, view_cls, aliases)
+        filled = _replace_markers(value, view_cls, aliases)
         return annotation if filled is value else filled
     origin = get_origin(annotation)
     if origin is Annotated:
@@ -316,22 +335,20 @@ def _replace_schema_types(
             rest = [m for m in metadata if not isinstance(m, SchemaType)]
             filled = _filled(marker, view_cls)
             return Annotated[(filled, *rest)] if rest else filled
-        filled_inner = _replace_schema_types(inner, view_cls, aliases)
+        filled_inner = _replace_markers(inner, view_cls, aliases)
         if filled_inner is inner:
             return annotation
         return Annotated[(filled_inner, *metadata)]
     generic = _pydantic_generic_args(annotation)
     if generic:
-        filled_args = tuple(
-            _replace_schema_types(arg, view_cls, aliases) for arg in generic
-        )
+        filled_args = tuple(_replace_markers(arg, view_cls, aliases) for arg in generic)
         if all(new is old for new, old in zip(filled_args, generic)):
             return annotation
         return annotation.__pydantic_generic_metadata__["origin"][filled_args]
     args = get_args(annotation)
     if not args or origin is Literal:
         return annotation
-    filled_args = tuple(_replace_schema_types(arg, view_cls, aliases) for arg in args)
+    filled_args = tuple(_replace_markers(arg, view_cls, aliases) for arg in args)
     if all(new is old for new, old in zip(filled_args, args)):
         return annotation
     if origin in (Union, types.UnionType):

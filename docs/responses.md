@@ -245,7 +245,7 @@ annotation or in `response_model=`:
 | the view's response class itself, as in `response_model=ProjectResponse` | a row | the same as for `ResponseSchema` |
 | the view's model, as in `-> Project` | a row | the same as for `ResponseSchema` |
 | `list[Project]` | a list of rows | the same as for `list[ResponseSchema]` |
-| nothing, `Any`, or `response_model=None` | a row of the view's model or a `ListResult`, also inside a dict or a list | the same as for `ResponseSchema` and `ListResponseSchema` |
+| nothing, `response_model=None`, or a type without fields, such as `Any`, `dict` or `dict[str, Any]` | a row of the view's model or a `ListResult`, also inside a dict or a list | the same as for `ResponseSchema` and `ListResponseSchema` |
 
 Each of these may allow `None`, as in `-> ResponseSchema | None`, and a `None`
 goes out as `null`. Any other value goes out as it is: a dict, an instance
@@ -255,8 +255,17 @@ of a schema, or a `fastapi.Response`. So a route that calls
 A route that declares nothing shows an empty schema in OpenAPI. So declare the
 response when the route has one.
 
+Restly replaces only a row of the view's model. A row of another model goes out
+with each column, as in FastAPI, and so does a row in a field of type `Any` of
+your own class. So do not return such a row if a column holds a secret.
+
 :::{admonition} Details
 :class: details
+
+Restly reads the fields of the response class from the row, so the row must
+have what they need. In async code, a relationship that your own `select` did
+not load raises `MissingGreenlet`. A `ListResult` inside a dict gives only its
+items if `to_list_response` returns a `Response`, as on a react-admin view.
 
 A route that names another class, such as
 `response_model=ProjectSummary`, keeps FastAPI's behaviour. FastAPI builds
@@ -437,15 +446,16 @@ and sort on a field that the items do not show. To hide a field, make it
 
 Restly fills this class as it fills an
 [envelope](#change-list-envelope): by field name, from `data`, `total_count`,
-`page`, `page_size` and `total_pages`. An alias renames a key in the JSON.
-Registration raises for a class that `GET /` cannot fill, such as a class with
-page fields on a view without pagination.
+`page`, `page_size` and `total_pages`. An alias renames a key in the JSON. Any
+other field keeps its default. Registration raises for a class that `GET /`
+cannot fill: a class with page fields on a view without pagination, or a class
+without a field named `data`.
 
 Restly fills the items from the response class, so an item can have fewer
-fields than the response class. Registration raises for a field without a
-default that the response class does not have, in `list[X]` and in a `data`
-field with `list[X]`. The view still loads what the response class needs, so a
-smaller class makes the response smaller, not the query.
+fields than the response class. An item must be a Pydantic class, and
+registration raises for a field without a default that the response class does
+not have. The view still loads what the response class needs, so a smaller class
+makes the response smaller, not the query.
 
 A list type, such as `list[UserSummary]`, sends a JSON array without the page
 values.

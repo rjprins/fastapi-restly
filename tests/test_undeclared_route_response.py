@@ -6,13 +6,18 @@ endpoint that calls ``super()`` without declaring a response, or a custom route
 that calls an endpoint method, must still send the view's response.
 """
 
+import collections
+import collections.abc
 from collections.abc import Iterator
-from typing import Any
+from typing import Annotated, Any, get_origin
 
+import pydantic
 import pytest
 from fastapi import FastAPI
 from fastapi.responses import PlainTextResponse
+from sqlalchemy import select
 from sqlalchemy.orm import Mapped
+from typing_extensions import TypeAliasType
 
 import fastapi_restly as fr
 from fastapi_restly.testing._client import RestlyTestClient
@@ -259,3 +264,114 @@ def test_a_sync_view(sync_db, sync_client, User):
     assert sync_client.get("/users/1").json() == row
     assert sync_client.get("/users").json()["data"] == [row]
     assert sync_client.get("/users/1/wrapped").json() == {"data": row}
+
+
+AnyAlias = TypeAliasType("AnyAlias", Any)
+
+
+@pytest.mark.parametrize(
+    "declared",
+    [
+        dict,
+        dict[str, Any],
+        list,
+        list[Any],
+        tuple[Any, ...],
+        object,
+        Any | None,
+        dict[str, Any] | None,
+        Annotated[Any, "note"],
+        AnyAlias,
+        collections.abc.Mapping[str, Any],
+    ],
+    ids=str,
+)
+def test_a_type_that_names_no_fields_does_not_send_each_column(client, User, declared):
+    """Such a type says nothing about a row, so it counts as no response."""
+    is_list = get_origin(declared) in (list, tuple) or declared is list
+
+    class View(_user_view(User)):
+        @fr.get("/first")
+        async def first(self):
+            row = await self.handle_get_one(1)
+            return [row] if is_list else {"user": row}
+
+        first.__annotations__["return"] = declared
+
+    fr.include_view(client.app, View)
+    _with_row(client)
+
+    response = client.get("/users/first")
+    assert "SECRET" not in response.text
+    assert '"name":"a"' in response.text
+
+
+def test_a_type_with_fields_stays_as_it_is(client, User):
+    class Everything(pydantic.BaseModel):
+        name: str
+        password: str
+
+    class View(_user_view(User)):
+        @fr.get("/first")
+        async def first(self) -> dict[str, Everything]:
+            return {"user": await self.handle_get_one(1)}
+
+    fr.include_view(client.app, View)
+    _with_row(client)
+
+    assert client.get("/users/first").json() == {
+        "user": {"name": "a", "password": "SECRET"}
+    }
+
+
+@pytest.mark.parametrize(
+    "shape",
+    [set, frozenset, collections.deque, lambda rows: (row for row in rows)],
+    ids=["set", "frozenset", "deque", "generator"],
+)
+def test_a_container_of_rows_does_not_send_each_column(client, User, shape):
+    class View(_user_view(User)):
+        @fr.get("/all")
+        async def all_rows(self):
+            result = await self.session.scalars(select(self.model))
+            return shape(result.all())
+
+    fr.include_view(client.app, View)
+    _with_row(client)
+
+    response = client.get("/users/all")
+    assert "SECRET" not in response.text
+    assert [user["name"] for user in response.json()] == ["a"]
+
+
+def test_the_mappings_of_a_result_do_not_send_each_column(client, User):
+    class View(_user_view(User)):
+        @fr.get("/all")
+        async def all_rows(self):
+            result = await self.session.execute(select(self.model))
+            return result.mappings().all()
+
+    fr.include_view(client.app, View)
+    _with_row(client)
+
+    response = client.get("/users/all")
+    assert "SECRET" not in response.text
+    assert [row["User"]["name"] for row in response.json()] == ["a"]
+
+
+def test_a_list_result_in_a_dict_on_a_react_admin_view_sends_the_items(client, User):
+    class View(fr.AsyncReactAdminView):
+        prefix = "/users"
+        model = User
+        schema = UserSchema
+
+        @fr.get("/wrapped")
+        async def wrapped(self, list_params):
+            return {"list": await self.handle_get_many(list_params)}
+
+    fr.include_view(client.app, View)
+    _with_row(client)
+
+    response = client.get("/users/wrapped")
+    assert "SECRET" not in response.text
+    assert response.json() == {"list": [{"id": 1, "name": "a"}]}

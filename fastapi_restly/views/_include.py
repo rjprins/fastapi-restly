@@ -9,20 +9,21 @@ import dataclasses
 import functools
 import inspect
 import re
+import types
 import warnings
-from collections.abc import Mapping, Sequence
+from collections import deque
+from collections.abc import Iterable, Mapping, Sequence
 from enum import Enum
 from typing import (
     Annotated,
     Any,
     Callable,
-    Iterable,
+    Literal,
     NoReturn,
     Union,
     get_args,
     get_origin,
     get_type_hints,
-    is_typeddict,
     overload,
 )
 from uuid import UUID
@@ -33,7 +34,7 @@ from fastapi import Response
 from fastapi.datastructures import Default
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.orm.state import InstanceState
-from typing_extensions import TypeVar
+from typing_extensions import TypeVar, is_typeddict
 
 from ..db._config import _fr_config
 from ..exc import RestlyConfigurationError, RestlyMisuseWarning
@@ -51,6 +52,7 @@ from ._misuse_lint import _warn_on_misuse
 from ._openapi import _register_for_resource_ref
 from ._schema_types import (
     SchemaType,
+    _bare,
     _evaluated,
     _pydantic_generic_args,
     _replace_schema_types,
@@ -60,6 +62,22 @@ from ._schema_types import (
 )
 
 V = TypeVar("V", bound=type[View])
+
+#: The types that leave the fields of a row open.
+_OPEN_TYPES = (
+    Any,
+    object,
+    dict,
+    list,
+    tuple,
+    set,
+    frozenset,
+    Mapping,
+    Sequence,
+    Iterable,
+)
+#: What FastAPI's encoder writes as a list.
+_ENCODED_AS_A_LIST = (list, tuple, set, frozenset, deque, types.GeneratorType)
 
 
 @overload
@@ -304,9 +322,9 @@ def _view_response_kind(view_cls: Any, endpoint: Callable) -> tuple[str | None, 
     response, also with ``| None``. Another class that the route names keeps
     FastAPI's behaviour.
 
-    The kind is ``"undeclared"`` for a route that names no class: nothing,
-    ``None`` or ``Any``. FastAPI would then write each attribute of a row, also
-    of a ``WriteOnly`` column.
+    The kind is ``"undeclared"`` for a route that says nothing about the fields
+    of a row, see :func:`_names_no_fields`. FastAPI would then write each
+    attribute of a row, also of a ``WriteOnly`` column.
     """
     _, route_kwargs = endpoint._api_route_args  # type: ignore[attr-defined]
     in_decorator = "response_model" in route_kwargs
@@ -315,13 +333,29 @@ def _view_response_kind(view_cls: Any, endpoint: Callable) -> tuple[str | None, 
     else:
         declared = inspect.get_annotations(endpoint).get("return")
     declared = _replace_schema_types(_evaluated(declared, endpoint), view_cls)
-    if declared is None or declared is Any:
+    if declared is None or _names_no_fields(declared):
         return "undeclared", None
     declared, optional = _without_none(declared)
     kind, response_model = _declared_view_response(view_cls, declared, in_decorator)
     if optional and response_model is not None:
         response_model = Union[response_model, None]
     return kind, response_model
+
+
+def _names_no_fields(annotation: Any, seen: set[Any] | None = None) -> bool:
+    """Whether ``annotation`` leaves the fields of a row open: ``Any``, ``object``,
+    a bare container such as ``dict``, or a type that holds one of these, such as
+    ``dict[str, Any]``. A class that the route names has fields, also a class with
+    a field of type ``Any``."""
+    seen = set() if seen is None else seen
+    annotation = _alias_value(annotation, seen)
+    if get_origin(annotation) is Literal:
+        return False
+    args = get_args(annotation)
+    if args:
+        return any(_names_no_fields(arg, seen) for arg in args)
+    bare = get_origin(annotation) or annotation
+    return any(bare is open_type for open_type in _OPEN_TYPES)
 
 
 def _declared_view_response(
@@ -352,13 +386,6 @@ def _declared_view_response(
     if not in_decorator and declared is view_cls.model:
         return "single", response
     return None, None
-
-
-def _bare(annotation: Any) -> Any:
-    """``annotation`` without its ``Annotated``: the class that it names."""
-    if get_origin(annotation) is Annotated:
-        return get_args(annotation)[0]
-    return annotation
 
 
 def _with_view_response(
@@ -435,17 +462,26 @@ def _with_view_response(
     return wrapped, route_kwargs
 
 
-def _with_view_responses(view: Any, value: Any) -> Any:
+def _with_view_responses(view: Any, value: Any, nested: bool = False) -> Any:
     """``value`` with the view's response in place of each row of the view's model
-    and each ``ListResult``, also inside a dict, a list or a tuple."""
+    and each ``ListResult``, also inside the containers that FastAPI's encoder goes
+    through. A response object cannot go inside a container, so a ``ListResult``
+    there gives its items if ``to_list_response`` returns one, as on a react-admin
+    view."""
     if isinstance(value, view.model):
         return view._single_response(value)
     if isinstance(value, ListResult):
-        return view.to_list_response(value)
-    if isinstance(value, dict):
-        return {key: _with_view_responses(view, item) for key, item in value.items()}
-    if isinstance(value, (list, tuple)):
-        return [_with_view_responses(view, item) for item in value]
+        response = view.to_list_response(value)
+        if nested and isinstance(response, Response):
+            return [view._single_response(row) for row in value.objects]
+        return response
+    if isinstance(value, Mapping):
+        return {
+            key: _with_view_responses(view, item, nested=True)
+            for key, item in value.items()
+        }
+    if isinstance(value, _ENCODED_AS_A_LIST):
+        return [_with_view_responses(view, item, nested=True) for item in value]
     return value
 
 
@@ -498,13 +534,20 @@ def _reject_schema_types_in_fields(
     annotations = [p.annotation for p in sig.parameters.values()]
     annotations += [sig.return_annotation, route_kwargs.get("response_model")]
     annotations += _models_in(route_kwargs.get("responses"))
+    _reject_markers_in_fields(
+        f"{view_cls.__name__}.{name}",
+        [_evaluated(annotation, endpoint) for annotation in annotations],
+    )
+
+
+def _reject_markers_in_fields(where: str, annotations: Iterable[Any]) -> None:
     seen: set[Any] = set()
     for annotation in annotations:
-        found = _schema_type_in_a_field(_evaluated(annotation, endpoint), seen)
+        found = _schema_type_in_a_field(annotation, seen)
         if found is not None:
             model, field, marker = found
             raise RestlyConfigurationError(
-                f"{view_cls.__name__}.{name} names the class {model.__name__}, "
+                f"{where} names the class {model.__name__}, "
                 f"and its field {field} uses {marker!r}. Restly fills a marker "
                 "in the annotations of a route, not in a field of a class, so "
                 "this field would have no type in OpenAPI. Make the class "
@@ -539,6 +582,9 @@ def _init_api_router(view_cls: type[View]) -> fastapi.APIRouter:
                 _raise_on_a_plain_view(
                     view_cls, f"The responses of {view_cls.__name__}", marker
                 )
+    _reject_markers_in_fields(
+        f"The responses of {view_cls.__name__}", _models_in(responses)
+    )
     tags = _get_router_tags(view_cls, prefix)
     api_router = fastapi.APIRouter(
         prefix=prefix, tags=tags, responses=responses, dependencies=dependencies

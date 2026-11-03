@@ -861,7 +861,8 @@ the return annotation, in `response_model=`, in the `model` of `responses=`, in 
 type alias, and inside another type, such as `list[ResponseSchema]` or
 `ResponseSchema | None`. `Annotated[IDType, Path(ge=1)]`
 keeps the `Path(ge=1)`. A path that gives a converter, such as `/{id:str}`,
-keeps it.
+keeps it. Registration raises for a type alias that names itself and holds a
+marker, and for a marker in a field of a class.
 
 For a type checker, each marker is `Any`, so it accepts a marker in any
 annotation. A plain {class}`View <fastapi_restly.views.View>` has no model and

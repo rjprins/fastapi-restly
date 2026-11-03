@@ -160,6 +160,16 @@ def test_custom_react_admin_list_keeps_unknown_key_guard(custom_list_client):
     )
 
 
+def test_the_list_comes_first_in_openapi(client):
+    _setup_async_item_view(client)
+    assert list(client.app.openapi()["paths"]) == ["/items", "/items/{id}"]
+
+
+def test_the_list_comes_first_in_openapi_of_a_sync_view(sync_client):
+    _setup_sync_item_view(sync_client)
+    assert list(sync_client.app.openapi()["paths"]) == ["/items", "/items/{id}"]
+
+
 def test_custom_react_admin_list_openapi_uses_its_dialect(custom_list_client):
     operation = custom_list_client.app.openapi()["paths"]["/custom-items/custom"]["get"]
     assert {p["name"] for p in operation["parameters"] if p["in"] == "query"} == {

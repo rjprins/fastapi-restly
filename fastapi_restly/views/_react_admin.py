@@ -27,6 +27,7 @@ from fastapi_restly.views import (
     AsyncRestView,
     BaseRestView,
     IDType,
+    ListResponseSchema,
     ListResult,
     NoPagination,
     NumberedPagination,
@@ -34,6 +35,7 @@ from fastapi_restly.views import (
     RestView,
     SchemaType,
     UpdateSchema,
+    get,
     put,
 )
 
@@ -458,6 +460,11 @@ class AsyncReactAdminView(_ReactAdminMixin, AsyncRestView):
     with ra-data-simple-rest.
     """
 
+    # A class's own routes come first, so this keeps GET / first in OpenAPI.
+    @get("/")
+    async def get_many_endpoint(self, list_params: Any) -> ListResponseSchema:
+        return await self.handle_get_many(list_params)
+
     async def apply_list_params(
         self, stmt: sqlalchemy.Select, list_params: Any
     ) -> sqlalchemy.Select:
@@ -491,6 +498,11 @@ class ReactAdminView(_ReactAdminMixin, RestView):
     Use this instead of RestView when your frontend is react-admin
     with ra-data-simple-rest.
     """
+
+    # A class's own routes come first, so this keeps GET / first in OpenAPI.
+    @get("/")
+    def get_many_endpoint(self, list_params: Any) -> ListResponseSchema:
+        return self.handle_get_many(list_params)
 
     def apply_list_params(
         self, stmt: sqlalchemy.Select, list_params: Any

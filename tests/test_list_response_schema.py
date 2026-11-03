@@ -7,13 +7,15 @@ JSON array.
 """
 
 import collections.abc
+import dataclasses
 from collections.abc import Iterator
-from typing import Any
+from typing import Annotated, Any, Generic, NamedTuple, TypeVar
 
 import pydantic
 import pytest
 from fastapi import FastAPI
 from sqlalchemy.orm import Mapped
+from typing_extensions import TypedDict
 
 import fastapi_restly as fr
 from fastapi_restly.exc import RestlyConfigurationError
@@ -53,6 +55,10 @@ class ArticleList(pydantic.BaseModel):
 
 class Rows(pydantic.BaseModel):
     rows: list[ItemResponse]
+
+
+class Extra(pydantic.BaseModel):
+    extra: str
 
 
 @pytest.fixture
@@ -955,3 +961,128 @@ def test_the_recipe_with_a_map_and_a_replaced_endpoint(client, Item):
 
     assert client.get("/items").json() == {"1": "a", "2": "b"}
     assert _response_schema(client)["additionalProperties"]["type"] == "string"
+
+
+class SummaryDict(TypedDict):
+    name: str
+
+
+@dataclasses.dataclass
+class SummaryData:
+    name: str
+
+
+class SummaryTuple(NamedTuple):
+    name: str
+
+
+@pytest.mark.parametrize(
+    "shape",
+    [
+        list[dict[str, Any]],
+        list[int],
+        list[SummaryDict],
+        list[SummaryData],
+        list[SummaryTuple],
+        PaginatedEnvelope[dict[str, Any]],
+    ],
+    ids=str,
+)
+def test_items_that_restly_cannot_fill_raise_at_registration(client, Item, shape):
+    """Before, an empty table gave a 200, and the first row a 500."""
+
+    class ItemView(fr.AsyncRestView):
+        prefix = "/items"
+        model = Item
+        schema = ItemSchema
+        list_response_schema = shape
+
+    with pytest.raises(RestlyConfigurationError, match="Pydantic class"):
+        fr.include_view(client.app, ItemView)
+
+
+def test_items_that_restly_cannot_fill_work_with_a_replaced_endpoint(client, Item):
+    class ItemView(fr.AsyncRestView):
+        prefix = "/items"
+        model = Item
+        schema = ItemSchema
+        list_response_schema = list[int]
+
+        @fr.get("/")
+        async def get_many_endpoint(self, list_params) -> ListResponseSchema:
+            result = await self.handle_get_many(list_params)
+            return [item.id for item in result.objects]
+
+    fr.include_view(client.app, ItemView)
+    _fill(client)
+
+    assert client.get("/items").json() == [1, 2]
+
+
+def test_a_list_that_allows_none_raises_at_registration(client, Item):
+    """Before, each GET / failed, also on an empty table."""
+
+    class ItemView(fr.AsyncRestView):
+        prefix = "/items"
+        model = Item
+        schema = ItemSchema
+        list_response_schema = list[ItemSummary] | None
+
+    with pytest.raises(RestlyConfigurationError, match="list type"):
+        fr.include_view(client.app, ItemView)
+
+
+@pytest.mark.parametrize(
+    "shape", [list[ItemSummary | None], list[Annotated[ItemSummary, "note"]]], ids=str
+)
+def test_a_wrapped_item_class_still_gets_filled(client, Item, shape):
+    class ItemView(fr.AsyncRestView):
+        prefix = "/items"
+        model = Item
+        schema = ItemSchema
+        list_response_schema = shape
+
+    fr.include_view(client.app, ItemView)
+    _fill(client)
+
+    assert [item["name"] for item in client.get("/items").json()] == ["a", "b"]
+
+
+@pytest.mark.parametrize(
+    "shape", [list[Extra | None], list[Annotated[Extra, "note"]]], ids=str
+)
+def test_a_wrapped_item_class_gets_the_missing_field_check(client, Item, shape):
+    class ItemView(fr.AsyncRestView):
+        prefix = "/items"
+        model = Item
+        schema = ItemSchema
+        list_response_schema = shape
+
+    with pytest.raises(RestlyConfigurationError, match="extra"):
+        fr.include_view(client.app, ItemView)
+
+
+def test_a_class_without_a_data_field_raises_at_registration(client, Item):
+    """Before, the list was always empty, and nothing said why."""
+
+    class Renamed(pydantic.BaseModel):
+        rows: list[ItemResponse] = []
+
+    class ItemView(fr.AsyncRestView):
+        prefix = "/items"
+        model = Item
+        schema = ItemSchema
+        list_response_schema = Renamed
+
+    with pytest.raises(RestlyConfigurationError, match="data"):
+        fr.include_view(client.app, ItemView)
+
+
+def test_a_pagination_envelope_without_a_data_field_raises():
+    T = TypeVar("T")
+
+    class Renamed(pydantic.BaseModel, Generic[T]):
+        rows: list[T] = []
+
+    with pytest.raises(RestlyConfigurationError, match="no field named data"):
+        fr.views.NumberedPagination(envelope=Renamed)

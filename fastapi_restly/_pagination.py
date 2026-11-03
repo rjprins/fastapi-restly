@@ -280,6 +280,15 @@ def _check_envelope(owner: str, envelope: Any, page_info: dict[str, Any]) -> Non
     _check_fillable(f"{owner}.envelope", envelope, page_info)
 
 
+def _reads_the_page_info(envelope: type[pydantic.BaseModel]) -> bool:
+    """Whether ``envelope`` takes the items from the page info itself: with a root,
+    or with a validator that runs before the fields."""
+    return issubclass(envelope, pydantic.RootModel) or any(
+        validator.info.mode == "before"
+        for validator in envelope.__pydantic_decorators__.model_validators.values()
+    )
+
+
 def _check_fillable(
     label: str,
     envelope: type[pydantic.BaseModel],
@@ -293,6 +302,13 @@ def _check_fillable(
     :param other_shape: The last sentence of the message, about what to do for
         a class of another shape.
     """
+    if "data" not in envelope.model_fields and not _reads_the_page_info(envelope):
+        raise RestlyConfigurationError(
+            f"{label} {envelope.__name__} has no field named data, so it would not "
+            f"have the items. Its fields are: {', '.join(envelope.model_fields)}. "
+            "Name the field with the items data, and rename it in the JSON with an "
+            f"alias.{other_shape}"
+        )
     extra = envelope.model_config.get("extra")
     if extra in ("allow", "forbid"):
         raise RestlyConfigurationError(

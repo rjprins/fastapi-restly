@@ -5,7 +5,11 @@ Verifies that include_view() causes FK columns and IDSchema relationship fields
 to be annotated with x-resource-ref in the generated OpenAPI spec.
 """
 
+from typing import Annotated, Generic, TypeVar
+
 import fastapi
+import pydantic
+import pytest
 import sqlalchemy as sa
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -290,3 +294,58 @@ def test_the_items_of_a_list_response_schema_get_x_resource_ref():
     assert (
         schemas["PetSummary"]["properties"]["owner_id"]["x-resource-ref"] == "authors"
     )
+
+
+def _list_view_with(make_shape):
+    """The spec of a view with a foreign key, with the item class that
+    ``make_shape`` makes from the item class ``PetSummary``."""
+
+    class Owner2(fr.IDMixin, SharedBase):
+        name: Mapped[str]
+
+    class Pet2(fr.IDMixin, SharedBase):
+        name: Mapped[str]
+        owner_id: Mapped[int] = mapped_column(sa.ForeignKey(Owner2.id))
+
+    class OwnerView(fr.AsyncRestView):
+        prefix = "/owners"
+        model = Owner2
+
+    T = TypeVar("T")
+
+    class Wrap(pydantic.BaseModel, Generic[T]):
+        owner_id: int
+        extra: T | None = None
+
+    class PetSummary(pydantic.BaseModel):
+        owner_id: int
+
+    class PetSchema(fr.IDSchema):
+        name: str
+        owner_id: int
+
+    class PetView(fr.AsyncRestView):
+        prefix = "/pets"
+        model = Pet2
+        schema = PetSchema
+        list_response_schema = make_shape(PetSummary, Wrap)
+
+    app = fastapi.FastAPI()
+    fr.include_view(app, OwnerView)
+    fr.include_view(app, PetView)
+    create_tables()
+    return app.openapi()["components"]["schemas"]
+
+
+@pytest.mark.parametrize(
+    ("make_shape", "name"),
+    [
+        (lambda item, wrap: list[item | None], "PetSummary"),
+        (lambda item, wrap: list[Annotated[item, "note"]], "PetSummary"),
+        (lambda item, wrap: list[wrap[int]], "Wrap_int_"),
+    ],
+    ids=["optional", "annotated", "generic"],
+)
+def test_a_wrapped_or_generic_item_class_gets_x_resource_ref(make_shape, name):
+    schemas = _list_view_with(make_shape)
+    assert schemas[name]["properties"]["owner_id"]["x-resource-ref"] == "owners"

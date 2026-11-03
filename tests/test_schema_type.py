@@ -26,6 +26,7 @@ from typing import (
 import pydantic
 import pytest
 import sqlalchemy
+import typing_extensions
 from fastapi import FastAPI
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -1566,3 +1567,104 @@ def test_a_class_with_two_derived_parents_keeps_out_what_each_dropped(Lamp):
 
     assert "pin" not in Both.model_fields
     assert "salary" not in Both.model_fields
+
+
+class _LampWrapper(pydantic.BaseModel):
+    detail: ResponseSchema
+
+
+def test_a_marker_in_a_field_of_a_class_in_responses_of_a_view_raises(client, Lamp):
+    class View(fr.AsyncRestView):
+        prefix = "/lamps"
+        model = Lamp
+        schema = LampSchema
+        responses = {400: {"model": _LampWrapper}}
+
+    with pytest.raises(RestlyConfigurationError, match="detail"):
+        fr.include_view(client.app, View)
+
+
+def test_a_marker_in_a_field_of_a_class_in_responses_of_a_plain_view_raises(client):
+    class View(fr.View):
+        prefix = "/lamps"
+        responses = {400: {"model": _LampWrapper}}
+
+    with pytest.raises(RestlyConfigurationError, match="detail"):
+        fr.include_view(client.app, View)
+
+
+def test_a_marker_in_a_typing_extensions_typed_dict_raises(client, Lamp):
+    class Wrapper(typing_extensions.TypedDict):
+        lamp: ResponseSchema
+
+    class View(fr.AsyncRestView):
+        prefix = "/lamps"
+        model = Lamp
+        schema = LampSchema
+
+        @fr.get("/wrapped")
+        async def wrapped(self) -> Wrapper: ...
+
+    with pytest.raises(RestlyConfigurationError, match="lamp"):
+        fr.include_view(client.app, View)
+
+
+def _alias(statement: str) -> Any:
+    """A type alias that names itself: on Python 3.11 only a string can do that,
+    and Restly leaves a string alone."""
+    namespace = {"ResponseSchema": ResponseSchema}
+    exec(statement, namespace)
+    return namespace[statement.split()[1]]
+
+
+needs_type_statement = pytest.mark.skipif(
+    sys.version_info < (3, 12), reason="needs the type statement"
+)
+
+
+@needs_type_statement
+def test_a_type_alias_that_names_itself_and_holds_a_marker_raises(client, Lamp):
+    """Restly can fill the outer marker only, so the spec would have no type."""
+    Tree = _alias("type Tree = ResponseSchema | list[Tree]")
+
+    class View(fr.AsyncRestView):
+        prefix = "/lamps"
+        model = Lamp
+        schema = LampSchema
+
+        @fr.get("/tree")
+        async def tree(self) -> Tree: ...
+
+    with pytest.raises(RestlyConfigurationError, match="Tree"):
+        fr.include_view(client.app, View)
+
+
+@needs_type_statement
+def test_a_type_alias_that_names_itself_without_a_marker_works(client, Lamp):
+    Json = _alias("type Json = str | list[Json]")
+
+    class View(fr.AsyncRestView):
+        prefix = "/lamps"
+        model = Lamp
+        schema = LampSchema
+
+        @fr.get("/json")
+        async def json_value(self) -> Json:
+            return ["a", ["b"]]
+
+    fr.include_view(client.app, View)
+
+    assert client.get("/lamps/json").json() == ["a", ["b"]]
+
+
+def test_a_marker_in_a_generic_class_in_responses_of_a_view(client, Lamp):
+    class View(fr.AsyncRestView):
+        prefix = "/lamps"
+        model = Lamp
+        schema = LampSchema
+        responses = {400: {"model": Data[ResponseSchema]}}
+
+    fr.include_view(client.app, View)
+
+    data = client.app.openapi()["components"]["schemas"]["Data_LampResponse_"]
+    assert data["properties"]["data"]["$ref"].endswith("/LampResponse")

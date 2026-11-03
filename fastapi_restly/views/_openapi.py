@@ -12,6 +12,7 @@ Full nested-object relationships (plain Pydantic model fields) are left untouche
 """
 
 import inspect
+import re
 import types
 import weakref
 from dataclasses import dataclass
@@ -262,7 +263,9 @@ def _annotate_spec(
             if schema_cls is None:
                 continue
             refs = _compute_refs(schema_cls, entry.model, model_to_resource)
-            props = schemas.get(schema_cls.__name__, {}).get("properties", {})
+            # As Pydantic writes the name of a generic class: Wrap_int_
+            name = re.sub(r"[^a-zA-Z0-9.\-_]", "_", schema_cls.__name__)
+            props = schemas.get(name, {}).get("properties", {})
             for prop_key, resource_name in refs.items():
                 if prop_key in props:
                     props[prop_key]["x-resource-ref"] = resource_name

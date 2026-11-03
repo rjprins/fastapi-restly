@@ -38,9 +38,12 @@ marked "Silent" gives no error when you miss it.
    Restly builds the response after the route returns. So code that reads the
    result gets a row, not the response. Call `to_single_response` or
    `to_list_response` if you need the response, also in a test.
-6. Silent: a route that declares no response, and returns a row of the view's
-   model, sends the fields of the response class. Before, FastAPI sent each column
-   of the row, also a `WriteOnly` column. To send more fields, declare a class.
+6. Silent: a route that declares no response, or a type without fields such as
+   `dict[str, Any]`, and returns a row of the view's model, also inside a dict or a
+   list, sends the fields of the response class. Before, FastAPI sent each column
+   of the row, also a `WriteOnly` column. To send more fields, declare a class. In
+   async code, a relationship that the response class names and your own `select`
+   did not load now raises `MissingGreenlet`, so load it.
 7. Silent: on a react-admin view, `GET /` now has a response model, the list type.
    An override of `to_list_response` that returns data, and not a `Response`, loses
    the fields that this type does not have. Set `list_response_schema` to the type
@@ -82,8 +85,15 @@ marked "Silent" gives no error when you miss it.
   `None`, and for `list_response_schema = PaginatedEnvelope` without a type for
   the items. OpenAPI showed items without a type.
 - Registration raises `RestlyConfigurationError` for an own list response class
-  that `GET /` cannot fill, or with a field in `list[X]` that the response class
-  does not have. Another form, such as a `RootModel`, gets a `500` on `GET /`.
+  that `GET /` cannot fill: items that are not a Pydantic class, an item field that
+  the response class does not have, `list[X] | None`, or a class without a field
+  named `data`. Before, the first row gave a `500`, or the list was always empty.
+  The check on a field named `data` also holds for the `envelope` of a pagination.
+  A `RootModel` and a class with a `mode="before"` validator read the page values
+  themselves, so they need no such field.
+- Registration raises `RestlyConfigurationError` for a marker in a field of a class
+  in `responses=` of a view, and for a type alias that names itself and holds a
+  marker. OpenAPI showed no type for these.
 - Two views with the same schema and model share one create class and one update
   class.
 - A subclass of a view with a new `schema` gets the function of a base view back,
@@ -97,6 +107,8 @@ marked "Silent" gives no error when you miss it.
   the marker stayed, and OpenAPI showed a field without a type.
 - A marker in a type alias, as in `type Resp = ResponseSchema`, is filled. Before,
   OpenAPI showed an empty class, and a row went out with all its columns.
+- A generic class in a view's response, such as `Page[int]`, gets `x-resource-ref`
+  in OpenAPI. Before, Restly looked for it under the wrong name.
 - The list route of a react-admin view shows an array of the response class in
   OpenAPI. Before, it showed an empty schema. A custom route with the list marker
   no longer shows an envelope while it sends an array.
