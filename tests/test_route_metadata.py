@@ -148,6 +148,21 @@ def test_a_custom_route_keeps_the_name_of_its_method(base):
     assert str(app.url_path_for("item_stats")) == "/items/stats"
 
 
+def test_route_options_work_on_every_kind_of_view(base):
+    class ItemView(base):
+        prefix = "/items"
+        get_many_endpoint = fr.route_options(summary="All items")
+        create_endpoint = fr.route_options(status_code=200, summary="Add an item")
+
+    app = FastAPI()
+    fr.include_view(app, ItemView)
+
+    paths = app.openapi()["paths"]
+    assert paths["/items"]["get"]["summary"] == "All items"
+    assert paths["/items"]["post"]["summary"] == "Add an item"
+    assert "200" in paths["/items"]["post"]["responses"]
+
+
 def test_explicit_decorator_metadata_wins_over_defaults(base):
     class ItemView(base):
         prefix = "/items"

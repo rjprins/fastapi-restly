@@ -53,10 +53,8 @@ class OrganizationView(fr.AsyncRestView[Organization]):
         response.headers["Location"] = f"{self.prefix}/{org.id}"
         return org
 
-    @fr.delete("/{id}", dependencies=[SetCurrentContextDep])
-    async def delete_endpoint(self, id: int) -> None:
-        """Bind identity for deletion, including its relationship loads."""
-        await super().delete_endpoint(id)
+    # Bind identity for deletion, including its relationship loads.
+    delete_endpoint = fr.route_options(dependencies=[SetCurrentContextDep])
 
     async def authorize(
         self, action: str, obj: Organization | None = None, data: Any = None

@@ -187,9 +187,12 @@ contracts:
    ([the exact contract](#default-crud-behavior)). Other routes on the
    router, such as exports and actions, become custom routes on the view or
    stay as plain FastAPI routes next to it.
-2. Keep routes with a different contract out of the change. For example, a
-   `PUT` update or a delete that does not answer 204 can stay hand-written:
-   leave it out with
+2. A route that differs in one option, such as its name, its status code or its
+   path, stays on the view with
+   {func}`fr.route_options <fastapi_restly.views.route_options>`; see
+   [Change one option of a route](#crud-route-metadata). Keep routes with another
+   contract out of the change. For example, a `PUT` update that replaces the whole
+   row can stay hand-written: leave it out with
    {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>`
    until you change its contract.
 3. Write tests before you change anything. Test the responses of the old

@@ -76,7 +76,7 @@ def test_an_old_marker_or_function_name_is_gone(module, name):
 @pytest.mark.parametrize(
     "name, instead",
     [
-        ("route_options", "Override the endpoint method"),
+        ("route_options", "under the name of the route method"),
         ("extra_query_params", 'set unknown_query_params = "ignore".'),
     ],
 )

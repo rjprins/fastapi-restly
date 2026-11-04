@@ -52,6 +52,7 @@ fastapi_restly:
   - query
   - resolve_scope
   - route
+  - route_options
   - schemas
   - testing
   - views
@@ -186,6 +187,7 @@ fastapi_restly.views:
   - put
   - resolve_scope
   - route
+  - route_options
 
 submodule-only exports:
 fastapi_restly.clauses:

@@ -817,9 +817,12 @@ task, and nothing tries it again.
 (replace-endpoint-method)=
 ## Change the status code or headers of one route
 
-Business methods and hooks keep the HTTP contract of the CRUD route. Replace
-the endpoint method when the contract itself must change: the status code,
-the headers or the parameters. To change the shape of the response body, such
+Business methods and hooks keep the HTTP contract of the CRUD route. To change
+only an option of the route, such as its status code, set
+{func}`fr.route_options <fastapi_restly.views.route_options>`; see
+[Change one option of a route](#crud-route-metadata). Replace the endpoint method
+when the change needs code: the headers, the parameters or what the route
+returns. To change the shape of the response body, such
 as an envelope around one object, see
 [Change the shape of one route](#one-route-shape) on Responses. It replaces
 the endpoint method in the same way.

@@ -147,8 +147,8 @@ filter, sort and page parameters to the URL.
   chooses, filters of your own, and list params that you write yourself.
 - [Errors](errors.md): raise a 404 or a 403, see why a duplicate value gives
   a 409, and change the error body.
-- [OpenAPI](openapi.md): the tags, names and operation IDs of the routes,
-  and how to document a custom route.
+- [OpenAPI](openapi.md): the tags, names and operation IDs of the routes, how
+  to change one option of a route, and how to document a custom route.
 
 ## Access
 

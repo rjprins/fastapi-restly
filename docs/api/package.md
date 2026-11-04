@@ -48,6 +48,7 @@ through `fr`.
 | {func}`fr.resolve_scope <fastapi_restly.views.resolve_scope>` | Resolve the read scope for a view or model. |
 | {class}`fr.RestView <fastapi_restly.views.RestView>` | CRUD view using a synchronous SQLAlchemy session. |
 | {func}`fr.route <fastapi_restly.views.route>` | Decorate an endpoint method for any HTTP method. |
+| {func}`fr.route_options <fastapi_restly.views.route_options>` | Change the options of an inherited route, and keep the rest. |
 | {data}`fr.SessionDep <fastapi_restly.db.SessionDep>` | FastAPI dependency annotation for a synchronous session. |
 | {class}`fr.TimestampsMixin <fastapi_restly.models.TimestampsMixin>` | Model fields for creation and update timestamps. |
 | {class}`fr.TimestampsSchemaMixin <fastapi_restly.schemas.TimestampsSchemaMixin>` | Read-only creation and update timestamps in a schema. |

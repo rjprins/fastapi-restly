@@ -56,6 +56,7 @@ from ._base import (
     put,
     resolve_scope,
     route,
+    route_options,
 )
 from ._include import include_view
 from ._list_params import list_filter
@@ -114,4 +115,5 @@ __all__ = [
     "post",
     "put",
     "route",
+    "route_options",
 ]

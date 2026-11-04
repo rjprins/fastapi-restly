@@ -17,6 +17,7 @@ import collections.abc
 import dataclasses
 import functools
 import inspect
+import itertools
 import types
 import warnings
 from collections.abc import Collection, Iterable, Mapping
@@ -39,6 +40,7 @@ from typing import (
 
 import fastapi
 import pydantic
+from fastapi.utils import is_body_allowed_for_status_code
 from sqlalchemy import Boolean, ColumnElement, Select
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy import select as sa_select
@@ -288,6 +290,7 @@ class View:
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
         super().__init_subclass__(**kwargs)
+        _apply_route_options(cls)
         _reject_route_names_of_settings(cls)
 
     @classmethod
@@ -373,6 +376,108 @@ def delete(path: str, **api_route_kwargs: Any) -> Callable[..., Any]:
     api_route_kwargs.setdefault("methods", ["DELETE"])
     api_route_kwargs.setdefault("status_code", 204)
     return route(path, **api_route_kwargs)
+
+
+@dataclasses.dataclass(frozen=True, eq=False)
+class _RouteOptions:
+    """What :func:`route_options` returns. When the class is defined, a copy of
+    the inherited route takes its place."""
+
+    path: str | None
+    api_route_kwargs: dict[str, Any]
+
+
+def route_options(path: str | None = None, **api_route_kwargs: Any) -> Any:
+    """Change the options of a route that the view inherits, and keep the rest.
+
+    Set it in the class body, under the name of the route method::
+
+        class TagView(fr.AsyncRestView):
+            prefix = "/tags"
+            model = Tag
+
+            create_endpoint = fr.route_options(status_code=200, name="create_tag")
+            delete_endpoint = fr.route_options(dependencies=[Depends(require_admin)])
+
+    It takes the arguments of a route decorator, such as :func:`post`: they go
+    to FastAPI's ``APIRouter.add_api_route()``. ``path`` replaces the path of
+    the route.
+
+    Each argument replaces the one of the inherited route. Two add up, as they
+    do on a view. ``dependencies`` run base first. ``responses`` add up per
+    status code, and a status code set to ``None`` is left out. A status code
+    without a body, such as 204, also removes the response model of the route.
+
+    A class with a ``route_options`` that names no inherited route raises
+    :class:`~fastapi_restly.exc.RestlyConfigurationError` when it is defined.
+    """
+    return _RouteOptions(path, api_route_kwargs)
+
+
+def _apply_route_options(cls: type) -> None:
+    """Put a copy of the inherited route in the place of each
+    :func:`route_options` that ``cls`` gets.
+
+    So the attribute is a normal route for the rest of Restly, and
+    ``super().create_endpoint(...)`` finds a function. A plain mixin holds its
+    options until a view class takes them, so this reads every class in the
+    MRO: for each name, the options in front of the first method.
+    """
+    names = {
+        name
+        for klass in cls.__mro__
+        for name, value in vars(klass).items()
+        if isinstance(value, _RouteOptions)
+    }
+    for name in sorted(names):
+        values = [vars(klass)[name] for klass in cls.__mro__ if name in vars(klass)]
+        options = list(
+            itertools.takewhile(lambda v: isinstance(v, _RouteOptions), values)
+        )
+        if not options:
+            continue
+        endpoint = values[len(options)] if len(values) > len(options) else None
+        if not hasattr(endpoint, "_api_route_args"):
+            raise RestlyConfigurationError(
+                f"{cls.__name__}.{name} is a fr.route_options, but the class "
+                f"inherits no route method with this name. Use the name of a "
+                f"route method, such as create_endpoint."
+            )
+        path, route_kwargs = endpoint._api_route_args  # type: ignore[union-attr]
+        route_kwargs = dict(route_kwargs)
+        if getattr(endpoint, "_response_model_dropped", False):
+            del route_kwargs["response_model"]
+        for option in reversed(options):
+            path = path if option.path is None else option.path
+            for key, value in option.api_route_kwargs.items():
+                if key == "dependencies":
+                    value = _added_dependencies(route_kwargs.get(key), value)
+                elif key == "responses":
+                    value = {**(route_kwargs.get(key) or {}), **(value or {})}
+                route_kwargs[key] = value
+        # The inherited response model belongs to a status with a body, and
+        # FastAPI refuses a response model on a status without one. A subclass
+        # with a status with a body gets the model back, see above. A model
+        # that an option names stays, so FastAPI refuses it.
+        dropped = "response_model" not in route_kwargs and (
+            not is_body_allowed_for_status_code(route_kwargs.get("status_code"))
+        )
+        if dropped:
+            route_kwargs["response_model"] = None
+        copied = _copy_route(endpoint, cls, name)
+        copied._api_route_args = (path, route_kwargs)  # type: ignore[attr-defined]
+        copied._response_model_dropped = dropped  # type: ignore[attr-defined]
+        setattr(cls, name, copied)
+
+
+def _added_dependencies(dependencies: Any, new: Any) -> list[Any]:
+    """``dependencies``, then ``new``. A dependency that ``new`` lists again
+    moves to where ``new`` lists it, so what comes before it still runs first."""
+    added = list(dependencies or ())
+    for dependency in new or ():
+        added = [seen for seen in added if seen is not dependency]
+        added.append(dependency)
+    return added
 
 
 #: The routes that load one row by the id in the path.
@@ -1668,6 +1773,46 @@ def _is_route_name_in_lineage(
         hasattr(klass.__dict__.get(method_name), "_api_route_args")
         for klass in cls.mro()
     )
+
+
+def _copy_route(endpoint: Callable, view_cls: type, name: str) -> Callable:
+    """A copy of a route of a base class, for ``view_cls`` to hold as ``name``."""
+    copied = _make_copy(endpoint)
+    if getattr(endpoint, "__module__", "").startswith("fastapi_restly."):
+        # The shells carry override-redirect docstrings for help()/source
+        # readers. FastAPI reads endpoint.__doc__ as the OpenAPI operation
+        # description, so strip the copy: framework guidance must not leak
+        # into the user's API docs. User-defined endpoints keep theirs.
+        copied.__doc__ = None
+    # Set explicit __qualname__ for debugging purposes.
+    copied.__qualname__ = f"{view_cls.__name__}_{name}_wrapper"
+    return copied
+
+
+def _make_copy(endpoint: Callable) -> Callable:
+    """
+    Wrap the endpoint in a new function as kind of copy.
+
+    Fun fact: You cannot do this inside a for loop, because the closure of 'endpoint'
+    inside the wrapper works on the variable, not on the value. And for-loops in Python
+    do not have their own variable scope.
+
+    https://eev.ee/blog/2011/04/24/gotcha-python-scoping-closures/
+    """
+    if inspect.iscoroutinefunction(endpoint):
+
+        async def _async_wrapper(self, *args, **kwargs):
+            return await endpoint(self, *args, **kwargs)
+
+        endpoint_wrapper: Callable = _async_wrapper
+    else:
+
+        def _sync_wrapper(self, *args, **kwargs):
+            return endpoint(self, *args, **kwargs)
+
+        endpoint_wrapper = _sync_wrapper
+
+    return _wrap_endpoint(endpoint_wrapper, endpoint)
 
 
 def _wrap_endpoint(wrapper: Callable, endpoint: Callable) -> Callable:

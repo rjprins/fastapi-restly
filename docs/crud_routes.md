@@ -166,7 +166,7 @@ This table maps each need to its setting:
 | A list filter of your own | Decorate a method with {func}`fr.list_filter <fastapi_restly.views.list_filter>` ([Add a filter of your own](#own-list-filter)) |
 | A query key of your own next to the list params, not a filter | Declare it on the endpoint method or in a dependency ([Accept extra query parameters](#extra-query-parameters)) |
 | OpenAPI metadata or dependencies on every route | Set {attr}`tags <fastapi_restly.views.View.tags>`, {attr}`responses <fastapi_restly.views.View.responses>` or {attr}`dependencies <fastapi_restly.views.View.dependencies>` ([Share behavior with base views](#share-behaviour-with-base-views)) |
-| A route name, summary or operation ID | Override the endpoint method with a decorator of your own ([OpenAPI](#crud-route-metadata)) |
+| One option of a route, such as its name, status code or dependencies | Set {func}`fr.route_options <fastapi_restly.views.route_options>` under the name of the route method ([OpenAPI](#crud-route-metadata)) |
 | Another session for one view | Override the `session` annotation ([Database & Configuration](#session-dependency-one-view)) |
 
 [View Reference](#view-class-attributes) lists the type and the default of

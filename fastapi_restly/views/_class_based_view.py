@@ -24,7 +24,7 @@ from fastapi.params import Depends as _DependsMarker
 from fastapi.params import Param as _ParamMarker
 
 from ..exc import RestlyConfigurationError
-from ._base import View, _wrap_endpoint
+from ._base import View, _copy_route
 
 
 def _copy_all_parent_class_endpoints_into_this_subclass(view_cls: type[View]):
@@ -46,42 +46,7 @@ def _copy_all_parent_class_endpoints_into_this_subclass(view_cls: type[View]):
 
         # The original endpoint might be shared between subclasses.
         # So make a copy and put that on the view_cls.
-        endpoint_wrapper = _make_copy(endpoint, view_cls)
-        if getattr(endpoint, "__module__", "").startswith("fastapi_restly."):
-            # The shells carry override-redirect docstrings for help()/source
-            # readers. FastAPI reads endpoint.__doc__ as the OpenAPI operation
-            # description, so strip the copy: framework guidance must not leak
-            # into the user's API docs. User-defined endpoints keep theirs.
-            endpoint_wrapper.__doc__ = None
-        # Set explicit __qualname__ for debugging purposes.
-        endpoint_wrapper.__qualname__ = f"{view_cls.__name__}_{name}_wrapper"
-        setattr(view_cls, name, endpoint_wrapper)
-
-
-def _make_copy(endpoint: Callable, view_cls: type[View]) -> Callable:
-    """
-    Wrap the endpoint in a new function as kind of copy.
-
-    Fun fact: You cannot do this inside a for loop, because the closure of 'endpoint'
-    inside the wrapper works on the variable, not on the value. And for-loops in Python
-    do not have their own variable scope.
-
-    https://eev.ee/blog/2011/04/24/gotcha-python-scoping-closures/
-    """
-    if inspect.iscoroutinefunction(endpoint):
-
-        async def _async_wrapper(self, *args, **kwargs):
-            return await endpoint(self, *args, **kwargs)
-
-        endpoint_wrapper: Callable = _async_wrapper
-    else:
-
-        def _sync_wrapper(self, *args, **kwargs):
-            return endpoint(self, *args, **kwargs)
-
-        endpoint_wrapper = _sync_wrapper
-
-    return _wrap_endpoint(endpoint_wrapper, endpoint)
+        setattr(view_cls, name, _copy_route(endpoint, view_cls, name))
 
 
 def _init_all_endpoints(view_cls: type[View]):

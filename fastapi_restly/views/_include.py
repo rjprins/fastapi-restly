@@ -38,7 +38,14 @@ from typing_extensions import TypeVar, is_typeddict
 from ..db._config import _fr_config
 from ..exc import RestlyConfigurationError, RestlyMisuseWarning
 from ..schemas._base import IDSchema, RefExists, _alias_value, _reject_buried_markers
-from ._base import BaseRestView, ListResult, View, _serves_route
+from ._base import (
+    BaseRestView,
+    ListResult,
+    View,
+    _added_dependencies,
+    _RouteOptions,
+    _serves_route,
+)
 from ._class_based_view import (
     _copy_all_parent_class_endpoints_into_this_subclass,
     _init_all_endpoints,
@@ -636,12 +643,9 @@ def _init_api_router(view_cls: type[View]) -> fastapi.APIRouter:
     dependencies: list[Any] = []
     responses: dict[int | str, dict[str, Any] | None] = {}
     for level in levels:
-        for dependency in level.get("dependencies") or ():
-            # A subclass that spells out ``[own, *Base.dependencies]`` lists
-            # the base's entries again. They move to where it lists them, so
-            # ``own`` still runs first.
-            dependencies = [seen for seen in dependencies if seen is not dependency]
-            dependencies.append(dependency)
+        # A subclass that spells out ``[own, *Base.dependencies]`` lists the
+        # base's entries again, and ``own`` still runs first.
+        dependencies = _added_dependencies(dependencies, level.get("dependencies"))
         responses.update(level.get("responses") or {})
     is_rest_view = issubclass(view_cls, BaseRestView)
     if is_rest_view:
@@ -663,6 +667,11 @@ def _init_api_router(view_cls: type[View]) -> fastapi.APIRouter:
     # Find all endpoint functions in this class and add them to the router
     list_parameters: list[dict[str, Any]] | None = None
     for name, attr in list(view_cls.__dict__.items()):
+        if isinstance(attr, _RouteOptions):
+            raise RestlyConfigurationError(
+                f"{view_cls.__name__}.{name} got a fr.route_options after the "
+                f"class was defined. Set it in the class body."
+            )
         if not hasattr(attr, "_api_route_args"):
             continue
         # include_routes and exclude_routes are settings of the CRUD views only

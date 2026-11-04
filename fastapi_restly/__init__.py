@@ -66,6 +66,7 @@ from .views import (
     put,
     resolve_scope,
     route,
+    route_options,
 )
 
 try:
@@ -133,6 +134,7 @@ __all__ = [
     "resolve_scope",
     # Views — route decorators
     "route",
+    "route_options",
     "get",
     "post",
     "put",

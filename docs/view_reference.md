@@ -113,6 +113,10 @@ Use these decorators on methods in a view class:
 
 The shorthand decorators explicitly set the default status code shown. Pass `status_code=` to override it.
 
+To change the options of a route that a class inherits, set
+{func}`fr.route_options <fastapi_restly.views.route_options>` under the name of
+the route method; see [Change one option of a route](#crud-route-metadata).
+
 Other keyword arguments pass through to FastAPI route registration: `response_model=`, `dependencies=`, `responses=`, `tags=`, and other `APIRouter.add_api_route()` options.
 
 `@fr.put(...)` is available for custom endpoints, but the default update route

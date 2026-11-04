@@ -99,6 +99,11 @@ miss it.
 
 ### Added
 
+- `fr.route_options`: change the options of a route that a view inherits, and keep
+  the rest. Set it under the name of the route method, as in
+  `create_endpoint = fr.route_options(status_code=200, name="create_tag")`. The route
+  needs no method of its own for a name, a status code, a path, dependencies or the
+  documented responses. See "Change one option of a route" in the guide.
 - A status code set to `None` in `responses`, on a view or on a route, is left
   out of the spec. So `responses = {404: None}` removes a 404 that a route of a
   CRUD view documents by itself.
