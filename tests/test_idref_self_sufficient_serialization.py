@@ -22,12 +22,14 @@ or the raw scalar FK (a scalar-named reference). These tests pin:
 # ref the view mixins' forced ``model_rebuild`` can't resolve on the floor Pydantic.
 import asyncio
 
+import fastapi
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 import fastapi_restly as fr
 
 from ._models import SharedBase
+from ._openapi_spec import spec
 from .conftest import create_tables
 
 # ---------------------------------------------------------------------------
@@ -326,3 +328,38 @@ def test_react_admin_serializes_idref_flat_e2e(client):
     # ReactAdminView returns a bare array + Content-Range header, not the envelope.
     listed = client.get("/comments/").json()
     assert listed[0]["post_fk"] == p1["id"]
+
+
+def test_a_list_of_idref_shows_scalar_items_in_openapi():
+    class ScalarAuthor(fr.IDMixin, SharedBase):
+        name: Mapped[str]
+        books: Mapped[list["ScalarBook"]] = relationship(
+            back_populates="author", lazy="selectin", default_factory=list
+        )
+
+    class ScalarBook(fr.IDMixin, SharedBase):
+        title: Mapped[str]
+        author_id: Mapped[int] = mapped_column(ForeignKey(ScalarAuthor.id))
+        author: Mapped[ScalarAuthor] = relationship(
+            back_populates="books", lazy="selectin"
+        )
+
+    class ScalarAuthorSchema(fr.IDSchema):
+        name: str
+        books: fr.ReadOnly[list[fr.IDRef[ScalarBook]]] = []
+
+    app = fastapi.FastAPI()
+
+    @fr.include_view(app)
+    class ScalarAuthorView(fr.AsyncRestView):
+        prefix = "/scalar-authors"
+        model = ScalarAuthor
+        schema = ScalarAuthorSchema
+
+    schemas = spec(app)["components"]["schemas"]
+    response = schemas[ScalarAuthorView.response_schema.__name__]
+    item_ref = response["properties"]["books"]["items"]["$ref"]
+
+    assert schemas[item_ref.removeprefix("#/components/schemas/")] == {
+        "type": "integer"
+    }

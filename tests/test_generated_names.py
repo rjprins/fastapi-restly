@@ -359,6 +359,33 @@ def test_two_list_responses_with_one_name_warn_and_stay_in_openapi():
     assert "passes the view's pagination to derive_list_response_schema" in message
 
 
+def test_a_plain_view_on_the_app_is_enough_for_the_check():
+    class First:
+        class Report(pydantic.BaseModel):
+            total: int
+
+    class Second:
+        class Report(pydantic.BaseModel):
+            title: str
+
+    app = fastapi.FastAPI()
+
+    @fr.include_view(app)
+    class ReportView(fr.View):
+        prefix = "/reports"
+
+        @fr.get("/first")
+        def first(self) -> First.Report:
+            return First.Report(total=1)
+
+        @fr.get("/second")
+        def second(self) -> Second.Report:
+            return Second.Report(title="a")
+
+    with pytest.warns(RestlyDuplicateSchemaNameWarning, match="the name Report"):
+        app.openapi()
+
+
 def test_views_on_a_router_are_checked_through_configure():
     """``fr.configure(app)`` lets Restly check an app whose views are all on
     an ``APIRouter``. A view without a schema gets its classes from its

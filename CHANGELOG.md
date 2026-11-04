@@ -107,6 +107,9 @@ miss it.
     view inherits now gets an `IndexError` on each request. It already did on a
     method that the view defines. Name the parameter instead:
     `def wrapper(self, *args, **kwargs)`.
+16. Silent: OpenAPI no longer has `x-resource-ref`. A client that reads it must
+    stop. To keep it on one field, set it on that field:
+    `pydantic.Field(json_schema_extra={"x-resource-ref": "authors"})`.
 
 ### Added
 
@@ -175,6 +178,13 @@ miss it.
   if a base view has one, and otherwise Restly's default. A function on the
   subclass counts as a new `schema`.
 - A subclass of a derived class can declare a field of `omit` again.
+- The check for two classes with the same name in OpenAPI now also runs on an app
+  that has only plain `fr.View` classes. Before, it started with the first CRUD view.
+
+### Removed
+
+- The `x-resource-ref` extension in OpenAPI. No part of Restly read it, and it could
+  name the wrong view when several views served one model.
 
 ### Fixed
 
@@ -201,8 +211,6 @@ miss it.
   the marker stayed, and OpenAPI showed a field without a type.
 - A marker in a type alias, as in `type Resp = ResponseSchema`, is filled. Before,
   OpenAPI showed an empty class, and a row went out with all its columns.
-- A generic class in a view's response, such as `Page[int]`, gets `x-resource-ref`
-  in OpenAPI. Before, Restly looked for it under the wrong name.
 - The list route of a react-admin view shows an array of the response schema in
   OpenAPI. Before, it showed an empty schema. A custom route with the list marker
   no longer shows an envelope while it sends an array.

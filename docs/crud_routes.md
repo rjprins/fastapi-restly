@@ -588,12 +588,6 @@ A model can have a flat view and nested views at the same time, such as a
   `project_id` read-only in `TaskSchema`; see [Create a child](#nested-create).
 - Both views appear under the "Tasks" tag in OpenAPI, unless you set
   {attr}`tags <fastapi_restly.views.View.tags>`.
-- OpenAPI marks a field that refers to a task, such as
-  `fr.MustExist[int, Task]`, with `x-resource-ref`. Its value comes from the
-  prefix of the last view of `Task` that you register. Register the flat view
-  after the nested one, so the value is `tasks`. With only a nested view, the
-  value is `projects/{project_id}/tasks`, which a client cannot use as a
-  resource name.
 
 (crud-limits)=
 ## What the default routes do not do

@@ -218,11 +218,6 @@ def test_nested_schema_reads_a_related_row_outside_declarative_base(legacy_pets)
     assert nested["owner"] == {"id": owner["id"], "name": "Ann"}
 
 
-def test_openapi_resource_ref_for_a_class_outside_declarative_base(legacy_pets):
-    schemas = legacy_pets.app.openapi()["components"]["schemas"]
-    assert "owners" in str(schemas["PetResponse"]["properties"]["owner"])
-
-
 def test_foreign_key_checks_on_an_imperative_mapping(client):
     # An imperatively mapped class has no `registry` or `metadata` attribute.
     mapper_registry = registry()
@@ -282,6 +277,3 @@ def test_foreign_key_checks_on_an_imperative_mapping(client):
     client.post(
         "/tools/", json={"name": "Lost", "maker_id": 12345}, assert_status_code=404
     )
-
-    tool_schema = client.app.openapi()["components"]["schemas"]["ToolResponse"]
-    assert "makers" in str(tool_schema["properties"]["maker_id"])

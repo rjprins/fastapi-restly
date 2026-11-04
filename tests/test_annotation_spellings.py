@@ -25,11 +25,11 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 import fastapi_restly as fr
 from fastapi_restly.exc import RestlyConfigurationError
 from fastapi_restly.schemas._base import (
+    _collection_item_type,
     _listed_ref_exists_marker,
     reference_origin_and_target,
 )
 from fastapi_restly.testing import RestlyTestClient
-from fastapi_restly.views._openapi import _is_id_ref_annotation
 
 from ._models import SharedBase
 from .conftest import create_tables
@@ -197,23 +197,13 @@ def test_a_marker_inside_a_type_alias_is_rejected(alias_class, marker, generic):
     assert "move the marker out of the type alias" in str(excinfo.value)
 
 
-def test_a_reference_in_a_to_many_spelling_is_a_reference():
-    class RefTag(fr.IDMixin, SharedBase):
-        name: Mapped[str]
-
-    for spelling in TO_MANY_SPELLINGS.values():
-        assert _is_id_ref_annotation(spelling(fr.IDRef[RefTag]))
-
-
-def test_a_set_holds_ids_but_no_references():
-    """A set cannot hold Pydantic models, so ``set[fr.IDRef[Tag]]`` is no
-    reference. A set of ids is."""
+def test_a_set_of_ids_is_a_reference():
+    """A set cannot hold Pydantic models, but it can hold ids."""
 
     class SetTag(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
     for collection in (set, frozenset, AbstractSet):
-        assert not _is_id_ref_annotation(collection[fr.IDRef[SetTag]])
         field = pydantic.fields.FieldInfo.from_annotation(
             collection[fr.MustExist[int, SetTag]]
         )
@@ -227,7 +217,7 @@ def test_a_generic_alias_takes_the_default_of_a_missing_argument():
     T = typing_extensions.TypeVar("T", default=fr.IDRef[DefaultTag])
     Refs = typing_extensions.TypeAliasType("Refs", list[T], type_params=(T,))
 
-    assert _is_id_ref_annotation(Refs)
+    assert _collection_item_type(Refs) is fr.IDRef[DefaultTag]
 
 
 def test_a_generic_alias_of_a_pydantic_generic_names_its_model():

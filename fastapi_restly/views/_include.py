@@ -55,7 +55,7 @@ from ._generated import _drop_stale_settings, _list_params_schema
 from ._guards import _check_removed_settings
 from ._list_params import _check_route_query_keys, _list_openapi_parameters
 from ._misuse_lint import _warn_on_misuse
-from ._openapi import _register_for_resource_ref
+from ._openapi_names import _ensure_patched
 from ._schema_types import (
     SchemaType,
     _bare,
@@ -175,8 +175,9 @@ def _init_view_cls_and_add_to_router(
         return
     _prepare_view_class(view_cls)
     api_router = _init_api_router(view_cls)
-    if issubclass(view_cls, BaseRestView):
-        _register_for_resource_ref(parent_router, view_cls)
+    # Only an app builds a spec. fr.configure(app) covers views on an APIRouter.
+    if isinstance(parent_router, fastapi.FastAPI):
+        _ensure_patched(parent_router)
     parent_router.include_router(api_router)
     # Record only after the mount succeeded: a failed registration must not be
     # marked as mounted, or the next call would silently no-op a view whose

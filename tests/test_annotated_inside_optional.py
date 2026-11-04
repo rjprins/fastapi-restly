@@ -168,7 +168,3 @@ def test_a_reference_field_resolves_is_checked_and_is_documented(client, annotat
         assert_status_code=422,
     )
     assert "Conflicting references" in response.json()["detail"]
-
-    schemas = client.get("/openapi.json").json()["components"]["schemas"]
-    author = schemas[CommentView.response_schema.__name__]["properties"]["author"]
-    assert author["x-resource-ref"] == "authors"

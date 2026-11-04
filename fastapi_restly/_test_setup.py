@@ -238,7 +238,7 @@ def configure_tests(
     _setup = setup
     _fr_config.database_configuration_locked = True
     if app is not None:
-        from .views._openapi import _ensure_patched
+        from .views._openapi_names import _ensure_patched
 
         _ensure_patched(app)
 

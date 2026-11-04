@@ -836,6 +836,13 @@ that names the classes and the views. Restly checks an app that you pass to
 that you include a view on. Two classes with the same name are not a problem
 when their JSON schemas are the same, docstrings and defaults included:
 OpenAPI then shows them as one.
+
+Restly runs this check in the app's `app.openapi()`. FastAPI's function
+`get_openapi()` does not run it. So to write the spec to a file, call
+`app.openapi()`. Restly wraps `app.openapi` when the first view is included on
+the app, or when you pass the app to `fr.configure`. An `app.openapi` of your
+own that you set after that replaces Restly's. Set it before, and Restly wraps
+it.
 :::
 
 (name-the-view-schemas)=

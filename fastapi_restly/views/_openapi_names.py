@@ -6,6 +6,10 @@ module path, such as ``app__users__views__UserCreate``. When the module path
 is the same too, it numbers them. Generated clients use these names as type
 names, and they change when a module moves or when the views are registered
 in another order. Restly warns when the spec is built, and names the classes.
+
+``include_view()`` wraps ``app.openapi`` for this check. ``fr.configure(app)``
+and ``configure_tests(app=app)`` do the same, so the check also runs when all
+views are on an APIRouter.
 """
 
 import inspect
@@ -25,6 +29,7 @@ from .._routes import iter_routes, original_route
 from ..exc import RestlyDuplicateSchemaNameWarning
 from ._generated import _DEFAULT_SETTINGS, _uses_default
 
+_PATCHED_ATTR = "_fr_openapi_patched"
 _CLASHES_ATTR = "_fr_openapi_name_clashes"
 _normalize = GenerateJsonSchema().normalize_name
 # What pydantic adds to a long name: the mode, then the number.
@@ -34,6 +39,22 @@ _LONG_NAME_SUFFIX = re.compile(r"(?:-Input|-Output)?(?:__\d+)?$")
 _Role = tuple[str, str | None]
 # For each class, its roles and the views that use it in that role.
 _Roles = dict[type, dict[_Role, list[str]]]
+
+
+def _ensure_patched(app: fastapi.FastAPI) -> None:
+    """Wrap ``app.openapi`` once, so that each spec gets the name check."""
+    if getattr(app, _PATCHED_ATTR, False):
+        return
+
+    original_openapi = app.openapi
+
+    def patched_openapi() -> dict[str, Any]:
+        spec = original_openapi()
+        _warn_on_name_clashes(app, spec)
+        return spec
+
+    app.openapi = patched_openapi  # type: ignore[method-assign]
+    setattr(app, _PATCHED_ATTR, True)
 
 
 def _warn_on_name_clashes(app: fastapi.FastAPI, spec: dict[str, Any]) -> None:

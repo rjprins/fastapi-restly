@@ -10,8 +10,7 @@ the CRUD routes included. Restly fills in a few things for you:
 - the request and response types of the CRUD routes: the schemas that Restly
   builds from the view's main schema, named as in
   [The names of the generated schemas](#generated-schema-names);
-- the filter, sort and page parameters of each list route;
-- an `x-resource-ref` on each field that points to another resource.
+- the filter, sort and page parameters of each list route.
 
 When the app builds its spec, Restly also warns when two classes have the same
 name; see [Name your schemas](#name-your-schemas).
@@ -231,49 +230,6 @@ A route that the view leaves out with
 {attr}`include_routes <fastapi_restly.views.BaseRestView.include_routes>` or
 {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>` is
 not in the spec at all; see [Exclude CRUD routes](#exclude-crud-routes).
-
-(x-resource-ref)=
-## See which resource an id points to
-
-Restly adds the vendor extension `x-resource-ref` to each field that points to
-another resource. A client or a code generator can read it. Its value is the
-prefix of the view that serves the target model, without the leading slash:
-
-```json
-{
-  "author_id": {"type": "integer", "title": "Author Id", "x-resource-ref": "authors"}
-}
-```
-
-Two kinds of fields get it:
-
-- a field named after a foreign key column, whatever its type, such as
-  `author_id: fr.MustExist[int, Author]` or `author_id: int`;
-- a field named after a relationship, with the type
-  {class}`fr.IDRef[Model] <fastapi_restly.schemas.IDRef>` or
-  {class}`fr.IDSchema[Model] <fastapi_restly.schemas.IDSchema>`, or a list of
-  them.
-
-:::{admonition} Details
-:class: details
-
-A field gets it only when a view for the target model is included on the same
-app. A nested object, such as `author: AuthorSchema`, gets none. The
-reference types themselves are on
-[Relationships](relationships.md).
-
-There is a known limit: views that you include on an `APIRouter`, not on the
-app, do not get these annotations. The check for two classes with the same
-name still covers them when you pass the app to
-{func}`fr.configure(app, ...) <fastapi_restly.db.configure>`.
-
-Restly adds the annotations in the app's `app.openapi()`, and checks the
-class names there too. FastAPI's function `get_openapi()` does neither. So to
-write the spec to a file, call `app.openapi()`. Restly wraps `app.openapi`
-when the first view is included on the app, or when you pass the app to
-`fr.configure`. An `app.openapi` of your own that you set after that replaces
-Restly's. Set it before, and Restly wraps it.
-:::
 
 ## See also
 

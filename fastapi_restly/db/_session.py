@@ -323,7 +323,7 @@ def configure(
     if session_generator is not None:
         _fr_config.session_generator = session_generator
     if app is not None:
-        from ..views._openapi import _ensure_patched
+        from ..views._openapi_names import _ensure_patched
 
         # The check for two classes with the same name in OpenAPI.
         _ensure_patched(app)
