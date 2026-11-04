@@ -253,6 +253,8 @@ miss it.
   registers. Before, `POST {"team": {"id": 777, "is_admin": true}}` on a field
   `team: Team` wrote that row: a client could set any id and any column, with values
   of any type.
+- `/openapi.json` no longer gives `500` on an app with a view and a route that uses
+  a `pydantic.v1` class, on FastAPI 0.119 to 0.127.
 - A decorator that reads the request from `args` or `kwargs`, such as
   `@limiter.limit` from slowapi, works on a method that a view inherits, and on a
   route that takes `list_params`. Before, each request gave `500`. These methods now

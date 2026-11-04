@@ -8,6 +8,7 @@ the same name, Restly warns.
 """
 
 import re
+import types
 
 import fastapi
 import pydantic
@@ -17,7 +18,7 @@ from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
 from fastapi_restly.exc import RestlyDuplicateSchemaNameWarning
-from fastapi_restly.views import ResponseSchema
+from fastapi_restly.views import ResponseSchema, _openapi_names
 
 from ._models import SharedBase
 from ._openapi_spec import Spec
@@ -384,6 +385,18 @@ def test_a_plain_view_on_the_app_is_enough_for_the_check():
 
     with pytest.warns(RestlyDuplicateSchemaNameWarning, match="the name Report"):
         app.openapi()
+
+
+def test_a_field_without_a_type_adapter_adds_no_class(monkeypatch):
+    """On FastAPI 0.119 to 0.127, a route can use a `pydantic.v1` class. FastAPI
+    0.128 refuses such a class, so the field here stands in for it."""
+    monkeypatch.setattr(
+        _openapi_names,
+        "get_fields_from_routes",
+        lambda routes: [types.SimpleNamespace()],
+    )
+
+    assert _openapi_names._component_classes([]) == {}
 
 
 def test_views_on_a_router_are_checked_through_configure():

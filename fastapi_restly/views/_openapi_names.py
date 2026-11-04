@@ -101,8 +101,12 @@ def _component_classes(routes: Sequence[BaseRoute]) -> dict[str, type]:
     found: dict[str, type] = {}
     seen: set[int] = set()
     for field in get_fields_from_routes(routes):
-        # FastAPI builds the spec from this same core schema.
-        _collect_classes(field._type_adapter.core_schema, found, seen)
+        # FastAPI builds the spec from this same core schema. A field of a
+        # `pydantic.v1` class has none, and pydantic does not name that class
+        # the way that this check reads.
+        adapter = getattr(field, "_type_adapter", None)
+        if adapter is not None:
+            _collect_classes(adapter.core_schema, found, seen)
     return found
 
 
