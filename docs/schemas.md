@@ -844,7 +844,7 @@ generated client then breaks.
 
 When the app builds its OpenAPI spec, Restly checks for this and warns with a
 {class}`RestlyDuplicateSchemaNameWarning <fastapi_restly.exc.RestlyDuplicateSchemaNameWarning>`
-that names the classes and the views. Restly checks an app that you pass to
+that names the classes and the CRUD views. Restly checks an app that you pass to
 {func}`fr.configure(app, ...) <fastapi_restly.db.configure>` or
 {func}`configure_tests(app=...) <fastapi_restly.testing.configure_tests>`, or
 that you include a view on. Two classes with the same name are not a problem

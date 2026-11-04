@@ -208,6 +208,8 @@ def test_a_set_of_ids_is_a_reference():
             collection[fr.MustExist[int, SetTag]]
         )
         assert _listed_ref_exists_marker(field) is not None
+        # An IDRef in a set has no list of rows to resolve to.
+        assert _collection_item_type(collection[fr.IDRef[SetTag]]) is None
 
 
 def test_a_generic_alias_takes_the_default_of_a_missing_argument():

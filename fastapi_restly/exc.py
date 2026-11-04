@@ -151,7 +151,8 @@ class RestlyDuplicateSchemaNameWarning(UserWarning):
     OpenAPI keeps all classes in one list, by name. So pydantic shows the
     classes under long names that can change, such as
     ``app__tasks__views__TaskCreate``, and generated clients use these names
-    as type names. The warning names the classes and the views that use them.
+    as type names. The warning names the classes and the CRUD views that use
+    them.
 
     Restly checks the spec each time the app builds it. It knows the app when
     you pass it to :func:`~fastapi_restly.db.configure` or

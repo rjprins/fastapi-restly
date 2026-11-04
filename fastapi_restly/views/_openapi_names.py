@@ -215,8 +215,8 @@ def _clash_message(
     for cls in sorted(classes, key=_path):
         lines.append(f"- {_describe(cls, roles.get(cls, {}))}")
     lines.append(
-        "Give each class its own name. A class that you wrote for a view's "
-        "role goes on the view, for example as create_schema. Restly names "
+        "Give each class its own name. On a CRUD view, a class that you wrote "
+        "for a role goes on the view, for example as create_schema. Restly names "
         "the schemas it generates after the main schema (the view's schema "
         "setting), and the list response after the response schema. To change "
         "those names, rename that class, or give a view without a schema one "

@@ -93,13 +93,12 @@ def test_an_async_view_loads_the_nested_schema_of_a_nested_schema(client, annota
 
 
 @spellings
-def test_a_reference_field_resolves_is_checked_and_is_documented(client, annotated):
+def test_a_reference_field_resolves_and_is_checked(client, annotated):
     """Before, Restly did not see such an ``IDRef`` as a reference. A write
     to a field named after a foreign key column returned 500. A create through
     a field named after a relationship returned 500 when the foreign key is a
     required argument. Two references to different rows were saved without
-    the "Conflicting references" 422. The misuse warning did not come, and
-    OpenAPI did not name the resource of the relationship field."""
+    the "Conflicting references" 422. The misuse warning did not come."""
 
     class Author(fr.IDMixin, SharedBase):
         name: Mapped[str]
