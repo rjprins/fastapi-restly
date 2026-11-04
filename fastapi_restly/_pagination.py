@@ -10,7 +10,9 @@ The settings classes are public through the package root and
 
 What differs per style lives in the settings classes, in private methods: the
 query parameters, the fields of the list params, how a statement gets its page,
-and what fills the envelope. The rest of Restly calls these methods.
+and what fills the envelope. The rest of Restly calls these methods. Only
+``query/_paged.py`` knows which base of list params of your own goes with which
+style.
 """
 
 import abc
@@ -25,17 +27,18 @@ from typing_extensions import TypeVar
 
 from .exc import BadQueryParam, RestlyConfigurationError
 
-#: Default ``page_size`` applied to paginated list endpoints when the client
-#: does not send one. A bounded default keeps a forgotten ``page_size`` from
-#: returning an entire table. Override per view through
-#: :attr:`~fastapi_restly.views.NumberedPagination.default_page_size`; to
-#: return every row, set the view's ``pagination`` to ``None`` instead of
-#: removing the cap.
+#: The ``page_size`` or ``limit`` of a list when the client does not send one.
+#: A bounded default keeps a forgotten parameter from returning an entire table.
+#: Override per view through
+#: :attr:`~fastapi_restly.views.NumberedPagination.default_page_size` or
+#: :attr:`~fastapi_restly.views.OffsetPagination.default_limit`; to return every
+#: row, set the view's ``pagination`` to ``None`` instead of removing the cap.
 DEFAULT_PAGE_SIZE: int = 50
 
-#: Maximum ``page_size`` accepted by list endpoints. Values above this are
-#: rejected with a 422. Override per view through
-#: :attr:`~fastapi_restly.views.NumberedPagination.max_page_size`.
+#: The largest ``page_size`` or ``limit`` that a list accepts. A larger value
+#: returns 422. Override per view through
+#: :attr:`~fastapi_restly.views.NumberedPagination.max_page_size` or
+#: :attr:`~fastapi_restly.views.OffsetPagination.max_limit`.
 MAX_PAGE_SIZE = 1000
 
 #: Largest pagination offset accepted by supported SQL databases. SQLite and
@@ -145,6 +148,25 @@ class Pagination(abc.ABC):
         """The model validators that generated list params get."""
         return {}
 
+    def _own_list_params_fields(self) -> dict[str, Any]:
+        """The fields that list params of your own get in a view, by their
+        Python name. The alias is the name in the URL, so code reads one name
+        whatever the URL calls it."""
+        return {}
+
+    def _own_list_params_validators(self) -> dict[str, Any]:
+        """The model validators that list params of your own get in a view."""
+        return {}
+
+    def _own_list_params_keys(self) -> dict[str, str]:
+        """The name in the URL of each field of list params of your own."""
+        return {}
+
+    def _row_limit_query_param(self) -> str | None:
+        """The name in the URL of the parameter that limits the rows of a page,
+        on a style with pages."""
+        return None
+
     @abc.abstractmethod
     def _apply(self, stmt: Select[Any], query_params: QueryParams) -> Select[Any]:
         """``stmt`` with the page that ``query_params`` ask for."""
@@ -245,39 +267,44 @@ class NumberedPagination(Pagination):
     def _query_params(self) -> tuple[str, ...]:
         return (self.page_query_param, self.page_size_query_param)
 
-    def _page_description(self) -> str:
-        if self.max_page is None:
-            return "1-based page number."
-        return f"1-based page number. At most {self.max_page}."
+    def _row_limit_query_param(self) -> str:
+        return self.page_size_query_param
 
-    def _page_size_description(self) -> str:
+    def _page_field(self, alias: str | None = None) -> tuple[Any, int]:
+        description = "1-based page number."
+        if self.max_page is not None:
+            description += f" At most {self.max_page}."
         return (
-            f"Number of items per page (1–{self.max_page_size}). "
-            f"Defaults to {self.default_page_size}."
+            Annotated[
+                int,
+                pydantic.Field(
+                    ge=1, le=self.max_page, alias=alias, description=description
+                ),
+            ],
+            1,
+        )
+
+    def _page_size_field(self, alias: str | None = None) -> tuple[Any, int]:
+        return (
+            Annotated[
+                int,
+                pydantic.Field(
+                    ge=1,
+                    le=self.max_page_size,
+                    alias=alias,
+                    description=(
+                        f"Number of items per page (1–{self.max_page_size}). "
+                        f"Defaults to {self.default_page_size}."
+                    ),
+                ),
+            ],
+            self.default_page_size,
         )
 
     def _list_params_fields(self) -> dict[str, Any]:
         return {
-            self.page_query_param: (
-                Annotated[
-                    int,
-                    pydantic.Field(
-                        ge=1, le=self.max_page, description=self._page_description()
-                    ),
-                ],
-                1,
-            ),
-            self.page_size_query_param: (
-                Annotated[
-                    Optional[int],
-                    pydantic.Field(
-                        ge=1,
-                        le=self.max_page_size,
-                        description=self._page_size_description(),
-                    ),
-                ],
-                self.default_page_size,
-            ),
+            self.page_query_param: self._page_field(),
+            self.page_size_query_param: self._page_size_field(),
         }
 
     def _list_params_validators(self) -> dict[str, Any]:
@@ -289,34 +316,9 @@ class NumberedPagination(Pagination):
         }
 
     def _own_list_params_fields(self) -> dict[str, Any]:
-        """The fields that ``fr.query.PagedListParams`` get in a view. They keep
-        their Python names, so code reads ``page_size`` whatever the URL calls
-        it; the alias is the name in the URL."""
         return {
-            "page": (
-                Annotated[
-                    int,
-                    pydantic.Field(
-                        ge=1,
-                        le=self.max_page,
-                        alias=self.page_query_param,
-                        description=self._page_description(),
-                    ),
-                ],
-                1,
-            ),
-            "page_size": (
-                Annotated[
-                    int,
-                    pydantic.Field(
-                        ge=1,
-                        le=self.max_page_size,
-                        alias=self.page_size_query_param,
-                        description=self._page_size_description(),
-                    ),
-                ],
-                self.default_page_size,
-            ),
+            "page": self._page_field(alias=self.page_query_param),
+            "page_size": self._page_size_field(alias=self.page_size_query_param),
         }
 
     def _own_list_params_validators(self) -> dict[str, Any]:
@@ -325,6 +327,9 @@ class NumberedPagination(Pagination):
                 "page", "page_size", self.page_query_param, self.page_size_query_param
             )
         }
+
+    def _own_list_params_keys(self) -> dict[str, str]:
+        return {"page": self.page_query_param, "page_size": self.page_size_query_param}
 
     def _apply(self, stmt: Select[Any], query_params: QueryParams) -> Select[Any]:
         page_size = _get_int(query_params, self.page_size_query_param)
@@ -403,7 +408,7 @@ class OffsetPagination(Pagination):
                 "'pagination = None' on the view."
             )
         if self.max_offset is not None:
-            _check_count("OffsetPagination", "max_offset", self.max_offset)
+            _check_count("OffsetPagination", "max_offset", self.max_offset, least=0)
         _check_query_params(
             "OffsetPagination",
             limit_query_param=self.limit_query_param,
@@ -413,6 +418,9 @@ class OffsetPagination(Pagination):
 
     def _query_params(self) -> tuple[str, ...]:
         return (self.limit_query_param, self.offset_query_param)
+
+    def _row_limit_query_param(self) -> str:
+        return self.limit_query_param
 
     def _limit_field(self, alias: str | None = None) -> tuple[Any, int]:
         return (
@@ -452,16 +460,13 @@ class OffsetPagination(Pagination):
         }
 
     def _own_list_params_fields(self) -> dict[str, Any]:
-        """The fields that ``fr.query.OffsetListParams`` get in a view. They keep
-        their Python names, so code reads ``offset`` whatever the URL calls it;
-        the alias is the name in the URL."""
         return {
             "limit": self._limit_field(alias=self.limit_query_param),
             "offset": self._offset_field(alias=self.offset_query_param),
         }
 
-    def _own_list_params_validators(self) -> dict[str, Any]:
-        return {}
+    def _own_list_params_keys(self) -> dict[str, str]:
+        return {"limit": self.limit_query_param, "offset": self.offset_query_param}
 
     def _apply(self, stmt: Select[Any], query_params: QueryParams) -> Select[Any]:
         limit = _get_int(query_params, self.limit_query_param)
@@ -574,9 +579,7 @@ def _offset_validator(
     @pydantic.model_validator(mode="after")
     def _validate_pagination_offset(params: pydantic.BaseModel) -> pydantic.BaseModel:
         page = cast(int, getattr(params, page_attr))
-        page_size = cast(Optional[int], getattr(params, page_size_attr))
-        if page_size is None:
-            return params
+        page_size = cast(int, getattr(params, page_size_attr))
         if page - 1 > _MAX_PAGINATION_OFFSET // page_size:
             raise ValueError(
                 f"{page_param} and {page_size_param} produce an offset above "
@@ -602,10 +605,10 @@ def _is_int(value: Any) -> bool:
     return isinstance(value, int) and not isinstance(value, bool)
 
 
-def _check_count(owner: str, name: str, value: Any) -> None:
-    if not _is_int(value) or value < 1:
+def _check_count(owner: str, name: str, value: Any, *, least: int = 1) -> None:
+    if not _is_int(value) or value < least:
         raise RestlyConfigurationError(
-            f"{owner}.{name} must be an int of at least 1, got {value!r}."
+            f"{owner}.{name} must be an int of at least {least}, got {value!r}."
         )
 
 

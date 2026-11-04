@@ -9,7 +9,7 @@ unknown query key, and writes the OpenAPI parameters.
 import inspect
 import types
 import weakref
-from collections.abc import Set
+from collections.abc import Iterator, Set
 from typing import (
     Annotated,
     Any,
@@ -24,6 +24,7 @@ from typing import (
 
 import fastapi
 import pydantic
+from fastapi.dependencies.models import Dependant
 from fastapi.exceptions import RequestValidationError
 from fastapi.openapi.models import APIKeyIn
 from fastapi.security.api_key import APIKeyBase
@@ -43,6 +44,7 @@ from ..query._impl import (
     _check_default_sort,
     _check_key_setting,
     _OwnFilter,
+    _query_key,
 )
 from ._guards import _owner, _route_parameters, _set_by
 from ._reads import _clause_element
@@ -395,18 +397,54 @@ def _route_query_keys(request: fastapi.Request) -> set[str]:
     params do not have.
     """
     dependant = getattr(matched_route(request.scope), "dependant", None)
-    pending = [dependant] if dependant is not None else []
     keys: set[str] = set()
-    while pending:
-        current = pending.pop()
-        for field in current.query_params:
-            # the name FastAPI reads the value from
-            keys.add(getattr(field, "validation_alias", None) or field.alias)
+    if dependant is None:
+        return keys
+    for current in _dependants(dependant):
+        keys.update(_field_key(field) for field in current.query_params)
         call = current.call
         if isinstance(call, APIKeyBase) and call.model.in_ == APIKeyIn.query:
             keys.add(call.model.name)
-        pending.extend(current.dependencies)
     return keys
+
+
+def _dependants(dependant: Dependant) -> Iterator[Dependant]:
+    """``dependant`` and every dependency below it."""
+    pending = [dependant]
+    while pending:
+        current = pending.pop()
+        yield current
+        pending.extend(current.dependencies)
+
+
+def _field_key(field: Any) -> str:
+    """The name that FastAPI reads the value of a query parameter from."""
+    return getattr(field, "validation_alias", None) or field.alias
+
+
+def _check_route_query_keys(
+    view_name: str, route_name: str, dependant: Dependant, list_keys: Iterable[str]
+) -> None:
+    """Reject a route that reads a key of its list params itself.
+
+    One value would fill both, and OpenAPI would show the key twice, which it
+    does not allow. A parameter outside the schema does neither. A dependency
+    on the app or on a router is not known yet when a view registers.
+
+    :raises RestlyConfigurationError: the route reads such a key.
+    """
+    keys = set(list_keys)
+    for current in _dependants(dependant):
+        for field in current.query_params:
+            key = _field_key(field)
+            if key in keys and getattr(field.field_info, "include_in_schema", True):
+                raise RestlyConfigurationError(
+                    f"{view_name}.{route_name} reads the query key {key!r} itself, "
+                    "and the list params of the view read it too. One value would "
+                    "fill both, and OpenAPI would show the key twice. Read the value "
+                    "from list_params, or give the parameter of the route another "
+                    "name."
+                )
 
 
 def _list_params_dependency(
@@ -426,7 +464,9 @@ def _list_params_dependency(
     fields = _list_params_fields(params_model)
 
     def list_params(request: fastapi.Request, first: Any = None) -> pydantic.BaseModel:
-        return _validate_list_params(params_model, fields, request.query_params)
+        return _validate_list_params(
+            params_model, fields, request.query_params, request
+        )
 
     parameters = [
         inspect.Parameter(
@@ -475,9 +515,11 @@ def _validate_list_params(
     params_model: type[pydantic.BaseModel],
     fields: _ListParamsFields,
     query: QueryParams,
+    request: fastapi.Request | None = None,
 ) -> pydantic.BaseModel:
     """Validate ``params_model`` from ``query``, as FastAPI validates a
-    query model.
+    query model. A key of another reader on the route of ``request`` does not
+    reach the model, so ``extra="forbid"`` accepts it.
 
     :raises RequestValidationError: a value fails the validation of its
         field. The location of each error starts with ``"query"``.
@@ -491,10 +533,13 @@ def _validate_list_params(
             default = field.get_default()
             if default is not None:
                 data[key] = default
-    for key in query.keys():
-        if key not in field_keys:
-            values = query.getlist(key)
-            data[key] = values[0] if len(values) == 1 else values
+    others = [key for key in query.keys() if key not in field_keys]
+    if others and request is not None:
+        route_keys = _route_query_keys(request)
+        others = [key for key in others if key not in route_keys]
+    for key in others:
+        values = query.getlist(key)
+        data[key] = values[0] if len(values) == 1 else values
     try:
         return params_model.model_validate(data)
     except pydantic.ValidationError as exc:
@@ -531,14 +576,6 @@ def _validate_raw_list_params(
     if unknown:
         raise _unknown_keys_error(query, unknown)
     return _validate_list_params(params_model, fields, query)
-
-
-def _query_key(name: str, field: FieldInfo) -> str:
-    """The query key of a list params field: its validation alias, its alias, or
-    its name, as FastAPI reads a query model."""
-    if isinstance(field.validation_alias, str):
-        return field.validation_alias
-    return field.alias or name
 
 
 def _reads_every_value(field: FieldInfo) -> bool:

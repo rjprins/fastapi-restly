@@ -233,3 +233,20 @@ def test_an_override_reads_the_page_from_the_list_params(client):
     body = client.get("/items", params={"page": "2", "page_size": "2"}).json()
     assert [row["name"] for row in body["data"]] == ["item 002", "item 001"]
     assert body["total_pages"] == 3
+
+
+def test_openapi_shows_a_generated_page_size_as_an_integer():
+    """A query cannot send ``null``, so the schema does not allow it."""
+    item = _item_model()
+
+    class ItemView(fr.AsyncRestView):
+        prefix = "/items"
+        model = item
+
+    app = FastAPI()
+    fr.include_view(app, ItemView)
+
+    parameters = app.openapi()["paths"]["/items"]["get"]["parameters"]
+    page_size = next(p for p in parameters if p["name"] == "page_size")
+    assert page_size["schema"]["type"] == "integer"
+    assert "anyOf" not in page_size["schema"]

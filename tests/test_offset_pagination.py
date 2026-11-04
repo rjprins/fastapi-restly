@@ -3,11 +3,11 @@
 Each behaviour of a request runs on an async view and on a sync view.
 """
 
-from typing import Any, Generic, TypeVar
+from typing import Annotated, Any, Generic, TypeVar
 
 import pydantic
 import pytest
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import ColumnElement, select
 from sqlalchemy.orm import Mapped
@@ -16,6 +16,7 @@ from starlette.datastructures import QueryParams
 import fastapi_restly as fr
 from fastapi_restly.exc import RestlyConfigurationError
 from fastapi_restly.query import apply_list_params, derive_list_params_schema
+from fastapi_restly.query._paged import _completed_list_params
 from fastapi_restly.testing import RestlyTestClient
 from fastapi_restly.views import ListResponseSchema
 
@@ -474,7 +475,10 @@ def test_a_list_response_schema_with_page_numbers_fails_at_registration():
         ({"default_limit": 0}, r"OffsetPagination.default_limit must be an int in"),
         ({"default_limit": 51, "max_limit": 50}, r"in \[1, 50\], got 51"),
         ({"default_limit": None}, "set 'pagination = None'"),
-        ({"max_offset": 0}, "OffsetPagination.max_offset must be an int of at least 1"),
+        (
+            {"max_offset": -1},
+            "OffsetPagination.max_offset must be an int of at least 0",
+        ),
         ({"limit_query_param": ""}, "limit_query_param must be a non-empty string"),
         ({"offset_query_param": "a__b"}, "'__' is reserved for filter operators"),
         ({"offset_query_param": "a.b"}, "'.' for relation traversal"),
@@ -556,21 +560,21 @@ def test_a_filter_named_like_a_parameter_fails_at_registration(name):
         fr.include_view(FastAPI(), view_cls)
 
 
-def test_renaming_a_parameter_frees_its_name_for_a_filter(client):
+def test_renaming_a_parameter_frees_its_name_for_a_filter(lists):
     thing, thing_schema = _column_named("offset")
 
-    @fr.include_view(client.app)
-    class ThingView(fr.AsyncRestView):
+    @fr.include_view(lists.client.app)
+    class ThingView(lists.view_base):
         prefix = "/things"
         model = thing
         schema = thing_schema
         pagination = fr.OffsetPagination(offset_query_param="skip")
 
-    create_tables()
-    client.post("/things", json={"offset": "a"})
-    client.post("/things", json={"offset": "b"})
+    lists.create()
+    lists.client.post("/things", json={"offset": "a"})
+    lists.client.post("/things", json={"offset": "b"})
 
-    body = client.get("/things", params={"offset": "b", "skip": 0}).json()
+    body = lists.client.get("/things", params={"offset": "b", "skip": 0}).json()
     assert [row["offset"] for row in body["data"]] == ["b"]
     assert body["total_count"] == 1
 
@@ -847,57 +851,60 @@ def test_own_list_params_get_the_fields_of_the_pagination(lists):
     assert _parameter(operation, "skip")["schema"]["minimum"] == 0
 
 
-def test_code_reads_the_python_names_of_the_fields(client):
-    class Thing(fr.IDMixin, SharedBase):
-        name: Mapped[str]
-
+def test_code_reads_the_python_names_of_the_fields(lists):
     seen = []
 
-    @fr.include_view(client.app)
-    class ThingView(fr.AsyncRestView):
-        prefix = "/things"
-        model = Thing
-        list_params_schema = Search
-        pagination = fr.OffsetPagination(offset_query_param="skip")
+    def page_of(stmt, list_params: Search):
+        seen.append((list_params.limit, list_params.offset))
+        return stmt.limit(list_params.limit).offset(list_params.offset)
+
+    if lists.view_base is fr.AsyncRestView:
 
         async def apply_list_params(self, stmt, list_params: Search):
-            seen.append((list_params.limit, list_params.offset))
-            return stmt.limit(list_params.limit).offset(list_params.offset)
+            return page_of(stmt, list_params)
 
-    create_tables()
-    client.post("/things", json={"name": "a"})
-    client.post("/things", json={"name": "b"})
+    else:
 
-    body = client.get("/things", params={"skip": 1, "limit": 5}).json()
+        def apply_list_params(self, stmt, list_params: Search):
+            return page_of(stmt, list_params)
+
+    lists.view(
+        rows=2,
+        list_params_schema=Search,
+        pagination=fr.OffsetPagination(offset_query_param="skip"),
+        apply_list_params=apply_list_params,
+    )
+
+    body = lists.client.get("/things", params={"skip": 1, "limit": 5}).json()
     assert seen == [(5, 1)]
-    assert [row["name"] for row in body["data"]] == ["b"]
+    assert [row["name"] for row in body["data"]] == ["Thing 1"]
     assert (body["total_count"], body["limit"], body["offset"]) == (2, 5, 1)
 
 
-def test_one_class_serves_views_with_other_limits(client):
+def test_one_class_serves_views_with_other_limits(lists):
     class Thing(fr.IDMixin, SharedBase):
         name: Mapped[str]
 
-    class BaseView(fr.AsyncRestView):
+    class BaseView(lists.view_base):
         model = Thing
         list_params_schema = Search
         pagination = fr.OffsetPagination()
 
-    @fr.include_view(client.app)
+    @fr.include_view(lists.client.app)
     class ThingView(BaseView):
         prefix = "/things"
 
-    @fr.include_view(client.app)
+    @fr.include_view(lists.client.app)
     class LogView(BaseView):
         prefix = "/log"
         pagination = fr.OffsetPagination(default_limit=1)
 
-    create_tables()
-    client.post("/things", json={"name": "a"})
-    client.post("/things", json={"name": "b"})
+    lists.create()
+    lists.client.post("/things", json={"name": "a"})
+    lists.client.post("/things", json={"name": "b"})
 
-    assert client.get("/things").json()["limit"] == 50
-    assert client.get("/log").json()["limit"] == 1
+    assert lists.client.get("/things").json()["limit"] == 50
+    assert lists.client.get("/log").json()["limit"] == 1
     assert ThingView.list_params_schema is Search
 
 
@@ -1090,3 +1097,349 @@ def test_a_react_admin_view_keeps_its_own_range(base):
         )
     assert "pages with the 'range' parameter" in str(caught.value)
     assert "must stay a fr.NumberedPagination" in str(caught.value)
+
+
+# ---------------------------------------------------------------------------
+# What a view rejects when it registers
+# ---------------------------------------------------------------------------
+
+
+def _thing_view(**settings: Any) -> type:
+    class Thing(fr.IDMixin, SharedBase):
+        name: Mapped[str]
+
+    return type(
+        "ThingView",
+        (fr.AsyncRestView,),
+        {"prefix": "/things", "model": Thing, **settings},
+    )
+
+
+class _OptionalLimit(BaseModel):
+    limit: int | None = None
+    offset: int = 0
+
+
+class _OptionalPageSize(BaseModel):
+    page: int = 1
+    page_size: int | None = None
+
+
+@pytest.mark.parametrize(
+    ("params", "settings", "key"),
+    [
+        (_OptionalLimit, fr.OffsetPagination(), "limit"),
+        (_OptionalPageSize, fr.NumberedPagination(), "page_size"),
+    ],
+)
+def test_a_size_field_with_the_default_none_fails_at_registration(
+    params, settings, key
+):
+    """Without the field the list returns every row, and the response says that
+    it has pages."""
+    view_cls = _thing_view(list_params_schema=params, pagination=settings)
+    with pytest.raises(RestlyConfigurationError, match=f"field '{key}' the default"):
+        fr.include_view(FastAPI(), view_cls)
+
+
+def test_an_offset_field_with_the_default_none_is_the_first_row(lists):
+    class OptionalOffset(BaseModel):
+        limit: int = 2
+        offset: int | None = None
+
+    lists.view(list_params_schema=OptionalOffset, pagination=fr.OffsetPagination())
+
+    body = lists.client.get("/things").json()
+    assert [row["name"] for row in body["data"]] == ["Thing 0", "Thing 1"]
+    assert (body["limit"], body["offset"]) == (2, 0)
+
+
+def test_hand_written_page_fields_keep_their_own_bounds(lists):
+    class Bounded(BaseModel):
+        limit: int = Field(2, ge=1, le=3)
+        offset: int = Field(0, ge=0)
+
+    lists.view(
+        list_params_schema=Bounded,
+        pagination=fr.OffsetPagination(default_limit=1, max_limit=1),
+    )
+
+    assert len(lists.names()) == 2
+    assert len(lists.names(limit=3)) == 3
+    lists.client.get("/things", params={"limit": 4}, assert_status_code=422)
+    lists.client.get("/things", params={"offset": -1}, assert_status_code=422)
+
+
+class _SkipField(fr.query.OffsetListParams):
+    skip: int = 0
+
+
+class _QField(fr.query.OffsetListParams):
+    q: str | None = None
+
+
+class _SizeField(fr.query.PagedListParams):
+    size: int = 0
+
+
+class _TwoAliases(BaseModel):
+    page: int = 1
+    page_size: int = 50
+    first: str | None = Field(None, alias="x")
+    second: str | None = Field(None, alias="x")
+
+
+@pytest.mark.parametrize(
+    ("params", "settings", "key"),
+    [
+        (_SkipField, fr.OffsetPagination(offset_query_param="skip"), "skip"),
+        (_QField, fr.OffsetPagination(limit_query_param="q"), "q"),
+        (_SizeField, fr.NumberedPagination(page_size_query_param="size"), "size"),
+        (_TwoAliases, fr.NumberedPagination(), "x"),
+    ],
+)
+def test_two_fields_with_one_query_key_fail_at_registration(params, settings, key):
+    """OpenAPI would show the key twice, and one value would fill both."""
+    view_cls = _thing_view(list_params_schema=params, pagination=settings)
+    with pytest.raises(RestlyConfigurationError, match=f"query key '{key}'"):
+        fr.include_view(FastAPI(), view_cls)
+
+
+class _Capped(fr.query.OffsetListParams):
+    limit: int = Field(5, ge=1, le=10)
+
+
+class _BelowCapped(_Capped):
+    q: str | None = None
+
+
+class _CappedSize(fr.query.PagedListParams):
+    page_size: int = Field(5, ge=1, le=10)
+
+
+@pytest.mark.parametrize(
+    ("params", "settings", "field", "needed"),
+    [
+        (_Capped, fr.OffsetPagination(), "limit", "OffsetPagination"),
+        (_BelowCapped, fr.OffsetPagination(), "limit", "OffsetPagination"),
+        (_CappedSize, fr.NumberedPagination(), "page_size", "NumberedPagination"),
+    ],
+)
+def test_a_page_field_declared_again_fails_at_registration(
+    params, settings, field, needed
+):
+    """The view replaces the field, so its default and bounds would do nothing."""
+    view_cls = _thing_view(list_params_schema=params, pagination=settings)
+    with pytest.raises(
+        RestlyConfigurationError, match=f"the field '{field}' again"
+    ) as e:
+        fr.include_view(FastAPI(), view_cls)
+    assert f"fr.{needed}" in str(e.value)
+
+
+def _reads_limit(limit: int = 7) -> int:
+    return limit
+
+
+def _route_with_limit(self, list_params, limit: int = 7):
+    return {"limit": limit}
+
+
+def _route_with_page_size(self, list_params, page_size: int = 7):
+    return {"page_size": page_size}
+
+
+def _route_with_a_filter_key(self, list_params, name: str = ""):
+    return {"name": name}
+
+
+def _route_with_an_alias(self, list_params, size: int = Query(7, alias="limit")):
+    return {"size": size}
+
+
+def _route_with_a_dependency(
+    self, list_params, size: Annotated[int, Depends(_reads_limit)]
+):
+    return {"size": size}
+
+
+@pytest.mark.parametrize(
+    ("route", "settings", "key"),
+    [
+        (_route_with_limit, fr.OffsetPagination(), "limit"),
+        (_route_with_page_size, fr.NumberedPagination(), "page_size"),
+        (_route_with_a_filter_key, fr.OffsetPagination(), "name"),
+        (_route_with_an_alias, fr.OffsetPagination(), "limit"),
+        (_route_with_a_dependency, fr.OffsetPagination(), "limit"),
+    ],
+)
+def test_a_route_that_reads_a_key_of_its_list_params_fails_at_registration(
+    route, settings, key
+):
+    class ThingSchema(fr.IDSchema):
+        name: str
+
+    class Thing(fr.IDMixin, SharedBase):
+        name: Mapped[str]
+
+    view_cls = type(
+        "ThingView",
+        (fr.AsyncRestView,),
+        {
+            "prefix": "/things",
+            "model": Thing,
+            "schema": ThingSchema,
+            "pagination": settings,
+            "own": fr.get("/own/key")(route),
+        },
+    )
+    with pytest.raises(
+        RestlyConfigurationError, match=f"ThingView.own reads the query key '{key}'"
+    ):
+        fr.include_view(FastAPI(), view_cls)
+
+
+def test_a_route_with_its_own_limit_keeps_it_on_a_view_with_page_numbers(lists):
+    lists.view(own=fr.get("/own/key")(_route_with_limit))
+
+    assert lists.client.get("/things/own/key", params={"limit": 2}).json() == {
+        "limit": 2
+    }
+
+
+def test_a_route_can_read_a_key_of_its_list_params_outside_the_schema(lists):
+    """OpenAPI shows the key once, and the route gets the value of the client."""
+
+    def own(
+        self, list_params, size: int = Query(7, alias="limit", include_in_schema=False)
+    ):
+        return {"size": size, "limit": list_params.limit}
+
+    lists.view(pagination=fr.OffsetPagination(), own=fr.get("/own/key")(own))
+
+    body = lists.client.get("/things/own/key", params={"limit": 2}).json()
+    assert body == {"size": 2, "limit": 2}
+    _, operation = _operation(lists.client, "/things/own/key")
+    assert [p["name"] for p in operation["parameters"]].count("limit") == 1
+
+
+# ---------------------------------------------------------------------------
+# Other readers and other names
+# ---------------------------------------------------------------------------
+
+
+def test_list_params_that_forbid_extra_keys_accept_a_key_of_the_route(lists):
+    class Strict(fr.query.OffsetListParams):
+        model_config = pydantic.ConfigDict(extra="forbid")
+
+    def own(self, list_params, flag: bool = False):
+        return {"flag": flag}
+
+    lists.view(
+        list_params_schema=Strict,
+        pagination=fr.OffsetPagination(),
+        own=fr.get("/own/flag")(own),
+    )
+
+    response = lists.client.get("/things/own/flag", params={"flag": "true"})
+    assert response.json() == {"flag": True}
+    lists.client.get("/things/own/flag", params={"other": 1}, assert_status_code=422)
+
+
+def test_a_max_offset_of_zero_keeps_a_client_on_the_first_rows(lists):
+    lists.view(pagination=fr.OffsetPagination(max_offset=0))
+
+    assert len(lists.names(offset=0)) == 5
+    lists.client.get("/things", params={"offset": 1}, assert_status_code=422)
+    _, operation = _operation(lists.client)
+    assert _parameter(operation, "offset")["schema"]["maximum"] == 0
+
+
+def test_a_page_field_with_only_a_validation_alias_reads_the_alias(lists):
+    class SkipAlias(BaseModel):
+        limit: int = 2
+        offset: int = Field(0, validation_alias="skip")
+
+    lists.view(
+        list_params_schema=SkipAlias,
+        pagination=fr.OffsetPagination(offset_query_param="skip"),
+    )
+
+    body = lists.client.get("/things", params={"skip": 1}).json()
+    assert [row["name"] for row in body["data"]] == ["Thing 1", "Thing 2"]
+    assert (body["limit"], body["offset"]) == (2, 1)
+
+
+@pytest.mark.parametrize(
+    ("params", "settings", "page"),
+    [
+        (
+            Search(limit=2, offset=1),
+            fr.OffsetPagination(limit_query_param="take", offset_query_param="skip"),
+            {"limit": 2, "offset": 1},
+        ),
+        (
+            fr.query.PagedListParams(page=2, page_size=1),
+            fr.NumberedPagination(page_size_query_param="size"),
+            {"page": 2, "page_size": 1},
+        ),
+    ],
+)
+def test_list_params_from_code_use_the_names_of_the_view(lists, params, settings, page):
+    if lists.view_base is fr.AsyncRestView:
+
+        async def own(self) -> ListResponseSchema:
+            return self.to_list_response(await self.handle_get_many(params))
+
+    else:
+
+        def own(self) -> ListResponseSchema:
+            return self.to_list_response(self.handle_get_many(params))
+
+    lists.view(
+        list_params_schema=type(params),
+        pagination=settings,
+        own=fr.get("/own/page")(own),
+    )
+
+    body = lists.client.get("/things/own/page").json()
+    assert body["total_count"] == 5
+    assert body["data"][0]["name"] == "Thing 1"
+    assert {key: body[key] for key in page} == page
+
+
+@pytest.mark.parametrize(
+    ("declared", "settings", "values", "sql"),
+    [
+        (
+            Search,
+            fr.OffsetPagination(limit_query_param="take", offset_query_param="skip"),
+            {"take": 3, "skip": 6},
+            "LIMIT 3 OFFSET 6",
+        ),
+        (
+            fr.query.PagedListParams,
+            fr.NumberedPagination(page_size_query_param="size"),
+            {"size": 3, "page": 3},
+            "LIMIT 3 OFFSET 6",
+        ),
+    ],
+)
+def test_apply_list_params_reads_the_names_of_the_view_that_completed_them(
+    declared, settings, values, sql
+):
+    """The renamed key is a page parameter, also with a column of that name."""
+
+    class Thing(fr.IDMixin, SharedBase):
+        name: Mapped[str]
+        size: Mapped[int]
+
+    class ThingSchema(fr.IDSchema):
+        name: str
+        size: int
+
+    completed = _completed_list_params(declared, settings)
+    stmt = apply_list_params(select(Thing), completed(**values), Thing, ThingSchema)
+    compiled = str(stmt.compile(compile_kwargs={"literal_binds": True}))
+    assert sql in compiled
+    assert "WHERE" not in compiled

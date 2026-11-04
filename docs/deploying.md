@@ -346,7 +346,8 @@ ordinary route, so that you control its checks and its timeouts.
 
 Restly is made first for APIs with known clients, such as an internal app or
 an admin panel, so its limits on the work that one request can cause are
-generous by default. A page has at most `max_page_size` rows. A client sorts
+generous by default. A page has at most `max_page_size` or `max_limit` rows. A
+client sorts
 and filters only by the keys that the view allows, and uses each sort key only
 once. A dotted key joins another table, so dotted keys are off until the view
 turns them on. If you find a request that has no such limit, please report it
@@ -367,7 +368,11 @@ on its view:
 - Lower the page size and its maximum with
   {class}`fr.NumberedPagination <fastapi_restly.views.NumberedPagination>`,
   such as `default_page_size=25` and `max_page_size=100`. `max_page` limits
-  how far a client can page. See [Page through a list](#list-pagination).
+  how far a client can page. See [Page through a list](#list-pagination). For
+  a list with
+  {class}`fr.OffsetPagination <fastapi_restly.views.OffsetPagination>`, these
+  settings are `default_limit`, `max_limit` and `max_offset`. See
+  [Page with limit and offset](#limit-offset-pagination).
 - Turn on only the filters and sort keys that clients need, with
   `include_filters` and `include_sort_keys`. Filter keys of your own, from
   [`@fr.list_filter`](#own-list-filter), are always on, so check those too.

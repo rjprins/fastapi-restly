@@ -46,7 +46,7 @@ from ._class_based_view import (
 )
 from ._generated import _drop_stale_settings, _list_params_schema
 from ._guards import _check_removed_settings
-from ._list_params import _list_openapi_parameters
+from ._list_params import _check_route_query_keys, _list_openapi_parameters
 from ._misuse_lint import _warn_on_misuse
 from ._openapi import _register_for_resource_ref
 from ._schema_types import (
@@ -654,6 +654,13 @@ def _init_api_router(view_cls: type[View]) -> fastapi.APIRouter:
             extra["parameters"] = [*list_parameters, *extra.get("parameters", [])]
             route_kwargs["openapi_extra"] = extra
         _add_api_route(api_router, view_cls, path, endpoint, route_kwargs)
+        if getattr(endpoint, "_fr_list_guard", False):
+            _check_route_query_keys(
+                view_cls.__name__,
+                name,
+                api_router.routes[-1].dependant,  # type: ignore[attr-defined]
+                (parameter["name"] for parameter in list_parameters or ()),
+            )
 
     return api_router
 

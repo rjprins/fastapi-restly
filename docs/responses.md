@@ -69,7 +69,7 @@ Unless the view sets another class, this is the pagination's envelope, filled
 with the response schema. By default that envelope is a
 {class}`NumberedEnvelope <fastapi_restly.views.NumberedEnvelope>`, an
 {class}`OffsetEnvelope <fastapi_restly.views.OffsetEnvelope>` for a view with
-`fr.OffsetPagination`, and a plain
+{class}`fr.OffsetPagination <fastapi_restly.views.OffsetPagination>`, and a plain
 {class}`Envelope <fastapi_restly.views.Envelope>` for a view without
 pagination. OpenAPI names the filled class after the response schema:
 `TagListResponse` for `TagResponse`, which Restly derives from `TagSchema`.
@@ -81,8 +81,8 @@ The list envelope is a Pydantic model, and you can replace it. Write a
 generic model with one type parameter for the items, and set it as the
 `envelope` of the view's pagination. Restly fills its fields by name from
 `data`, `total_count`, `page`, `page_size` and `total_pages`, or with
-`fr.OffsetPagination` from `data`, `total_count`, `limit` and `offset`. The
-response and OpenAPI follow the model.
+{class}`fr.OffsetPagination <fastapi_restly.views.OffsetPagination>` from `data`,
+`total_count`, `limit` and `offset`. The response and OpenAPI follow the model.
 
 - Leave a field out to drop it from the response.
 - Rename a field in the JSON with `alias`, or rename them all with an

@@ -36,8 +36,10 @@ through `fr`.
 | {func}`fr.none_of <fastapi_restly.clauses.none_of>` | Match the rows where none of the query clauses match. |
 | {class}`fr.NoPagination <fastapi_restly.views.NoPagination>` | Settings for a view's `pagination` that returns every row, optionally with an envelope of your own. |
 | {class}`fr.NumberedPagination <fastapi_restly.views.NumberedPagination>` | Page-number pagination settings for a view's `pagination`. |
+| {class}`fr.OffsetPagination <fastapi_restly.views.OffsetPagination>` | Limit and offset pagination settings for a view's `pagination`. |
 | {func}`fr.open_async_session <fastapi_restly.db.open_async_session>` | Open an async session outside request handling. |
 | {func}`fr.open_session <fastapi_restly.db.open_session>` | Open a synchronous session outside request handling. |
+| {class}`fr.Pagination <fastapi_restly.views.Pagination>` | The base class of the pagination settings, to annotate a view's `pagination`. |
 | {func}`fr.patch <fastapi_restly.views.patch>` | Decorate a PATCH endpoint method. |
 | {func}`fr.post <fastapi_restly.views.post>` | Decorate a POST endpoint method. |
 | {func}`fr.put <fastapi_restly.views.put>` | Decorate a PUT endpoint method. |

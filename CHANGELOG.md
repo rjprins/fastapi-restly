@@ -55,7 +55,23 @@ miss it.
    model. Before, `to_response` copied the value into the response schema. Declare
    `-> ResponseSchema` on the route.
 9. Rename `fr.views.PaginatedEnvelope` to `fr.views.NumberedEnvelope`. A pagination
-   style now has an envelope with its own name. The JSON and OpenAPI do not change.
+   style now has an envelope with its own name. The JSON does not change. In
+   OpenAPI, a class that you fill yourself, such as `NumberedEnvelope[Summary]`,
+   gets a new name: `NumberedEnvelope_Summary_`. A client that you generate from
+   the spec can see this new name.
+10. A view with one of these now fails when it registers. Before, each one
+    started without an error:
+    - A route that reads a key of its list params itself, such as `limit` next to
+      `list_params` on a view with `fr.OffsetPagination`, or `name` when `name` is
+      a filter. One value filled both, and OpenAPI showed the key twice. Read the
+      value from `list_params`, or give the parameter of the route another name.
+    - List params of your own with more than one field for a query key.
+    - A subclass of `fr.query.PagedListParams` or `fr.query.OffsetListParams` that
+      declares a page field again. The view ignored its default and its bounds.
+      Set them on the pagination.
+    - A hand-written `page_size` or `limit` field with the default `None`. A
+      request without it returned every row, and the response reported the default
+      size. Give the field a number as its default.
 
 ### Added
 
@@ -117,11 +133,25 @@ miss it.
 
 ### Fixed
 
-- The error for list params of your own without page fields no longer gives advice
-  that does not work for a list with its own `limit` and `offset`. `PagedListParams`
-  gives page numbers, and `pagination = None` gave a `total_count` of the rows in the
-  response, without an error. The error now names `fr.OffsetPagination`, and the
-  guide warns about the count.
+- The error for list params of your own without page fields now fits a list with
+  its own `limit` and `offset`. Its advice was `PagedListParams`, which gives page
+  numbers, or `pagination = None`. With `pagination = None`, an envelope with a
+  `total_count` field gets the number of rows in the response, without an error. The
+  error now names `fr.OffsetPagination`, and the guide warns about the count.
+- A route can read a key of its own next to list params with `extra="forbid"`.
+  Before, OpenAPI showed the key, and a request with it got `422`.
+- A page field with only a `validation_alias` works. Before, a request with that
+  key got `400`.
+- List params of your own that code creates work on a view that renames its page
+  parameters, in `handle_get_many`, in `ListResult` and in
+  `fr.query.apply_list_params`. Before, they got `400`, a filter on the renamed key
+  or the wrong page in the response.
+- OpenAPI shows the `page_size` of generated list params as an integer. Before, it
+  also allowed `null`, which a query cannot send.
+- Creating a pagination checks the envelope with the default page size, not with
+  a page size of 1. So an envelope that rejects the default size, such as one with
+  `page_size: int = Field(le=10)`, fails when you create the settings, not on a
+  request.
 - A marker inside a generic class, as in `Data[ResponseSchema]`, is filled. Before,
   the marker stayed, and OpenAPI showed a field without a type.
 - A marker in a type alias, as in `type Resp = ResponseSchema`, is filled. Before,

@@ -35,7 +35,6 @@ from .._columns import check_text, column_value
 from .._pagination import (
     _DEFAULT_PAGINATION,
     _SORT_QUERY_PARAM,
-    OffsetPagination,
     Pagination,
     _check_query_param,
     _settings_of,
@@ -49,7 +48,7 @@ from ..schemas._base import (
     _schema_role_name,
     _unwrap_type,
 )
-from ._paged import OffsetListParams
+from ._paged import _pagination_of_list_params, _takes_page_fields
 from ._shared import (
     SortNulls,
     _append_pk_tiebreak,
@@ -57,9 +56,6 @@ from ._shared import (
     _escape_like_value,
     _sort_term,
 )
-
-#: The pagination of ``fr.query.OffsetListParams`` outside a view.
-_DEFAULT_OFFSET_PAGINATION = OffsetPagination()
 
 _SchemaClass = type[pydantic.BaseModel]
 _JoinAliases = dict[tuple[str, ...], AliasedClass[Any]]
@@ -440,8 +436,8 @@ def derive_list_params_schema(
     URL query parameters of a list endpoint. A view keeps it in
     :attr:`~fastapi_restly.views.BaseRestView.list_params_schema`.
 
-    The generated model accepts pagination (``page``, ``page_size``), sorting
-    (``sort``), and filters. Each field of ``response_schema`` that maps to a
+    The generated model accepts pagination (``page`` and ``page_size``, or
+    ``limit`` and ``offset``), sorting (``sort``), and filters. Each field of ``response_schema`` that maps to a
     column of ``model`` gives filter keys, and its type decides which ones.
     Every such field gives the plain key and the keys with the suffixes
     ``__in``, ``__ne`` and ``__isnull``. A type with an order, such as a
@@ -466,10 +462,14 @@ def derive_list_params_schema(
 
     With a ``pagination`` (the default is ``page`` and ``page_size``), its two
     query parameters are added under its names and validated by Pydantic with
-    bounds: the page at least 1 and at most ``max_page`` when set, the page
-    size from 1 to ``max_page_size``. The resulting SQL offset must also fit in
-    a signed 64-bit integer. Out-of-range values produce a standard 422
-    response from FastAPI. With a :class:`~fastapi_restly.views.NoPagination`
+    bounds. With a :class:`~fastapi_restly.views.NumberedPagination`, the page
+    is at least 1 and at most ``max_page`` when set, and the page size is from
+    1 to ``max_page_size``. With an
+    :class:`~fastapi_restly.views.OffsetPagination`, the limit is from 1 to
+    ``max_limit``, and the offset is at least 0 and at most ``max_offset`` when
+    set. The resulting SQL offset must also fit in a signed 64-bit integer.
+    Out-of-range values produce a standard 422 response from FastAPI. With a
+    :class:`~fastapi_restly.views.NoPagination`
     or ``None``, no pagination parameters are emitted at all -- the endpoint
     returns every matching row -- while sorting and filtering stay available.
 
@@ -1005,17 +1005,22 @@ def apply_list_params(
 
     A raw :class:`~starlette.datastructures.QueryParams` is also accepted
     for callers that build the query parameters programmatically. It skips
-    the list params model, so nothing checks the ``page`` and ``page_size``
-    bounds, such as ``max_page_size``: the caller checks them. Each filter
+    the list params model, so nothing checks the bounds of the page, such as
+    ``max_page_size`` or ``max_limit``: the caller checks them. Each filter
     value still goes through the validation of its field. Every filter key
     that :func:`derive_list_params_schema` can generate works, also a dotted
     one.
 
-    ``pagination`` names the page and page-size parameters to read. By default
-    it is the pagination that :func:`derive_list_params_schema` created the
-    list params model with, and ``page`` and ``page_size`` for raw
-    ``QueryParams`` or a hand-written model. A ``NoPagination`` or ``None``
-    applies no ``LIMIT``/``OFFSET``, and so does a missing page-size key.
+    ``pagination`` names the page parameters to read, and says how the page
+    applies. By default it is the pagination that the list params were created
+    with, by :func:`derive_list_params_schema` or by a view.
+    :class:`~fastapi_restly.query.OffsetListParams` outside a view read
+    ``limit`` and ``offset``. Raw ``QueryParams`` and other hand-written models
+    read ``page`` and ``page_size``.
+
+    A ``NoPagination`` or ``None`` applies no ``LIMIT``/``OFFSET``. With page
+    numbers, a missing page-size key also applies neither. With an offset, a
+    missing limit applies no ``LIMIT``, and the offset still applies.
 
     ``sort_nulls`` says where the sort puts NULLs: ``"last"`` (the default)
     or ``"first"`` in both directions, or ``None`` for where the database
@@ -1026,6 +1031,7 @@ def apply_list_params(
 
         # Pagination
         page=2&page_size=50
+        limit=50&offset=50
 
         # Sorting
         sort=name,-created_at
@@ -1081,12 +1087,11 @@ def _read_list_params(
         else None
     )
     if isinstance(pagination, _FromParams):
-        if record:
-            pagination = record.pagination
-        elif isinstance(list_params, OffsetListParams):
-            pagination = _DEFAULT_OFFSET_PAGINATION
-        else:
-            pagination = _DEFAULT_PAGINATION
+        pagination = (
+            record.pagination
+            if record
+            else _pagination_of_list_params(type(list_params))
+        )
     sort_query_param = record.sort_query_param if record else _SORT_QUERY_PARAM
     if sort_query_param in _settings_of(pagination)._query_params():
         # list params from derive_list_params_schema reject this when created
@@ -1096,7 +1101,9 @@ def _read_list_params(
             "page parameter another name."
         )
     own_keys = {own.key for own in record.own_filters} if record else set()
-    query_params = _coerce_to_query_params(list_params, exclude=own_keys)
+    query_params = _coerce_to_query_params(
+        list_params, exclude=own_keys, pagination=pagination
+    )
     return record, pagination, sort_query_param, query_params
 
 
@@ -1188,27 +1195,51 @@ def _apply_sort_and_page(
     return _settings_of(pagination)._apply(stmt, query_params)
 
 
+def _query_key(name: str, field: FieldInfo) -> str:
+    """The query key of a list params field: its validation alias, its alias, or
+    its name, as FastAPI reads a query model."""
+    if isinstance(field.validation_alias, str):
+        return field.validation_alias
+    return field.alias or name
+
+
 def _coerce_to_query_params(
     list_params: pydantic.BaseModel | QueryParams,
     *,
     exclude: _abc.Set[str] = frozenset(),
+    pagination: _AnyPagination = None,
 ) -> QueryParams:
     """Normalise validated list params or raw QueryParams to QueryParams.
+
+    Each field of a model goes under its query key. The page fields of list
+    params of your own go under the names of ``pagination``, also when code
+    created them without a view.
 
     When a dumped field is a list (e.g. a repeated ``name__contains``), each
     element is expanded to its own ``(key, value)`` tuple so that
     ``QueryParams.multi_items()`` later returns the original repeated values.
 
     :param exclude: The fields of a model to leave out.
+    :param pagination: The pagination to read the page from.
     """
     if isinstance(list_params, QueryParams):
         return list_params
     if isinstance(list_params, pydantic.BaseModel):
+        params_model = type(list_params)
+        fields = params_model.model_fields
+        page_keys = (
+            pagination._own_list_params_keys()
+            if pagination is not None and _takes_page_fields(params_model, pagination)
+            else {}
+        )
         dumped = list_params.model_dump(
-            exclude_none=True, by_alias=True, mode="json", exclude=set(exclude)
+            exclude_none=True, by_alias=False, mode="json", exclude=set(exclude)
         )
         items: list[tuple[str, str]] = []
-        for key, value in dumped.items():
+        for name, value in dumped.items():
+            key = page_keys.get(name) or (
+                _query_key(name, fields[name]) if name in fields else name
+            )
             if isinstance(value, list):
                 items.extend((key, str(item)) for item in value)
             else:

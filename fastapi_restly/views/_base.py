@@ -66,8 +66,13 @@ from .._pagination import (
 )
 from ..exc import NotFound, RestlyConfigurationError, RestlySkippedFilterMethodsWarning
 from ..objects import snapshot as _object_snapshot
-from ..query._impl import _OwnFilter, _record_of
-from ..query._paged import _PAGINATION_OF_BASE, _page_fields_base, _takes_page_fields
+from ..query._impl import _coerce_to_query_params, _OwnFilter, _record_of
+from ..query._paged import (
+    _PAGINATION_OF_BASE,
+    _page_fields_base,
+    _redeclared_page_fields,
+    _takes_page_fields,
+)
 from ..query._shared import SortNulls
 from ..schemas import BaseSchema
 from ..schemas._base import _as_response, _response_adapter, _schema_resource_name
@@ -159,8 +164,8 @@ class ListResult(Generic[ModelT]):
     total_count: int | None = None
     #: The list params that ``get_many`` received. Pass on the list params
     #: that you received: :meth:`BaseRestView.to_list_response` reads the
-    #: page and the page size from them, and without them it reports page 1
-    #: on every page.
+    #: values of the page from them, and without them it reports the first
+    #: page on every page.
     list_params: Any = None
 
 
@@ -1028,15 +1033,9 @@ class BaseRestView(
         :meth:`to_single_response` may return an instance of another model."""
         return _as_response(type(self).response_schema, self.to_single_response(obj))
 
-    @staticmethod
-    def _to_query_params(list_params: Any) -> QueryParams:
-        if isinstance(list_params, QueryParams):
-            return list_params
-        if isinstance(list_params, pydantic.BaseModel):
-            dumped = list_params.model_dump(
-                exclude_none=True, by_alias=True, mode="json"
-            )
-            return QueryParams({k: str(v) for k, v in dumped.items()})
+    def _to_query_params(self, list_params: Any) -> QueryParams:
+        if isinstance(list_params, (QueryParams, pydantic.BaseModel)):
+            return _coerce_to_query_params(list_params, pagination=self.pagination)
         if isinstance(list_params, dict):
             return QueryParams({k: str(v) for k, v in list_params.items()})
         return QueryParams(list_params)
@@ -1190,6 +1189,7 @@ class BaseRestView(
         if record is None:
             declared.check_hand_written()
             declared.check_pages()
+            declared.check_keys()
         else:
             declared.check_derived(record)
 
@@ -1300,23 +1300,34 @@ class _DeclaredListParams:
     def check_pages(self) -> None:
         """Hand-written list params of a view with pages have the page fields
         of its pagination, or the list does not page while its response says
-        that it has pages. ``fr.query.PagedListParams`` and
-        ``fr.query.OffsetListParams`` get the fields from the pagination. A
-        view that builds its list response itself, as a react-admin view does,
-        pages in its own way."""
+        that it has pages. The same holds for a page size or a limit with the
+        default ``None``. ``fr.query.PagedListParams`` and
+        ``fr.query.OffsetListParams`` get the fields from the pagination, and
+        a subclass cannot declare them again. A view that builds its list
+        response itself, as a react-admin view does, pages in its own way."""
         list_params = self.cls.list_params_schema
         pagination = getattr(self.cls, "pagination", None)
         base = _page_fields_base(list_params)
-        if base is not None and not _takes_page_fields(list_params, pagination):
-            needed = _PAGINATION_OF_BASE[base].__name__
-            raise RestlyConfigurationError(
-                f"{self.cls.__name__}.list_params_schema{self.origin} is a "
-                f"fr.query.{base.__name__}, which needs a fr.{needed}, but the "
-                f"pagination of the view is {pagination!r}. Set a fr.{needed}, "
-                "or let the list params subclass pydantic.BaseModel."
-            )
+        if base is not None:
+            needed = type(_PAGINATION_OF_BASE[base]).__name__
+            if not _takes_page_fields(list_params, pagination):
+                raise RestlyConfigurationError(
+                    f"{self.cls.__name__}.list_params_schema{self.origin} is a "
+                    f"fr.query.{base.__name__}, which needs a fr.{needed}, but the "
+                    f"pagination of the view is {pagination!r}. Set a fr.{needed}, "
+                    "or let the list params subclass pydantic.BaseModel."
+                )
+            for name in _redeclared_page_fields(list_params, base):
+                raise RestlyConfigurationError(
+                    f"{self.cls.__name__}.list_params_schema{self.origin} declares "
+                    f"the field {name!r} again. A view gives this field the settings "
+                    "of its pagination, so your default and bounds would have no "
+                    f"effect. Set them on the fr.{needed} of the view, or let the "
+                    "list params subclass pydantic.BaseModel."
+                )
+            return
         settings = _settings_of(pagination)
-        if base is not None or not settings._has_pages:
+        if not settings._has_pages:
             return
         if self.cls.to_list_response is not BaseRestView.to_list_response:
             return
@@ -1329,6 +1340,30 @@ class _DeclaredListParams:
                 f"{fields} field, so the list would not page while its response "
                 f"says that it has pages. {settings._own_list_params_advice}"
             )
+        limit_param = settings._row_limit_query_param()
+        for key, field, _ in _list_params_fields(list_params):
+            if key == limit_param and field.default is None:
+                raise RestlyConfigurationError(
+                    f"{self.cls.__name__}.list_params_schema{self.origin} gives the "
+                    f"field {key!r} the default None, so a request without it would "
+                    "return every row while its response says that it has pages. "
+                    "Give the field a number as its default. "
+                    f"{settings._own_list_params_advice}"
+                )
+
+    def check_keys(self) -> None:
+        """Each field of hand-written list params has its own query key. One
+        value would fill the fields of a shared key, and OpenAPI would show the
+        key twice, which it does not allow."""
+        keys = [key for key, _, _ in _list_params_fields(_list_params_schema(self.cls))]
+        for key in keys:
+            if keys.count(key) > 1:
+                raise RestlyConfigurationError(
+                    f"{self.cls.__name__}.list_params_schema{self.origin} has more "
+                    f"than one field with the query key {key!r}. One value would "
+                    "fill them all, and OpenAPI would show the key twice. Rename a "
+                    "field, or the parameter of the pagination."
+                )
 
     def check_derived(self, record: Any) -> None:
         """List params from ``derive_list_params_schema`` have the view's

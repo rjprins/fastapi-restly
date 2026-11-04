@@ -135,6 +135,14 @@ class AsyncpgNoteView(fr.AsyncRestView):
 
 
 @fr.include_view(app)
+class AsyncpgOffsetNoteView(fr.AsyncRestView):
+    prefix = "/offset-notes"
+    model = AsyncpgNote
+    schema = AsyncpgNoteSchema
+    pagination = fr.OffsetPagination()
+
+
+@fr.include_view(app)
 class AsyncpgNoteAdminView(fr.AsyncReactAdminView):
     prefix = "/admin/notes"
     model = AsyncpgNote
@@ -214,6 +222,13 @@ def test_sync_client_uses_asyncpg_and_commits_inside_the_test(restly_client):
     assert response.json()["text"] == "created through the API"
     assert restly_client.get("/notes/count").json() == {"count": 1}
     assert LIFESPAN_EVENTS[-1] == "startup"
+
+
+def test_the_largest_offset_reaches_the_database_with_asyncpg(restly_client):
+    # asyncpg binds the limit and the offset with their own types, and the bound
+    # in the list params says that PostgreSQL takes this offset.
+    payload = restly_client.get(f"/offset-notes/?limit=1000&offset={2**63 - 1}").json()
+    assert payload["data"] == []
 
 
 def test_sync_client_reuses_the_engine_on_a_fresh_loop(restly_client):

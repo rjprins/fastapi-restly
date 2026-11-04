@@ -446,10 +446,11 @@ The database still reads the rows that an offset skips, so a large offset is
 slow. On a public endpoint, set `max_offset`. A larger offset then returns `422`.
 Without it, Restly rejects only an offset above `2**63 - 1`.
 
-The defaults are the same as those of `NumberedPagination`, so a list that
-changes its style keeps its number of rows. A
+The defaults are the same as those of
+{class}`NumberedPagination <fastapi_restly.views.NumberedPagination>`, so a list
+that changes its style keeps its number of rows. A
 [react-admin view](react_admin.md) pages with `range`, and keeps a
-`NumberedPagination`.
+{class}`NumberedPagination <fastapi_restly.views.NumberedPagination>`.
 :::
 
 (set-pagination-once)=
@@ -475,8 +476,8 @@ class LogView(AppView):
 :::{admonition} Details
 :class: details
 
-A type checker gives a `pagination` without an annotation the type of its value.
-Then a view below it that sets another style, or `None`, fails the check.
+Without an annotation, a type checker takes the type of `pagination` from its
+value. A view below it that sets another style, or `None`, then fails the check.
 Annotate the base view with
 {class}`fr.Pagination <fastapi_restly.views.Pagination>`, the base class of the
 styles:
@@ -987,6 +988,12 @@ A key that a dependency reads is accepted wherever the dependency is
 declared: on the app or a router, in the view's `dependencies`, or in a
 class attribute. The key of an `APIKeyQuery` is accepted too. A project base
 view can set `unknown_query_params` once for every view.
+
+A route cannot read a key that its list params also read, such as a parameter
+`limit` next to `list_params` on a view with `fr.OffsetPagination`. One value
+would fill both, and OpenAPI would show the key twice, so the view fails when it
+registers. Read the value from `list_params`, or give the parameter of the route
+another name. This check does not see a dependency on the app or on a router.
 :::
 
 (filters-in-own-route)=
@@ -1114,9 +1121,10 @@ fails when it registers: its list would not page, while its response says that
 it has pages. For a list that returns every row, subclass `pydantic.BaseModel`
 and set `pagination = None`.
 
-Do not use `pagination = None` for a list that limits its own rows. Without
-pages, `total_count` is the number of rows in the response, not the number of
-matching rows, and nothing warns you. Use a pagination, as above.
+Do not use `pagination = None` for a list that limits its own rows. The default
+envelope then has no `total_count`. In an envelope of your own with that field,
+it is the number of rows in the response, not the number of matching rows, and
+nothing warns you. Use a pagination, as above.
 
 :::{admonition} Details
 :class: details
@@ -1128,8 +1136,15 @@ that a row never moves to another page. In a base view for several models,
 adds the primary key of the view's model.
 
 One class of list params serves views with other pagination: each view gets
-its own page fields. Page fields that you write yourself also work, when
-they have the names of the view's page parameters.
+its own page fields. A subclass cannot declare these fields again: the view
+fails when it registers. Set the default and the bounds on the pagination.
+
+Page fields that you write in a `pydantic.BaseModel` also work, when they have
+the names of the view's page parameters. The settings of the pagination do not
+apply to them, such as `max_limit` and `max_page_size`. So give them their own
+bounds, with `ge` and `le`. The default of `limit` or `page_size` must be a
+number: with `None`, the view fails when it registers, because a request without
+the field would return every row.
 
 The list settings, such as `include_filters`, `sort_query_param` and
 `default_sort`, and
