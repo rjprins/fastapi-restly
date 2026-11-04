@@ -1233,10 +1233,23 @@ class BaseRestView(
             if name == "list_response_schema":
                 continue  # any type, see _check_list_response_schema
             if _is_pydantic_class(value):
-                if name in ("schema", "create_schema", "update_schema"):
-                    _reject_table_class(value, f"{cls.__name__}.{name}")
-                else:
-                    _reject_table_subclass(value, f"{cls.__name__}.{name}")
+                where = f"{cls.__name__}.{name}"
+                if name == "schema":
+                    _reject_table_class(
+                        value,
+                        where,
+                        "Leave `schema` out, and Restly generates it from the "
+                        "model. Or set a class without `table=True`.",
+                    )
+                elif name in ("create_schema", "update_schema"):
+                    _reject_table_class(
+                        value,
+                        where,
+                        f"Remove {name}, and Restly generates it from the `schema` "
+                        "of the view. Or set a class without `table=True`.",
+                    )
+                elif name == "response_schema":
+                    _reject_table_subclass(value, where)
                 continue
             if isinstance(inspect.getattr_static(cls, name), SchemaType):
                 raise RestlyConfigurationError(

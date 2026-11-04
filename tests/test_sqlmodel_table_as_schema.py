@@ -127,8 +127,17 @@ BOTH_KINDS = pytest.mark.parametrize(
 
 
 @pytest.mark.parametrize("view_base", [fr.RestView, fr.AsyncRestView])
-@pytest.mark.parametrize("setting", ["schema", "create_schema", "update_schema"])
-def test_a_table_class_as_a_schema_fails_when_the_view_registers(view_base, setting):
+@pytest.mark.parametrize(
+    "setting, advice",
+    [
+        ("schema", "Leave `schema` out"),
+        ("create_schema", "Remove create_schema"),
+        ("update_schema", "Remove update_schema"),
+    ],
+)
+def test_a_table_class_as_a_schema_fails_when_the_view_registers(
+    view_base, setting, advice
+):
     view = type(
         "TableView",
         (view_base,),
@@ -141,8 +150,11 @@ def test_a_table_class_as_a_schema_fails_when_the_view_registers(view_base, sett
     message = str(info.value)
     assert f"TableView.{setting} is GeneratedHero" in message
     assert "SQLModel table class" in message
+    assert "does not validate its input" in message
+    assert advice in message
     assert "without `table=True`" in message
-    assert "fr.schemas.derive_schema(GeneratedHero)" in message
+    # The class from derive_schema requires the id, so it is no write schema.
+    assert "derive_schema" not in message
 
 
 def test_a_subclass_of_a_table_class_fails_too():
@@ -369,14 +381,19 @@ def test_a_read_only_table_class_shows_the_row_and_takes_no_input(view_base, mak
     assert "team" in schemas["ShownPlayerResponse"]["properties"]
 
 
-def test_a_table_class_as_the_response_schema_still_works():
-    app = _sync_app()
-
-    @fr.include_view(app)
-    class HeroOutView(fr.RestView):
-        prefix = "/out-heroes"
-        model = GeneratedHero
-        response_schema = GeneratedHero
+@BOTH_KINDS
+def test_a_table_class_as_the_response_schema_still_works(view_base, make_app):
+    app = make_app()
+    view = type(
+        "HeroOutView",
+        (view_base,),
+        {
+            "prefix": "/out-heroes",
+            "model": GeneratedHero,
+            "response_schema": GeneratedHero,
+        },
+    )
+    fr.include_view(app, view)
 
     client = TestClient(app)
     assert client.post("/out-heroes", json={"name": "Ann"}).status_code == 201
@@ -403,8 +420,24 @@ def test_a_schema_type_that_gives_a_table_class_fails_too():
     ],
 )
 def test_the_derive_functions_reject_a_table_class(derive, args):
-    with pytest.raises(RestlyConfigurationError, match="SQLModel table class"):
+    with pytest.raises(RestlyConfigurationError, match="SQLModel table class") as info:
         derive(*args)
+
+    assert "`fr.schemas.derive_schema(GeneratedHero)`" in str(info.value)
+
+
+@pytest.mark.parametrize(
+    "derive, args",
+    [
+        (fr.schemas.derive_response_schema, ()),
+        (fr.schemas.derive_create_schema, (GeneratedHero,)),
+        (fr.schemas.derive_update_schema, (GeneratedHero,)),
+    ],
+)
+def test_the_derive_functions_take_the_class_that_their_error_names(derive, args):
+    derived = fr.schemas.derive_schema(GeneratedHero)
+
+    assert derive(derived, *args).model_fields
 
 
 @BOTH_KINDS
@@ -474,15 +507,20 @@ def test_a_data_model_as_the_schema_validates_and_shows_required_fields(
     assert set(schemas["HeroResponse"]["required"]) == {"id", "name"}
 
 
-def test_a_table_class_in_a_list_response_still_works():
+@BOTH_KINDS
+def test_a_table_class_in_a_list_response_still_works(view_base, make_app):
     """A table class only goes out there, and it is not a base of any class."""
-    app = _sync_app()
-
-    @fr.include_view(app)
-    class HeroListView(fr.RestView):
-        prefix = "/list-heroes"
-        model = GeneratedHero
-        list_response_schema = list[GeneratedHero]
+    app = make_app()
+    view = type(
+        "HeroListView",
+        (view_base,),
+        {
+            "prefix": "/list-heroes",
+            "model": GeneratedHero,
+            "list_response_schema": list[GeneratedHero],
+        },
+    )
+    fr.include_view(app, view)
 
     client = TestClient(app)
     assert client.post("/list-heroes", json={"name": "Ann"}).status_code == 201

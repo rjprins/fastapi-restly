@@ -1990,7 +1990,9 @@ def _response_adapter(
 _SchemaT = TypeVar("_SchemaT", bound=pydantic.BaseModel)
 
 
-def _reject_table_class(schema: type[pydantic.BaseModel], where: str) -> None:
+def _reject_table_class(
+    schema: type[pydantic.BaseModel], where: str, fix: str | None = None
+) -> None:
     """A SQLModel table class cannot be the main schema or a write schema.
 
     Its ``__init__`` does not validate, and a subclass keeps ``table=True``. In
@@ -1999,6 +2001,9 @@ def _reject_table_class(schema: type[pydantic.BaseModel], where: str) -> None:
     not to inherit from a table class, so Restly does not build a class from
     one.
 
+    ``fix`` says what to do instead, for a caller that knows a better way than
+    the default advice.
+
     :raises RestlyConfigurationError: ``schema`` is a table class, or a
         subclass of one.
     """
@@ -2006,11 +2011,13 @@ def _reject_table_class(schema: type[pydantic.BaseModel], where: str) -> None:
     if schema.model_config.get("table") is True:
         raise RestlyConfigurationError(
             f"{where} is {schema.__name__}, a SQLModel table class. A table class "
-            "does not validate its input, so a wrong request body can reach the "
-            "database. A class built from it shows no required fields in OpenAPI. "
-            "Use a class without `table=True`: a schema that you write, or the one "
-            f"from `fr.schemas.derive_schema({schema.__name__})`. A view without a "
-            "`schema` generates that one itself."
+            "does not validate its input. A class that Restly builds from it shows "
+            "no required fields in OpenAPI. "
+            + (
+                fix
+                or "Pass a class without `table=True`, such as the one from "
+                f"`fr.schemas.derive_schema({schema.__name__})`."
+            )
         )
 
 
@@ -2026,10 +2033,9 @@ def _reject_table_subclass(schema: type[pydantic.BaseModel], where: str) -> None
     if not is_mapped_class(schema) and _is_table_class(schema):
         raise RestlyConfigurationError(
             f"{where} is {schema.__name__}, a subclass of a SQLModel table class. "
-            "It shows no required fields in OpenAPI, and it may not validate its "
-            "input. Use a class that does not inherit from the table class: a "
-            "schema that you write. SQLModel says to inherit from a data model, "
-            "not from a table class."
+            "It shows no required fields in OpenAPI. Use a class that does not "
+            "inherit from the table class: a schema that you write. SQLModel says "
+            "to inherit from a data model, not from a table class."
         )
 
 

@@ -104,13 +104,18 @@ A SQLModel table class cannot be the
 {attr}`schema <fastapi_restly.views.BaseRestView.schema>`, the
 {attr}`create_schema <fastapi_restly.views.BaseRestView.create_schema>` or the
 {attr}`update_schema <fastapi_restly.views.BaseRestView.update_schema>` of a view.
-A table class does not validate its input, also on a plain FastAPI route, and
-SQLModel says not to inherit from it. So the view fails when it registers. Leave
-`schema` out, or set a class without `table=True`.
+A table class does not validate its input, even on a plain FastAPI route. SQLModel
+says not to inherit from it. So the view fails when it registers. Leave the setting
+out, or set a class without `table=True`.
 
 The table class itself can be the
 {attr}`response_schema <fastapi_restly.views.BaseRestView.response_schema>`. A
 subclass of it cannot, because OpenAPI would show no required fields.
+
+Restly checks these settings, and not every class inside them. A subclass of a
+table class still shows no required fields as a read-only field of a schema, in an
+envelope of your own whose items are not in a field named `data`, and on a custom
+route. So do not inherit from a table class.
 
 A table class in a field that a client can write, such as `team: Team`, also
 fails when the view registers. A client could write a row through that field, with

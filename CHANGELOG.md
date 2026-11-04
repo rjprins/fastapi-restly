@@ -73,18 +73,21 @@ miss it.
       request without it returned every row, and the response reported the default
       size. Give the field a number as its default.
     - A SQLModel table class, or a subclass of one, as `schema`, `create_schema` or
-      `update_schema`, or as the schema of `fr.schemas.derive_response_schema`,
-      `derive_create_schema` or `derive_update_schema`. The request body was not
-      validated. Leave `schema` out, or set a class without `table=True`.
+      `update_schema`. With a table class as `schema`, each create gave `500`. As
+      `create_schema` or `update_schema`, the body was not validated, so a wrong type
+      was saved. Leave the setting out, or set a class without `table=True`. The
+      functions `fr.schemas.derive_response_schema`, `derive_create_schema` and
+      `derive_update_schema` now also fail when you call them with such a class.
     - A SQLModel table class in a field that a client can write, on a `schema`,
       `create_schema` or `update_schema`: `team: Team`, `teams: list[Team]`, or a data
       model that holds one. A client could write a row through that field, with any id
       and any column. To let a client choose a row, send its id with `fr.MustExist`,
       `fr.IDRef` or `fr.IDSchema`. To show the row in responses, mark the field
       `fr.ReadOnly`.
-    - A subclass of a SQLModel table class as `response_schema`, or as the items of
-      `list_response_schema`. OpenAPI showed no required fields. Use the table class
-      itself, or a class that does not inherit from it.
+    - A subclass of a SQLModel table class as `response_schema`, or as the items of a
+      `list_response_schema` that is a list or an envelope with the field `data`.
+      OpenAPI showed no required fields. Use the table class itself, or a class that
+      does not inherit from it.
 11. Silent: a custom route keeps the name of its method, without the name of the
     view. On `ItemView`, a method `stats` at `/items/stats` had the route name
     `itemview_stats`, the summary `Itemview Stats` and the operation ID
@@ -243,12 +246,12 @@ miss it.
   subclass of the response schema required a `WriteOnly` field and failed on each
   response.
 - A SQLModel table class as `schema`, `create_schema` or `update_schema` of a view
-  now fails when the view registers, and the message says what to use instead. The
-  same goes for `derive_response_schema`, `derive_create_schema` and
-  `derive_update_schema`. Before, the request body was not validated: a wrong type or
-  a missing field gave `500`, not `422`, and OpenAPI showed no required fields. Leave
-  `schema` out, or set a class without `table=True`. A subclass of a table class also
-  fails as `response_schema` or as the items of `list_response_schema`.
+  now fails when the view registers, and the message says what to use instead.
+  `derive_response_schema`, `derive_create_schema` and `derive_update_schema` fail when
+  you call them with one. Before, with a table class as `schema`, each create gave
+  `500` and OpenAPI showed no required fields. As `create_schema` or `update_schema`,
+  a wrong type was saved. A subclass of a table class also fails as `response_schema`
+  or as the items of a list response.
 - A SQLModel table class in a field that a client can write now fails when the view
   registers. Before, `POST {"team": {"id": 777, "is_admin": true}}` on a field
   `team: Team` wrote that row: a client could set any id and any column, with values
