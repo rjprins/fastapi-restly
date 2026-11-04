@@ -222,6 +222,9 @@ miss it.
   route that takes `list_params`. Before, each request gave `500`. These methods now
   get the same call as a method that the view defines and a FastAPI function: each
   argument by keyword, also `self`.
+- `fr.configure(warn_on_misuse=True)` no longer warns about `session.commit()` on a
+  plain `fr.View`. A route of a plain view that writes must commit. The warning told
+  it to use `handle_<verb>()` or `write_action`, and a plain view has neither.
 
 ## [0.13.0] - 2026-11-01
 

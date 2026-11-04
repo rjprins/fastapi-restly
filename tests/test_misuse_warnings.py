@@ -16,6 +16,7 @@ import warnings
 from typing import Any
 
 import fastapi
+import pytest
 from sqlalchemy import ForeignKey, orm
 
 import fastapi_restly as fr
@@ -196,6 +197,38 @@ def test_manual_commit_warns():
     assert len(messages) == 1
     assert "approve calls session.commit() directly" in messages[0]
     assert "write_action" in messages[0]
+
+
+@pytest.mark.parametrize("is_async", [False, True], ids=["sync", "async"])
+def test_a_commit_in_a_plain_view_does_not_warn(is_async):
+    """A route of a plain View that writes must commit: only the CRUD views
+    commit for you."""
+    if is_async:
+
+        class AsyncAuthView(fr.View):
+            prefix = "/auth"
+            session: fr.AsyncSessionDep
+
+            @fr.post("/logout")
+            async def logout(self) -> dict[str, bool]:
+                await self.session.commit()
+                return {"ok": True}
+
+        view: type = AsyncAuthView
+    else:
+
+        class SyncAuthView(fr.View):
+            prefix = "/auth"
+            session: fr.SessionDep
+
+            @fr.post("/logout")
+            def logout(self) -> dict[str, bool]:
+                self.session.commit()
+                return {"ok": True}
+
+        view = SyncAuthView
+
+    assert _register(view) == []
 
 
 def test_write_action_method_does_not_warn():
