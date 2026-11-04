@@ -118,61 +118,13 @@ To change the options of a route that a class inherits, set
 {func}`fr.route_options <fastapi_restly.views.route_options>` under the name of
 the route method; see [Change one option of a route](#crud-route-metadata).
 
+To add a decorator from another library, such as a rate limit, see
+[Add a decorator of your own](#decorators-on-view-methods).
+
 Other keyword arguments pass through to FastAPI route registration: `response_model=`, `dependencies=`, `responses=`, `tags=`, and other `APIRouter.add_api_route()` options.
 
 `@fr.put(...)` is available for custom endpoints, but the default update route
 uses `PATCH`.
-
-(decorators-on-view-methods)=
-### Add a decorator of your own
-
-Put a decorator from another library, such as a rate limit, under the route
-decorator. This example uses slowapi. Install it first, with `pip install slowapi`:
-
-```python
-from fastapi import Request
-from slowapi import Limiter
-from slowapi.util import get_remote_address
-
-limiter = Limiter(key_func=get_remote_address)
-
-
-class ReportView(fr.View):
-    prefix = "/reports"
-
-    @fr.get("/current")
-    @limiter.limit("60/minute")
-    def current(self, request: Request):
-        return {"status": "ok"}
-```
-
-A view method gets the same call as a FastAPI function: FastAPI passes each
-argument by keyword, also `self`. This is true on a method that the view
-defines and on one that it inherits. So in a decorator that you write, use
-`functools.wraps` and name `self` as a parameter:
-
-```python
-import functools
-
-
-def audited(func):
-    @functools.wraps(func)
-    def wrapper(self, *args, **kwargs):
-        print(type(self).__name__, func.__name__)
-        return func(self, *args, **kwargs)
-
-    return wrapper
-```
-
-A wrapper that reads `self` from `args[0]` gets an `IndexError` on each request.
-
-:::{warning}
-Give a cache decorator a key that you build from what the response depends on,
-such as the path, the query and the user. FastAPI creates a new view object for
-each request, and the default key of a library such as fastapi-cache holds the
-`repr` of `self`. That text has a memory address in it, and Python can use the
-address again. So one user can get the response of another user.
-:::
 
 (view-method-surface)=
 ## Methods

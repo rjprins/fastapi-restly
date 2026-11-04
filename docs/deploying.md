@@ -358,7 +358,8 @@ just as strict for an internal API as for a public one.
 
 Restly does not limit how many requests a client sends. Put rate limits,
 timeouts and a maximum body size in the proxy in front of the app, and a
-statement timeout in the database.
+statement timeout in the database. For a limit on one route, see
+[Add a decorator of your own](#decorators-on-view-methods).
 
 For a public API, lower the limits on one request. Start with a table that
 only grows, such as an audit log, events or imports. It gets large without

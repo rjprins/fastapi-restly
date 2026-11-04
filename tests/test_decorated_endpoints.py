@@ -352,3 +352,49 @@ def test_a_first_parameter_with_another_name_works_on_an_inherited_route(is_asyn
     fr.include_view(app, NamedChild)
 
     assert TestClient(app).get("/named/one").json() == {"class": "NamedChild"}
+
+
+def test_a_list_route_with_another_first_parameter_name_async(client):
+    """The guard of a list route finds the view by the name of that parameter."""
+
+    class AsyncNamedRow(fr.IDMixin, SharedBase):
+        name: Mapped[str]
+
+    class AsyncNamedListView(fr.AsyncRestView):
+        prefix = "/named-list"
+        model = AsyncNamedRow
+
+        @fr.get("/")
+        async def get_many_endpoint(
+            this, list_params: Any
+        ) -> fr.views.ListResponseSchema:
+            return await this.handle_get_many(list_params)
+
+    fr.include_view(client.app, AsyncNamedListView)
+    create_tables()
+
+    assert client.get("/named-list").json()["data"] == []
+    client.get("/named-list?nope=1", assert_status_code=422)
+
+
+def test_a_list_route_with_another_first_parameter_name_sync(sync_db):
+    engine, _ = sync_db
+
+    class SyncNamedRow(fr.IDMixin, SharedBase):
+        name: Mapped[str]
+
+    class SyncNamedListView(fr.RestView):
+        prefix = "/named-list"
+        model = SyncNamedRow
+
+        @fr.get("/")
+        def get_many_endpoint(this, list_params: Any) -> fr.views.ListResponseSchema:
+            return this.handle_get_many(list_params)
+
+    app = fastapi.FastAPI()
+    fr.include_view(app, SyncNamedListView)
+    SharedBase.metadata.create_all(engine)
+    client = RestlyTestClient(app)
+
+    assert client.get("/named-list").json()["data"] == []
+    client.get("/named-list?nope=1", assert_status_code=422)

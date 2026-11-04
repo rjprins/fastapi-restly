@@ -170,6 +170,78 @@ override its endpoint method, such as `create_endpoint`; see
 [Change the status code or headers of one route](#replace-endpoint-method).
 :::
 
+(decorators-on-view-methods)=
+### Add a decorator of your own
+
+Put a decorator from another library, such as a rate limit, under the route
+decorator. This example uses slowapi. Install it first, with `pip install slowapi`:
+
+```python
+from fastapi import Request
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
+limiter = Limiter(key_func=get_remote_address)
+
+
+class ReportView(fr.View):
+    prefix = "/reports"
+
+    @fr.get("/current")
+    @limiter.limit("60/minute")
+    def current(self, request: Request):
+        return {"status": "ok"}
+```
+
+Restly itself does not limit how many requests a client sends. For a limit on
+the whole API, use the proxy in front of the app; see
+[Before you expose an API publicly](#before-public).
+
+:::{warning}
+Give a cache decorator a key that you build from what the response depends on,
+such as the path, the query and the user. FastAPI creates a new view object for
+each request, and the default key of a library such as fastapi-cache holds the
+`repr` of `self`. That text has a memory address in it, and Python can use the
+address again. So one user can get the response of another user.
+:::
+
+:::{admonition} Details
+:class: details
+
+A view method gets the same call as a FastAPI function: FastAPI passes each
+argument by keyword, also `self`. This is true on a method that the view
+defines and on one that it inherits. So in a decorator that you write, use
+`functools.wraps` and name `self` as a parameter:
+
+```python
+import functools
+
+
+def audited(func):
+    @functools.wraps(func)
+    def wrapper(self, *args, **kwargs):
+        print(type(self).__name__, func.__name__)
+        return func(self, *args, **kwargs)
+
+    return wrapper
+```
+
+A wrapper that reads `self` from `args[0]` gets an `IndexError` on each request.
+
+This wrapper is for a `def` method. For an `async def` method, write
+`async def wrapper`, and `await func(self, *args, **kwargs)`. Before FastAPI 0.124,
+a `def` wrapper on an `async def` method gives `500`.
+
+Put the decorator of slowapi above a wrapper like this one. The wrapper passes
+`self` by position, and then slowapi looks for the request by its position too. In
+the other order, each request gets an `IndexError`.
+
+slowapi names a limit after the module and the name of the function. So two views
+in one module that limit a method with the same name, such as `create_endpoint`,
+share their limits: each request counts for both. Put such views in separate
+modules.
+:::
+
 (register-a-view)=
 ## Register a view
 

@@ -106,9 +106,9 @@ as `authorize` and `create`. To change a route, you override the method of
 one step. [View Reference](view_reference.md) lists everything that you can
 set, override or call on a view.
 
-- [Views](views.md): the view classes, how to declare routes and register a
-  view, routes that are not CRUD, such as login and webhooks, and how views
-  share behavior through base classes.
+- [Views](views.md): the view classes, how to declare routes, add a decorator
+  and register a view, routes that are not CRUD, such as login and webhooks, and
+  how views share behavior through base classes.
 - [CRUD Routes](crud_routes.md): the five default routes, async or sync, the
   name of the id in the path, how to leave some routes out, and how to serve a
   child resource under its parent.

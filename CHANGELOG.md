@@ -112,11 +112,16 @@ miss it.
     `await super().delete_endpoint(id)` fails when the route runs. The route now
     sends the status code of its decorator: `@fr.delete("/{id}", status_code=200)` that calls
     `super()` answers `200` with the body `null`, where it answered `204` before.
-15. A wrapper of a decorator that reads `self` from `args[0]` on a method that a
-    view inherits now gets an `IndexError` on each request. It already did on a
-    method that the view defines. Name the parameter instead:
+15. A wrapper of a decorator that reads `self` from `args[0]` now gets an
+    `IndexError` on each request, on a method that a view inherits and on a route
+    that takes `list_params`. Before, only a method that the view defines without
+    `list_params` had this. Name the parameter instead:
     `def wrapper(self, *args, **kwargs)`.
-16. Silent: OpenAPI no longer has `x-resource-ref`. A client that reads it must
+16. Silent: on those same methods, `self` is now a keyword in a wrapper. So a wrapper
+    that tests `if args` now skips that code. If that code is a permission check, the
+    check no longer runs. And a cache key made from `kwargs` now holds `self`, so the
+    cache gets few hits or none. Build the key from what the response depends on.
+17. Silent: OpenAPI no longer has `x-resource-ref`. A client that reads it must
     stop. To keep it on one field, set it on that field:
     `pydantic.Field(json_schema_extra={"x-resource-ref": "authors"})`.
 17. Silent: the path parameter of an item route takes its name from the model. So
@@ -262,7 +267,9 @@ miss it.
   `@limiter.limit` from slowapi, works on a method that a view inherits, and on a
   route that takes `list_params`. Before, each request gave `500`. These methods now
   get the same call as a method that the view defines and a FastAPI function: each
-  argument by keyword, also `self`.
+  argument by keyword, also `self`. slowapi names a limit after the module and the
+  name of the function, so two views in one module that limit a method with the same
+  name share their limits. See "Add a decorator of your own" in the guide.
 - `fr.configure(warn_on_misuse=True)` no longer warns about `session.commit()` on a
   plain `fr.View`. A route of a plain view that writes must commit. The warning told
   it to use `handle_<verb>()` or `write_action`, and a plain view has neither.
