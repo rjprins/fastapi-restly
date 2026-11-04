@@ -5,7 +5,8 @@ request body, and OpenAPI shows the required fields.
 """
 
 import asyncio
-from typing import Any
+import sys
+from typing import Annotated, Any, Literal, Optional
 
 import fastapi
 import pydantic
@@ -14,6 +15,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
+from typing_extensions import TypeAliasType
 
 import fastapi_restly as fr
 from fastapi_restly.exc import RestlyConfigurationError
@@ -51,6 +53,38 @@ class GeneratedHero(sqlmodel.SQLModel, table=True):
 
 class ChildOfTable(GeneratedHero):
     pass
+
+
+class TeamRow(sqlmodel.SQLModel, table=True):
+    id: int | None = sqlmodel.Field(default=None, primary_key=True)
+    name: str = sqlmodel.Field(max_length=5)
+    is_admin_team: bool = False
+
+
+class ChildOfTeamRow(TeamRow):
+    pass
+
+
+class PlayerRow(sqlmodel.SQLModel, table=True):
+    id: int | None = sqlmodel.Field(default=None, primary_key=True)
+    name: str
+    team_id: int | None = sqlmodel.Field(default=None, foreign_key="teamrow.id")
+    team: Optional[TeamRow] = sqlmodel.Relationship()
+
+
+class TeamHolder(pydantic.BaseModel):
+    team: TeamRow | None = None
+
+
+class ReadOnlyTeamHolder(pydantic.BaseModel):
+    team: fr.ReadOnly[TeamRow | None] = None
+
+
+class TreeNode(pydantic.BaseModel):
+    children: list["TreeNode"] = []
+
+
+TeamAlias = TypeAliasType("TeamAlias", TeamRow)
 
 
 def _sync_app() -> fastapi.FastAPI:
@@ -159,6 +193,180 @@ def test_a_subclass_of_a_table_class_cannot_go_out(view_base, setting, value):
 
     with pytest.raises(RestlyConfigurationError, match="ChildOfTable, a subclass"):
         fr.include_view(fastapi.FastAPI(), view)
+
+
+@pytest.mark.parametrize("view_base", [fr.RestView, fr.AsyncRestView])
+@pytest.mark.parametrize("setting", ["schema", "create_schema", "update_schema"])
+@pytest.mark.parametrize(
+    "field_type",
+    [
+        TeamRow | None,
+        Optional[TeamRow],
+        ChildOfTeamRow,
+        list[TeamRow],
+        dict[str, TeamRow],
+        Annotated[TeamRow, pydantic.Field(description="The team")],
+        list[Annotated[TeamRow, pydantic.Field(description="A team")] | None],
+        TeamHolder,
+        list[TeamHolder],
+        int | TeamRow,
+        TeamAlias,
+        list[TeamAlias],
+    ],
+    ids=lambda field_type: str(field_type)[:40],
+)
+def test_a_table_class_in_a_writable_field_fails(view_base, setting, field_type):
+    schema = pydantic.create_model("PlayerInput", team=(field_type, ...))
+    view = type(
+        "PlayerView",
+        (view_base,),
+        {"prefix": "/players", "model": PlayerRow, setting: schema},
+    )
+
+    with pytest.raises(RestlyConfigurationError) as info:
+        fr.include_view(fastapi.FastAPI(), view)
+
+    message = str(info.value)
+    assert "has the field team" in message
+    assert "a SQLModel table class" in message
+    assert "fr.MustExist" in message
+    assert "fr.ReadOnly" in message
+
+
+def test_a_table_class_in_a_field_of_a_generic_class_fails():
+    schema = pydantic.create_model(
+        "PlayerInput", team=(fr.views.NumberedEnvelope[TeamRow], ...)
+    )
+
+    class EnvelopeInputView(fr.RestView):
+        prefix = "/players"
+        model = PlayerRow
+        create_schema = schema
+
+    with pytest.raises(RestlyConfigurationError, match="holds TeamRow"):
+        fr.include_view(fastapi.FastAPI(), EnvelopeInputView)
+
+
+@pytest.mark.parametrize("view_base", [fr.RestView, fr.AsyncRestView])
+@pytest.mark.parametrize(
+    "fields",
+    [
+        {"team": (fr.ReadOnly[TeamRow | None], None)},
+        {"team_id": (fr.MustExist[int, TeamRow] | None, None)},
+        {"team": (fr.IDRef[TeamRow] | None, None)},
+        {"team": (fr.IDSchema[TeamRow] | None, None)},
+        {"holder": (ReadOnlyTeamHolder | None, None)},
+        {"tree": (TreeNode | None, None)},
+        {"kind": (Literal["a", "b"], "a"), "pair": (tuple[int, ...], ())},
+    ],
+    ids=[
+        "read-only",
+        "must-exist",
+        "id-ref",
+        "id-schema",
+        "nested-read-only",
+        "recursive-class",
+        "literal-and-tuple",
+    ],
+)
+def test_a_field_that_takes_no_table_class_registers(view_base, fields):
+    schema = pydantic.create_model("PlayerShape", **fields)
+    view = type(
+        "PlayerShapeView",
+        (view_base,),
+        {"prefix": "/players", "model": PlayerRow, "schema": schema},
+    )
+
+    fr.include_view(fastapi.FastAPI(), view)
+
+
+@pytest.mark.skipif(sys.version_info < (3, 12), reason="`type` statement")
+def test_a_recursive_type_alias_in_a_field_registers():
+    namespace: dict[str, Any] = {}
+    exec("type Json = dict[str, Json] | list[Json] | str | int | None", namespace)
+
+    class DocumentSchema(fr.IDSchema):
+        data: namespace["Json"]
+
+    class DocumentView(fr.RestView):
+        prefix = "/players"
+        model = PlayerRow
+        schema = DocumentSchema
+
+    fr.include_view(fastapi.FastAPI(), DocumentView)
+
+
+def test_a_view_that_takes_no_body_can_hold_a_table_class_in_a_field():
+    class ReadOnlyPlayerSchema(fr.IDSchema):
+        team: TeamRow | None = None
+
+    class ReadOnlyPlayerView(fr.RestView):
+        prefix = "/players"
+        model = PlayerRow
+        schema = ReadOnlyPlayerSchema
+        include_routes = (fr.views.ViewRoute.GET_ONE, fr.views.ViewRoute.GET_MANY)
+
+    fr.include_view(fastapi.FastAPI(), ReadOnlyPlayerView)
+
+
+def test_a_table_class_in_the_response_schema_can_be_in_a_field():
+    class PlayerOut(fr.IDSchema):
+        team: TeamRow | None = None
+
+    class PlayerOutView(fr.RestView):
+        prefix = "/players"
+        model = PlayerRow
+        response_schema = PlayerOut
+
+    fr.include_view(fastapi.FastAPI(), PlayerOutView)
+
+
+@BOTH_KINDS
+def test_a_view_without_a_schema_on_a_model_with_a_relationship_works(
+    view_base, make_app
+):
+    app = make_app()
+    view = type(
+        "PlainPlayerView",
+        (view_base,),
+        {"prefix": "/plain-players", "model": PlayerRow},
+    )
+    fr.include_view(app, view)
+
+    created = TestClient(app).post("/plain-players", json={"name": "Ann"})
+
+    assert created.status_code == 201
+    assert "team" not in view.create_schema.model_fields
+
+
+@BOTH_KINDS
+def test_a_read_only_table_class_shows_the_row_and_takes_no_input(view_base, make_app):
+    app = make_app()
+
+    class ShownPlayerSchema(fr.IDSchema):
+        name: str
+        team_id: fr.MustExist[int, TeamRow] | None = None
+        team: fr.ReadOnly[TeamRow | None] = None
+
+    view = type(
+        "ShownPlayerView",
+        (view_base,),
+        {"prefix": "/shown-players", "model": PlayerRow, "schema": ShownPlayerSchema},
+    )
+    fr.include_view(app, view)
+    client = TestClient(app)
+
+    created = client.post(
+        "/shown-players",
+        json={"name": "Ann", "team": {"id": 777, "is_admin_team": True, "name": "x"}},
+    )
+
+    assert created.status_code == 201
+    assert created.json()["team"] is None
+    assert "team" not in view.create_schema.model_fields
+    schemas = spec(app)["components"]["schemas"]
+    assert "team" not in schemas["ShownPlayerCreate"]["properties"]
+    assert "team" in schemas["ShownPlayerResponse"]["properties"]
 
 
 def test_a_table_class_as_the_response_schema_still_works():

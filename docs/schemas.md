@@ -90,6 +90,13 @@ Restly writes each field of a request body to the model attribute with the
 same Python name. So name a field after its column, and use an
 [alias](#field-aliases) when the JSON needs another name.
 
+:::{warning}
+With SQLModel, do not use a table class as the request body of a custom route, or
+in a field of that body. A table class does not validate its input. So your route
+gets a row with any id, any column and values of any type. FastAPI and Restly do
+not check for this. Use a class without `table=True`.
+:::
+
 :::{admonition} Details
 :class: details
 
@@ -105,9 +112,11 @@ The table class itself can be the
 {attr}`response_schema <fastapi_restly.views.BaseRestView.response_schema>`. A
 subclass of it cannot, because OpenAPI would show no required fields.
 
-A table class as a field of a schema, such as `team: Team`, does not validate
-either. Plain FastAPI does the same, and Restly does not check for it. Use a data
-model for that field.
+A table class in a field that a client can write, such as `team: Team`, also
+fails when the view registers. A client could write a row through that field, with
+any id and any column. To let a client choose a row, send its id: see
+[Embedded objects are read-only](#embedded-objects-read-only). To show the row in
+responses, mark the field `fr.ReadOnly`.
 
 The schema that Restly generates takes its fields from the columns. It does not
 take the limits in `Field(...)` or the validators of the table class. To keep

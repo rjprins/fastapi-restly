@@ -2023,10 +2023,7 @@ def _reject_table_subclass(schema: type[pydantic.BaseModel], where: str) -> None
 
     :raises RestlyConfigurationError: ``schema`` inherits from a table class.
     """
-    if not is_mapped_class(schema) and any(
-        getattr(base, "model_config", {}).get("table") is True
-        for base in schema.__mro__
-    ):
+    if not is_mapped_class(schema) and _is_table_class(schema):
         raise RestlyConfigurationError(
             f"{where} is {schema.__name__}, a subclass of a SQLModel table class. "
             "It shows no required fields in OpenAPI, and it may not validate its "
@@ -2034,6 +2031,65 @@ def _reject_table_subclass(schema: type[pydantic.BaseModel], where: str) -> None
             "schema that you write. SQLModel says to inherit from a data model, "
             "not from a table class."
         )
+
+
+def _is_table_class(cls: type) -> bool:
+    """Whether ``cls`` is a SQLModel table class, or inherits from one."""
+    return any(
+        getattr(base, "model_config", {}).get("table") is True for base in cls.__mro__
+    )
+
+
+def _writable_table_class(annotation: Any, seen: set[Any]) -> type | None:
+    """The first SQLModel table class that a client can write through a field
+    with the type ``annotation``, or ``None``.
+
+    This follows a type into its arguments, and a Pydantic class into its
+    fields. A ``ReadOnly`` field of a nested class takes no input. ``seen`` is
+    as in :func:`_alias_value`, and also holds the classes that the check has
+    followed.
+    """
+    annotation, _ = _unwrap_type(annotation, seen)
+    if inspect.isclass(annotation) and issubclass(annotation, pydantic.BaseModel):
+        if annotation in seen:
+            return None
+        seen.add(annotation)
+        if _is_table_class(annotation):
+            return annotation
+        fields = annotation.model_fields.values()
+        arguments = [f.annotation for f in fields if not _is_readonly(f)]
+    else:
+        arguments = list(get_args(annotation))
+    for argument in arguments:
+        found = _writable_table_class(argument, seen)
+        if found is not None:
+            return found
+    return None
+
+
+def _reject_writable_table_class(schema: type[pydantic.BaseModel], where: str) -> None:
+    """A client must not write a row through a field of a write schema.
+
+    A SQLModel table class does not validate its input, also as the type of a
+    field, and the model takes the object as it is. So the request body would
+    create a row, with any id and any column.
+
+    :raises RestlyConfigurationError: a field that a client can write holds a
+        table class.
+    """
+    for name, field in schema.model_fields.items():
+        if _is_readonly(field):
+            continue
+        table = _writable_table_class(field.annotation, set())
+        if table is not None:
+            raise RestlyConfigurationError(
+                f"{where} has the field {name}, which holds {table.__name__}, a "
+                "SQLModel table class. A table class does not validate its input. "
+                "So a client can write a row through this field, with any id and "
+                "any column. To let a client choose a row, send its id with "
+                "`fr.MustExist`, `fr.IDRef` or `fr.IDSchema`. To show the row in "
+                "responses, mark the field `fr.ReadOnly`."
+            )
 
 
 def derive_response_schema(schema: type[_SchemaT]) -> type[_SchemaT]:

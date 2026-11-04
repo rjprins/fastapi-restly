@@ -21,7 +21,7 @@ from ..schemas._base import (
     _is_readonly,
     reference_origin_and_target,
 )
-from ._base import BaseRestView, View, ViewRoute, _serves_route
+from ._base import _WRITE_SCHEMA_ROUTES, BaseRestView, View, _serves_route
 from ._generated import _uses_default
 from ._guards import _WRITE_VERBS
 from ._schema_to_model import _relationship_name_for_fk
@@ -261,11 +261,7 @@ def _warn_writable_model_set_fields(view_cls: type[View]) -> None:
         return
     # Each write class, and whether Restly derives it from ``schema``.
     write_classes: dict[type[pydantic.BaseModel], bool] = {}
-    for attr, routes in (
-        ("create_schema", (ViewRoute.CREATE.value,)),
-        # the PUT route of a react-admin view takes the update schema too
-        ("update_schema", (ViewRoute.UPDATE.value, "put")),
-    ):
+    for attr, routes in _WRITE_SCHEMA_ROUTES:
         if not any(_serves_route(view_cls, route) for route in routes):
             continue
         if not _uses_default(view_cls, attr):

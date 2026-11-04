@@ -76,6 +76,12 @@ miss it.
       `update_schema`, or as the schema of `fr.schemas.derive_response_schema`,
       `derive_create_schema` or `derive_update_schema`. The request body was not
       validated. Leave `schema` out, or set a class without `table=True`.
+    - A SQLModel table class in a field that a client can write, on a `schema`,
+      `create_schema` or `update_schema`: `team: Team`, `teams: list[Team]`, or a data
+      model that holds one. A client could write a row through that field, with any id
+      and any column. To let a client choose a row, send its id with `fr.MustExist`,
+      `fr.IDRef` or `fr.IDSchema`. To show the row in responses, mark the field
+      `fr.ReadOnly`.
     - A subclass of a SQLModel table class as `response_schema`, or as the items of
       `list_response_schema`. OpenAPI showed no required fields. Use the table class
       itself, or a class that does not inherit from it.
@@ -243,6 +249,10 @@ miss it.
   a missing field gave `500`, not `422`, and OpenAPI showed no required fields. Leave
   `schema` out, or set a class without `table=True`. A subclass of a table class also
   fails as `response_schema` or as the items of `list_response_schema`.
+- A SQLModel table class in a field that a client can write now fails when the view
+  registers. Before, `POST {"team": {"id": 777, "is_admin": true}}` on a field
+  `team: Team` wrote that row: a client could set any id and any column, with values
+  of any type.
 - A decorator that reads the request from `args` or `kwargs`, such as
   `@limiter.limit` from slowapi, works on a method that a view inherits, and on a
   route that takes `list_params`. Before, each request gave `500`. These methods now

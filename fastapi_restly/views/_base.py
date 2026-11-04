@@ -81,6 +81,7 @@ from ..schemas._base import (
     _as_response,
     _reject_table_class,
     _reject_table_subclass,
+    _reject_writable_table_class,
     _response_adapter,
     _schema_resource_name,
 )
@@ -1250,6 +1251,16 @@ class BaseRestView(
             )
 
     @classmethod
+    def _check_write_schemas(cls) -> None:
+        """A write schema that a route of the view takes holds no SQLModel table
+        class in a field that a client can write."""
+        for name, routes in _WRITE_SCHEMA_ROUTES:
+            if any(_serves_route(cls, route) for route in routes):
+                _reject_writable_table_class(
+                    getattr(cls, name), f"{cls.__name__}.{name}"
+                )
+
+    @classmethod
     def _check_list_response_schema(cls) -> None:
         """A class that the default ``GET /`` cannot fill fails here, and not
         on the first request."""
@@ -1351,6 +1362,7 @@ class BaseRestView(
                     "generate the list params."
                 )
         cls._check_schema_settings()
+        cls._check_write_schemas()
         cls._check_list_response_schema()
         if not _uses_default(cls, "list_params_schema"):
             cls._check_declared_list_params_schema()
@@ -1765,6 +1777,14 @@ def _fields_the_items_lack(
         and name not in response.model_fields
         and not hasattr(response, name)
     ]
+
+
+#: Each write schema of a CRUD view, and the routes that take it. The PUT route
+#: of a react-admin view takes the update schema too.
+_WRITE_SCHEMA_ROUTES = (
+    ("create_schema", (ViewRoute.CREATE.value,)),
+    ("update_schema", (ViewRoute.UPDATE.value, "put")),
+)
 
 
 def _serves_route(view_cls: type, method_name: str) -> bool:
