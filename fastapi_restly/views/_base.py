@@ -1632,20 +1632,22 @@ def _guard_list_params(route: Callable) -> Callable:
     """Run the unknown-key guard before a route that takes ``list_params``.
 
     A copy, like the parent-endpoint copies: it keeps the route args and the
-    signature. The marker keeps a subclass's copy from being wrapped twice.
+    signature, and it passes on its arguments as it gets them. The marker keeps
+    a subclass's copy from being wrapped twice.
     """
+    self_name = next(iter(inspect.signature(route).parameters))
     if inspect.iscoroutinefunction(route):
 
-        async def _async_guarded(self, *args, **kwargs):
-            self._reject_unknown_query_params()
-            return await route(self, *args, **kwargs)
+        async def _async_guarded(*args, **kwargs):
+            (args[0] if args else kwargs[self_name])._reject_unknown_query_params()
+            return await route(*args, **kwargs)
 
         guarded: Callable = _async_guarded
     else:
 
-        def _sync_guarded(self, *args, **kwargs):
-            self._reject_unknown_query_params()
-            return route(self, *args, **kwargs)
+        def _sync_guarded(*args, **kwargs):
+            (args[0] if args else kwargs[self_name])._reject_unknown_query_params()
+            return route(*args, **kwargs)
 
         guarded = _sync_guarded
 
@@ -1806,6 +1808,10 @@ def _make_copy(endpoint: Callable) -> Callable:
     """
     Wrap the endpoint in a new function as kind of copy.
 
+    The copy passes on its arguments as it gets them. FastAPI calls an endpoint
+    with keyword arguments only, ``self`` too, and a decorator on the method must
+    see that same call. slowapi, for one, fails when ``self`` alone is positional.
+
     Fun fact: You cannot do this inside a for loop, because the closure of 'endpoint'
     inside the wrapper works on the variable, not on the value. And for-loops in Python
     do not have their own variable scope.
@@ -1814,14 +1820,14 @@ def _make_copy(endpoint: Callable) -> Callable:
     """
     if inspect.iscoroutinefunction(endpoint):
 
-        async def _async_wrapper(self, *args, **kwargs):
-            return await endpoint(self, *args, **kwargs)
+        async def _async_wrapper(*args, **kwargs):
+            return await endpoint(*args, **kwargs)
 
         endpoint_wrapper: Callable = _async_wrapper
     else:
 
-        def _sync_wrapper(self, *args, **kwargs):
-            return endpoint(self, *args, **kwargs)
+        def _sync_wrapper(*args, **kwargs):
+            return endpoint(*args, **kwargs)
 
         endpoint_wrapper = _sync_wrapper
 

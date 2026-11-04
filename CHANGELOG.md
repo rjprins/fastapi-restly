@@ -103,6 +103,10 @@ miss it.
     `await super().delete_endpoint(id)` fails when the route runs. The route now
     answers its own status: `@fr.delete("/{id}", status_code=200)` that calls
     `super()` answers `200` with the body `null`, where it answered `204` before.
+15. A wrapper of a decorator that reads `self` from `args[0]` on a method that a
+    view inherits now gets an `IndexError` on each request. It already did on a
+    method that the view defines. Name the parameter instead:
+    `def wrapper(self, *args, **kwargs)`.
 
 ### Added
 
@@ -213,6 +217,11 @@ miss it.
   a missing field gave `500`, not `422`, and OpenAPI showed no required fields. Leave
   `schema` out, or set a class without `table=True`. A subclass of a table class also
   fails as `response_schema` or as the items of `list_response_schema`.
+- A decorator that reads the request from `args` or `kwargs`, such as
+  `@limiter.limit` from slowapi, works on a method that a view inherits, and on a
+  route that takes `list_params`. Before, each request gave `500`. These methods now
+  get the same call as a method that the view defines and a FastAPI function: each
+  argument by keyword, also `self`.
 
 ## [0.13.0] - 2026-11-01
 
