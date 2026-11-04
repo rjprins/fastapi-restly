@@ -14,7 +14,6 @@ import warnings
 from collections.abc import Iterable, Mapping, Sequence
 from enum import Enum
 from typing import (
-    Annotated,
     Any,
     Callable,
     Literal,
@@ -25,7 +24,6 @@ from typing import (
     get_type_hints,
     overload,
 )
-from uuid import UUID
 
 import fastapi
 import pydantic
@@ -53,17 +51,21 @@ from ._class_based_view import (
 )
 from ._generated import _drop_stale_settings, _list_params_schema
 from ._guards import _check_removed_settings
-from ._list_params import _check_route_query_keys, _list_openapi_parameters
+from ._list_params import _check_route_query_keys, _dependants, _list_openapi_parameters
 from ._misuse_lint import _warn_on_misuse
 from ._openapi_names import _ensure_patched
 from ._schema_types import (
     SchemaType,
     _bare,
     _evaluated,
+    _is_id_type,
+    _is_view_id_param,
+    _path_parameter,
     _pydantic_generic_args,
     _replace_schema_types,
     _schema_type_in,
-    _view_id_type,
+    _view_id_param,
+    _with_converter,
     _without_none,
 )
 
@@ -333,13 +335,29 @@ def _filled_responses(
     return filled
 
 
+def _merged_responses(*levels: Mapping[Any, Any]) -> dict[Any, Any]:
+    """The responses of ``levels``, the last level wins. ``404`` and ``"404"`` are one
+    status, and a status set to ``None`` is left out."""
+    merged: dict[str, tuple[Any, Any]] = {}
+    for level in levels:
+        for status, response in level.items():
+            merged[str(int(status)) if isinstance(status, int) else status] = (
+                status,
+                response,
+            )
+    return {
+        status: response for status, response in merged.values() if response is not None
+    }
+
+
 def _view_route_args(endpoint: Callable, view_cls: Any) -> tuple[str, dict[str, Any]]:
     """The path and the route arguments of ``endpoint``, for this view.
 
     ``response_model`` can hold a marker. A path parameter annotated
-    ``IDType`` gets the converter of the view's id type, unless the path
-    gives one already. The decorator's arguments stay as written, so a
-    subclass with another id type gets its own path.
+    ``IDType`` gets the view's converter, unless the path gives one already,
+    and ``id`` also gets the name of the view's id parameter. The decorator's
+    arguments stay as written, so a subclass with another id type or another
+    model gets its own path.
     """
     path, route_kwargs = endpoint._api_route_args  # type: ignore[attr-defined]
     response_model = route_kwargs.get("response_model")
@@ -351,17 +369,112 @@ def _view_route_args(endpoint: Callable, view_cls: Any) -> tuple[str, dict[str, 
             **route_kwargs,
             "responses": _filled_responses(route_kwargs["responses"], view_cls),
         }
-    converter = {int: "int", UUID: "uuid"}.get(_view_id_type(view_cls))
-    if converter is not None:
-        for name, annotation in inspect.get_annotations(endpoint).items():
-            annotation = _alias_value(_evaluated(annotation, endpoint))
-            is_id = get_origin(annotation) is Annotated and any(
-                isinstance(m, SchemaType) and m.name == "IDType"
-                for m in get_args(annotation)[1:]
+    id_name, converter = _view_id_param(view_cls)
+    default_converter = f":{converter}" if converter else ""
+    is_view_id_param = _is_view_id_param(endpoint)
+    for name, annotation in inspect.get_annotations(endpoint).items():
+        if _is_id_type(annotation, endpoint):
+            new_name = id_name if name == "id" and is_view_id_param else name
+            path = re.sub(
+                _path_parameter(name, new_name),
+                lambda found: f"{{{new_name}{found[1] or default_converter}}}",
+                path,
             )
-            if is_id:
-                path = path.replace(f"{{{name}}}", f"{{{name}:{converter}}}")
     return path, route_kwargs
+
+
+def _reject_id_param_twice(view_cls: Any, prefix: str, path: str) -> None:
+    """A path that names a parameter two times fails in Starlette, and only a view
+    can see that the name came from the model."""
+    name, converter = _view_id_param(view_cls)
+    if len(re.findall(_path_parameter(name), prefix + path)) > 1:
+        raise RestlyConfigurationError(
+            f"{view_cls.__name__}: the path {prefix}{path} has the parameter "
+            f"{name} two times. A path can use a name only once. Set another name "
+            f"on the view, such as "
+            f'id_param = "{_with_converter("child_id", converter)}".'
+        )
+
+
+def _reject_unread_path_parameter(
+    view_cls: Any, name: str, path: str, endpoint: Callable, route: Any
+) -> None:
+    """A route with ``fr.route_options("/{role_id}")`` and a parameter ``id: IDType``
+    looks right, but ``id`` reads the query and nothing reads the path. So OpenAPI
+    is wrong and each request answers 422. A dependency can read the path."""
+    if not _is_view_id_param(endpoint):
+        return
+    if not any(field.name == "id" for field in route.dependant.query_params):
+        return
+    read = {
+        field.alias
+        for dependant in _dependants(route.dependant)
+        for field in dependant.path_params
+    }
+    unread = [found for found in re.findall(r"\{(\w+)", path) if found not in read]
+    if unread:
+        converter = _view_id_param(view_cls)[1]
+        raise RestlyConfigurationError(
+            f"{view_cls.__name__}.{name}: the path {path} has the parameter "
+            f"{unread[0]}, but nothing reads it, and the parameter id of the route "
+            f"reads the query. Write {{id}} in the path, and set the name on the "
+            f'view: id_param = "{_with_converter(unread[0], converter)}".'
+        )
+
+
+def _with_id_param(view_cls: Any, name: str, endpoint: Callable, path: str) -> Callable:
+    """The endpoint that FastAPI calls, when the path names the view's id parameter.
+
+    FastAPI sees a parameter with the name in the path, so it reads it as any path
+    parameter: what the annotation says stays, such as a ``Field`` or a validator.
+    The method still gets ``id``. This is not on the class, so a subclass with
+    another name starts from what the author wrote.
+    """
+    id_name, converter = _view_id_param(view_cls)
+    if (
+        id_name == "id"
+        or not _is_view_id_param(endpoint)
+        or not re.search(_path_parameter(id_name), path)
+    ):
+        return endpoint
+    signature = inspect.signature(endpoint)
+    if id_name in signature.parameters:
+        raise RestlyConfigurationError(
+            f"{view_cls.__name__}.{name} has a parameter {id_name}, and the parameter "
+            f"id: IDType reads the path parameter with this name. Give one of them "
+            f"another name, or set another name on the view, such as "
+            f'id_param = "{_with_converter("item_id", converter)}".'
+        )
+    # A decorator without async around an async endpoint returns a coroutine.
+    if inspect.iscoroutinefunction(endpoint) or inspect.iscoroutinefunction(
+        inspect.unwrap(endpoint)
+    ):
+
+        @functools.wraps(endpoint)
+        async def wrapped(**kwargs: Any) -> Any:
+            kwargs["id"] = kwargs.pop(id_name)
+            return await endpoint(**kwargs)
+
+    else:
+
+        @functools.wraps(endpoint)
+        def wrapped(**kwargs: Any) -> Any:
+            kwargs["id"] = kwargs.pop(id_name)
+            return endpoint(**kwargs)
+
+    # FastAPI reads string annotations in the module of the function it
+    # calls; an older FastAPI does not look through the wrapper
+    wrapped.__signature__ = signature.replace(  # type: ignore[attr-defined]
+        parameters=[
+            param.replace(
+                name=id_name if param.name == "id" else param.name,
+                annotation=_evaluated(param.annotation, endpoint),
+            )
+            for param in signature.parameters.values()
+        ],
+        return_annotation=_evaluated(signature.return_annotation, endpoint),
+    )
+    return wrapped
 
 
 def _view_response_kind(view_cls: Any, endpoint: Callable) -> tuple[str | None, Any]:
@@ -681,6 +794,7 @@ def _init_api_router(view_cls: type[View]) -> fastapi.APIRouter:
         endpoint = attr
         if is_rest_view:
             path, route_kwargs = _view_route_args(endpoint, view_cls)
+            _reject_id_param_twice(view_cls, prefix, path)
         else:
             path, route_kwargs = endpoint._api_route_args
             _reject_schema_types_on_a_plain_view(view_cls, name, endpoint, route_kwargs)
@@ -705,20 +819,16 @@ def _init_api_router(view_cls: type[View]) -> fastapi.APIRouter:
             }
         route_kwargs = {**defaults, **route_kwargs}
         not_found = is_rest_view and _can_answer_not_found(prefix, path, endpoint)
-        route_responses = {
-            **(_NOT_FOUND_RESPONSE if not_found else {}),
-            **responses,
-            **(route_kwargs.get("responses") or {}),
-        }
-        route_kwargs["responses"] = {
-            status: response
-            for status, response in route_responses.items()
-            if response is not None
-        }
+        route_kwargs["responses"] = _merged_responses(
+            _NOT_FOUND_RESPONSE if not_found else {},
+            responses,
+            route_kwargs.get("responses") or {},
+        )
         if is_rest_view:
             endpoint, route_kwargs = _with_view_response(
                 view_cls, endpoint, route_kwargs
             )
+            endpoint = _with_id_param(view_cls, name, endpoint, path)
         if getattr(endpoint, "_fr_list_guard", False):
             if list_parameters is None:
                 list_parameters = _list_openapi_parameters(
@@ -728,6 +838,10 @@ def _init_api_router(view_cls: type[View]) -> fastapi.APIRouter:
             extra["parameters"] = [*list_parameters, *extra.get("parameters", [])]
             route_kwargs["openapi_extra"] = extra
         _add_api_route(api_router, view_cls, path, endpoint, route_kwargs)
+        if is_rest_view:
+            _reject_unread_path_parameter(
+                view_cls, name, path, endpoint, api_router.routes[-1]
+            )
         if getattr(endpoint, "_fr_list_guard", False):
             _check_route_query_keys(
                 view_cls.__name__,

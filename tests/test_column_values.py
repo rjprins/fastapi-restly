@@ -170,7 +170,7 @@ def test_a_value_that_does_not_fit_is_a_client_error(client):
     assert response.json()["detail"].startswith("Invalid filter value for 'count'")
 
     response = client.get(f"/things/{2**31}", assert_status_code=422)
-    assert detail(response) == (["path", "id"], out_of_range)
+    assert detail(response) == (["path", "thing_id"], out_of_range)
     client.get(f"/things/{2**31 - 1}", assert_status_code=404)
 
     # a reference that cannot fit names no row

@@ -56,9 +56,9 @@ For `prefix = "/users"`, `include_view` registers these routes:
 |---|---|---|---|---|
 | `GET /users` | {meth}`get_many_endpoint <fastapi_restly.views.AsyncRestView.get_many_endpoint>` | Filter, sort and page parameters | A page of objects in a `data` envelope | `200` |
 | `POST /users` | {meth}`create_endpoint <fastapi_restly.views.AsyncRestView.create_endpoint>` | `create_schema` | `response_schema` | `201` |
-| `GET /users/{id}` | {meth}`get_one_endpoint <fastapi_restly.views.AsyncRestView.get_one_endpoint>` | The id in the path | `response_schema` | `200` |
-| `PATCH /users/{id}` | {meth}`update_endpoint <fastapi_restly.views.AsyncRestView.update_endpoint>` | `update_schema` | `response_schema` | `200` |
-| `DELETE /users/{id}` | {meth}`delete_endpoint <fastapi_restly.views.AsyncRestView.delete_endpoint>` | The id in the path | Empty body | `204` |
+| `GET /users/{user_id}` | {meth}`get_one_endpoint <fastapi_restly.views.AsyncRestView.get_one_endpoint>` | The id in the path | `response_schema` | `200` |
+| `PATCH /users/{user_id}` | {meth}`update_endpoint <fastapi_restly.views.AsyncRestView.update_endpoint>` | `update_schema` | `response_schema` | `200` |
+| `DELETE /users/{user_id}` | {meth}`delete_endpoint <fastapi_restly.views.AsyncRestView.delete_endpoint>` | The id in the path | Empty body | `204` |
 
 The main path of the list is `/users`, without a slash at the end. Restly
 also accepts `/users/`, as a route that OpenAPI does not show.
@@ -86,16 +86,19 @@ decide per action who may do what in
 (item-route-matching)=
 ### Item paths and static routes
 
-The paths of the built-in `GET`, `PATCH` and `DELETE` routes for one row
-follow {attr}`id_type <fastapi_restly.views.BaseRestView.id_type>`. By
-default, Restly takes it from the model's primary key. The `PUT` route of a
-React Admin view uses the same path.
+The built-in `GET`, `PATCH` and `DELETE` routes for one row name their path
+parameter after the model. So `User` and `UserModel` both give
+`/users/{user_id}`. The `PUT` route of a React Admin view uses the same path.
+Where these docs name no model, they write the route as `GET /{id}`.
+
+The path also follows {attr}`id_type <fastapi_restly.views.BaseRestView.id_type>`.
+By default, Restly takes it from the model's primary key.
 
 | ID type | Registered item path | Matching values |
 |---|---|---|
-| `int` | `/{id:int}` | Digits only, including `0`; no minus sign |
-| `uuid.UUID` | `/{id:uuid}` | UUIDs that Starlette's converter accepts |
-| Any other type | `/{id}` | Any single path segment, then FastAPI validation |
+| `int` | `/{user_id:int}` | Digits only, including `0`; no minus sign |
+| `uuid.UUID` | `/{user_id:uuid}` | UUIDs that Starlette's converter accepts |
+| Any other type | `/{user_id}` | Any single path segment, then FastAPI validation |
 
 With an integer or UUID item path, a static route such as `/users/me` still
 works when you register it after the view.
@@ -108,17 +111,75 @@ An untyped item path, such as the path for string ids, also matches
 
 A value that does not match the converter returns `404`, unless another
 route matches it. So a negative integer id does not match, even when the row
-exists. OpenAPI still shows the path as `/users/{id}`, with an integer or UUID
+exists. OpenAPI still shows the path as `/users/{user_id}`, with an integer or UUID
 parameter.
 
-A route that you declare yourself keeps the path you give it. Restly adds
-the converter only to a path parameter annotated
-{data}`IDType <fastapi_restly.views.IDType>`; see
-[Name the view's schemas in a custom route](#name-the-view-schemas). To
-accept negative integer ids, replace each item endpoint you need with an
-untyped path such as `@fr.get("/{id}")`, and annotate its `id` parameter as
-`int`; see
-[Change the status code or headers of one route](#replace-endpoint-method).
+To accept negative integer ids, set `id_param` without a converter; see
+[Choose the name of the id parameter](#id-param).
+:::
+
+(id-param)=
+### Choose the name of the id parameter
+
+If your API has another name for the id in the path, set
+{attr}`id_param <fastapi_restly.views.BaseRestView.id_param>`. What you write
+goes between the braces:
+
+```python
+class RoleView(fr.AsyncRestView):
+    prefix = "/roles"
+    model = RoleGroup
+    id_param = "role_id:int"
+```
+
+The path is now `/roles/{role_id:int}`, and OpenAPI shows `role_id`. Without the
+converter, as in `id_param = "role_id"`, the path takes any value. FastAPI then
+checks the value and answers `422` for a value that is not an integer.
+
+The Python parameter stays `id`. So {meth}`where_id <fastapi_restly.views.BaseRestView.where_id>`
+and your methods do not change.
+
+A custom route that uses `/{id}` with a parameter `id: IDType` gets the same name
+and converter as the item routes:
+
+```python
+    @fr.post("/{id}/archive")
+    async def archive(self, id: IDType) -> ResponseSchema: ...
+```
+
+Here the route is `POST /roles/{role_id:int}/archive`.
+
+:::{admonition} Details
+:class: details
+
+A route can also write the name itself, as in FastAPI, such as
+`@fr.post("/{role_id}/archive")` with a parameter `role_id: int`. A route with
+`/{id}` and a parameter `id: int` keeps `{id}`, because only
+{data}`IDType <fastapi_restly.views.IDType>` follows the view. Another parameter
+with this type, such as `other_id: IDType`, keeps its name and gets the converter.
+A parameter `id` that gets its value from a dependency, as in
+`id: IDType = Depends(load_id)`, is not the id parameter of the view. The path
+keeps `{id}`, and the dependency reads it.
+
+A dependency on an item route reads the name in the path. So it takes
+`role_id: int`. If it takes `id: int`, FastAPI reads a required query parameter,
+as for any dependency with a name that is not in the path.
+`app.url_path_for("get_one", role_id=1)` uses the name in the path too.
+
+A prefix can have other parameters, and one of them can be `{id}`. A prefix with
+the name of the view's own id parameter, such as
+`/categories/{category_id}/children` on a view of `Category`, raises an error when
+you register the view, because a path cannot use one name twice. Set `id_param` on
+this view. A route with `id: IDType` and another parameter with the name of the id
+parameter raises an error too, because both would read the same value.
+
+A name from the model must use only ASCII letters, digits and `_`, because a path
+parameter takes nothing else. A model such as `Überweisung` raises an error when
+you register the view. Set `id_param` on this view.
+
+To keep `{id}` in the path, set `id_param = "id:int"`. For a UUID key, set
+`"id:uuid"`, and for a string key, set `"id"`. Without a converter, FastAPI checks
+the value.
 :::
 
 (crud-model-and-schemas)=
@@ -156,7 +217,8 @@ This table maps each need to its setting:
 |---|---|
 | Stable response fields | Declare {attr}`schema <fastapi_restly.views.BaseRestView.schema>` |
 | Other fields or validation on create or update | Declare {attr}`create_schema <fastapi_restly.views.BaseRestView.create_schema>` or {attr}`update_schema <fastapi_restly.views.BaseRestView.update_schema>` ([Explicit write schemas](#explicit-write-schemas)) |
-| Another type for the `{id}` path parameter | Set {attr}`id_type <fastapi_restly.views.BaseRestView.id_type>` ([Item paths](#item-route-matching)) |
+| Another type for the id path parameter | Set {attr}`id_type <fastapi_restly.views.BaseRestView.id_type>` ([Item paths](#item-route-matching)) |
+| Another name for the id path parameter | Set {attr}`id_param <fastapi_restly.views.BaseRestView.id_param>` ([Choose the name](#id-param)) |
 | Fewer routes, such as a read-only view | Set {attr}`include_routes <fastapi_restly.views.BaseRestView.include_routes>` (the routes to serve) or {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>` (the routes to leave out) ([Exclude CRUD routes](#exclude-crud-routes)) |
 | Hide rows from every read | Set {attr}`scope <fastapi_restly.views.BaseRestView.scope>`, or `default_scope` on the model ([Scopes](#view-scope)) |
 | No pagination | Set {attr}`pagination <fastapi_restly.views.BaseRestView.pagination>` to `None`, or to a {class}`NoPagination <fastapi_restly.views.NoPagination>` to choose its envelope ([Filtering, Sorting & Pagination](#no-pagination)) |
@@ -186,7 +248,7 @@ class UserView(fr.AsyncRestView):
     exclude_routes = [fr.ViewRoute.DELETE, fr.ViewRoute.UPDATE]
 ```
 
-`UserView` now serves only `GET /users`, `POST /users` and `GET /users/{id}`.
+`UserView` now serves only `GET /users`, `POST /users` and `GET /users/{user_id}`.
 
 Subclasses inherit `exclude_routes`. To make several views read-only, set it
 on a base view:
@@ -202,7 +264,7 @@ class ProductView(ReadOnlyView):
     model = Product
 ```
 
-`ProductView` only serves `GET /products` and `GET /products/{id}`.
+`ProductView` only serves `GET /products` and `GET /products/{product_id}`.
 
 A subclass that sets its own `exclude_routes` replaces the list of its base. It
 does not add to it. So repeat the entries of the base, or the subclass serves
@@ -232,7 +294,7 @@ class PublicTagView(TagView):
     include_routes = (fr.ViewRoute.GET_MANY, fr.ViewRoute.GET_ONE)
 ```
 
-`PublicTagView` serves only `GET /public/tags` and `GET /public/tags/{id}`,
+`PublicTagView` serves only `GET /public/tags` and `GET /public/tags/{tag_id}`,
 also when `TagView` gets more routes later.
 
 :::{admonition} Details
@@ -375,8 +437,7 @@ class ProjectTaskView(fr.AsyncRestView):
 
 - `prefix` contains `{project_id}`, so every route of the view is under a
   project. Name the path parameter after the parent, as here. The item routes
-  already use `{id}`, and FastAPI raises an error for a second `{id}` when you
-  register the view.
+  of this view use `{task_id}`.
 - `project_from_path` reads `project_id` from the path. FastAPI checks that it
   is an integer, and OpenAPI lists it on every route. The function returns
   `404` when the project does not exist or when `ProjectView` hides it.
@@ -447,7 +508,7 @@ fails, for example in a flat view or a script, because nothing binds
 The lookup decides which parents a client can reach. `project_from_path`
 applies the scope of `ProjectView` through
 {func}`fr.resolve_scope <fastapi_restly.views.resolve_scope>`. So a project
-that `GET /projects/{id}` hides also returns `404` here, with all of its
+that `GET /projects/{project_id}` hides also returns `404` here, with all of its
 tasks. In the example, that is an archived project.
 
 Without this check, `POST /projects/{project_id}/tasks` creates a task in any
@@ -594,7 +655,7 @@ A model can have a flat view and nested views at the same time, such as a
 
 The default CRUD routes have these limits:
 
-- A row is identified by one primary key column. The `{id}` path parameter
+- A row is identified by one primary key column. The id path parameter
   takes the Python type of the key, so a UUID or string key needs no
   configuration. Reference fields such as `fr.MustExist[UUID, Model]` accept
   these keys too. For a composite key, set `id_type = str` and override

@@ -71,7 +71,7 @@ def test_derive_response_schema_returns_the_class_the_view_uses():
     assert issubclass(AccountResponse, AccountSchema)
     assert set(AccountResponse.model_fields) == {"id", "name"}
     assert fr.schemas.derive_response_schema(AccountSchema) is AccountResponse
-    assert _response_model(app, "/accounts/{id}", "get") is AccountResponse
+    assert _response_model(app, "/accounts/{account_id}", "get") is AccountResponse
 
 
 def test_derive_list_response_schema_returns_the_class_the_view_uses():
@@ -362,7 +362,7 @@ def test_openapi_shows_the_view_s_response_class(members):
     _, client = members
     app = client.app
 
-    assert _ref(app, "/members/{id}", "get") == "MemberResponse"
+    assert _ref(app, "/members/{_member_id}", "get") == "MemberResponse"
     assert _ref(app, "/members", "get") == "MemberListResponse"
     assert _components(app) == {
         "MemberResponse",

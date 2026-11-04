@@ -636,7 +636,7 @@ class ArticleSchema(fr.IDSchema):
 Nested schemas count too: if `UserSchema` names a relationship of `User`, that
 relationship loads as well.
 
-`GET /articles` and `GET /articles/{id}` load these relationships with the
+`GET /articles` and `GET /articles/{article_id}` load these relationships with the
 row. A create or an update loads them again after the write, because the
 refresh after the flush unloads them.
 

@@ -162,12 +162,15 @@ def test_custom_react_admin_list_keeps_unknown_key_guard(custom_list_client):
 
 def test_the_list_comes_first_in_openapi(client):
     _setup_async_item_view(client)
-    assert list(client.app.openapi()["paths"]) == ["/items", "/items/{id}"]
+    assert list(client.app.openapi()["paths"]) == ["/items", "/items/{item_id}"]
 
 
 def test_the_list_comes_first_in_openapi_of_a_sync_view(sync_client):
     _setup_sync_item_view(sync_client)
-    assert list(sync_client.app.openapi()["paths"]) == ["/items", "/items/{id}"]
+    assert list(sync_client.app.openapi()["paths"]) == [
+        "/items",
+        "/items/{sync_item_id}",
+    ]
 
 
 def test_custom_react_admin_list_openapi_uses_its_dialect(custom_list_client):
@@ -1273,3 +1276,35 @@ def test_react_admin_view_cannot_disable_pagination(client, unpaginated):
             model = Gadget
             schema = GadgetSchema
             pagination = unpaginated
+
+
+@pytest.mark.parametrize("view_base", ["async", "sync"])
+def test_list_sends_the_status_of_the_route(request, view_base):
+    class Thing(fr.IDMixin, SharedBase):
+        name: Mapped[str]
+
+    class ThingSchema(fr.IDSchema):
+        name: str
+
+    base = fr.AsyncReactAdminView if view_base == "async" else fr.ReactAdminView
+    if view_base == "sync":
+        engine, _ = request.getfixturevalue("sync_db")
+
+    class ThingView(base):
+        prefix = "/things"
+        model = Thing
+        schema = ThingSchema
+        get_many_endpoint = fr.route_options(status_code=206)
+
+    app = FastAPI()
+    fr.include_view(app, ThingView)
+    if view_base == "sync":
+        SharedBase.metadata.create_all(engine)
+    else:
+        create_tables()
+    client = RestlyTestClient(app)
+
+    assert "206" in app.openapi()["paths"]["/things"]["get"]["responses"]
+    response = client.get("/things", assert_status_code=206)
+    assert response.status_code == 206
+    assert response.headers["Content-Range"] == "items 0-0/0"

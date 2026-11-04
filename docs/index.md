@@ -87,9 +87,9 @@ has the routes below. Their Pydantic schemas are
 ```text
 GET    /users       # list users: filter, sort, paginate via URL params
 POST   /users       # create a user
-GET    /users/{id}  # read one user
-PATCH  /users/{id}  # partially update one user
-DELETE /users/{id}  # delete one user
+GET    /users/{user_id}  # read one user
+PATCH  /users/{user_id}  # partially update one user
+DELETE /users/{user_id}  # delete one user
 ```
 
 The list returns a page of at most 50 rows, in an envelope:
@@ -111,7 +111,7 @@ to `UserView`, so that it keeps the row and marks the user as inactive:
         user.active = False  # keep the row
 ```
 
-`DELETE /users/{id}` still runs
+`DELETE /users/{user_id}` still runs
 {meth}`authorize <fastapi_restly.views.RestView.authorize>`, commits and
 returns 204. The other four routes do not change. See
 [Request Lifecycle & Hooks](lifecycle.md).

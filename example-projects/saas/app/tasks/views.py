@@ -7,7 +7,7 @@ from fastapi import HTTPException
 from pydantic import BaseModel
 
 import fastapi_restly as fr
-from fastapi_restly.views import ResponseSchema
+from fastapi_restly.views import IDType, ResponseSchema
 
 from ..projects.models import Project
 from ..users.models import User
@@ -77,7 +77,7 @@ class TaskView(TrashView[Task]):
     criterion in ``tasks/models.py`` applies to ORM reads of Task, this
     scope and the trash route's alike. Retrieve
     applies the same scope, so the predicate that filters the list also
-    returns 404 from ``GET /tasks/{id}`` for a task a member is not
+    returns 404 from ``GET /tasks/{task_id}`` for a task a member is not
     assigned to, and cascades through ``handle_update`` and
     ``handle_delete`` (both load the row through ``get_one`` first).
     """
@@ -312,21 +312,21 @@ class TaskView(TrashView[Task]):
         return BulkResult(success=success, failed=failed, errors=errors)
 
     @fr.post("/{id}/start")
-    async def start_task(self, id: int) -> ResponseSchema:
+    async def start_task(self, id: IDType) -> ResponseSchema:
         """Move task from TODO to IN_PROGRESS."""
         return await self._transition_task(
             id, TaskStatus.TODO, TaskStatus.IN_PROGRESS, self.Action.START
         )
 
     @fr.post("/{id}/complete")
-    async def complete_task(self, id: int) -> ResponseSchema:
+    async def complete_task(self, id: IDType) -> ResponseSchema:
         """Move task from IN_PROGRESS to DONE."""
         return await self._transition_task(
             id, TaskStatus.IN_PROGRESS, TaskStatus.DONE, self.Action.COMPLETE
         )
 
     @fr.post("/{id}/reopen")
-    async def reopen_task(self, id: int) -> ResponseSchema:
+    async def reopen_task(self, id: IDType) -> ResponseSchema:
         """Reopen a completed task back to IN_PROGRESS."""
         return await self._transition_task(
             id, TaskStatus.DONE, TaskStatus.IN_PROGRESS, self.Action.REOPEN

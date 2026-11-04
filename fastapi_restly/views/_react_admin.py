@@ -426,7 +426,12 @@ class _ReactAdminMixin:
         unit = view.get_react_admin_range_unit()
         last = start + len(rows) - 1 if rows else start
         total = list_result.total_count or 0
+        # This response goes out as it is, so it sends the status of the route.
+        _, route_kwargs = getattr(
+            type(self).get_many_endpoint, "_api_route_args", ("", {})
+        )
         return fastapi.Response(
+            status_code=route_kwargs.get("status_code") or 200,
             # As the class writes it, as in the other responses: a NaN becomes
             # the text "NaN". json.dumps would write NaN without quotes, which
             # is not JSON.

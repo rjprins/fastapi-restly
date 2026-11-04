@@ -129,15 +129,16 @@ def test_a_mixin_route_gets_the_types_of_each_view(env):
         )
         assert response.json() == {"id": created["id"], "name": "Desk"}
 
-    assert {"/products/{id:int}/rename", "/gadgets/{id:uuid}/rename"} <= (
-        _route_paths(client.app)
-    )
+    assert {
+        "/products/{product_id:int}/rename",
+        "/gadgets/{gadget_id:uuid}/rename",
+    } <= (_route_paths(client.app))
     paths = client.app.openapi()["paths"]
     for prefix, resource, id_schema in [
         ("/products", "Product", {"type": "integer"}),
         ("/gadgets", "Gadget", {"type": "string", "format": "uuid"}),
     ]:
-        operation = paths[f"{prefix}/{{id}}/rename"]["post"]
+        operation = paths[f"{prefix}/{{{resource.lower()}_id}}/rename"]["post"]
         body = operation["requestBody"]["content"]["application/json"]["schema"]
         assert _ref(body) == f"{resource}Update"
         response = operation["responses"]["200"]["content"]["application/json"]
@@ -161,8 +162,13 @@ def test_a_subclass_of_a_registered_view_gets_its_own_types(env):
 
     fr.include_view(env.client.app, GadgetView)
     paths = _route_paths(env.client.app)
-    assert {"/products/{id:int}/rename", "/products/gadgets/{id:uuid}/rename"} <= paths
-    operation = env.client.app.openapi()["paths"]["/products/gadgets/{id}/rename"]
+    assert {
+        "/products/{product_id:int}/rename",
+        "/products/gadgets/{gadget_id:uuid}/rename",
+    } <= paths
+    operation = env.client.app.openapi()["paths"][
+        "/products/gadgets/{gadget_id}/rename"
+    ]
     body = operation["post"]["requestBody"]["content"]["application/json"]
     assert _ref(body["schema"]) == "GadgetUpdate"
 
@@ -263,8 +269,8 @@ def test_markers_work_inside_other_types(env):
     assert client.get(f"/products/maybe/{created['id']}").json() == created
     client.get("/products/maybe/0", assert_status_code=422)
 
-    assert "/products/maybe/{id:int}" in _route_paths(client.app)
-    operation = client.app.openapi()["paths"]["/products/maybe/{id}"]["get"]
+    assert "/products/maybe/{product_id:int}" in _route_paths(client.app)
+    operation = client.app.openapi()["paths"]["/products/maybe/{product_id}"]["get"]
     (id_param,) = operation["parameters"]
     assert id_param["schema"]["type"] == "integer"
     assert id_param["schema"]["minimum"] == 1
@@ -290,7 +296,10 @@ def test_view_id_converter_with_another_name_or_a_given_converter(env):
     fr.include_view(env.client.app, ProductView)
     client = env.client
     paths = _route_paths(client.app)
-    assert {"/products/by-item/{item_id:int}", "/products/by-text/{id:str}"} <= paths
+    assert {
+        "/products/by-item/{item_id:int}",
+        "/products/by-text/{product_id:str}",
+    } <= paths
     assert client.get("/products/by-item/5").json() == {"item_id": 5}
     client.get("/products/by-item/abc", assert_status_code=404)
     # the path's own converter stays, and the parameter still takes the id type
@@ -368,14 +377,14 @@ def test_a_marker_in_a_generic_class_is_filled(env, route):
         "data": {"id": 7, "name": "Lamp"}
     }
     spec = client.app.openapi()
-    operation = spec["paths"][f"/products/{route}/{{id}}"]["get"]
+    operation = spec["paths"][f"/products/{route}/{{product_id}}"]["get"]
     name = _ref(_json_schema(operation))
     assert name == "Data_ProductResponse_"
     assert _ref(spec["components"]["schemas"][name]["properties"]["data"]) == (
         "ProductResponse"
     )
     # the marker gets the view's converter also here, from the route's parameter
-    assert f"/products/{route}/{{id:int}}" in _route_paths(client.app)
+    assert f"/products/{route}/{{product_id:int}}" in _route_paths(client.app)
 
 
 def test_a_marker_inside_a_type_inside_a_generic_class_is_filled(env):
@@ -398,7 +407,7 @@ def test_a_generic_class_with_a_marker_can_be_optional(env):
     assert client.get("/products/optional/7").json() == {
         "data": {"id": 7, "name": "Lamp"}
     }
-    operation = client.app.openapi()["paths"]["/products/optional/{id}"]["get"]
+    operation = client.app.openapi()["paths"]["/products/optional/{product_id}"]["get"]
     options = _json_schema(operation)["anyOf"]
     assert {"type": "null"} in options
     assert [_ref(o) for o in options if "$ref" in o] == ["Data_ProductResponse_"]
@@ -441,8 +450,8 @@ def test_each_view_gets_its_own_class_in_a_generic_class(env):
     fr.include_view(env.client.app, ProductView)
     fr.include_view(env.client.app, GadgetView)
     paths = env.client.app.openapi()["paths"]
-    products = paths["/products/one/{id}"]["get"]
-    gadgets = paths["/gadgets/one/{id}"]["get"]
+    products = paths["/products/one/{product_id}"]["get"]
+    gadgets = paths["/gadgets/one/{gadget_id}"]["get"]
     assert _ref(_json_schema(products)) == "Data_ProductResponse_"
     assert _ref(_json_schema(gadgets)) == "Data_GadgetResponse_"
 

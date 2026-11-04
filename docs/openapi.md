@@ -69,7 +69,7 @@ The CRUD routes get these FastAPI route names, operation IDs and summaries:
 | React Admin `put` | `put` | `items_put` | Update (PUT) |
 
 An operation ID joins the full path of the resource and the action. It leaves
-out the final `{id}` parameter and the HTTP method. So a view mounted under
+out the final path parameter and the HTTP method. So a view mounted under
 `/v1` gets `v1_items_list` instead of `items_list`, and the same view mounted
 under `/v1` and `/v2` gets different IDs. The class name and the tags of the
 view do not change the IDs.
@@ -128,8 +128,7 @@ class InvoiceView(fr.AsyncRestView):
     update_endpoint = fr.route_options(methods=["PUT"])
 ```
 
-It takes the same arguments as a route decorator, so every option of a FastAPI
-route works. The hooks of the view run as before. Restly still fills in what you
+It takes the same arguments as a route decorator. The hooks of the view run as before. Restly still fills in what you
 do not pass: the list params, and the name and the summary. When you pass `name`,
 FastAPI makes the summary and the operation ID from that name, unless you pass
 them too. The table in
@@ -142,22 +141,31 @@ lists the endpoint methods.
 Each argument replaces the one of the inherited route. `dependencies` and
 `responses` add up, as they do on a view. `dependencies` run base first, so a
 subclass cannot remove a check of its base. `responses` add up per status code,
-and a status code set to `None` is left out:
+and a status code set to `None` is left out. FastAPI adds the 422 response itself,
+so `{422: None}` does not remove it:
 
 ```python
     delete_endpoint = fr.route_options(dependencies=[Depends(require_admin)])
     get_one_endpoint = fr.route_options(responses={404: None})
 ```
 
-`path` replaces the path of the route, as in `fr.route_options("/new")`. A
-list route with `path=""` has no hidden route with a slash at the end.
+`path` replaces the path of the route, as in `fr.route_options("/new")`. For a
+list without a hidden route with a slash at the end, set `path=""` on the list
+route and on the create route. In a new path, write `{id}` for
+[the id parameter of the view](#id-param). A path such as `/{role_id}` on a route
+with `id: IDType` raises an error when the view registers, because nothing would
+read `role_id`. Set the name with `id_param`.
 `methods=["PUT"]` changes only the HTTP method. The route still updates only the
 fields that the client sends. A status code without a body, such as 204, also
-removes the response model of the route.
+removes the response model of the route. For the list route, set
+`list_response_schema`, not `response_model`. For a delete with a body, write the
+method. An option does not change the order of the routes. So a route that the
+class writes, such as `GET /stats`, stays before the item route.
 
 A subclass inherits the options and can change them further. A plain class can
 hold options for several views. Put it before the view class, as in
 `class TagView(QuietRoutes, fr.AsyncRestView)`, as for any other method of a mixin.
+After the view class, the options do nothing.
 
 A name that is not a route of a base class raises
 {class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`
@@ -181,10 +189,11 @@ class, so the route works as before:
 ```
 
 `ResponseSchema` keeps the view's response as the response model; see
-[Name the view's schemas in a custom route](#name-the-view-schemas). An item
-route that you declare, such as `GET /{id}`, keeps the path that you give it.
-Restly adds the `int` or `uuid` converter only to a path parameter annotated
-`IDType`; see [Item paths and static routes](#item-route-matching).
+[Name the view's schemas in a custom route](#name-the-view-schemas). A route
+that you declare keeps the path that you give it. Restly changes only a path
+parameter annotated `IDType`. A parameter `id` with this type gets the name and
+the converter of the view, and another parameter gets only the converter; see
+[Choose the name of the id parameter](#id-param).
 
 A subclass inherits an explicit `operation_id` too. Each `operation_id` must be
 unique in the app's spec.
@@ -207,7 +216,7 @@ documents itself like any FastAPI route:
         summary="Publish an article",
         responses={409: {"description": "Already published"}},
     )
-    async def publish(self, id: int): ...
+    async def publish(self, id: IDType): ...
 ```
 
 [Endpoint decorators](#endpoint-decorators) lists the decorators and their

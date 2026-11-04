@@ -20,12 +20,12 @@ from ._models import SharedBase
 
 READS = (fr.ViewRoute.GET_MANY, fr.ViewRoute.GET_ONE)
 WRITES = (fr.ViewRoute.CREATE, fr.ViewRoute.UPDATE, fr.ViewRoute.DELETE)
-SERVED_READS = {"GET /tags", "GET /tags/{id:int}"}
+SERVED_READS = {"GET /tags", "GET /tags/{tag_id:int}"}
 
 
 def _served(view: type) -> set[str]:
     """The routes that the view serves on an app of its own, such as
-    ``"GET /tags/{id:int}"``. The list and create routes answer with and
+    ``"GET /tags/{tag_id:int}"``. The list and create routes answer with and
     without the final slash; this gives them once, without it."""
     app = FastAPI()
     fr.include_view(app, view)
@@ -93,7 +93,7 @@ def test_exclude_routes_leaves_out_a_route_that_include_routes_has(tag_view):
         include_routes = (fr.ViewRoute.GET_ONE, fr.ViewRoute.DELETE)
 
     assert _served(ReadTagView) == SERVED_READS
-    assert _served(ItemTagView) == {"GET /tags/{id:int}"}
+    assert _served(ItemTagView) == {"GET /tags/{tag_id:int}"}
 
 
 @pytest.mark.parametrize("base_first", [False, True], ids=["alone", "base-first"])
@@ -118,8 +118,8 @@ def test_a_subclass_inherits_include_routes_or_replaces_it(tag_view, base_first)
     assert served[FullTagView] == {
         *SERVED_READS,
         "POST /tags",
-        "PATCH /tags/{id:int}",
-        "DELETE /tags/{id:int}",
+        "PATCH /tags/{tag_id:int}",
+        "DELETE /tags/{tag_id:int}",
         "GET /tags/stats",
         "POST /tags/merge",
     }

@@ -9,7 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm.attributes import flag_modified
 
 import fastapi_restly as fr
-from fastapi_restly.views import ResponseSchema
+from fastapi_restly.views import IDType, ResponseSchema
 
 from ..current import Current
 from ..tasks.models import Task, TaskClauses, TaskPriority, TaskStatus, TaskType
@@ -139,7 +139,7 @@ class ProjectView(TrashView[Project]):
             )
 
     @fr.delete("/{id}", status_code=200)
-    async def soft_delete(self, id: int) -> ResponseSchema:
+    async def soft_delete(self, id: IDType) -> ResponseSchema:
         """Soft delete: sets deleted_at instead of removing the row.
 
         ``SoftDeleteMixin.delete`` performs the mutation. This route
@@ -152,7 +152,7 @@ class ProjectView(TrashView[Project]):
         return project
 
     @fr.post("/{id}/archive")
-    async def archive_project(self, id: int) -> ResponseSchema:
+    async def archive_project(self, id: IDType) -> ResponseSchema:
         """Archive a project (prevents new task creation).
 
         Loads through ``get_one``; ``write_action(self.Action.ARCHIVE)`` gates the
@@ -168,7 +168,7 @@ class ProjectView(TrashView[Project]):
         return project
 
     @fr.post("/{id}/clone")
-    async def clone_project(self, id: int, request: CloneRequest) -> ResponseSchema:
+    async def clone_project(self, id: IDType, request: CloneRequest) -> ResponseSchema:
         """Clone a project with all its tasks.
 
         One write action: the new project is its subject, under the name
@@ -209,7 +209,7 @@ class ProjectView(TrashView[Project]):
         """Retrieve by the natural key instead of the id.
 
         ``handle_get_one`` takes a predicate in place of the id, so this
-        route is ``GET /{id}`` under another key: the same scope, the same
+        route is ``GET /{project_id}`` under another key: the same scope, the same
         404, the same read-auth, and the same response.
         The key is (organization, slug), not the slug alone: slugs are
         unique inside an organization, and an admin reads across tenants,
@@ -226,7 +226,7 @@ class ProjectView(TrashView[Project]):
         ``handle_update`` takes the same predicate, so this loads,
         authorizes, snapshots, runs the ``update`` verb (slug regeneration
         and the status event included) and commits, exactly as
-        ``PATCH /{id}`` does.
+        ``PATCH /{project_id}`` does.
         """
         return await self.handle_update(self._by_slug(slug), request)
 
@@ -237,7 +237,7 @@ class ProjectView(TrashView[Project]):
         )
 
     @fr.get("/{id}/stats", response_model=ProjectStats)
-    async def get_project_stats(self, id: int) -> ProjectStats:
+    async def get_project_stats(self, id: IDType) -> ProjectStats:
         """Get task statistics for a project."""
         # Reuse the standard scoped read check.
         await self.handle_get_one(id)
@@ -268,11 +268,11 @@ class ProjectView(TrashView[Project]):
     # TaskResponse is a class that a function builds, so mypy does not accept
     # it inside a type such as list[...]. At runtime it is a normal class.
     @fr.get("/{id}/tasks", response_model=list[TaskResponse])  # type: ignore[valid-type]
-    async def list_project_tasks(self, id: int) -> list[Task]:
+    async def list_project_tasks(self, id: IDType) -> list[Task]:
         """List one project's tasks, through TaskView's own visibility.
 
         ``fr.resolve_scope(TaskView)`` returns the scope that view's reads
-        apply, so ``GET /projects/{id}/tasks`` and ``GET /tasks`` cannot
+        apply, so ``GET /projects/{project_id}/tasks`` and ``GET /tasks`` cannot
         disagree about which tasks exist for the caller: a member sees the
         tasks assigned to them on both. Naming ``TaskClauses.visible``
         here instead would copy the rule, and the copy would drift the day
@@ -287,7 +287,9 @@ class ProjectView(TrashView[Project]):
         return list((await self.session.scalars(stmt)).all())
 
     @fr.post("/{id}/tasks", response_model=TaskResponse, status_code=201)
-    async def create_project_task(self, id: int, request: "TaskCreateRequest") -> Task:
+    async def create_project_task(
+        self, id: IDType, request: "TaskCreateRequest"
+    ) -> Task:
         """Create through the task handler using the current request and session.
 
         The path supplies the project. The task handler checks references,
@@ -300,7 +302,7 @@ class ProjectView(TrashView[Project]):
 
 
 class TaskCreateRequest(BaseModel):
-    """Request body for creating a task via the nested /projects/{id}/tasks route."""
+    """Request body for creating a task via the nested /projects/{project_id}/tasks route."""
 
     title: str
     description: str = ""

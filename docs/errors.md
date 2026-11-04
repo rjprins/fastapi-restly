@@ -35,7 +35,7 @@ action, so the write is not committed:
 
 ```{literalinclude} ../example-projects/blog/blog/main.py
 :language: python
-:start-at: '@fr.post("/{id}/publish", status_code=200)'
+:start-at: '@fr.post("/{post_id}/publish", status_code=200)'
 :end-at: return post
 :dedent: 4
 ```
@@ -160,7 +160,7 @@ catches `fr.exc.Conflict`:
         RENAME = "rename"
 
     @fr.post("/{id}/rename", status_code=200)
-    async def rename(self, id: int, name: str):
+    async def rename(self, id: IDType, name: str):
         tag = await self.get_one(id)
         try:
             async with self.write_action(self.Action.RENAME, obj=tag):

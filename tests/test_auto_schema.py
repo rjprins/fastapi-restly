@@ -63,7 +63,7 @@ def test_auto_generated_schema_in_view(client):
     # Check that endpoints exist
     assert "/users" in paths
     assert "/users/" not in paths
-    assert "/users/{id}" in paths
+    assert "/users/{user_id}" in paths
 
     # Test creating a user
     user_data = {"name": "Test User", "email": "test@example.com"}

@@ -6,7 +6,7 @@ from fastapi import HTTPException
 from pydantic import BaseModel
 
 import fastapi_restly as fr
-from fastapi_restly.views import ResponseSchema
+from fastapi_restly.views import IDType, ResponseSchema
 
 from ..auth import hash_password, verify_password
 from ..current import Current
@@ -75,7 +75,7 @@ class UserView(SoftDeleteMixin, AuthenticatedView[User]):
 
     @fr.post("/{id}/change-password")
     async def change_password(
-        self, id: int, request: ChangePasswordRequest
+        self, id: IDType, request: ChangePasswordRequest
     ) -> ResponseSchema:
         """Change a user's password.
 
@@ -94,7 +94,7 @@ class UserView(SoftDeleteMixin, AuthenticatedView[User]):
         return user
 
     @fr.get("/{id}/with-permissions", response_model=dict)
-    async def get_user_with_field_permissions(self, id: int) -> dict[str, Any]:
+    async def get_user_with_field_permissions(self, id: IDType) -> dict[str, Any]:
         """Get a user with field-level permissions applied.
 
         - HR and Owner roles can see salary field
@@ -124,7 +124,7 @@ class UserView(SoftDeleteMixin, AuthenticatedView[User]):
         """Update current user's profile.
 
         Delegates to ``handle_update`` so this action route follows the exact
-        same path as ``PATCH /users/{id}``: the request handler loads the row
+        same path as ``PATCH /users/{user_id}``: the request handler loads the row
         (scope + 404), runs ``authorize``, calls the business ``update``, and
         commits via the bracket. Any future ``update`` override (validation,
         auditing) applies here automatically.

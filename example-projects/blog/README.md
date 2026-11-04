@@ -16,7 +16,7 @@ runs `part1.py`; the tests here check `main.py`.
 - Drafts that only their author can see, through the model's `default_scope`
 - `authorize`: anyone may read, and only the author may change a post or a
   comment
-- A `POST /posts/{id}/publish` action through `write_action`
+- A `POST /posts/{post_id}/publish` action through `write_action`
 - `after_action_commit`, which tells subscribers about a new post
 - A base view that posts and comments share
 

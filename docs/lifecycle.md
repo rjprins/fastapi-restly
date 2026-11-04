@@ -283,7 +283,7 @@ returns, so the database only gets the hash. `fr.WriteOnly` keeps the field
 out of every response.
 
 The generated update schema takes `password` too. Without more code,
-`PATCH /users/{id}` stores a new password as plain text. So hash it in
+`PATCH /users/{user_id}` stores a new password as plain text. So hash it in
 `update` as well:
 
 ```python
@@ -832,7 +832,7 @@ route decorator. Most replacements call the handler and only change the
 response:
 
 ```python
-from fastapi_restly.views import ResponseSchema
+from fastapi_restly.views import IDType, ResponseSchema
 
 
 @fr.include_view(app)
@@ -842,7 +842,7 @@ class ProductView(fr.AsyncRestView):
     schema = ProductSchema
 
     @fr.delete("/{id}", status_code=200)
-    async def delete_endpoint(self, id: int) -> ResponseSchema:
+    async def delete_endpoint(self, id: IDType) -> ResponseSchema:
         obj = await self.get_one(id)               # load through the scope, or 404
         response = self.to_single_response(obj)    # the row as GET /{id} sends it
         await self.handle_delete(id)               # authorize, delete, commit
@@ -995,7 +995,7 @@ The SaaS example's `GET /users/me` returns the caller's own row:
 :class: details
 
 `ResponseSchema` stands for the view's response schema, `UserResponse`, so
-OpenAPI shows the same type as for `GET /users/{id}`, and the row goes
+OpenAPI shows the same type as for `GET /users/{user_id}`, and the row goes
 through the view's response step
 ([The response of a custom route](#custom-route-response)). The
 route `/me` works beside `/{id}`, because the item routes match only an
@@ -1004,7 +1004,7 @@ integer id ([Item paths and static routes](#item-route-matching)).
 The handlers return the ORM object, so a route can read every attribute of
 the model, also the ones that the response leaves out. In the
 [same example](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/projects/views.py),
-`GET /projects/{id}/stats` calls `handle_get_one(id)`, and then counts the
+`GET /projects/{project_id}/stats` calls `handle_get_one(id)`, and then counts the
 project's tasks.
 :::
 
@@ -1105,7 +1105,7 @@ could pick a wrong row. For a condition on a related row, use `.has()` or
 {meth}`handle_delete <fastapi_restly.views.RestView.handle_delete>` take the
 same expression. So a custom `PATCH /users/by-email/{email}` route that calls
 `handle_update(User.email == email, data)` runs the same steps as
-`PATCH /users/{id}`. The SaaS example reads and updates projects by slug in
+`PATCH /users/{user_id}`. The SaaS example reads and updates projects by slug in
 [`app/projects/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/projects/views.py),
 next to the routes by id. That is why it passes an expression, and does not
 override `where_id`.
@@ -1148,10 +1148,10 @@ with `handle_get_one`, because `write_action` authorizes the action itself.
 [Authorize a custom action](#authorize-custom-actions) shows how `authorize`
 handles a new name.
 
-The SaaS example uses this form for the task changes `POST /tasks/{id}/start`,
+The SaaS example uses this form for the task changes `POST /tasks/{task_id}/start`,
 `complete` and `reopen`
 ([`app/tasks/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/tasks/views.py)),
-and for `POST /users/{id}/change-password`
+and for `POST /users/{user_id}/change-password`
 ([`app/users/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/users/views.py)).
 
 **Run a CRUD action under another path.** When the action is a create or an
@@ -1235,7 +1235,7 @@ A block that needs the id of the new row before it ends, for rows that refer
 to it by a plain id, calls `await self.session.flush()`. Restly has added the
 new object to the session, so the flush inserts it. The SaaS example's
 `POST /uploads` does this for an upload and its lines, and
-`POST /projects/{id}/clone` does it for a project and its copied tasks
+`POST /projects/{project_id}/clone` does it for a project and its copied tasks
 ([`app/uploads/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/uploads/views.py),
 [`app/projects/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/projects/views.py)).
 Rows of another model, such as the lines, are written but not refreshed.

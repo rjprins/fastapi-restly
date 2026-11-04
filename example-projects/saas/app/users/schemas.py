@@ -19,7 +19,7 @@ class UserSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
     ``salary`` is write-only too. The create and update bodies take it, but
     the CRUD routes and ``/users/me`` never return it, and a client cannot
     filter or sort on it. HR and owners read it on
-    ``GET /users/{id}/with-permissions``.
+    ``GET /users/{user_id}/with-permissions``.
 
     Soft-delete + audit fields are ReadOnly so they appear in responses
     (e.g. ``deleted_at`` after a soft delete) but PATCH bodies can't spoof
@@ -44,7 +44,7 @@ class UserSchema(fr.TimestampsSchemaMixin, fr.IDSchema):
 class UserUpdate(BaseModel):
     """The PATCH body for a user: every writable field except ``password``.
 
-    A password changes only through ``POST /users/{id}/change-password``,
+    A password changes only through ``POST /users/{user_id}/change-password``,
     which checks the current password first. A PATCH that sends
     ``password`` has it ignored, like any field this class does not declare.
     """

@@ -22,6 +22,7 @@ from datetime import datetime, timezone
 import fastapi
 
 import fastapi_restly as fr
+from fastapi_restly.views import IDType
 
 from ..views import AuthenticatedView
 from .models import Upload, UploadLine
@@ -82,7 +83,7 @@ class UploadView(AuthenticatedView[Upload]):
         return upload
 
     @fr.get("/{id}/lines", response_model=list[UploadLineSchema])
-    async def list_lines(self, id: int) -> list[UploadLine]:
+    async def list_lines(self, id: IDType) -> list[UploadLine]:
         """Return the parsed lines for an upload.
 
         ``handle_get_one`` answers 404 for an upload the caller cannot see.

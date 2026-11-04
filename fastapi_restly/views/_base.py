@@ -135,6 +135,7 @@ from ._schema_types import (
     _bare,
     _fill_schema_types,
     _schema_type_in,
+    _view_id_param,
     _without_none,
 )
 
@@ -451,8 +452,10 @@ def _apply_route_options(cls: type) -> None:
             )
         path, route_kwargs = endpoint._api_route_args  # type: ignore[union-attr]
         route_kwargs = dict(route_kwargs)
-        if getattr(endpoint, "_response_model_dropped", False):
-            del route_kwargs["response_model"]
+        dropped = getattr(endpoint, "_dropped_response_model", None)
+        if dropped is not None:
+            route_kwargs.pop("response_model", None)
+            route_kwargs.update(dropped)
         for option in reversed(options):
             path = path if option.path is None else option.path
             for key, value in option.api_route_kwargs.items():
@@ -465,14 +468,23 @@ def _apply_route_options(cls: type) -> None:
         # FastAPI refuses a response model on a status without one. A subclass
         # with a status with a body gets the model back, see above. A model
         # that an option names stays, so FastAPI refuses it.
-        dropped = "response_model" not in route_kwargs and (
-            not is_body_allowed_for_status_code(route_kwargs.get("status_code"))
-        )
-        if dropped:
-            route_kwargs["response_model"] = None
+        dropped = None
+        if not any("response_model" in option.api_route_kwargs for option in options):
+            if not is_body_allowed_for_status_code(route_kwargs.get("status_code")):
+                dropped = {
+                    key: value
+                    for key, value in route_kwargs.items()
+                    if key == "response_model"
+                }
+                route_kwargs["response_model"] = None
         copied = _copy_route(endpoint, cls, name)
         copied._api_route_args = (path, route_kwargs)  # type: ignore[attr-defined]
-        copied._response_model_dropped = dropped  # type: ignore[attr-defined]
+        copied._dropped_response_model = dropped  # type: ignore[attr-defined]
+        copied._from_route_options = True  # type: ignore[attr-defined]
+        # Delete first: in the class dict, a name keeps its first place. The routes
+        # that the class writes come first, see the copy of the inherited routes.
+        if name in vars(cls):
+            delattr(cls, name)
         setattr(cls, name, copied)
 
 
@@ -643,13 +655,20 @@ class BaseRestView(
     #: ``with_loader_criteria``, not a view concern (see the Multi-Tenancy
     #: guide). See the Scopes guide for scopes.
     scope: ClassVar[WhereClause | None] = None
-    #: The type of the ``{id}`` path parameter on the default routes. ``None``
+    #: The type of the id path parameter on the default routes. ``None``
     #: (the default) takes the Python type of the model's primary key, and a
     #: composite key gets ``int``. Set a type to override it. Built-in item
     #: routes use Starlette's ``int`` or ``uuid`` path converter for those
     #: types. Integer paths accept non-negative digits. An unmatched value
     #: falls through to another route or returns 404, instead of 422.
     id_type: ClassVar[type[Any] | None] = None
+    #: What goes between the braces of the view's id parameter in the path.
+    #: ``None`` (the default) takes the name of the model and the converter of
+    #: ``id_type``: ``{tag_id:int}`` for ``Tag``, and ``{user_id:int}`` for
+    #: ``UserModel``. Set it to choose: ``"group_id"`` has no converter, so
+    #: FastAPI answers 422 for a wrong value, and ``"group_id:int"`` answers 404.
+    #: The Python parameter stays ``id``, also in :meth:`where_id`.
+    id_param: ClassVar[str | None] = None
     #: The routes that the view serves, such as
     #: ``(fr.ViewRoute.GET_MANY, fr.ViewRoute.GET_ONE)``: :class:`ViewRoute`
     #: values for the CRUD routes, or the names of route methods, also of a
@@ -911,7 +930,7 @@ class BaseRestView(
         the view's model, not another table, and it runs no query, so define
         it with ``def``, also on an async view.
         """
-        return _primary_key_criterion(self.model, id)
+        return _primary_key_criterion(self.model, id, _view_id_param(type(self))[0])
 
     def not_found(self, id: Any) -> Exception:
         """The exception for an id that names no row: a 404 by default, such

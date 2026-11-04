@@ -31,23 +31,23 @@ def test_routes() -> None:
         for method in methods
     ]
     assert routes == [
-        "POST /posts/{id}/publish",
+        "POST /posts/{post_id}/publish",
         "GET /posts",
         "POST /posts",
-        "GET /posts/{id}",
-        "PATCH /posts/{id}",
-        "DELETE /posts/{id}",
+        "GET /posts/{post_id}",
+        "PATCH /posts/{post_id}",
+        "DELETE /posts/{post_id}",
         "GET /comments",
         "POST /comments",
-        "GET /comments/{id}",
-        "PATCH /comments/{id}",
-        "DELETE /comments/{id}",
+        "GET /comments/{comment_id}",
+        "PATCH /comments/{comment_id}",
+        "DELETE /comments/{comment_id}",
     ]
 
 
 def test_the_publish_route_documents_the_post_response() -> None:
     """``-> Post`` declares the view's response, as on the CRUD routes."""
-    publish = app.openapi()["paths"]["/posts/{id}/publish"]["post"]
+    publish = app.openapi()["paths"]["/posts/{post_id}/publish"]["post"]
     body = publish["responses"]["200"]["content"]["application/json"]["schema"]
     assert body == {"$ref": "#/components/schemas/PostResponse"}
 

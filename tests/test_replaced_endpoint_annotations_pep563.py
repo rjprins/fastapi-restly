@@ -134,7 +134,7 @@ def test_string_markers_on_replaced_endpoint_get_the_schema_types(
     assert response.json() == {"id": created["id"], "name": "Desk", "price": 1.0}
     client.patch("/products/abc", json={"name": "Desk"}, assert_status_code=404)
 
-    operation = client.app.openapi()["paths"]["/products/{id}"]["patch"]
+    operation = client.app.openapi()["paths"]["/products/{product_id}"]["patch"]
     assert "requestBody" in operation
     response_schema = operation["responses"]["200"]["content"]["application/json"]
     assert response_schema["schema"]["$ref"].endswith("/ProductResponse")

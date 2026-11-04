@@ -33,3 +33,11 @@ class TagView(QuietRoutes, fr.AsyncRestView):
     update_endpoint = fr.route_options(
         methods=["PUT"], dependencies=[Depends(lambda: None)]
     )
+
+
+@fr.include_view(app)
+class NamedIdView(fr.AsyncRestView):
+    prefix = "/named"
+    model = Tag
+    schema = TagSchema
+    id_param = "named_id:int"

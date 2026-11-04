@@ -239,7 +239,10 @@ def test_lookup_runs_once_per_request(projects):
 def test_openapi_lists_the_parent_on_every_route(projects):
     spec = projects.client.get("/openapi.json").json()
 
-    for path in ("/projects/{project_id}/tasks", "/projects/{project_id}/tasks/{id}"):
+    for path in (
+        "/projects/{project_id}/tasks",
+        "/projects/{project_id}/tasks/{task_id}",
+    ):
         for operation in spec["paths"][path].values():
             parameters = {
                 (parameter["name"], parameter["in"])
@@ -254,7 +257,7 @@ def test_write_schemas_leave_the_parent_out(projects):
 
     for method, path in (
         ("post", "/projects/{project_id}/tasks"),
-        ("patch", "/projects/{project_id}/tasks/{id}"),
+        ("patch", "/projects/{project_id}/tasks/{task_id}"),
     ):
         body = spec["paths"][path][method]["requestBody"]["content"]
         name = body["application/json"]["schema"]["$ref"].rsplit("/", 1)[-1]
@@ -427,8 +430,8 @@ def test_two_levels_validate_both_segments(companies, url, segment):
 
 def test_two_levels_openapi_lists_both_segments(companies):
     spec = companies.client.get("/openapi.json").json()
-    path = "/companies/{company_id}/projects/{project_id}/tasks/{id}"
+    path = "/companies/{company_id}/projects/{project_id}/tasks/{task_id}"
 
     for operation in spec["paths"][path].values():
         names = [parameter["name"] for parameter in operation["parameters"]]
-        assert {"company_id", "project_id", "id"} <= set(names)
+        assert {"company_id", "project_id", "task_id"} <= set(names)

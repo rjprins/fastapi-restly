@@ -65,7 +65,7 @@ def test_writeonly_omitted_from_response_model_but_present_in_request(client):
     schemas = spec["components"]["schemas"]
 
     # (c) the get-one response model omits the WriteOnly field.
-    get_one = spec["paths"]["/users/{id}"]["get"]
+    get_one = spec["paths"]["/users/{user_id}"]["get"]
     resp_ref = get_one["responses"]["200"]["content"]["application/json"]["schema"][
         "$ref"
     ].rsplit("/", 1)[-1]

@@ -101,7 +101,7 @@ miss it.
 14. Silent: the default `delete_endpoint` returns `None`, not a `Response`. So
     code that reads `.status_code` from the result of
     `await super().delete_endpoint(id)` fails when the route runs. The route now
-    answers its own status: `@fr.delete("/{id}", status_code=200)` that calls
+    sends the status code of its decorator: `@fr.delete("/{id}", status_code=200)` that calls
     `super()` answers `200` with the body `null`, where it answered `204` before.
 15. A wrapper of a decorator that reads `self` from `args[0]` on a method that a
     view inherits now gets an `IndexError` on each request. It already did on a
@@ -110,9 +110,27 @@ miss it.
 16. Silent: OpenAPI no longer has `x-resource-ref`. A client that reads it must
     stop. To keep it on one field, set it on that field:
     `pydantic.Field(json_schema_extra={"x-resource-ref": "authors"})`.
+17. Silent: the path parameter of an item route takes its name from the model. So
+    `/users/{id:int}` is now `/users/{user_id:int}`. The URLs stay the same, but
+    OpenAPI changes, so a client generated from it gets another parameter name. A
+    dependency on an item route that takes `id: int` now reads a required query
+    parameter and answers 422. It must take `user_id: int`. Also write
+    `app.url_path_for("get_one", user_id=1)`. A plain parameter of a dependency with
+    the new name, such as `user_id: int`, now reads the path and not the query. A
+    route with `id: IDType` and another parameter with the new name raises
+    `RestlyConfigurationError` when it registers. A model name with a letter outside
+    ASCII raises this error too: set `id_param`. A custom route with `/{id}` and
+    `id: IDType` also gets the new name, so `request.path_params` and
+    `app.url_path_for` use `user_id`. A custom route with `/{id}` and `id: int` keeps
+    `{id}`. To keep `{id}` on a view, set `id_param = "id:int"`. For a UUID key, set
+    `"id:uuid"`, and for a string key, set `"id"`.
 
 ### Added
 
+- `id_param`: the name of the id parameter in the path, and its converter. For
+  example, `id_param = "role_id"` gives `/roles/{role_id}`, and FastAPI answers 422
+  for a wrong value. `id_param = "role_id:int"` answers 404. The Python parameter
+  stays `id`.
 - `fr.route_options`: change the options of a route that a view inherits, and keep
   the rest. Set it under the name of the route method, as in
   `create_endpoint = fr.route_options(status_code=200, name="create_tag")`. The route
