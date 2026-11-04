@@ -2,7 +2,6 @@ import inspect
 from contextlib import AbstractAsyncContextManager
 from typing import Any, ClassVar, cast, final
 
-import fastapi
 import sqlalchemy
 from sqlalchemy import ColumnElement
 
@@ -126,12 +125,11 @@ class AsyncRestView(
         return await self.handle_update(id, data)
 
     @delete("/{id}")
-    async def delete_endpoint(self, id: IDType) -> fastapi.Response:
+    async def delete_endpoint(self, id: IDType) -> None:
         """``DELETE /{id}`` endpoint method. Override ``delete`` for
         domain logic (e.g. soft delete); replace this method only to change the
         HTTP contract (e.g. return the deleted object instead of 204)."""
         await self.handle_delete(id)
-        return fastapi.Response(status_code=204)
 
     # ====================================================================
     # Handlers (final: call from a custom route, never override)

@@ -72,9 +72,38 @@ miss it.
     - A hand-written `page_size` or `limit` field with the default `None`. A
       request without it returned every row, and the response reported the default
       size. Give the field a number as its default.
+11. Silent: a custom route keeps the name of its method, without the name of the
+    view. On `ItemView`, a method `stats` at `/items/stats` had the route name
+    `itemview_stats`, the summary `Itemview Stats` and the operation ID
+    `itemview_stats_items_stats_get`. Now these are `stats`, `Stats` and
+    `stats_items_stats_get`. The same happens to a method named after a CRUD route
+    on a plain `View`. A client that you generate from the spec gets the new IDs.
+    To keep an ID, pass `operation_id` to the decorator.
+12. Silent: a CRUD route with a `name` of your own now gets its summary and
+    operation ID from FastAPI, as any route with a name does. So `name="search"`
+    on the list route at `/items` gives the summary `Search` and the ID
+    `search_items_get`, in place of `List` and `items_search`. To keep them, pass
+    `summary` and `operation_id` to the decorator.
+13. Silent: a CRUD view documents `404` only on a route that can answer it. That
+    is a route with a parameter in its path, or with a reference to a row in its
+    request body. So `GET /`, a simple `POST /` and a custom route without a path
+    parameter no longer list it. A custom route that answers 404 for another reason
+    needs `responses={404: {"description": "Not found"}}` on its decorator.
+    `BaseRestView.responses` is now `{}`, so code that reads its 404 entry must
+    write this entry itself.
+14. Silent: the default `delete_endpoint` returns `None`, not a `Response`. So
+    code that reads `.status_code` from the result of
+    `await super().delete_endpoint(id)` fails when the route runs. The route now
+    answers its own status: `@fr.delete("/{id}", status_code=200)` that calls
+    `super()` answers `200` with the body `null`, where it answered `204` before.
 
 ### Added
 
+- A status code set to `None` in `responses`, on a view or on a route, is left
+  out of the spec. So `responses = {404: None}` removes a 404 that a route of a
+  CRUD view documents by itself.
+- `fr.configure(warn_on_misuse=True)` warns about a method that replaces an
+  inherited route and has no route decorator, so that the route is gone.
 - `fr.OffsetPagination`: a list that pages with `limit` and `offset`, next to
   `fr.NumberedPagination`. It takes `default_limit`, `max_limit`, `max_offset`,
   `limit_query_param`, `offset_query_param` and `envelope`, and its default

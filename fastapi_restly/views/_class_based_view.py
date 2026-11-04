@@ -40,10 +40,6 @@ def _copy_all_parent_class_endpoints_into_this_subclass(view_cls: type[View]):
     annotation as well.
     """
     for name, endpoint in _get_all_parent_endpoints(view_cls).items():
-        # `name` is the attribute key (e.g. "get_many_endpoint"), which is stable
-        # across copies; `endpoint.__name__` may have been mangled by a parent's
-        # own registration (e.g. "parentview_get_many_endpoint"), so key off the
-        # attribute name throughout.
         if name in view_cls.__dict__:
             # This endpoint is already overridden!
             continue
@@ -57,10 +53,6 @@ def _copy_all_parent_class_endpoints_into_this_subclass(view_cls: type[View]):
             # description, so strip the copy: framework guidance must not leak
             # into the user's API docs. User-defined endpoints keep theirs.
             endpoint_wrapper.__doc__ = None
-        # Reset the copy's name to the endpoint attribute so downstream renaming
-        # produces "<view>_<name>" even when the source was a parent's renamed
-        # copy.
-        endpoint_wrapper.__name__ = name
         # Set explicit __qualname__ for debugging purposes.
         endpoint_wrapper.__qualname__ = f"{view_cls.__name__}_{name}_wrapper"
         setattr(view_cls, name, endpoint_wrapper)
@@ -94,17 +86,14 @@ def _make_copy(endpoint: Callable, view_cls: type[View]) -> Callable:
 
 def _init_all_endpoints(view_cls: type[View]):
     """
-    Ensure every endpoint has a unique name and update the 'self' annotation.
+    Name every endpoint after its attribute and update the 'self' annotation.
     """
     for name, attr in view_cls.__dict__.items():
         if not hasattr(attr, "_api_route_args"):
             continue
         endpoint = attr
-        # Give every endpoint a unique name: FooView.create_endpoint gets
-        # "fooview_create_endpoint". From the attribute, as for a copied
-        # endpoint, not from __name__: a registration that failed has renamed
-        # the endpoint already, and a retry must not add the prefix again.
-        endpoint.__name__ = view_cls.__name__.lower() + "_" + name
+        # FastAPI makes the route name and the summary from this name.
+        endpoint.__name__ = name
         _annotate_self(view_cls, endpoint)
 
 

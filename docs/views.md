@@ -768,10 +768,8 @@ these steps:
    itself. Restly can then change the signature of the copy without changing
    the base or other subclasses.
 2. It checks that no route method has the name of a business method.
-3. It gives each route method a unique name, such as
-   `userview_get_one_endpoint`. It makes the `self` parameter a dependency on
-   the view class, `Depends(UserView)`, so FastAPI creates a new view for
-   each request.
+3. It makes the `self` parameter of each route method a dependency on the view
+   class, `Depends(UserView)`, so FastAPI creates a new view for each request.
 4. It calls
    {meth}`before_include_view() <fastapi_restly.views.BaseRestView.before_include_view>`.
    On a CRUD view, this reads the schemas and the

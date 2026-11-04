@@ -682,10 +682,10 @@ def test_failed_registration_is_not_recorded_as_mounted(sync_db):
     [stats] = [
         route for route in iter_routes(app.routes) if route.path == "/winches/stats"
     ]
-    assert stats.name == "winchview_stats"
-    assert WinchView.create_endpoint.__name__ == "winchview_create_endpoint"
+    assert stats.name == "stats"
+    assert WinchView.create_endpoint.__name__ == "create_endpoint"
     operations = app.openapi()["paths"]["/winches/stats"]
-    assert operations["get"]["operationId"].startswith("winchview_stats_")
+    assert operations["get"]["operationId"].startswith("stats_")
 
     SharedBase.metadata.create_all(engine)
     client = TestClient(app)

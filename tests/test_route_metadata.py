@@ -103,7 +103,10 @@ def test_override_with_a_decorator_sets_metadata_and_keeps_the_route(base):
 
     operations = _operations(app)
     assert operations["/api/items/{id}", "get"] == ("catalog_get", "Get an item")
-    assert operations["/api/items", "post"] == ("api_items_add_item", "Add an item")
+    assert operations["/api/items", "post"] == (
+        "add_item_api_items_post",
+        "Add an item",
+    )
     assert str(app.url_path_for("get_one", id=1)) == "/api/items/1"
     assert str(app.url_path_for("add_item")) == "/api/items"
 
@@ -116,6 +119,33 @@ def test_override_with_a_decorator_sets_metadata_and_keeps_the_route(base):
     assert response["$ref"].endswith("/ItemResponse")
     (id_param,) = paths["/api/items/{id}"]["get"]["parameters"]
     assert id_param["schema"]["type"] == "integer"
+
+
+def test_a_custom_route_keeps_the_name_of_its_method(base):
+    class ItemView(base):
+        prefix = "/items"
+
+        @fr.get("/stats")
+        def item_stats(self):
+            return {}
+
+    class ArchiveView(ItemView):
+        prefix = "/archive"
+
+    app = FastAPI()
+    fr.include_view(app, ItemView)
+    fr.include_view(app, ArchiveView)
+
+    operations = _operations(app)
+    assert operations["/items/stats", "get"] == (
+        "item_stats_items_stats_get",
+        "Item Stats",
+    )
+    assert operations["/items/archive/stats", "get"] == (
+        "item_stats_items_archive_stats_get",
+        "Item Stats",
+    )
+    assert str(app.url_path_for("item_stats")) == "/items/stats"
 
 
 def test_explicit_decorator_metadata_wins_over_defaults(base):
@@ -273,7 +303,7 @@ def test_explicit_operation_id_wins_over_app_generator(base):
     assert operations["/items", "get"][0] == "custom_get_many"
 
 
-def test_custom_member_route_name_changes_operation_id_action(base):
+def test_a_name_that_a_route_chooses_gives_fastapi_the_id_and_the_summary(base):
     class ItemView(base):
         prefix = "/items"
 
@@ -283,7 +313,10 @@ def test_custom_member_route_name_changes_operation_id_action(base):
 
     app = FastAPI()
     fr.include_view(app, ItemView)
-    assert _operations(app)["/items/{id}", "get"][0] == "items_fetch_item"
+    assert _operations(app)["/items/{id}", "get"] == (
+        "fetch_item_items__id__get",
+        "Fetch Item",
+    )
     assert str(app.url_path_for("fetch_item", id=1)) == "/items/1"
 
 
@@ -339,8 +372,8 @@ def test_plain_view_keeps_fastapi_metadata():
         "Service status",
     )
     assert operations["/utils/custom", "get"] == (
-        "utilityview_get_many_endpoint_utils_custom_get",
-        "Utilityview Get Many Endpoint",
+        "get_many_endpoint_utils_custom_get",
+        "Get Many Endpoint",
     )
 
 

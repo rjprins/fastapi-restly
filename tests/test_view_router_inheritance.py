@@ -1,9 +1,8 @@
 """Each class in a view hierarchy adds ``dependencies`` and ``responses``.
 
 A subclass that set its own ``dependencies`` used to replace the base's list,
-so a base guard was dropped without any error, and its own ``responses``
-dropped the 404 that ``BaseRestView`` documents. They now add up base first,
-as ``prefix`` does and as FastAPI's nested routers do.
+so a base guard was dropped without any error. They now add up base first, as
+``prefix`` does and as FastAPI's nested routers do.
 """
 
 from collections.abc import Callable, Iterator
@@ -192,7 +191,7 @@ def test_responses_merge_down_the_hierarchy(make_client):
 
     for path in ("/gadgets", "/gadgets/{id}"):
         for operation in spec["paths"][path].values():
-            assert {"402", "404", "418"} <= set(operation["responses"])
+            assert {"402", "418"} <= set(operation["responses"])
     detail = spec["paths"]["/gadgets/{id}"]["get"]["responses"]
     assert detail["404"]["description"] == "Not found"
 

@@ -413,8 +413,7 @@ def test_async_rest_view_crud_and_pagination():
             assert updated.item_name == "Keyboard Pro"
             assert updated.quantity == 3
 
-            delete_response = await view.delete_endpoint(second.id)
-            assert delete_response.status_code == 204
+            assert await view.delete_endpoint(second.id) is None
 
             with pytest.raises(HTTPException):
                 await view.get_one_endpoint(second.id)

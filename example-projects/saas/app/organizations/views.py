@@ -54,10 +54,9 @@ class OrganizationView(fr.AsyncRestView[Organization]):
         return org
 
     @fr.delete("/{id}", dependencies=[SetCurrentContextDep])
-    async def delete_endpoint(self, id: int) -> Response:
+    async def delete_endpoint(self, id: int) -> None:
         """Bind identity for deletion, including its relationship loads."""
-        response: Response = await super().delete_endpoint(id)
-        return response
+        await super().delete_endpoint(id)
 
     async def authorize(
         self, action: str, obj: Organization | None = None, data: Any = None

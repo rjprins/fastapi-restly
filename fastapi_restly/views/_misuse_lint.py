@@ -50,6 +50,16 @@ def _source_of(value: Any) -> str:
         return ""
 
 
+def _inherits_route(view_cls: type[View], name: str) -> bool:
+    """Whether a base class of ``view_cls`` holds a route under ``name``. It
+    reads the class dicts: ``getattr`` would run a setting's descriptor, and
+    this can build a class and change ``view_cls``."""
+    for base in view_cls.__mro__[1:]:
+        if name in base.__dict__:
+            return hasattr(base.__dict__[name], "_api_route_args")
+    return False
+
+
 def _warn_on_misuse(view_cls: type[View]) -> None:
     """Opt-in registration-time lint (``fr.configure(warn_on_misuse=True)``).
 
@@ -68,6 +78,8 @@ def _warn_on_misuse(view_cls: type[View]) -> None:
     # its base, keeps the steps: that is how a view changes the HTTP contract.
     if issubclass(view_cls, BaseRestView):
         for endpoint in sorted(_ENDPOINT_METHOD_NAMES & own.keys()):
+            if not hasattr(own[endpoint], "_api_route_args"):
+                continue
             verb = endpoint.removesuffix("_endpoint")
             source = _source_of(own[endpoint])
             if f"handle_{verb}(" in source or f"super().{endpoint}(" in source:
@@ -107,12 +119,29 @@ def _warn_on_misuse(view_cls: type[View]) -> None:
                 stacklevel=5,
             )
 
-    # 3. A reference type (IDRef/IDSchema) whose name is a scalar FK column:
+    # 3. A method that replaces an inherited route, with no route decorator:
+    # the route is gone, and nothing else says so.
+    for attr, value in own.items():
+        if (
+            callable(value)
+            and not hasattr(value, "_api_route_args")
+            and _inherits_route(view_cls, attr)
+        ):
+            warnings.warn(
+                f"{name}.{attr} replaces an inherited route, but it has no route "
+                f"decorator, so {name} has no such route. Add the decorator of "
+                f'the route, such as @fr.post("/"), or give the method another '
+                f"name.",
+                RestlyMisuseWarning,
+                stacklevel=5,
+            )
+
+    # 4. A reference type (IDRef/IDSchema) whose name is a scalar FK column:
     # the ``post_id: IDRef[Post]`` mistake, where ``data.post_id`` becomes a
     # wrapper instead of the plain id.
     _warn_scalar_named_reference_fields(view_cls)
 
-    # 4. A writable field on a column that the model sets, such as a tenant
+    # 5. A writable field on a column that the model sets, such as a tenant
     # or an audit column: the request body replaces the column default.
     _warn_writable_model_set_fields(view_cls)
 

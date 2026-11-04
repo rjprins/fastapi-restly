@@ -857,7 +857,9 @@ its fields go out, as from `GET /{id}`, and OpenAPI shows them.
 
 When Restly registers the view, an endpoint method that the class defines
 replaces the inherited method with the same name. The other inherited
-endpoint methods stay.
+endpoint methods stay. A method with no route decorator is not a route, so the
+view then has no such route. With `fr.configure(warn_on_misuse=True)`, Restly
+warns about it.
 
 The built-in endpoint methods get the view's types from markers, such as
 `get_one_endpoint(self, id: IDType) -> ResponseSchema`. A replacement gets the

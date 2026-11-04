@@ -503,8 +503,7 @@ def test_sync_rest_view_crud_and_pagination(sync_db):
         assert updated.item_name == "Keyboard Pro"
         assert updated.quantity == 3
 
-        delete_response = view.delete_endpoint(second.id)
-        assert delete_response.status_code == 204
+        assert view.delete_endpoint(second.id) is None
 
         with pytest.raises(HTTPException):
             view.get_one_endpoint(second.id)

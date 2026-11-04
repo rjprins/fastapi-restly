@@ -99,6 +99,68 @@ def test_an_override_that_keeps_the_steps_does_not_warn():
     assert _register(KeptArticleView) == []
 
 
+def test_an_override_without_a_route_decorator_warns_once():
+    class PlainOverride(fr.IDMixin, SharedBase):
+        title: orm.Mapped[str]
+
+    class PlainOverrideView(fr.AsyncRestView):
+        prefix = "/plain-overrides"
+        model = PlainOverride
+
+        async def create_endpoint(self, data: Any) -> Any:
+            return await super().create_endpoint(data)
+
+    messages = _register(PlainOverrideView)
+    assert len(messages) == 1
+    assert (
+        "PlainOverrideView.create_endpoint replaces an inherited route" in messages[0]
+    )
+    assert "@fr.post" in messages[0]
+
+
+def test_an_override_of_a_custom_route_without_a_decorator_warns():
+    class Reports(fr.View):
+        prefix = "/reports"
+
+        @fr.get("/daily")
+        def daily(self) -> Any:
+            return []
+
+    class ReportsNoDaily(Reports):
+        def daily(self) -> Any:
+            return []
+
+    messages = _register(ReportsNoDaily)
+    assert len(messages) == 1
+    assert "ReportsNoDaily.daily replaces an inherited route" in messages[0]
+
+
+def test_setting_a_route_to_none_does_not_warn():
+    class NoCreate(fr.IDMixin, SharedBase):
+        title: orm.Mapped[str]
+
+    class NoCreateView(fr.AsyncRestView):
+        prefix = "/no-creates"
+        model = NoCreate
+        create_endpoint = None
+
+    assert _register(NoCreateView) == []
+
+
+def test_a_helper_method_that_replaces_no_route_does_not_warn():
+    class Helper(fr.IDMixin, SharedBase):
+        title: orm.Mapped[str]
+
+    class HelperView(fr.AsyncRestView):
+        prefix = "/helpers"
+        model = Helper
+
+        def label(self) -> str:
+            return "helper"
+
+    assert _register(HelperView) == []
+
+
 def test_manual_commit_warns():
     class CommitArticle(fr.IDMixin, SharedBase):
         title: orm.Mapped[str]

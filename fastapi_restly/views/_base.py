@@ -276,8 +276,10 @@ class View:
     #: runs it where it lists it.
     dependencies: ClassVar[Any] = None
     #: OpenAPI responses documented on every route. Each class in the hierarchy
-    #: adds its own, and a subclass's entry for a status code wins.
-    responses: ClassVar[dict[int | str, dict[str, Any]]] = {}
+    #: adds its own, and a subclass's entry for a status code wins. A status set
+    #: to ``None`` is left out, so ``{404: None}`` removes the 404 that a CRUD
+    #: view documents on a route that can answer 404.
+    responses: ClassVar[dict[int | str, dict[str, Any] | None]] = {}
 
     if TYPE_CHECKING:
         # include_view replaces __init__: each injected attribute becomes a
@@ -467,10 +469,6 @@ class BaseRestView(
     ``RestView`` and ``AsyncRestView``, in a sync and an async form. Subclass
     this class only to write a CRUD base class of your own.
     """
-
-    responses: ClassVar[dict[int | str, dict[str, Any]]] = {
-        404: {"description": "Not found"}
-    }
 
     # The view's actions: the names that authorize and the transaction hooks
     # get. A view with actions of its own declares a subclass of fr.Action

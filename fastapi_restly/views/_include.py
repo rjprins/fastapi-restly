@@ -37,7 +37,7 @@ from typing_extensions import TypeVar, is_typeddict
 
 from ..db._config import _fr_config
 from ..exc import RestlyConfigurationError, RestlyMisuseWarning
-from ..schemas._base import _alias_value, _reject_buried_markers
+from ..schemas._base import IDSchema, RefExists, _alias_value, _reject_buried_markers
 from ._base import BaseRestView, ListResult, View, _serves_route
 from ._class_based_view import (
     _copy_all_parent_class_endpoints_into_this_subclass,
@@ -263,13 +263,60 @@ def _schema_type_in_a_field(
     return None
 
 
+def _holds_reference(annotation: Any, seen: set[Any] | None = None) -> bool:
+    """Whether a value of this type can hold a reference to a row: an
+    ``IDRef``, an ``IDSchema`` or a ``MustExist``, also in a field of a class
+    that ``annotation`` names. A write answers 404 for a reference to a row
+    that does not exist.
+    """
+    seen = set() if seen is None else seen
+    annotation = _alias_value(annotation, seen)
+    if any(isinstance(m, RefExists) for m in getattr(annotation, "__metadata__", ())):
+        return True
+    # IDSchema[Model] and IDRef[Model], not a schema that inherits from them
+    if (
+        isinstance(annotation, type)
+        and issubclass(annotation, IDSchema)
+        and annotation._get_sql_model_annotation() is not None
+    ):
+        return True
+    for arg in (*get_args(annotation), *_pydantic_generic_args(annotation)):
+        if _holds_reference(arg, seen):
+            return True
+    if not isinstance(annotation, type) or annotation in seen:
+        return False
+    seen.add(annotation)
+    return any(
+        _holds_reference(field_type, seen)
+        or any(isinstance(m, RefExists) for m in metadata)
+        for _, field_type, metadata in _fields_of(annotation)
+    )
+
+
+def _can_answer_not_found(prefix: str, path: str, endpoint: Callable) -> bool:
+    """Whether a route of a CRUD view can answer 404 without code of the view:
+    its path has a parameter, so the row or its parent can be missing, or its
+    parameters hold a reference to a row."""
+    if "{" in prefix + path:
+        return True
+    seen: set[Any] = set()
+    return any(
+        _holds_reference(_evaluated(parameter.annotation, endpoint), seen)
+        for parameter in inspect.signature(endpoint).parameters.values()
+    )
+
+
 def _filled_responses(
-    responses: Mapping[Any, Mapping[str, Any]], view_cls: type
+    responses: Mapping[Any, Mapping[str, Any] | None], view_cls: type
 ) -> dict[Any, Any]:
     """``responses`` of a route or a view, with the view's types in place of the
-    markers in each ``model``."""
-    filled = {}
+    markers in each ``model``. A status set to ``None`` stays: it removes a
+    response when the levels are merged."""
+    filled: dict[Any, Any] = {}
     for status, response in responses.items():
+        if response is None:
+            filled[status] = None
+            continue
         model = response.get("model")
         new_model = _replace_schema_types(model, view_cls)
         filled[status] = (
@@ -532,8 +579,12 @@ def _reject_schema_types_on_a_plain_view(
             _raise_on_a_plain_view(view_cls, f"{view_cls.__name__}.{name}", marker)
 
 
-def _models_in(responses: Mapping[Any, Mapping[str, Any]] | None) -> list[Any]:
-    return [response.get("model") for response in (responses or {}).values()]
+def _models_in(responses: Mapping[Any, Mapping[str, Any] | None] | None) -> list[Any]:
+    return [
+        response.get("model")
+        for response in (responses or {}).values()
+        if response is not None
+    ]
 
 
 def _raise_on_a_plain_view(view_cls: type, where: str, marker: SchemaType) -> NoReturn:
@@ -583,7 +634,7 @@ def _init_api_router(view_cls: type[View]) -> fastapi.APIRouter:
     levels = [c.__dict__ for c in reversed(view_cls.mro())]
     prefix = "".join(level["prefix"] for level in levels if "prefix" in level)
     dependencies: list[Any] = []
-    responses: dict[int | str, dict[str, Any]] = {}
+    responses: dict[int | str, dict[str, Any] | None] = {}
     for level in levels:
         for dependency in level.get("dependencies") or ():
             # A subclass that spells out ``[own, *Base.dependencies]`` lists
@@ -605,9 +656,9 @@ def _init_api_router(view_cls: type[View]) -> fastapi.APIRouter:
         f"The responses of {view_cls.__name__}", _models_in(responses)
     )
     tags = _get_router_tags(view_cls, prefix)
-    api_router = fastapi.APIRouter(
-        prefix=prefix, tags=tags, responses=responses, dependencies=dependencies
-    )
+    # The responses go on each route: a router would add a response back that
+    # a route removes.
+    api_router = fastapi.APIRouter(prefix=prefix, tags=tags, dependencies=dependencies)
 
     # Find all endpoint functions in this class and add them to the router
     list_parameters: list[dict[str, Any]] | None = None
@@ -625,7 +676,9 @@ def _init_api_router(view_cls: type[View]) -> fastapi.APIRouter:
             _reject_schema_types_on_a_plain_view(view_cls, name, endpoint, route_kwargs)
         _reject_schema_types_in_fields(view_cls, name, endpoint, route_kwargs)
         defaults = {}
-        if is_rest_view and name in _CRUD_ROUTE_METADATA:
+        # A name that the route chooses gives FastAPI the summary and the
+        # operation ID, as on any other route.
+        if is_rest_view and name in _CRUD_ROUTE_METADATA and "name" not in route_kwargs:
             route_name, summary = _CRUD_ROUTE_METADATA[name]
             # FastAPI carries placeholders through include_router(), so an
             # explicit generator on the route, router, or app still wins.
@@ -641,6 +694,17 @@ def _init_api_router(view_cls: type[View]) -> fastapi.APIRouter:
                 ),
             }
         route_kwargs = {**defaults, **route_kwargs}
+        not_found = is_rest_view and _can_answer_not_found(prefix, path, endpoint)
+        route_responses = {
+            **(_NOT_FOUND_RESPONSE if not_found else {}),
+            **responses,
+            **(route_kwargs.get("responses") or {}),
+        }
+        route_kwargs["responses"] = {
+            status: response
+            for status, response in route_responses.items()
+            if response is not None
+        }
         if is_rest_view:
             endpoint, route_kwargs = _with_view_response(
                 view_cls, endpoint, route_kwargs
@@ -664,6 +728,11 @@ def _init_api_router(view_cls: type[View]) -> fastapi.APIRouter:
 
     return api_router
 
+
+#: The response that a route of a CRUD view documents when it can answer 404.
+_NOT_FOUND_RESPONSE: dict[int | str, dict[str, Any]] = {
+    404: {"description": "Not found"}
+}
 
 _CRUD_ROUTE_METADATA = {
     "get_many_endpoint": ("get_many", "List"),

@@ -40,8 +40,15 @@ class InvoiceView(fr.AsyncRestView):
 
 `tags` replaces the tag that Restly makes from the prefix. A subclass
 inherits it. `responses` adds to the responses of the base classes, and an
-entry for the same status code in a subclass wins. A CRUD view starts with
-`{404: {"description": "Not found"}}`.
+entry for the same status code in a subclass wins.
+
+A route of a CRUD view documents `404` by itself when it can answer 404. That is
+when its path has a parameter, or when its request body holds a reference to a
+row. In both cases, the row can be missing. A custom route that answers 404 for
+another reason documents it with `responses` on its decorator.
+
+To leave a response out, set its status code to `None`. This works on a view,
+such as `responses = {404: None}`, and on the decorator of one route.
 
 The view's {attr}`dependencies <fastapi_restly.views.View.dependencies>` also
 run on every route. A security dependency, such as an OAuth2 scheme, shows in
@@ -79,9 +86,15 @@ resource: `/people` gives `people_get`, not a singular form. Two paths that
 give the same name, such as `/order-items` and `/order_items`, need explicit
 operation IDs when they are in one spec.
 
-The route name is the action part of the ID. So `name="search"` on the list
-route gives `items_search`. Custom routes, and the routes of a plain
-{class}`View <fastapi_restly.views.View>`, get FastAPI's normal operation IDs.
+The route name is the action part of the ID. A route that chooses its own
+`name` does not get Restly's ID and summary. FastAPI makes them from the name,
+as on any route. So `name="search"` on the list route gives the ID
+`search_items_get` and the summary `Search`.
+
+Custom routes, and the routes of a plain
+{class}`View <fastapi_restly.views.View>`, also get FastAPI's normal IDs and
+summaries, from the name of the method. So a method `stats` at `/items/stats`
+gets the ID `stats_items_stats_get` and the summary `Stats`.
 
 An explicit `operation_id` always wins. You can also give FastAPI a
 [`generate_unique_id_function`](https://fastapi.tiangolo.com/advanced/generate-clients/#custom-generate-unique-id-function)
@@ -120,7 +133,9 @@ class InvoiceView(fr.AsyncRestView):
 [Name the view's schemas in a custom route](#name-the-view-schemas).
 Restly still fills in the rest of the route: the list params, and the name
 and the summary that you do not pass. A keyword argument
-that you pass wins over Restly's default. The table in
+that you pass wins over Restly's default. When you pass `name`, FastAPI makes
+the summary and the operation ID from that name, unless you pass them too. The
+table in
 [The names and operation IDs of the CRUD routes](#default-route-metadata)
 lists the endpoint methods.
 
