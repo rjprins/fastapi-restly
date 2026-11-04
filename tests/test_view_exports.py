@@ -10,14 +10,14 @@ def test_base_rest_view_is_advanced_views_export_not_top_level():
 
 
 def test_envelope_models_are_advanced_views_exports_not_top_level():
-    for name in ("Envelope", "PaginatedEnvelope"):
+    for name in ("Envelope", "NumberedEnvelope"):
         assert hasattr(fr_views, name)
         assert name in fr_views.__all__
         assert not hasattr(fr, name)
         assert name not in fr.__all__
     # The paginated shape extends the base envelope with the metadata fields.
-    assert issubclass(fr_views.PaginatedEnvelope, fr_views.Envelope)
-    assert set(fr_views.PaginatedEnvelope.model_fields) - set(
+    assert issubclass(fr_views.NumberedEnvelope, fr_views.Envelope)
+    assert set(fr_views.NumberedEnvelope.model_fields) - set(
         fr_views.Envelope.model_fields
     ) == {"total_count", "page", "page_size", "total_pages"}
 

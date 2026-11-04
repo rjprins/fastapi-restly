@@ -1263,7 +1263,9 @@ def test_react_admin_view_cannot_disable_pagination(client, unpaginated):
     class GadgetSchema(fr.IDSchema):
         name: str
 
-    with pytest.raises(RestlyConfigurationError, match="cannot disable pagination"):
+    with pytest.raises(
+        RestlyConfigurationError, match="must stay a fr.NumberedPagination"
+    ):
 
         @fr.include_view(client.app)
         class GadgetView(fr.AsyncReactAdminView):

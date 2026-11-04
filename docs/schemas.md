@@ -889,7 +889,7 @@ type checkers do not accept them in an annotation, as in
 `data: UserResponse`. At runtime they are normal classes, so add
 `# type: ignore[valid-type]` on such a line.
 
-A custom route that names `UserSchema` or `PaginatedEnvelope[UserSchema]`
+A custom route that names `UserSchema` or `NumberedEnvelope[UserSchema]`
 shows a type of its own in OpenAPI. Restly does not fill such a class from a
 `ListResult`. So the route calls `to_list_response` itself.
 

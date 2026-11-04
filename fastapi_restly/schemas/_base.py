@@ -40,12 +40,7 @@ from typing_extensions import TypeAliasType, TypeVar, is_typeddict
 
 from .._columns import column_value
 from .._mapping import is_mapped_instance, is_to_many_relationship
-from .._pagination import (
-    _DEFAULT_PAGINATION,
-    Envelope,
-    NoPagination,
-    NumberedPagination,
-)
+from .._pagination import _DEFAULT_PAGINATION, Envelope, Pagination
 from .._times import in_utc
 from ..clauses import apply_clauses
 from ..clauses._scopes import _default_scope
@@ -2147,7 +2142,7 @@ def _generated_primary_key_fields(model_cls: type[Any]) -> frozenset[str]:
 def derive_list_response_schema(
     response_schema: type[pydantic.BaseModel],
     *,
-    pagination: NumberedPagination | NoPagination | None = _DEFAULT_PAGINATION,
+    pagination: Pagination | None = _DEFAULT_PAGINATION,
 ) -> type[pydantic.BaseModel]:
     """Build the list response schema of a view: the envelope of its
     pagination, filled with its response schema, named
@@ -2191,7 +2186,7 @@ def _named_list_envelope(
     views with the same response schema and envelope share it.
 
     It is a subclass, so OpenAPI shows ``UserListResponse`` and not
-    ``PaginatedEnvelope_UserResponse_``.
+    ``NumberedEnvelope_UserResponse_``.
     """
     filled: Any = envelope[response_schema]  # type: ignore[index]
     return type(

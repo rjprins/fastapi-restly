@@ -166,10 +166,12 @@ def test_list_params_of_your_own_without_page_fields_fail_on_a_view_with_pages()
         fr.include_view(FastAPI(), ItemView)
     assert str(caught.value) == (
         "ItemView.list_params_schema has no 'page' and no 'page_size' field, "
-        "so the list would return every row while its response says that it "
-        "has pages. Subclass fr.query.PagedListParams, which gets the page "
-        "fields of the view's pagination, or set pagination = None for a list "
-        "without pages."
+        "so the list would not page while its response says that it has "
+        "pages. Subclass fr.query.PagedListParams, which gets the fields of "
+        "the view's pagination. For a list that pages with limit and offset, "
+        "set pagination = fr.OffsetPagination() and subclass "
+        "fr.query.OffsetListParams. For a list that returns every row, set "
+        "pagination = None."
     )
 
 
@@ -203,7 +205,9 @@ def test_paged_list_params_need_a_view_with_pages():
         list_params_schema = Search
         pagination = None
 
-    with pytest.raises(RestlyConfigurationError, match="the view has no pages"):
+    with pytest.raises(
+        RestlyConfigurationError, match="which needs a fr.NumberedPagination"
+    ):
         fr.include_view(FastAPI(), ItemView)
 
 

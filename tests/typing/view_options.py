@@ -42,10 +42,8 @@ APP_PAGINATION = fr.NumberedPagination(page_size_query_param="size", max_page_si
 class PagedTicketView(fr.AsyncRestView):
     model = Ticket
     schema = TicketSchema
-    # annotated, so mypy lets a subclass turn pagination off
-    pagination: ClassVar[fr.NumberedPagination | fr.NoPagination | None] = (
-        APP_PAGINATION
-    )
+    # annotated, so mypy lets a subclass choose another style
+    pagination: ClassVar[fr.Pagination | None] = APP_PAGINATION
 
 
 class SmallPagedTicketView(PagedTicketView):
@@ -58,6 +56,20 @@ class AllTicketView(PagedTicketView):
 
 class ExportTicketView(PagedTicketView):
     pagination = fr.NoPagination().replace(envelope=fr.views.Envelope)
+
+
+class OffsetTicketView(PagedTicketView):
+    pagination = fr.OffsetPagination(offset_query_param="skip").replace(
+        default_limit=20, max_limit=100
+    )
+
+
+class TicketSearch(fr.query.OffsetListParams):
+    q: str | None = None
+
+
+def read_the_fields(search: TicketSearch) -> int:
+    return search.limit + search.offset
 
 
 @fr.include_view(app)

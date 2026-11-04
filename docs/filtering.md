@@ -39,7 +39,8 @@ asked for. A view can ignore unknown keys instead; see
 Lists are paginated by default: 50 rows per page, and a client can ask for up
 to 1000. The rows come in a `data` envelope with the total count. The view's
 {attr}`pagination <fastapi_restly.views.BaseRestView.pagination>` setting
-changes the limits and the parameter names, or turns pagination off.
+changes the limits and the parameter names, pages
+[with limit and offset](#limit-offset-pagination), or turns pagination off.
 
 (filter-a-list)=
 ## Filter a list
@@ -394,6 +395,63 @@ give the field an alias, or leave the field's plain key out with
 [Choose the keys of a list](#choose-list-keys). A renamed parameter frees its old name, so a
 field called `page` gets its filter back.
 
+(limit-offset-pagination)=
+### Page with limit and offset
+
+For a list that pages with `limit` and `offset`, set
+{class}`fr.OffsetPagination <fastapi_restly.views.OffsetPagination>`:
+
+```python
+class ArticleView(fr.AsyncRestView):
+    pagination = fr.OffsetPagination(default_limit=20, max_limit=100)
+```
+
+The client asks for the rows after a position:
+
+```text
+GET /articles?limit=20&offset=40
+```
+
+`offset` starts at 0. `limit` must be at least 1 and at most `max_limit`, 1000
+by default. Without `limit`, the endpoint uses `default_limit`, 50 by default.
+A value out of range returns `422`. An offset after the last row returns an
+empty `data` with the correct `total_count`.
+
+The response holds the rows in `data`, with `total_count`, `limit` and
+`offset`. To change this envelope, see
+[Change the list envelope](#change-list-envelope). The filters, the sort,
+[filters of your own](#own-list-filter) and the
+[settings that choose the keys](#choose-list-keys) work as they do with page
+numbers.
+
+Many clients send `skip` instead of `offset`. Rename the parameter with
+`offset_query_param`:
+
+```python
+class ArticleView(fr.AsyncRestView):
+    pagination = fr.OffsetPagination(offset_query_param="skip")
+```
+
+:::{admonition} Details
+:class: details
+
+`limit_query_param` renames the limit. The rules for a renamed parameter are the
+same as for [the page parameters](#rename-the-page-parameters).
+
+A name in the URL does not rename the field in the JSON. With `skip` in the URL,
+the response still has `offset`. To send `skip` there too, write an envelope
+with `offset: int = pydantic.Field(alias="skip")`.
+
+The database still reads the rows that an offset skips, so a large offset is
+slow. On a public endpoint, set `max_offset`. A larger offset then returns `422`.
+Without it, Restly rejects only an offset above `2**63 - 1`.
+
+The defaults are the same as those of `NumberedPagination`, so a list that
+changes its style keeps its number of rows. A
+[react-admin view](react_admin.md) pages with `range`, and keeps a
+`NumberedPagination`.
+:::
+
 (set-pagination-once)=
 ### Set the pagination once for every view
 
@@ -413,6 +471,24 @@ class AppView(fr.AsyncRestView):
 class LogView(AppView):
     pagination = APP_PAGINATION.replace(default_page_size=10, max_page_size=10)
 ```
+
+:::{admonition} Details
+:class: details
+
+A type checker gives a `pagination` without an annotation the type of its value.
+Then a view below it that sets another style, or `None`, fails the check.
+Annotate the base view with
+{class}`fr.Pagination <fastapi_restly.views.Pagination>`, the base class of the
+styles:
+
+```python
+from typing import ClassVar
+
+
+class AppView(fr.AsyncRestView):
+    pagination: ClassVar[fr.Pagination | None] = APP_PAGINATION
+```
+:::
 
 (no-pagination)=
 ### Return every row without pagination
@@ -479,6 +555,22 @@ The default page size of 50 and the maximum of 100 match those of
 fastapi-pagination. fastapi-pagination has no filters and no sorting. Restly
 adds both, as this page describes.
 
+Its `LimitOffsetPage` takes `?limit=` and `?offset=`, and returns `items`,
+`total`, `limit` and `offset`. The same approach works with
+{class}`fr.OffsetPagination <fastapi_restly.views.OffsetPagination>`:
+
+```python
+class LimitOffsetPage(pydantic.BaseModel, Generic[T]):
+    data: list[T] = pydantic.Field(alias="items")
+    total_count: int = pydantic.Field(alias="total")
+    limit: int
+    offset: int
+
+
+class AppView(fr.AsyncRestView):
+    pagination = fr.OffsetPagination(max_limit=100, envelope=LimitOffsetPage)
+```
+
 (choose-list-keys)=
 ## Choose the keys of a list
 
@@ -525,8 +617,9 @@ The pattern `"name*"` also matches a field such as `names`. Write
 `("name", "name__*")` for the keys of `name` only.
 
 `include_filters = ()` leaves no generated filters, and
-`include_sort_keys = ()` removes the `sort` parameter. `page` and `page_size`
-are not filters, and they always stay.
+`include_sort_keys = ()` removes the `sort` parameter. The parameters of the
+pagination, such as `page` and `page_size`, are not filters, and they always
+stay.
 
 Dotted keys are off by default. Each one is a join that a client can add, and
 a new field on a nested schema would add keys to every list that nests it.
@@ -1011,10 +1104,19 @@ names in the URL, the default page size and the bounds. Your code reads
 renames them, such as `page_size_query_param="size"`. The response reports
 the page that the client gets.
 
+For a list with `limit` and `offset`, use
+{class}`fr.query.OffsetListParams <fastapi_restly.query.OffsetListParams>` and
+{class}`fr.OffsetPagination <fastapi_restly.views.OffsetPagination>`. They work
+in the same way. Your code reads `list_params.limit` and `list_params.offset`.
+
 List params of your own on a view with pages need these fields, or the view
-fails when it registers: its list would return every row, while its
-response says that it has pages. For a list without pages, subclass
-`pydantic.BaseModel` and set `pagination = None`.
+fails when it registers: its list would not page, while its response says that
+it has pages. For a list that returns every row, subclass `pydantic.BaseModel`
+and set `pagination = None`.
+
+Do not use `pagination = None` for a list that limits its own rows. Without
+pages, `total_count` is the number of rows in the response, not the number of
+matching rows, and nothing warns you. Use a pagination, as above.
 
 :::{admonition} Details
 :class: details

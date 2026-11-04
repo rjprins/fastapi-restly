@@ -15,7 +15,6 @@ import fastapi_restly as fr
 from fastapi_restly.query import apply_list_params, derive_list_params_schema
 from fastapi_restly.query._impl import (
     _apply_filtering,
-    _apply_pagination,
     _apply_sorting,
     _filter_value_parser,
     _make_where_clause,
@@ -249,7 +248,7 @@ class TestApplyPagination:
     def test__apply_pagination_defaults(self, select_query, mock_query_params):
         """Without ``page_size`` no LIMIT/OFFSET is applied (default is unlimited)."""
         params = mock_query_params()
-        result = _apply_pagination(params, select_query, PAGES)
+        result = PAGES._apply(select_query, params)
 
         assert "LIMIT" not in str(result)
         assert "OFFSET" not in str(result)
@@ -257,7 +256,7 @@ class TestApplyPagination:
     def test__apply_pagination_custom_values(self, select_query, mock_query_params):
         """Test pagination with custom values."""
         params = mock_query_params(page="2", page_size="25")
-        result = _apply_pagination(params, select_query, PAGES)
+        result = PAGES._apply(select_query, params)
 
         # Should apply page=2, page_size=25
         assert "LIMIT :param_1" in str(result)
@@ -268,7 +267,7 @@ class TestApplyPagination:
         params = mock_query_params(page="invalid", page_size="10")
 
         with pytest.raises(HTTPException) as exc_info:
-            _apply_pagination(params, select_query, PAGES)
+            PAGES._apply(select_query, params)
 
         assert exc_info.value.status_code == 400
         assert "Use an integer" in str(exc_info.value.detail)
@@ -278,7 +277,7 @@ class TestApplyPagination:
         params = mock_query_params(page_size="invalid")
 
         with pytest.raises(HTTPException) as exc_info:
-            _apply_pagination(params, select_query, PAGES)
+            PAGES._apply(select_query, params)
 
         assert exc_info.value.status_code == 400
         assert "Use an integer" in str(exc_info.value.detail)
@@ -555,9 +554,7 @@ class TestApplyListParams:
 
         with patch("fastapi_restly.query._impl._apply_filtering") as mock_filter:
             with patch("fastapi_restly.query._impl._apply_sorting") as mock_sort:
-                with patch(
-                    "fastapi_restly.query._impl._apply_pagination"
-                ) as mock_paginate:
+                with patch.object(fr.NumberedPagination, "_apply") as mock_paginate:
                     apply_list_params(select_query, params, WidgetModel, WidgetSchema)
 
                     # Check call order

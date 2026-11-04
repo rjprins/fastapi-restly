@@ -1,21 +1,29 @@
 """List pagination settings and the list response envelopes.
 
 A view's :attr:`~fastapi_restly.views.BaseRestView.pagination` holds a
-:class:`NumberedPagination`, or a :class:`NoPagination` (``None`` for short)
-for a view that returns every row. The two settings classes are public
-through the package root and :mod:`fastapi_restly.views`, the envelopes
-through :mod:`fastapi_restly.views`, and the page-size constants through
+:class:`NumberedPagination` or an :class:`OffsetPagination`, or a
+:class:`NoPagination` (``None`` for short) for a view that returns every row.
+The settings classes are public through the package root and
+:mod:`fastapi_restly.views`, the envelopes through
+:mod:`fastapi_restly.views`, and the page-size constants through
 :mod:`fastapi_restly.query`.
+
+What differs per style lives in the settings classes, in private methods: the
+query parameters, the fields of the list params, how a statement gets its page,
+and what fills the envelope. The rest of Restly calls these methods.
 """
 
+import abc
 import dataclasses
 from math import ceil
-from typing import Any, Generic, Self
+from typing import Annotated, Any, ClassVar, Generic, Optional, Self, cast
 
 import pydantic
+from sqlalchemy import Select
+from starlette.datastructures import QueryParams
 from typing_extensions import TypeVar
 
-from .exc import RestlyConfigurationError
+from .exc import BadQueryParam, RestlyConfigurationError
 
 #: Default ``page_size`` applied to paginated list endpoints when the client
 #: does not send one. A bounded default keeps a forgotten ``page_size`` from
@@ -30,6 +38,10 @@ DEFAULT_PAGE_SIZE: int = 50
 #: :attr:`~fastapi_restly.views.NumberedPagination.max_page_size`.
 MAX_PAGE_SIZE = 1000
 
+#: Largest pagination offset accepted by supported SQL databases. SQLite and
+#: PostgreSQL bind ``OFFSET`` as a signed 64-bit integer.
+_MAX_PAGINATION_OFFSET = 2**63 - 1
+
 #: The default name of the sort parameter. A view renames it with
 #: ``sort_query_param``.
 _SORT_QUERY_PARAM = "sort"
@@ -41,8 +53,8 @@ class Envelope(pydantic.BaseModel, Generic[DataT]):
     """List response wrapper: ``{"data": [...]}``.
 
     The default ``envelope`` of :class:`NoPagination`, for a view that returns
-    every row. A paginated view uses its pagination's ``envelope``,
-    :class:`PaginatedEnvelope` by default.
+    every row. A paginated view uses its pagination's ``envelope``:
+    :class:`NumberedEnvelope` or :class:`OffsetEnvelope` by default.
     """
 
     #: The rows of the list, each as an instance of the view's response
@@ -52,8 +64,8 @@ class Envelope(pydantic.BaseModel, Generic[DataT]):
     data: list[DataT]
 
 
-class PaginatedEnvelope(Envelope[DataT]):
-    """Paginated list response: ``data`` plus pagination metadata.
+class NumberedEnvelope(Envelope[DataT]):
+    """List response with page numbers: ``data`` plus pagination metadata.
 
     The default ``envelope`` of :class:`NumberedPagination`.
     """
@@ -70,14 +82,98 @@ class PaginatedEnvelope(Envelope[DataT]):
     total_pages: int
 
 
+class OffsetEnvelope(Envelope[DataT]):
+    """List response with a limit and an offset: ``data`` plus pagination
+    metadata.
+
+    The default ``envelope`` of :class:`OffsetPagination`.
+    """
+
+    #: The number of rows that match the filters, on all pages.
+    total_count: int
+    #: The largest number of rows in this response: the limit of the request,
+    #: or the default limit.
+    limit: int
+    #: The number of matching rows before the first row of this response.
+    offset: int
+
+
 @dataclasses.dataclass(frozen=True, kw_only=True)
-class NumberedPagination:
+class Pagination(abc.ABC):
+    """The base class of the pagination settings: :class:`NumberedPagination`,
+    :class:`OffsetPagination` and :class:`NoPagination`.
+
+    Use it to annotate the setting on a project base view, so that a view
+    below it can choose another style::
+
+        class AppView(fr.AsyncRestView):
+            pagination: ClassVar[fr.Pagination | None] = fr.OffsetPagination()
+
+    You cannot create an instance of this class. A subclass of your own does
+    not work yet: the methods that a style needs are private.
+    """
+
+    #: The list response model.
+    envelope: type[pydantic.BaseModel] = Envelope
+
+    #: Whether a list has pages. Then the list runs the count query.
+    _has_pages: ClassVar[bool] = True
+    #: What to do about list params of your own without the fields of this
+    #: style. The last sentences of the message.
+    _own_list_params_advice: ClassVar[str] = ""
+
+    def replace(self, **changes: Any) -> Self:
+        """A copy with ``changes`` applied, checked like a new instance.
+
+        For a view that changes one setting of shared pagination settings::
+
+            pagination = APP_PAGINATION.replace(
+                default_page_size=10, max_page_size=10
+            )
+        """
+        return dataclasses.replace(self, **changes)
+
+    @abc.abstractmethod
+    def _query_params(self) -> tuple[str, ...]:
+        """The names of the parameters of this style in the URL."""
+
+    @abc.abstractmethod
+    def _list_params_fields(self) -> dict[str, Any]:
+        """The fields that generated list params get, by their name in the URL."""
+
+    def _list_params_validators(self) -> dict[str, Any]:
+        """The model validators that generated list params get."""
+        return {}
+
+    @abc.abstractmethod
+    def _apply(self, stmt: Select[Any], query_params: QueryParams) -> Select[Any]:
+        """``stmt`` with the page that ``query_params`` ask for."""
+
+    @abc.abstractmethod
+    def _page_info(
+        self, data: list[Any], total_count: int, params: QueryParams
+    ) -> dict[str, Any]:
+        """What the envelope is filled from.
+
+        :param data: The rows of the response.
+        :param total_count: The result of the count query.
+        :param params: The list params as query parameters. Empty on a style
+            without pages.
+        """
+
+    def _page_info_sample(self) -> dict[str, Any]:
+        """The page info of an empty page, to check an envelope."""
+        return self._page_info([], 0, QueryParams())
+
+
+@dataclasses.dataclass(frozen=True, kw_only=True)
+class NumberedPagination(Pagination):
     """Page-number pagination: ``?page=2&page_size=50``.
 
     Set an instance as a view's
     :attr:`~fastapi_restly.views.BaseRestView.pagination`. Views inherit it,
     so a project base view sets it once, and a view that differs changes one
-    setting with :meth:`replace`::
+    setting with :meth:`~fastapi_restly.views.Pagination.replace`::
 
         APP_PAGINATION = fr.NumberedPagination(
             page_size_query_param="size", max_page_size=100
@@ -95,8 +191,9 @@ class NumberedPagination:
     type parameter, which each view fills with its response schema. Restly
     fills its fields by name from ``data``, ``total_count``, ``page``,
     ``page_size`` and ``total_pages``. Leave a field out to drop it from the
-    response, and rename one with an ``alias`` or an ``alias_generator``. A ``model_validator(mode="before")`` receives those
-    values as a dict and can reshape them, for example to nest the metadata.
+    response, and rename one with an ``alias`` or an ``alias_generator``. A
+    ``model_validator(mode="before")`` receives those values as a dict and can
+    reshape them, for example to nest the metadata.
     Creating the settings builds an empty page from the envelope, so a
     required field Restly cannot fill fails at startup instead of on a
     request. An envelope keeps the default ``extra`` setting: Restly passes it
@@ -115,8 +212,15 @@ class NumberedPagination:
     page_query_param: str = "page"
     #: The query parameter that carries the page size.
     page_size_query_param: str = "page_size"
-    #: The list response model. :class:`PaginatedEnvelope` by default.
-    envelope: type[pydantic.BaseModel] = PaginatedEnvelope
+    #: The list response model. :class:`NumberedEnvelope` by default.
+    envelope: type[pydantic.BaseModel] = NumberedEnvelope
+
+    _own_list_params_advice: ClassVar[str] = (
+        "Subclass fr.query.PagedListParams, which gets the fields of the view's "
+        "pagination. For a list that pages with limit and offset, set pagination "
+        "= fr.OffsetPagination() and subclass fr.query.OffsetListParams. For a "
+        "list that returns every row, set pagination = None."
+    )
 
     def __post_init__(self) -> None:
         _check_count("NumberedPagination", "max_page_size", self.max_page_size)
@@ -136,24 +240,248 @@ class NumberedPagination:
             page_query_param=self.page_query_param,
             page_size_query_param=self.page_size_query_param,
         )
-        _check_envelope(
-            "NumberedPagination", self.envelope, _numbered_page_info_sample()
+        _check_envelope("NumberedPagination", self.envelope, self._page_info_sample())
+
+    def _query_params(self) -> tuple[str, ...]:
+        return (self.page_query_param, self.page_size_query_param)
+
+    def _page_description(self) -> str:
+        if self.max_page is None:
+            return "1-based page number."
+        return f"1-based page number. At most {self.max_page}."
+
+    def _page_size_description(self) -> str:
+        return (
+            f"Number of items per page (1–{self.max_page_size}). "
+            f"Defaults to {self.default_page_size}."
         )
 
-    def replace(self, **changes: Any) -> Self:
-        """A copy with ``changes`` applied, checked like a new instance.
+    def _list_params_fields(self) -> dict[str, Any]:
+        return {
+            self.page_query_param: (
+                Annotated[
+                    int,
+                    pydantic.Field(
+                        ge=1, le=self.max_page, description=self._page_description()
+                    ),
+                ],
+                1,
+            ),
+            self.page_size_query_param: (
+                Annotated[
+                    Optional[int],
+                    pydantic.Field(
+                        ge=1,
+                        le=self.max_page_size,
+                        description=self._page_size_description(),
+                    ),
+                ],
+                self.default_page_size,
+            ),
+        }
 
-        For a view that changes one setting of shared pagination settings::
-
-            pagination = APP_PAGINATION.replace(
-                default_page_size=10, max_page_size=10
+    def _list_params_validators(self) -> dict[str, Any]:
+        page_param, page_size_param = self._query_params()
+        return {
+            "_validate_pagination_offset": _offset_validator(
+                page_param, page_size_param, page_param, page_size_param
             )
-        """
-        return dataclasses.replace(self, **changes)
+        }
+
+    def _own_list_params_fields(self) -> dict[str, Any]:
+        """The fields that ``fr.query.PagedListParams`` get in a view. They keep
+        their Python names, so code reads ``page_size`` whatever the URL calls
+        it; the alias is the name in the URL."""
+        return {
+            "page": (
+                Annotated[
+                    int,
+                    pydantic.Field(
+                        ge=1,
+                        le=self.max_page,
+                        alias=self.page_query_param,
+                        description=self._page_description(),
+                    ),
+                ],
+                1,
+            ),
+            "page_size": (
+                Annotated[
+                    int,
+                    pydantic.Field(
+                        ge=1,
+                        le=self.max_page_size,
+                        alias=self.page_size_query_param,
+                        description=self._page_size_description(),
+                    ),
+                ],
+                self.default_page_size,
+            ),
+        }
+
+    def _own_list_params_validators(self) -> dict[str, Any]:
+        return {
+            "_validate_pagination_offset": _offset_validator(
+                "page", "page_size", self.page_query_param, self.page_size_query_param
+            )
+        }
+
+    def _apply(self, stmt: Select[Any], query_params: QueryParams) -> Select[Any]:
+        page_size = _get_int(query_params, self.page_size_query_param)
+        if page_size is None:
+            return stmt
+        page = _get_int(query_params, self.page_query_param) or 1
+        return stmt.limit(page_size).offset((page - 1) * page_size)
+
+    def _page_info(
+        self, data: list[Any], total_count: int, params: QueryParams
+    ) -> dict[str, Any]:
+        page_size = int(
+            params.get(self.page_size_query_param) or self.default_page_size
+        )
+        return {
+            "data": data,
+            "total_count": total_count,
+            "page": int(params.get(self.page_query_param) or 1),
+            "page_size": page_size,
+            "total_pages": ceil(total_count / page_size) if page_size > 0 else 0,
+        }
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
-class NoPagination:
+class OffsetPagination(Pagination):
+    """Limit and offset pagination: ``?limit=50&offset=100``.
+
+    Set an instance as a view's
+    :attr:`~fastapi_restly.views.BaseRestView.pagination`. It works as
+    :class:`NumberedPagination` does: views inherit it, and
+    :meth:`~fastapi_restly.views.Pagination.replace` changes one setting. For a
+    client that says ``skip``::
+
+        class ItemView(fr.AsyncRestView):
+            pagination = fr.OffsetPagination(
+                offset_query_param="skip", default_limit=20, max_limit=100
+            )
+
+    ``envelope`` works as for :class:`NumberedPagination`, and Restly fills it
+    by name from ``data``, ``total_count``, ``limit`` and ``offset``. The names
+    in the JSON do not follow the names in the URL: to send ``skip`` in the
+    response too, give the field an ``alias``.
+    """
+
+    #: ``limit`` when the client sends none.
+    default_limit: int = DEFAULT_PAGE_SIZE
+    #: The largest ``limit`` a client may ask for. A larger one returns 422.
+    max_limit: int = MAX_PAGE_SIZE
+    #: The largest ``offset`` a client may ask for. A larger one returns 422.
+    #: ``None`` sets no limit of its own: then only an offset above
+    #: ``2**63 - 1`` returns 422.
+    max_offset: int | None = None
+    #: The query parameter that carries the limit.
+    limit_query_param: str = "limit"
+    #: The query parameter that carries the offset.
+    offset_query_param: str = "offset"
+    #: The list response model. :class:`OffsetEnvelope` by default.
+    envelope: type[pydantic.BaseModel] = OffsetEnvelope
+
+    _own_list_params_advice: ClassVar[str] = (
+        "Subclass fr.query.OffsetListParams, which gets the fields of the view's "
+        "pagination. For a list that pages with page numbers, set pagination = "
+        "fr.NumberedPagination() and subclass fr.query.PagedListParams. For a "
+        "list that returns every row, set pagination = None."
+    )
+
+    def __post_init__(self) -> None:
+        _check_count("OffsetPagination", "max_limit", self.max_limit)
+        if not _is_int(self.default_limit) or not (
+            1 <= self.default_limit <= self.max_limit
+        ):
+            raise RestlyConfigurationError(
+                "OffsetPagination.default_limit must be an int in "
+                f"[1, {self.max_limit}], got {self.default_limit!r}. "
+                "To return every matching row without pagination, set "
+                "'pagination = None' on the view."
+            )
+        if self.max_offset is not None:
+            _check_count("OffsetPagination", "max_offset", self.max_offset)
+        _check_query_params(
+            "OffsetPagination",
+            limit_query_param=self.limit_query_param,
+            offset_query_param=self.offset_query_param,
+        )
+        _check_envelope("OffsetPagination", self.envelope, self._page_info_sample())
+
+    def _query_params(self) -> tuple[str, ...]:
+        return (self.limit_query_param, self.offset_query_param)
+
+    def _limit_field(self, alias: str | None = None) -> tuple[Any, int]:
+        return (
+            Annotated[
+                int,
+                pydantic.Field(
+                    ge=1,
+                    le=self.max_limit,
+                    alias=alias,
+                    description=(
+                        f"Largest number of items to return (1–{self.max_limit}). "
+                        f"Defaults to {self.default_limit}."
+                    ),
+                ),
+            ],
+            self.default_limit,
+        )
+
+    def _offset_field(self, alias: str | None = None) -> tuple[Any, int]:
+        largest = _MAX_PAGINATION_OFFSET
+        description = "Number of items to skip. Defaults to 0."
+        if self.max_offset is not None:
+            largest = min(self.max_offset, _MAX_PAGINATION_OFFSET)
+            description += f" At most {largest}."
+        return (
+            Annotated[
+                int,
+                pydantic.Field(ge=0, le=largest, alias=alias, description=description),
+            ],
+            0,
+        )
+
+    def _list_params_fields(self) -> dict[str, Any]:
+        return {
+            self.limit_query_param: self._limit_field(),
+            self.offset_query_param: self._offset_field(),
+        }
+
+    def _own_list_params_fields(self) -> dict[str, Any]:
+        """The fields that ``fr.query.OffsetListParams`` get in a view. They keep
+        their Python names, so code reads ``offset`` whatever the URL calls it;
+        the alias is the name in the URL."""
+        return {
+            "limit": self._limit_field(alias=self.limit_query_param),
+            "offset": self._offset_field(alias=self.offset_query_param),
+        }
+
+    def _own_list_params_validators(self) -> dict[str, Any]:
+        return {}
+
+    def _apply(self, stmt: Select[Any], query_params: QueryParams) -> Select[Any]:
+        limit = _get_int(query_params, self.limit_query_param)
+        if limit is not None:
+            stmt = stmt.limit(limit)
+        return stmt.offset(_get_int(query_params, self.offset_query_param) or 0)
+
+    def _page_info(
+        self, data: list[Any], total_count: int, params: QueryParams
+    ) -> dict[str, Any]:
+        return {
+            "data": data,
+            "total_count": total_count,
+            "limit": int(params.get(self.limit_query_param) or self.default_limit),
+            "offset": int(params.get(self.offset_query_param) or 0),
+        }
+
+
+@dataclasses.dataclass(frozen=True, kw_only=True)
+class NoPagination(Pagination):
     """No pagination: a list returns every matching row and runs no count
     query.
 
@@ -178,35 +506,85 @@ class NoPagination:
     #: The list response model. :class:`Envelope` by default.
     envelope: type[pydantic.BaseModel] = Envelope
 
+    _has_pages: ClassVar[bool] = False
+
     def __post_init__(self) -> None:
-        _check_envelope("NoPagination", self.envelope, _unpaginated_page_info([]))
+        _check_envelope("NoPagination", self.envelope, self._page_info_sample())
 
-    def replace(self, **changes: Any) -> Self:
-        """A copy with ``changes`` applied, checked like a new instance."""
-        return dataclasses.replace(self, **changes)
+    def _query_params(self) -> tuple[str, ...]:
+        return ()
 
+    def _list_params_fields(self) -> dict[str, Any]:
+        return {}
 
-def _numbered_page_info(
-    *, total_count: int, page: int, page_size: int
-) -> dict[str, Any]:
-    """The metadata a :class:`NumberedPagination` envelope is filled from,
-    beside ``data``."""
-    return {
-        "total_count": total_count,
-        "page": page,
-        "page_size": page_size,
-        "total_pages": ceil(total_count / page_size) if page_size > 0 else 0,
-    }
+    def _apply(self, stmt: Select[Any], query_params: QueryParams) -> Select[Any]:
+        return stmt
+
+    def _page_info(
+        self, data: list[Any], total_count: int, params: QueryParams
+    ) -> dict[str, Any]:
+        """Every row is on the one page, so the total is the number of rows."""
+        return {"data": data, "total_count": len(data)}
 
 
-def _numbered_page_info_sample() -> dict[str, Any]:
-    return {"data": [], **_numbered_page_info(total_count=0, page=1, page_size=1)}
+def _settings_of(pagination: Pagination | None) -> Pagination:
+    """The settings that ``pagination`` stands for: ``None`` is short for
+    :class:`NoPagination`."""
+    return _NO_PAGINATION if pagination is None else pagination
 
 
-def _unpaginated_page_info(data: list[Any]) -> dict[str, Any]:
-    """What a :class:`NoPagination` envelope is filled from: every row is on
-    the one page, so the total is the number of rows."""
-    return {"data": data, "total_count": len(data)}
+def _query_settings(pagination: Pagination | None) -> tuple[Any, ...]:
+    """What the fields of list params depend on: the style, and each setting
+    but the envelope."""
+    settings = _settings_of(pagination)
+    return (
+        type(settings),
+        *(
+            getattr(settings, field.name)
+            for field in dataclasses.fields(settings)
+            if field.name != "envelope"
+        ),
+    )
+
+
+def _get_int(query_params: QueryParams, param_name: str) -> Optional[int]:
+    value = query_params.get(param_name)
+    if not value:
+        return None
+    try:
+        return int(value)
+    except ValueError:
+        raise BadQueryParam(
+            f"Invalid value for {param_name!r}: {value!r}. Use an integer."
+        )
+
+
+def _offset_validator(
+    page_attr: str, page_size_attr: str, page_param: str, page_size_param: str
+) -> Any:
+    """A model validator that rejects a page whose SQL offset would not fit in
+    a signed 64-bit integer.
+
+    :param page_attr: The field of the page, and ``page_size_attr`` the field
+        of the page size.
+    :param page_param: The name of the page in the URL, and
+        ``page_size_param`` the name of the page size, for the message.
+    """
+
+    @pydantic.model_validator(mode="after")
+    def _validate_pagination_offset(params: pydantic.BaseModel) -> pydantic.BaseModel:
+        page = cast(int, getattr(params, page_attr))
+        page_size = cast(Optional[int], getattr(params, page_size_attr))
+        if page_size is None:
+            return params
+        if page - 1 > _MAX_PAGINATION_OFFSET // page_size:
+            raise ValueError(
+                f"{page_param} and {page_size_param} produce an offset above "
+                f"{_MAX_PAGINATION_OFFSET}"
+            )
+        return params
+
+    return _validate_pagination_offset
 
 
 def _build_envelope(
@@ -335,3 +713,6 @@ def _check_fillable(
 #: The pagination of a view or of list params that name none: ``page`` and
 #: ``page_size``, 50 rows by default and at most 1000.
 _DEFAULT_PAGINATION = NumberedPagination()
+
+#: What ``pagination = None`` means.
+_NO_PAGINATION = NoPagination()

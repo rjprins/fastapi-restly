@@ -23,7 +23,7 @@ from fastapi_restly.testing._client import RestlyTestClient
 from fastapi_restly.views import (
     ListResponseSchema,
     ListResult,
-    PaginatedEnvelope,
+    NumberedEnvelope,
     ResponseSchema,
     SchemaType,
 )
@@ -157,7 +157,7 @@ def test_the_list_can_have_smaller_items_than_the_other_routes(client, Item, ite
         prefix = "/items"
         model = Item
         schema = ItemSchema
-        list_response_schema = PaginatedEnvelope[item]
+        list_response_schema = NumberedEnvelope[item]
 
     fr.include_view(client.app, ItemView)
     _fill(client)
@@ -198,7 +198,7 @@ def test_a_list_response_from_an_own_to_single_response_fills_the_items(client, 
         prefix = "/items"
         model = Item
         schema = ItemSchema
-        list_response_schema = PaginatedEnvelope[ItemSummary]
+        list_response_schema = NumberedEnvelope[ItemSummary]
 
         def to_single_response(self, obj):
             response = super().to_single_response(obj)
@@ -321,7 +321,7 @@ def test_a_class_with_page_fields_on_a_view_without_pages_raises(Item):
         prefix = "/items"
         model = Item
         schema = ItemSchema
-        list_response_schema = PaginatedEnvelope[ItemSummary]
+        list_response_schema = NumberedEnvelope[ItemSummary]
 
     class ItemView(ParentView):
         pagination = None
@@ -370,7 +370,7 @@ def test_an_item_field_that_the_response_class_lacks_raises(Item):
         prefix = "/items"
         model = Item
         schema = ItemSchema
-        list_response_schema = PaginatedEnvelope[Extra]
+        list_response_schema = NumberedEnvelope[Extra]
 
     with pytest.raises(RestlyConfigurationError) as caught:
         fr.include_view(FastAPI(), ItemView)
@@ -399,7 +399,7 @@ def test_an_item_field_with_a_default_or_from_a_property_is_fine(client, Item):
         prefix = "/items"
         model = Item
         schema = Named
-        list_response_schema = PaginatedEnvelope[Summary]
+        list_response_schema = NumberedEnvelope[Summary]
 
     fr.include_view(client.app, ItemView)
     _fill(client)
@@ -540,7 +540,7 @@ def test_a_subclass_keeps_the_class_unless_it_has_a_new_response_class(Item):
 
 def test_a_stale_class_gives_back_the_function_of_the_base_view(Item):
     def own(view):
-        return PaginatedEnvelope[view.response_schema]
+        return NumberedEnvelope[view.response_schema]
 
     class ApiView(fr.AsyncRestView):
         list_response_schema = SchemaType(own)
@@ -556,7 +556,7 @@ def test_a_stale_class_gives_back_the_function_of_the_base_view(Item):
     class ItemView(ParentView):
         schema = Other
 
-    assert ItemView.list_response_schema is PaginatedEnvelope[ItemView.response_schema]
+    assert ItemView.list_response_schema is NumberedEnvelope[ItemView.response_schema]
 
 
 # --- the names in OpenAPI -----------------------------------------------------
@@ -716,7 +716,7 @@ def test_a_react_admin_list_response_must_be_a_list(react_admin, Item):
         prefix = "/items"
         model = Item
         schema = ItemSchema
-        list_response_schema = PaginatedEnvelope[ItemSummary]
+        list_response_schema = NumberedEnvelope[ItemSummary]
 
     with pytest.raises(RestlyConfigurationError) as caught:
         fr.include_view(client.app, ItemView)
@@ -729,12 +729,12 @@ def test_a_replaced_react_admin_endpoint_can_use_any_class(client, Item):
         prefix = "/items"
         model = Item
         schema = ItemSchema
-        list_response_schema = PaginatedEnvelope[ItemSummary]
+        list_response_schema = NumberedEnvelope[ItemSummary]
 
         @fr.get("/")
         async def get_many_endpoint(self, list_params) -> ListResponseSchema:
             result = await self.handle_get_many(list_params)
-            return PaginatedEnvelope[ItemSummary](
+            return NumberedEnvelope[ItemSummary](
                 data=[],
                 total_count=result.total_count,
                 page=1,
@@ -787,9 +787,9 @@ def test_a_generic_class_without_its_type_raises(client, Item):
         prefix = "/items"
         model = Item
         schema = ItemSchema
-        list_response_schema = PaginatedEnvelope
+        list_response_schema = NumberedEnvelope
 
-    with pytest.raises(RestlyConfigurationError, match="PaginatedEnvelope.*type"):
+    with pytest.raises(RestlyConfigurationError, match="NumberedEnvelope.*type"):
         fr.include_view(client.app, ItemView)
 
 
@@ -871,7 +871,7 @@ class WideSummary(fr.IDSchema):
     [
         list[WideSummary],
         collections.abc.Sequence[WideSummary],
-        PaginatedEnvelope[WideSummary],
+        NumberedEnvelope[WideSummary],
     ],
     ids=["list", "sequence", "envelope"],
 )
@@ -913,7 +913,7 @@ def test_a_before_validator_can_fill_an_item_field(client, Item):
         prefix = "/items"
         model = Item
         schema = ItemSchema
-        list_response_schema = PaginatedEnvelope[Filled]
+        list_response_schema = NumberedEnvelope[Filled]
 
     fr.include_view(client.app, ItemView)
     _fill(client)
@@ -984,7 +984,7 @@ class SummaryTuple(NamedTuple):
         list[SummaryDict],
         list[SummaryData],
         list[SummaryTuple],
-        PaginatedEnvelope[dict[str, Any]],
+        NumberedEnvelope[dict[str, Any]],
     ],
     ids=str,
 )

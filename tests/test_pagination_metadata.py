@@ -140,7 +140,7 @@ def test_pagination_metadata_reports_explicit_page_size(client):
 def test_openapi_list_route_refs_the_envelope_component(client):
     """The list route's 200 response references the generated list response
     (``<Resource>ListResponse``), with the response schema in ``data``. It is a
-    ``PaginatedEnvelope`` when paginated and an ``Envelope`` when not. This
+    ``NumberedEnvelope`` when paginated and an ``Envelope`` when not. This
     pins the public OpenAPI contract the docs promise Restly keeps in sync."""
 
     class Crate(fr.IDMixin, SharedBase):
@@ -183,7 +183,7 @@ def test_openapi_list_route_refs_the_envelope_component(client):
 
     components = spec["components"]["schemas"]
 
-    # Paginated (default): PaginatedEnvelope filled with the response schema,
+    # Paginated (default): NumberedEnvelope filled with the response schema,
     # all fields required.
     paginated = list_200_component("/crates")
     assert paginated == "CrateListResponse"

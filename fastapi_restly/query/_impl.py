@@ -35,9 +35,10 @@ from .._columns import check_text, column_value
 from .._pagination import (
     _DEFAULT_PAGINATION,
     _SORT_QUERY_PARAM,
-    NoPagination,
-    NumberedPagination,
+    OffsetPagination,
+    Pagination,
     _check_query_param,
+    _settings_of,
 )
 from .._times import value_error_reason
 from ..exc import BadQueryParam, RestlyConfigurationError
@@ -48,6 +49,7 @@ from ..schemas._base import (
     _schema_role_name,
     _unwrap_type,
 )
+from ._paged import OffsetListParams
 from ._shared import (
     SortNulls,
     _append_pk_tiebreak,
@@ -56,10 +58,13 @@ from ._shared import (
     _sort_term,
 )
 
+#: The pagination of ``fr.query.OffsetListParams`` outside a view.
+_DEFAULT_OFFSET_PAGINATION = OffsetPagination()
+
 _SchemaClass = type[pydantic.BaseModel]
 _JoinAliases = dict[tuple[str, ...], AliasedClass[Any]]
 
-_AnyPagination = NumberedPagination | NoPagination | None
+_AnyPagination = Pagination | None
 
 #: The names of the settings that choose the generated keys, in order.
 _KEY_SETTINGS = (
@@ -269,25 +274,6 @@ def _pick_keys(
     ]
 
 
-def _query_settings(pagination: _AnyPagination) -> tuple[Any, ...] | None:
-    """What the pagination fields of list params depend on; ``None`` for
-    no pagination."""
-    if not isinstance(pagination, NumberedPagination):
-        return None
-    return (
-        pagination.page_query_param,
-        pagination.page_size_query_param,
-        pagination.default_page_size,
-        pagination.max_page_size,
-        pagination.max_page,
-    )
-
-
-#: Largest pagination offset accepted by supported SQL databases. SQLite and
-#: PostgreSQL bind ``OFFSET`` as a signed 64-bit integer.
-_MAX_PAGINATION_OFFSET = 2**63 - 1
-
-
 def _reserved_names(
     pagination: _AnyPagination, sort_query_param: str = _SORT_QUERY_PARAM
 ) -> frozenset[str]:
@@ -297,10 +283,7 @@ def _reserved_names(
     or sort, which would silently break the endpoint contract. Treated as a
     hard error.
     """
-    names = {sort_query_param}
-    if isinstance(pagination, NumberedPagination):
-        names |= {pagination.page_query_param, pagination.page_size_query_param}
-    return frozenset(names)
+    return frozenset({sort_query_param, *_settings_of(pagination)._query_params()})
 
 
 # Types that support SQL ``<``/``<=``/``>``/``>=`` comparisons. Booleans are
@@ -440,42 +423,6 @@ def _has_json_type(column: Any) -> bool:
     return isinstance(sql_type, sqlalchemy.JSON)
 
 
-def _pagination_offset_validator(pagination: NumberedPagination) -> Any:
-    """A model validator that rejects a page whose SQL offset would not fit in
-    a signed 64-bit integer. The fields have the names of the parameters."""
-    page_param = pagination.page_query_param
-    page_size_param = pagination.page_size_query_param
-    return _offset_validator(page_param, page_size_param, page_param, page_size_param)
-
-
-def _offset_validator(
-    page_attr: str, page_size_attr: str, page_param: str, page_size_param: str
-) -> Any:
-    """A model validator that rejects a page whose SQL offset would not fit in
-    a signed 64-bit integer.
-
-    :param page_attr: The field of the page, and ``page_size_attr`` the field
-        of the page size.
-    :param page_param: The name of the page in the URL, and
-        ``page_size_param`` the name of the page size, for the message.
-    """
-
-    @pydantic.model_validator(mode="after")
-    def _validate_pagination_offset(params: pydantic.BaseModel) -> pydantic.BaseModel:
-        page = cast(int, getattr(params, page_attr))
-        page_size = cast(Optional[int], getattr(params, page_size_attr))
-        if page_size is None:
-            return params
-        if page - 1 > _MAX_PAGINATION_OFFSET // page_size:
-            raise ValueError(
-                f"{page_param} and {page_size_param} produce an offset above "
-                f"{_MAX_PAGINATION_OFFSET}"
-            )
-        return params
-
-    return _validate_pagination_offset
-
-
 def derive_list_params_schema(
     response_schema: _SchemaClass,
     model: type[Any],
@@ -600,40 +547,14 @@ def _derive_list_params(
     }
     _check_query_param(_setting_label(owner, "sort_query_param"), sort_query_param)
     _check_default_sort(_setting_label(owner, "default_sort"), default_sort)
-    if isinstance(pagination, NumberedPagination) and sort_query_param in (
-        pagination.page_query_param,
-        pagination.page_size_query_param,
-    ):
+    settings = _settings_of(pagination)
+    if sort_query_param in settings._query_params():
         raise RestlyConfigurationError(
             f"{_setting_label(owner, 'sort_query_param')} cannot be "
             f"{sort_query_param!r}: it is a page parameter of the pagination. "
             "Choose another name for one of them."
         )
-    fields: dict[str, Any] = {}
-    if isinstance(pagination, NumberedPagination):
-        page_description = "1-based page number."
-        if pagination.max_page is not None:
-            page_description += f" At most {pagination.max_page}."
-        fields[pagination.page_query_param] = (
-            Annotated[
-                int, Field(ge=1, le=pagination.max_page, description=page_description)
-            ],
-            1,
-        )
-        fields[pagination.page_size_query_param] = (
-            Annotated[
-                Optional[int],
-                Field(
-                    ge=1,
-                    le=pagination.max_page_size,
-                    description=(
-                        f"Number of items per page (1–{pagination.max_page_size}). "
-                        f"Defaults to {pagination.default_page_size}."
-                    ),
-                ),
-            ],
-            pagination.default_page_size,
-        )
+    fields: dict[str, Any] = settings._list_params_fields()
 
     reserved = _reserved_names(pagination, sort_query_param)
     filter_fields: dict[str, Any] = {}
@@ -715,14 +636,9 @@ def _derive_list_params(
             default,
         )
 
-    validators = (
-        {"_validate_pagination_offset": _pagination_offset_validator(pagination)}
-        if isinstance(pagination, NumberedPagination)
-        else {}
-    )
     params_model = pydantic.create_model(  # type: ignore[call-overload]
         _schema_role_name(response_schema, "ListParams"),
-        __validators__=validators,
+        __validators__=settings._list_params_validators(),
         **fields,
     )
     _RECORDS[params_model] = _ListParamsRecord(
@@ -1165,12 +1081,14 @@ def _read_list_params(
         else None
     )
     if isinstance(pagination, _FromParams):
-        pagination = record.pagination if record else _DEFAULT_PAGINATION
+        if record:
+            pagination = record.pagination
+        elif isinstance(list_params, OffsetListParams):
+            pagination = _DEFAULT_OFFSET_PAGINATION
+        else:
+            pagination = _DEFAULT_PAGINATION
     sort_query_param = record.sort_query_param if record else _SORT_QUERY_PARAM
-    if isinstance(pagination, NumberedPagination) and sort_query_param in (
-        pagination.page_query_param,
-        pagination.page_size_query_param,
-    ):
+    if sort_query_param in _settings_of(pagination)._query_params():
         # list params from derive_list_params_schema reject this when created
         raise RestlyConfigurationError(
             f"A page parameter of the pagination is {sort_query_param!r}, "
@@ -1267,9 +1185,7 @@ def _apply_sort_and_page(
         default_sort=record.default_sort if record else None,
         sort_nulls=sort_nulls,
     )
-    if isinstance(pagination, NumberedPagination):
-        stmt = _apply_pagination(query_params, stmt, pagination)
-    return stmt
+    return _settings_of(pagination)._apply(stmt, query_params)
 
 
 def _coerce_to_query_params(
@@ -1299,29 +1215,6 @@ def _coerce_to_query_params(
                 items.append((key, str(value)))
         return QueryParams(items)
     return QueryParams(list_params)
-
-
-def _apply_pagination(
-    query_params: QueryParams, stmt: Select[Any], pagination: NumberedPagination
-) -> Select[Any]:
-    page_size = _get_int(query_params, pagination.page_size_query_param)
-    if page_size is None:
-        return stmt
-    page = _get_int(query_params, pagination.page_query_param) or 1
-    offset = (page - 1) * page_size
-    return stmt.limit(page_size).offset(offset)
-
-
-def _get_int(query_params: QueryParams, param_name: str) -> Optional[int]:
-    value = query_params.get(param_name)
-    if not value:
-        return None
-    try:
-        return int(value)
-    except ValueError:
-        raise BadQueryParam(
-            f"Invalid value for {param_name!r}: {value!r}. Use an integer."
-        )
 
 
 def _apply_sorting(

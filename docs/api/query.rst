@@ -5,8 +5,8 @@ Query API
 pagination: ``derive_list_params_schema()`` derives the list params, a model
 of the URL parameters, from the view's response schema and its model, and
 ``apply_list_params()`` applies validated list params to a SQLAlchemy select.
-For list params of your own, ``PagedListParams`` gives the page fields of
-the view's pagination, ``FilterKey`` and ``SortKey`` find the field and the
+For list params of your own, ``PagedListParams`` and ``OffsetListParams``
+give the page fields of the view's pagination, ``FilterKey`` and ``SortKey`` find the field and the
 column of one key, and ``order_by_primary_key()`` orders by the primary key
 last; see :ref:`own-list-params` and :ref:`own-list-params-keys`.
 

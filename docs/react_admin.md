@@ -363,7 +363,8 @@ A react-admin view uses two pagination settings: `default_page_size`, and
 `422`. The view pages with `range` and reports the total in the
 `Content-Range` header, so other settings, such as parameter names or an
 envelope, raise an error when Python defines the view class. So does
-`pagination = None`, because the header needs the total count.
+`pagination = None`, because the header needs the total count, and
+`fr.OffsetPagination`, because `range` already gives the rows.
 
 ### Change the Content-Range unit
 

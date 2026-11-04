@@ -285,7 +285,7 @@ def test_the_items_of_a_list_response_schema_get_x_resource_ref():
         prefix = "/pets"
         model = Pet
         schema = PetSchema
-        list_response_schema = fr.views.PaginatedEnvelope[PetSummary]
+        list_response_schema = fr.views.NumberedEnvelope[PetSummary]
 
     schemas = app.openapi()["components"]["schemas"]
     assert (

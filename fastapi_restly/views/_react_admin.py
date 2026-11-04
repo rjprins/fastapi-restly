@@ -29,8 +29,8 @@ from fastapi_restly.views import (
     IDType,
     ListResponseSchema,
     ListResult,
-    NoPagination,
     NumberedPagination,
+    Pagination,
     ResponseSchema,
     RestView,
     SchemaType,
@@ -189,9 +189,10 @@ def _check_pagination(cls: type) -> None:
     pagination = getattr(cls, "pagination", None)
     if not isinstance(pagination, NumberedPagination):
         raise RestlyConfigurationError(
-            f"{cls.__name__}: a react-admin view cannot disable pagination; "
-            "'pagination' must stay a fr.NumberedPagination so the "
-            "Content-Range total is counted."
+            f"{cls.__name__}: a react-admin view pages with the 'range' "
+            "parameter, so 'pagination' must stay a fr.NumberedPagination. "
+            "Restly reads its two page sizes, and counts the total for the "
+            "Content-Range header."
         )
     # any other setting would be silently ignored
     defaults = NumberedPagination()
@@ -277,7 +278,7 @@ class _ReactAdminViewProtocol(Protocol):
     model: ClassVar[type[Any]]
     response_schema: ClassVar[type[pydantic.BaseModel]]
     update_schema: ClassVar[type[pydantic.BaseModel]]
-    pagination: ClassVar[NumberedPagination | NoPagination | None]
+    pagination: ClassVar[Pagination | None]
     sort_nulls: ClassVar[SortNulls]
     put: ClassVar[Any]
 
@@ -306,7 +307,7 @@ class _ReactAdminMixin:
     #: Only ``default_page_size`` and ``max_page_size`` apply: the implicit
     #: page size when no ``range`` parameter is sent, and the most rows one
     #: ``range`` may ask for. Override per view.
-    pagination: ClassVar[NumberedPagination | NoPagination | None] = NumberedPagination(
+    pagination: ClassVar[Pagination | None] = NumberedPagination(
         default_page_size=DEFAULT_REACT_ADMIN_PAGE_SIZE
     )
 

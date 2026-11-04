@@ -58,24 +58,22 @@ _ReadWhere = ColumnElement[bool] | WhereClause | None
 from .._mapping import is_mapped_class
 from .._pagination import (
     _DEFAULT_PAGINATION,
-    NoPagination,
-    NumberedPagination,
+    Pagination,
     _build_envelope,
     _check_fillable,
-    _numbered_page_info,
-    _numbered_page_info_sample,
-    _unpaginated_page_info,
+    _query_settings,
+    _settings_of,
 )
 from ..exc import NotFound, RestlyConfigurationError, RestlySkippedFilterMethodsWarning
 from ..objects import snapshot as _object_snapshot
-from ..query._impl import _OwnFilter, _query_settings, _record_of
+from ..query._impl import _OwnFilter, _record_of
+from ..query._paged import _PAGINATION_OF_BASE, _page_fields_base, _takes_page_fields
 from ..query._shared import SortNulls
 from ..schemas import BaseSchema
 from ..schemas._base import _as_response, _response_adapter, _schema_resource_name
 from ._generated import (
     _DEFAULT_SETTINGS,
     _drop_stale_settings,
-    _is_paged_list_params,
     _list_params_schema,
     _uses_default,
 )
@@ -496,9 +494,10 @@ class BaseRestView(
     #: :func:`~fastapi_restly.schemas.derive_list_response_schema`: the
     #: envelope of the view's :attr:`pagination`, with the response schema as
     #: its items, named ``<Resource>ListResponse``. Restly fills a class that
-    #: a view sets as it fills an envelope: by field name, from ``data``,
-    #: ``total_count``, ``page``, ``page_size`` and ``total_pages``. A view
-    #: that replaces ``get_many_endpoint`` can set any type here.
+    #: a view sets as it fills an envelope: by field name, from the values of
+    #: the view's pagination, such as ``data``, ``total_count``, ``page``,
+    #: ``page_size`` and ``total_pages``. A view that replaces
+    #: ``get_many_endpoint`` can set any type here.
     list_response_schema: ClassVar[Any] = _DEFAULT_SETTINGS["list_response_schema"]
     #: The class of the ``POST`` body. When a view sets none, Restly builds
     #: it from the main schema without its ``ReadOnly`` fields and without
@@ -561,9 +560,12 @@ class BaseRestView(
     unknown_query_params: ClassVar[Literal["forbid", "ignore"]] = "forbid"
     #: How list endpoints paginate. The default :class:`NumberedPagination`
     #: takes ``page`` / ``page_size`` query parameters, runs the count query,
-    #: and wraps the list in its ``envelope`` (:class:`PaginatedEnvelope`:
+    #: and wraps the list in its ``envelope`` (:class:`NumberedEnvelope`:
     #: ``data`` plus ``total_count`` / ``page`` / ``page_size`` /
-    #: ``total_pages``). A :class:`NoPagination` returns every matching row
+    #: ``total_pages``). An :class:`OffsetPagination` does the same with
+    #: ``limit`` / ``offset`` query parameters (:class:`OffsetEnvelope`:
+    #: ``data`` plus ``total_count`` / ``limit`` / ``offset``). A
+    #: :class:`NoPagination` returns every matching row
     #: with no count, in its ``envelope``; ``None`` is short for
     #: ``NoPagination()``, a plain :class:`Envelope` (``data`` only). A view
     #: inherits it, so a project base view sets it once; a view that differs
@@ -571,7 +573,7 @@ class BaseRestView(
     #: shape no envelope model can express, such as a header, replace
     #: ``get_many_endpoint`` with a matching ``response_model`` (see
     #: :class:`AsyncReactAdminView`).
-    pagination: ClassVar[NumberedPagination | NoPagination | None] = _DEFAULT_PAGINATION
+    pagination: ClassVar[Pagination | None] = _DEFAULT_PAGINATION
     #: The filter keys that the list params keep, from the keys that Restly
     #: generates from :attr:`response_schema`. An entry is a key as the
     #: client sends it, such as ``"name__icontains"``, or a pattern. ``*``
@@ -1044,36 +1046,34 @@ class BaseRestView(
         :attr:`list_response_schema`.
 
         By default this class is the ``envelope`` of the view's
-        :attr:`pagination`: a :class:`PaginatedEnvelope` (``data`` plus
-        ``total_count`` / ``page`` / ``page_size`` / ``total_pages``), or an
-        :class:`Envelope` (``data`` only) for a view without pagination. To
+        :attr:`pagination`: a :class:`NumberedEnvelope` (``data`` plus
+        ``total_count`` / ``page`` / ``page_size`` / ``total_pages``), an
+        :class:`OffsetEnvelope` (``data`` plus ``total_count`` / ``limit`` /
+        ``offset``), or an :class:`Envelope` (``data`` only) for a view
+        without pagination. To
         change the shape, set :attr:`list_response_schema` or the pagination's
         ``envelope``. A list type, such as ``list[UserSummary]``, gives a list
         without the page values. For a ``Content-Range`` header, see
         :class:`AsyncReactAdminView`: it overrides this method and sets
         :attr:`list_response_schema` to match.
 
-        The page and page size come from ``list_result.list_params``.
+        The values of the page come from ``list_result.list_params``.
         """
         data = [self._single_response(obj) for obj in list_result.objects]
-        pagination = self.pagination
+        pagination = _settings_of(self.pagination)
         envelope = type(self).list_response_schema
         if not _is_pydantic_class(envelope):
             return _type_adapter(envelope).validate_python(
                 data, from_attributes=True, by_alias=False, by_name=True
             )
-        if not isinstance(pagination, NumberedPagination):
-            return _build_envelope(envelope, _unpaginated_page_info(data))
-        params = self._to_query_params(list_result.list_params)
-        page_info = _numbered_page_info(
-            total_count=list_result.total_count or 0,
-            page=int(params.get(pagination.page_query_param) or 1),
-            page_size=int(
-                params.get(pagination.page_size_query_param)
-                or pagination.default_page_size
-            ),
+        params = (
+            self._to_query_params(list_result.list_params)
+            if pagination._has_pages
+            else QueryParams()
         )
-        return _build_envelope(envelope, {"data": data, **page_info})
+        return _build_envelope(
+            envelope, pagination._page_info(data, list_result.total_count or 0, params)
+        )
 
     def snapshot(self, obj: Any) -> dict[str, Any]:
         """The column values that are loaded on ``obj``, passed as ``old`` to
@@ -1129,7 +1129,7 @@ class BaseRestView(
         if value is None:
             raise RestlyConfigurationError(
                 f"{label} is None. It must be a type, such as "
-                "PaginatedEnvelope[UserSummary] or list[UserSummary]."
+                "NumberedEnvelope[UserSummary] or list[UserSummary]."
             )
         if _has_items_without_a_type(value):
             raise RestlyConfigurationError(
@@ -1148,11 +1148,7 @@ class BaseRestView(
             return
         other_shape = " For another shape, replace get_many_endpoint."
         if _is_pydantic_class(value):
-            sample = (
-                _numbered_page_info_sample()
-                if isinstance(cls.pagination, NumberedPagination)
-                else _unpaginated_page_info([])
-            )
+            sample = _settings_of(cls.pagination)._page_info_sample()
             _check_fillable(label, value, sample, other_shape)
         elif get_origin(value) not in (list, collections.abc.Sequence):
             raise RestlyConfigurationError(
@@ -1303,40 +1299,35 @@ class _DeclaredListParams:
 
     def check_pages(self) -> None:
         """Hand-written list params of a view with pages have the page fields
-        of its pagination, or the list returns every row while its response
-        says that it has pages. ``fr.query.PagedListParams`` gets the fields
-        from the pagination. A view that builds its list response itself, as
-        a react-admin view does, pages in its own way."""
+        of its pagination, or the list does not page while its response says
+        that it has pages. ``fr.query.PagedListParams`` and
+        ``fr.query.OffsetListParams`` get the fields from the pagination. A
+        view that builds its list response itself, as a react-admin view does,
+        pages in its own way."""
         list_params = self.cls.list_params_schema
         pagination = getattr(self.cls, "pagination", None)
-        if not isinstance(pagination, NumberedPagination):
-            if _is_paged_list_params(list_params):
-                raise RestlyConfigurationError(
-                    f"{self.cls.__name__}.list_params_schema{self.origin} is a "
-                    "fr.query.PagedListParams, but the view has no pages: its "
-                    f"pagination is {pagination!r}. Set a fr.NumberedPagination, "
-                    "or let the list params subclass pydantic.BaseModel."
-                )
-            return
-        if _is_paged_list_params(list_params):
+        base = _page_fields_base(list_params)
+        if base is not None and not _takes_page_fields(list_params, pagination):
+            needed = _PAGINATION_OF_BASE[base].__name__
+            raise RestlyConfigurationError(
+                f"{self.cls.__name__}.list_params_schema{self.origin} is a "
+                f"fr.query.{base.__name__}, which needs a fr.{needed}, but the "
+                f"pagination of the view is {pagination!r}. Set a fr.{needed}, "
+                "or let the list params subclass pydantic.BaseModel."
+            )
+        settings = _settings_of(pagination)
+        if base is not None or not settings._has_pages:
             return
         if self.cls.to_list_response is not BaseRestView.to_list_response:
             return
         keys = {key for key, _, _ in _list_params_fields(list_params)}
-        missing = [
-            name
-            for name in (pagination.page_query_param, pagination.page_size_query_param)
-            if name not in keys
-        ]
+        missing = [name for name in settings._query_params() if name not in keys]
         if missing:
             fields = " and no ".join(repr(name) for name in missing)
             raise RestlyConfigurationError(
                 f"{self.cls.__name__}.list_params_schema{self.origin} has no "
-                f"{fields} field, so the list would return every row while its "
-                "response says that it has pages. Subclass "
-                "fr.query.PagedListParams, which gets the page fields of the "
-                "view's pagination, or set pagination = None for a list "
-                "without pages."
+                f"{fields} field, so the list would not page while its response "
+                f"says that it has pages. {settings._own_list_params_advice}"
             )
 
     def check_derived(self, record: Any) -> None:
@@ -1557,7 +1548,7 @@ def _list_item_type(annotation: Any) -> Any:
 
 def _has_items_without_a_type(list_response: Any) -> bool:
     """Whether ``list_response`` is a generic class that was not given the type of
-    its items, such as ``PaginatedEnvelope``."""
+    its items, such as ``NumberedEnvelope``."""
     if not _is_pydantic_class(list_response):
         return False
     field = list_response.model_fields.get("data")

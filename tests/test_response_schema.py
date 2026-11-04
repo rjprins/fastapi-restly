@@ -93,7 +93,7 @@ def test_derive_list_response_schema_returns_the_class_the_view_uses():
         schema = BookSchema
 
     assert BookListResponse.__name__ == "BookListResponse"
-    assert issubclass(BookListResponse, fr.views.PaginatedEnvelope)
+    assert issubclass(BookListResponse, fr.views.NumberedEnvelope)
     assert _response_model(app, "/books", "get") is BookListResponse
 
 
@@ -117,7 +117,7 @@ def test_only_the_envelope_of_the_pagination_matters():
     assert small_pages is paginated
     assert no_pagination is unpaginated
     assert issubclass(unpaginated, fr.views.Envelope)
-    assert not issubclass(unpaginated, fr.views.PaginatedEnvelope)
+    assert not issubclass(unpaginated, fr.views.NumberedEnvelope)
     assert issubclass(counted, DataCount)
     assert {paginated.__name__, unpaginated.__name__, counted.__name__} == {
         "LeafListResponse"
@@ -207,7 +207,7 @@ def test_the_wrong_pagination_gives_a_second_class_and_a_warning():
     assert "More than one class has the name ShelfListResponse." in message
     # The class that the route built says where it comes from, and the
     # warning says how to get the view's response schema.
-    assert "a list response with the envelope PaginatedEnvelope" in message
+    assert "a list response with the envelope NumberedEnvelope" in message
     assert "passes the view's pagination to derive_list_response_schema" in message
 
 

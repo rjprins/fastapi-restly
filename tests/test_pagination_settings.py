@@ -140,7 +140,7 @@ def test_defaults_keep_the_page_and_page_size_contract():
     assert pagination.default_page_size == fr.query.DEFAULT_PAGE_SIZE
     assert pagination.max_page_size == fr.query.MAX_PAGE_SIZE
     assert pagination.max_page is None
-    assert pagination.envelope is fr.views.PaginatedEnvelope
+    assert pagination.envelope is fr.views.NumberedEnvelope
     assert fr.AsyncRestView.pagination == pagination
     assert fr.RestView.pagination == pagination
 
@@ -194,7 +194,7 @@ class _TwoParameters(BaseModel, Generic[T, U]):
         (dict, "must be a Pydantic model class"),
         (_NotGeneric, "generic Pydantic model with one type parameter"),
         (
-            fr.views.PaginatedEnvelope[int],
+            fr.views.NumberedEnvelope[int],
             "generic Pydantic model with one type parameter",
         ),
         (_TwoParameters, "generic Pydantic model with one type parameter"),
@@ -334,7 +334,9 @@ def test_old_pagination_setting_on_a_mixin_names_the_mixin():
             pass
 
 
-@pytest.mark.parametrize("settings_class", [fr.NumberedPagination, fr.NoPagination])
+@pytest.mark.parametrize(
+    "settings_class", [fr.NumberedPagination, fr.OffsetPagination, fr.NoPagination]
+)
 def test_pagination_must_be_an_instance(settings_class):
     with pytest.raises(
         RestlyConfigurationError,
@@ -347,8 +349,8 @@ def test_pagination_must_be_settings_or_none():
     with pytest.raises(
         RestlyConfigurationError,
         match=re.escape(
-            "must be a fr.NumberedPagination or fr.NoPagination instance, "
-            "or None, got 50."
+            "must be a fr.NumberedPagination, fr.OffsetPagination or "
+            "fr.NoPagination instance, or None, got 50."
         ),
     ):
 
@@ -718,10 +720,10 @@ def test_no_pagination_bare_array(client):
 
 def test_no_pagination_envelope_field_restly_cannot_fill_fails_when_created():
     with pytest.raises(RestlyConfigurationError) as excinfo:
-        fr.NoPagination(envelope=fr.views.PaginatedEnvelope)
+        fr.NoPagination(envelope=fr.views.NumberedEnvelope)
 
     message = str(excinfo.value)
-    assert message.startswith("NoPagination.envelope PaginatedEnvelope cannot be")
+    assert message.startswith("NoPagination.envelope NumberedEnvelope cannot be")
     assert "(data, total_count)" in message
     assert "page: Field required" in message
     with pytest.raises(RestlyConfigurationError, match="one type parameter"):

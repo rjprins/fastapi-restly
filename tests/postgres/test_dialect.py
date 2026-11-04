@@ -284,6 +284,14 @@ class PgPagedView(fr.AsyncRestView):
 
 
 @fr.include_view(_app)
+class PgOffsetPagedView(fr.AsyncRestView):
+    prefix = "/offset-paged"
+    model = PgPaged
+    schema = PgPagedSchema
+    pagination = fr.OffsetPagination()
+
+
+@fr.include_view(_app)
 class PgDocView(fr.AsyncRestView):
     prefix = "/docs"
     model = PgDoc
@@ -577,6 +585,27 @@ def test_pagination_is_stable_under_duplicate_sort_keys(restly_client):
     assert len(set(seen)) == 5
     # The id tiebreak makes the page order deterministic (ascending id).
     assert seen == sorted(seen)
+
+
+def test_limit_and_offset_are_stable_under_duplicate_sort_keys(restly_client):
+    seen: list[int] = []
+    for offset in (0, 2, 4):
+        payload = restly_client.get(
+            f"/offset-paged/?sort=bucket&limit=2&offset={offset}"
+        ).json()
+        assert payload["total_count"] == 5
+        seen.extend(row["id"] for row in payload["data"])
+    assert len(seen) == 5
+    assert seen == sorted(seen)
+
+
+def test_the_largest_offset_reaches_the_database(restly_client):
+    # The bound in the list params says that PostgreSQL takes this offset, with
+    # any limit next to it.
+    payload = restly_client.get(
+        f"/offset-paged/?sort=bucket&limit=1000&offset={2**63 - 1}"
+    ).json()
+    assert (payload["data"], payload["total_count"]) == ([], 5)
 
 
 def test_the_doc_column_is_json_not_jsonb():

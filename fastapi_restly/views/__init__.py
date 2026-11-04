@@ -32,7 +32,15 @@ field is a column default on the model. ``View`` is the bare class-based
 primitive for non-CRUD endpoint groups (auth flows, webhooks, RPC).
 """
 
-from .._pagination import Envelope, NoPagination, NumberedPagination, PaginatedEnvelope
+from .._pagination import (
+    Envelope,
+    NoPagination,
+    NumberedEnvelope,
+    NumberedPagination,
+    OffsetEnvelope,
+    OffsetPagination,
+    Pagination,
+)
 from ._async import AsyncRestView
 from ._base import (
     Action,
@@ -81,9 +89,12 @@ __all__ = [
     "BaseRestView",
     "ListResult",
     "NumberedPagination",
+    "OffsetPagination",
     "NoPagination",
+    "Pagination",
     "Envelope",
-    "PaginatedEnvelope",
+    "NumberedEnvelope",
+    "OffsetEnvelope",
     "Action",
     "ReadScope",
     "View",

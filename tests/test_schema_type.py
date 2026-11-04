@@ -39,7 +39,7 @@ from fastapi_restly.views import (
     CreateSchema,
     IDType,
     ListResponseSchema,
-    PaginatedEnvelope,
+    NumberedEnvelope,
     ResponseSchema,
     SchemaType,
 )
@@ -1174,7 +1174,7 @@ def test_a_function_that_allows_none_uses_the_response_step(client, Lamp):
     "setting, value",
     [
         ("list_response_schema", list[ResponseSchema]),
-        ("list_response_schema", PaginatedEnvelope[ResponseSchema]),
+        ("list_response_schema", NumberedEnvelope[ResponseSchema]),
         ("response_schema", Data[ResponseSchema]),
     ],
 )

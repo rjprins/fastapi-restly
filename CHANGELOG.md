@@ -54,9 +54,21 @@ miss it.
    `to_single_response` that returns another model, sends all fields of that
    model. Before, `to_response` copied the value into the response schema. Declare
    `-> ResponseSchema` on the route.
+9. Rename `fr.views.PaginatedEnvelope` to `fr.views.NumberedEnvelope`. A pagination
+   style now has an envelope with its own name. The JSON and OpenAPI do not change.
 
 ### Added
 
+- `fr.OffsetPagination`: a list that pages with `limit` and `offset`, next to
+  `fr.NumberedPagination`. It takes `default_limit`, `max_limit`, `max_offset`,
+  `limit_query_param`, `offset_query_param` and `envelope`, and its default
+  envelope is `fr.views.OffsetEnvelope`. `offset_query_param="skip"` serves a
+  client that sends `skip`. Generated list params, `@fr.list_filter` and the list
+  settings work with it; see "Page with limit and offset" in the guide.
+- `fr.query.OffsetListParams`: the base of list params of your own with `limit`
+  and `offset`, next to `fr.query.PagedListParams`.
+- `fr.Pagination`: the base class of the pagination settings. Use it to annotate
+  the setting on a base view, as in `pagination: ClassVar[fr.Pagination | None]`.
 - `fastapi_restly.views.SchemaType(fn)`: a type that depends on the view. The
   function gets the view class and returns the type. It goes on a setting that
   takes a schema class, as a decorator on such a setting, or in the annotation of
@@ -84,7 +96,7 @@ miss it.
   `NamedTuple`. The field had no type in OpenAPI.
 - Registration raises `RestlyConfigurationError` for a marker in a setting, as in
   `list_response_schema = list[ResponseSchema]`, for a function that returns
-  `None`, and for `list_response_schema = PaginatedEnvelope` without a type for
+  `None`, and for `list_response_schema = NumberedEnvelope` without a type for
   the items. OpenAPI showed items without a type.
 - Registration raises `RestlyConfigurationError` for an own list response schema
   that `GET /` cannot fill: items that are not a Pydantic class, an item field that
@@ -105,6 +117,11 @@ miss it.
 
 ### Fixed
 
+- The error for list params of your own without page fields no longer gives advice
+  that does not work for a list with its own `limit` and `offset`. `PagedListParams`
+  gives page numbers, and `pagination = None` gave a `total_count` of the rows in the
+  response, without an error. The error now names `fr.OffsetPagination`, and the
+  guide warns about the count.
 - A marker inside a generic class, as in `Data[ResponseSchema]`, is filled. Before,
   the marker stayed, and OpenAPI showed a field without a type.
 - A marker in a type alias, as in `type Resp = ResponseSchema`, is filled. Before,

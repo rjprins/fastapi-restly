@@ -80,7 +80,7 @@ def _view_resources(app: FastAPI) -> set[str]:
 def test_each_resource_has_one_type_in_openapi(restly_app: FastAPI) -> None:
     """A custom route names the response schemas of the view, so a generated
     client gets one type per resource. No route shows the main schema or a
-    ``PaginatedEnvelope_`` class next to ``<Resource>Response`` and
+    ``NumberedEnvelope_`` class next to ``<Resource>Response`` and
     ``<Resource>ListResponse``."""
     resources = _view_resources(restly_app)
     components = set(restly_app.openapi()["components"]["schemas"])

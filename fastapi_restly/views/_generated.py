@@ -12,10 +12,9 @@ from typing import Any
 
 import pydantic
 
-from .._pagination import NumberedPagination
 from ..exc import RestlyConfigurationError
 from ..query._impl import _KEY_SETTINGS, _derive_list_params, _record_of
-from ..query._paged import PagedListParams, _completed_list_params
+from ..query._paged import _completed_list_params, _takes_page_fields
 from ..schemas import (
     derive_create_schema,
     derive_list_response_schema,
@@ -182,20 +181,16 @@ def _derive_view_list_params(view_cls: Any) -> type[pydantic.BaseModel]:
 def _list_params_schema(view_cls: Any) -> type[pydantic.BaseModel]:
     """The list params of a view, as its list routes use them.
 
-    List params from ``fr.query.PagedListParams`` get the page fields of the
-    view's pagination: the attribute keeps the class that the view declares,
-    and each view with other pages gets its own subclass.
+    List params from ``fr.query.PagedListParams`` or
+    ``fr.query.OffsetListParams`` get the page fields of the view's pagination:
+    the attribute keeps the class that the view declares, and each view with
+    other pages gets its own subclass.
     """
     declared = view_cls.list_params_schema
     pagination = getattr(view_cls, "pagination", None)
-    if _is_paged_list_params(declared) and isinstance(pagination, NumberedPagination):
+    if _takes_page_fields(declared, pagination):
         return _completed_list_params(declared, pagination)
     return declared
-
-
-def _is_paged_list_params(list_params: Any) -> bool:
-    """Whether ``list_params`` come from ``fr.query.PagedListParams``."""
-    return isinstance(list_params, type) and issubclass(list_params, PagedListParams)
 
 
 #: What a view uses when it sets nothing. A function reads what it needs: a base

@@ -15,6 +15,8 @@ from .._pagination import (
     DEFAULT_PAGE_SIZE,
     NoPagination,
     NumberedPagination,
+    OffsetPagination,
+    Pagination,
     _check_query_param,
 )
 from ..exc import RestlyConfigurationError
@@ -277,17 +279,16 @@ def _check_pagination_setting(cls: type) -> None:
             _replaced_pagination_message(cls.__name__, found)
         )
     pagination = getattr(cls, "pagination", None)
-    if not (
-        pagination is None or isinstance(pagination, (NumberedPagination, NoPagination))
-    ):
+    if not (pagination is None or isinstance(pagination, Pagination)):
         hint = (
             f" Create an instance: fr.{pagination.__name__}()."
-            if pagination in (NumberedPagination, NoPagination)
+            if pagination in (NumberedPagination, OffsetPagination, NoPagination)
             else ""
         )
         raise RestlyConfigurationError(
-            f"{cls.__name__}.pagination must be a fr.NumberedPagination or "
-            f"fr.NoPagination instance, or None, got {pagination!r}.{hint}"
+            f"{cls.__name__}.pagination must be a fr.NumberedPagination, "
+            "fr.OffsetPagination or fr.NoPagination instance, or None, "
+            f"got {pagination!r}.{hint}"
         )
 
 

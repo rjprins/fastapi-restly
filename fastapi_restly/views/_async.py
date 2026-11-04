@@ -6,7 +6,7 @@ import fastapi
 import sqlalchemy
 from sqlalchemy import ColumnElement
 
-from .._pagination import NumberedPagination
+from .._pagination import _settings_of
 from ..db import AsyncSessionDep
 from ..objects import async_make_new_object as object_async_make_new_object
 from ..objects import async_update_object as object_async_update_object
@@ -386,11 +386,8 @@ class AsyncRestView(
         list_params = self._validated_list_params(list_params)
         stmt = self.select(scope=self._narrowed_scope(scope, where))
         stmt = await self.apply_list_params(stmt, list_params)
-        total_count = (
-            (await self.count(stmt))
-            if isinstance(self.pagination, NumberedPagination)
-            else None
-        )
+        has_pages = _settings_of(self.pagination)._has_pages
+        total_count = (await self.count(stmt)) if has_pages else None
         scalar_result = await self.session.scalars(stmt)
         return ListResult(
             # unique(): a joined eager load of a collection, from the loader

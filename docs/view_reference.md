@@ -54,7 +54,7 @@ class also takes a {class}`SchemaType <fastapi_restly.views.SchemaType>`; see
 | {attr}`sort_query_param <fastapi_restly.views.BaseRestView.sort_query_param>` | `ClassVar[str]` | The name of the sort parameter. `"sort"` by default. See [Sort a list](#sort-a-list). |
 | {attr}`default_sort <fastapi_restly.views.BaseRestView.default_sort>` | `ClassVar[str \| None]` | The sort when the request has none, written as the client writes `sort`, such as `"-created_at"`. `None` by default: the primary key order. See [Sort a list](#sort-a-list). |
 | {attr}`sort_nulls <fastapi_restly.views.BaseRestView.sort_nulls>` | `ClassVar[Literal["first", "last"] \| None]` | Where a sort puts NULLs. `"last"` by default: last in both directions, on every database. `None` leaves them where the database puts them. See [Where NULLs go](#sort-nulls). |
-| {attr}`pagination <fastapi_restly.views.BaseRestView.pagination>` | `ClassVar[NumberedPagination \| NoPagination \| None]` | How list endpoints paginate, `NumberedPagination()` by default. A `NoPagination` returns every row and runs no count query; `None` is short for `NoPagination()`, a plain `Envelope` (`data` only). Views inherit it, so a project base view sets it once. See [Pagination settings](#pagination-settings). |
+| {attr}`pagination <fastapi_restly.views.BaseRestView.pagination>` | `ClassVar[Pagination \| None]` | How list endpoints paginate, `NumberedPagination()` by default. A `NoPagination` returns every row and runs no count query; `None` is short for `NoPagination()`, a plain `Envelope` (`data` only). Views inherit it, so a project base view sets it once. See [Pagination settings](#pagination-settings). |
 | {attr}`scope <fastapi_restly.views.BaseRestView.scope>` | `ClassVar[WhereClause \| None]` | The clause every read applies, shared by `get_many`, `count`, and `get_one`. `None` falls back to the model's declared `default_scope`; `fr.clauses.UNSCOPED` reads unscoped. See [Scopes](scopes.md). |
 | {attr}`unknown_query_params <fastapi_restly.views.BaseRestView.unknown_query_params>` | `ClassVar[Literal["forbid", "ignore"]]` | What a list route does with a query key that it does not read. `"forbid"` (the default) answers `422`. `"ignore"` leaves the key out, as FastAPI does. See [Accept extra query parameters](#extra-query-parameters). |
 | `Action` | `type[fr.Action]` | The view's actions: the values that `authorize` and the transaction hooks get. {class}`fr.Action <fastapi_restly.views.Action>` (the five CRUD actions) by default. A view with actions of its own declares a subclass with the same name, and inherits from the `Action` class of each base that has one. An action is an UPPER_CASE name with that name in lower case as its value. `write_action` takes only a declared action. See [Action names](#action-names). |
@@ -73,11 +73,26 @@ checked copy:
 | {attr}`max_page <fastapi_restly.views.NumberedPagination.max_page>` | `None` | Largest page number a client may ask for; a larger one is rejected with `422`. |
 | {attr}`page_query_param <fastapi_restly.views.NumberedPagination.page_query_param>` | `"page"` | Query parameter for the page number. |
 | {attr}`page_size_query_param <fastapi_restly.views.NumberedPagination.page_size_query_param>` | `"page_size"` | Query parameter for the page size. |
-| `envelope` | `PaginatedEnvelope` | The list response model: a generic model filled by field name from `data`, `total_count`, `page`, `page_size` and `total_pages`. |
+| `envelope` | `NumberedEnvelope` | The list response model: a generic model filled by field name from `data`, `total_count`, `page`, `page_size` and `total_pages`. |
+
+{class}`fr.OffsetPagination <fastapi_restly.views.OffsetPagination>` holds the
+settings of a list with `limit` and `offset`, in the same way:
+
+| Setting | Default | Purpose |
+|---|---|---|
+| {attr}`default_limit <fastapi_restly.views.OffsetPagination.default_limit>` | `50` | Limit when the client sends none. |
+| {attr}`max_limit <fastapi_restly.views.OffsetPagination.max_limit>` | `1000` | Largest limit a client may ask for; a larger one is rejected with `422`. |
+| {attr}`max_offset <fastapi_restly.views.OffsetPagination.max_offset>` | `None` | Largest offset a client may ask for; a larger one is rejected with `422`. |
+| {attr}`limit_query_param <fastapi_restly.views.OffsetPagination.limit_query_param>` | `"limit"` | Query parameter for the limit. |
+| {attr}`offset_query_param <fastapi_restly.views.OffsetPagination.offset_query_param>` | `"offset"` | Query parameter for the offset. |
+| `envelope` | `OffsetEnvelope` | The list response model: a generic model filled by field name from `data`, `total_count`, `limit` and `offset`. |
 
 {class}`fr.NoPagination <fastapi_restly.views.NoPagination>` has one setting,
 `envelope`, `Envelope` by
 default, filled from `data` and `total_count`, the number of rows.
+
+{class}`fr.Pagination <fastapi_restly.views.Pagination>` is the base class of the
+three. Use it to annotate the setting on a base view.
 
 The envelope's shape and custom alternatives are covered in
 [Responses](responses.md).
