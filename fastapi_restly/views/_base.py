@@ -77,7 +77,13 @@ from ..query._paged import (
 )
 from ..query._shared import SortNulls
 from ..schemas import BaseSchema
-from ..schemas._base import _as_response, _response_adapter, _schema_resource_name
+from ..schemas._base import (
+    _as_response,
+    _reject_table_class,
+    _reject_table_subclass,
+    _response_adapter,
+    _schema_resource_name,
+)
 from ._generated import (
     _DEFAULT_SETTINGS,
     _drop_stale_settings,
@@ -1207,6 +1213,10 @@ class BaseRestView(
             if name == "list_response_schema":
                 continue  # any type, see _check_list_response_schema
             if _is_pydantic_class(value):
+                if name in ("schema", "create_schema", "update_schema"):
+                    _reject_table_class(value, f"{cls.__name__}.{name}")
+                else:
+                    _reject_table_subclass(value, f"{cls.__name__}.{name}")
                 continue
             if isinstance(inspect.getattr_static(cls, name), SchemaType):
                 raise RestlyConfigurationError(
@@ -1239,6 +1249,9 @@ class BaseRestView(
                 "its items, so OpenAPI would show items without a type. Write "
                 f"{value.__name__}[UserSummary]."
             )
+        item_class = _list_item_class(value)
+        if item_class is not None:
+            _reject_table_subclass(item_class, f"The item class of {label}")
         # A view that replaces what fills the class decides what the class is.
         endpoint = getattr(cls, "get_many_endpoint", None)
         if (

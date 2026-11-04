@@ -39,7 +39,7 @@ from sqlalchemy.sql import ClauseElement
 from typing_extensions import TypeAliasType, TypeVar, is_typeddict
 
 from .._columns import column_value
-from .._mapping import is_mapped_instance, is_to_many_relationship
+from .._mapping import is_mapped_class, is_mapped_instance, is_to_many_relationship
 from .._pagination import _DEFAULT_PAGINATION, Envelope, Pagination
 from .._times import in_utc
 from ..clauses import apply_clauses
@@ -1990,6 +1990,52 @@ def _response_adapter(
 _SchemaT = TypeVar("_SchemaT", bound=pydantic.BaseModel)
 
 
+def _reject_table_class(schema: type[pydantic.BaseModel], where: str) -> None:
+    """A SQLModel table class cannot be the main schema or a write schema.
+
+    Its ``__init__`` does not validate, and a subclass keeps ``table=True``. In
+    a subclass, Pydantic also takes the column attribute of the parent as the
+    default of each field, so OpenAPI shows no required fields. SQLModel says
+    not to inherit from a table class, so Restly does not build a class from
+    one.
+
+    :raises RestlyConfigurationError: ``schema`` is a table class, or a
+        subclass of one.
+    """
+    _reject_table_subclass(schema, where)
+    if schema.model_config.get("table") is True:
+        raise RestlyConfigurationError(
+            f"{where} is {schema.__name__}, a SQLModel table class. A table class "
+            "does not validate its input, so a wrong request body can reach the "
+            "database. A class built from it shows no required fields in OpenAPI. "
+            "Use a class without `table=True`: a schema that you write, or the one "
+            f"from `fr.schemas.derive_schema({schema.__name__})`. A view without a "
+            "`schema` generates that one itself."
+        )
+
+
+def _reject_table_subclass(schema: type[pydantic.BaseModel], where: str) -> None:
+    """A subclass of a SQLModel table class cannot be a schema of a view at all.
+
+    The table class itself can go out as a response, but a subclass shows no
+    required fields in OpenAPI, also with ``table=False``. It has no mapper, so
+    ``derive_schema`` cannot take it either.
+
+    :raises RestlyConfigurationError: ``schema`` inherits from a table class.
+    """
+    if not is_mapped_class(schema) and any(
+        getattr(base, "model_config", {}).get("table") is True
+        for base in schema.__mro__
+    ):
+        raise RestlyConfigurationError(
+            f"{where} is {schema.__name__}, a subclass of a SQLModel table class. "
+            "It shows no required fields in OpenAPI, and it may not validate its "
+            "input. Use a class that does not inherit from the table class: a "
+            "schema that you write. SQLModel says to inherit from a data model, "
+            "not from a table class."
+        )
+
+
 def derive_response_schema(schema: type[_SchemaT]) -> type[_SchemaT]:
     """Build the response schema from a view's main schema: the schema without its
     ``WriteOnly`` fields, named ``<Resource>Response``.
@@ -2014,7 +2060,9 @@ def derive_response_schema(schema: type[_SchemaT]) -> type[_SchemaT]:
 
     :param schema: The main schema.
     :returns: The response schema.
+    :raises RestlyConfigurationError: ``schema`` is a SQLModel table class.
     """
+    _reject_table_class(schema, "The schema of derive_response_schema")
     return cast(type[_SchemaT], _derive_response_schema(schema))
 
 
@@ -2059,7 +2107,9 @@ def derive_create_schema(schema: type[_SchemaT], model: type[Any]) -> type[_Sche
     :param model: The view's model. The class also leaves out a primary key that
         the server generates, as a view does.
     :returns: The create schema.
+    :raises RestlyConfigurationError: ``schema`` is a SQLModel table class.
     """
+    _reject_table_class(schema, "The schema of derive_create_schema")
     return cast(type[_SchemaT], _derive_create_schema(schema, model))
 
 
@@ -2098,7 +2148,9 @@ def derive_update_schema(schema: type[_SchemaT], model: type[Any]) -> type[_Sche
     :param model: The view's model. The class also leaves out a primary key that
         the server generates, as a view does.
     :returns: The update schema.
+    :raises RestlyConfigurationError: ``schema`` is a SQLModel table class.
     """
+    _reject_table_class(schema, "The schema of derive_update_schema")
     return cast(type[_SchemaT], _derive_update_schema(schema, model))
 
 

@@ -90,6 +90,51 @@ Restly writes each field of a request body to the model attribute with the
 same Python name. So name a field after its column, and use an
 [alias](#field-aliases) when the JSON needs another name.
 
+:::{admonition} Details
+:class: details
+
+A SQLModel table class cannot be the
+{attr}`schema <fastapi_restly.views.BaseRestView.schema>`, the
+{attr}`create_schema <fastapi_restly.views.BaseRestView.create_schema>` or the
+{attr}`update_schema <fastapi_restly.views.BaseRestView.update_schema>` of a view.
+A table class does not validate its input, also on a plain FastAPI route, and
+SQLModel says not to inherit from it. So the view fails when it registers. Leave
+`schema` out, or set a class without `table=True`.
+
+The table class itself can be the
+{attr}`response_schema <fastapi_restly.views.BaseRestView.response_schema>`. A
+subclass of it cannot, because OpenAPI would show no required fields.
+
+A table class as a field of a schema, such as `team: Team`, does not validate
+either. Plain FastAPI does the same, and Restly does not check for it. Use a data
+model for that field.
+
+The schema that Restly generates takes its fields from the columns. It does not
+take the limits in `Field(...)` or the validators of the table class. To keep
+them, put them on a data model, and let the table and the schema inherit from
+it, as SQLModel recommends:
+
+```python
+class HeroBase(SQLModel):
+    name: str = Field(max_length=50)
+
+
+class Hero(HeroBase, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+
+
+class HeroSchema(HeroBase):
+    id: fr.ReadOnly[int]
+
+
+@fr.include_view(app)
+class HeroView(fr.RestView):
+    prefix = "/heroes"
+    model = Hero
+    schema = HeroSchema
+```
+:::
+
 (schema-base-classes)=
 ## Choose a base class
 
