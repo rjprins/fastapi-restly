@@ -166,7 +166,10 @@ miss it.
     this; a validator still runs.
 24. Silent: the fields of generated list params now hold the type of their field, not
     text. So `list_params.price__gte` is a `Decimal`, `list_params.price__in` is a
-    list, and a reference gives its id. Change code that reads them as text.
+    list, and a reference gives its id. Change code that reads them as text. Code
+    that sets a value without validation, as with `model_copy(update=...)`, must
+    set this type too: `{"active": True}`, not `{"active": "true"}`. Restly uses
+    the value as it is, so text finds no rows or fails in the database.
 25. Silent: `__ne` now keeps the rows where the field is NULL, as `__not_in` does.
     Before, SQL left them out, so `?status__ne=archived` also hid each row without a
     status. To leave them out too, add `&status__isnull=false`.

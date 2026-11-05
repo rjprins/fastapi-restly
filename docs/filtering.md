@@ -692,8 +692,10 @@ class ItemView(fr.AsyncRestView):
 
 In `exclude_filters`, a name without a suffix leaves out the whole field: the
 plain key and each key with a suffix. So `"internal_note"` also removes
-`internal_note__in`, and a client cannot find a value through a key that you
-forgot. A key with a suffix, such as `"name__in"`, leaves out that key only.
+`internal_note__in`, and you cannot miss a filter key of the field. The sort
+key is separate: `exclude_sort_keys` removes it. A dotted key, such as
+`owner.internal_note`, is separate too. A key with a suffix, such as
+`"name__in"`, leaves out that key only.
 
 :::{admonition} Details
 :class: details
@@ -770,7 +772,10 @@ async def list_items(list_params: Annotated[ItemListParams, Query()]): ...
 
 Do not use `Depends()` for them. FastAPI then gives the `__in` keys no value and
 lets an unknown key through, without an error. With `Query()`, an unknown key
-gets `422`. A key that takes one value and comes twice takes the last value on
+gets `422`. That is also a key that a dependency of the route reads, such as the
+key of an `APIKeyQuery`, as with any FastAPI model with `extra="forbid"`. Send
+such a value in a header, or use a view: a view accepts these keys. A key that
+takes one value and comes twice takes the last value on
 such a route: only a view refuses it.
 
 A key that clients use is part of your API. Removing it later breaks those

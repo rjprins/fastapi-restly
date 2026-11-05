@@ -1401,9 +1401,12 @@ def apply_list_params(
 
     ``list_params`` is normally an instance of the model returned by
     :func:`derive_list_params_schema`. The default list endpoints pass a
-    validated instance, so the page and the page size are within their
-    bounds. This function still checks each filter value itself, with the
-    validation of its field.
+    validated instance, so the page, the page size and each filter value
+    have passed their fields. This function uses the values of such an
+    instance as they are. So a value that your code sets without
+    validation, as with ``model_copy(update=...)``, must have the type of
+    its field: ``True``, not ``"true"``. Other list params, such as a dict or
+    a model of your own, go through the validation of each field here.
     ``response_schema`` decides the fields a client can filter and sort on.
     A view passes its response schema.
 
