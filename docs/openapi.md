@@ -15,8 +15,9 @@ the CRUD routes included. Restly fills in a few things for you:
 When the app builds its spec, Restly also warns when two classes have the same
 name; see [Name your schemas](#name-your-schemas).
 
-To change a default, set a view attribute, or override the endpoint method
-with a decorator of your own. To document a custom route, pass keyword
+To change a default, set a view attribute. For one route, use
+{func}`fr.modify_route <fastapi_restly.views.modify_route>`; see
+[Change one option of a route](#modify-route). To document a custom route, pass keyword
 arguments to its decorator, as in FastAPI.
 
 (view-openapi-metadata)=
@@ -104,96 +105,8 @@ names above, so a function based on the tag and the name can give IDs such as
 
 If you generate clients from the spec, generate them again when you move to
 Restly's IDs. To keep an existing operation ID, set `operation_id` with
-{func}`fr.route_options <fastapi_restly.views.route_options>`; see the next
-section.
-:::
-
-(crud-route-metadata)=
-## Change one option of a route
-
-To change one option of a route that a view inherits, set
-{func}`fr.route_options <fastapi_restly.views.route_options>` under the name of
-the route method. The route keeps its method and its other options:
-
-```python
-class InvoiceView(fr.AsyncRestView):
-    prefix = "/invoices"
-    model = Invoice
-    schema = InvoiceSchema
-
-    get_many_endpoint = fr.route_options(
-        summary="List invoices", operation_id="billing_list_invoices"
-    )
-    create_endpoint = fr.route_options(status_code=200)
-    update_endpoint = fr.route_options(methods=["PUT"])
-```
-
-It takes the same arguments as a route decorator. The hooks of the view run as before. Restly still fills in what you
-do not pass: the list params, and the name and the summary. When you pass `name`,
-FastAPI makes the summary and the operation ID from that name, unless you pass
-them too. The table in
-[The names and operation IDs of the CRUD routes](#default-route-metadata)
-lists the endpoint methods.
-
-:::{admonition} Details
-:class: details
-
-Each argument replaces the one of the inherited route. `dependencies` and
-`responses` add up, as they do on a view. `dependencies` run base first, so a
-subclass cannot remove a check of its base. `responses` add up per status code,
-and a status code set to `None` is left out. FastAPI adds the 422 response itself,
-so `{422: None}` does not remove it:
-
-```python
-    delete_endpoint = fr.route_options(dependencies=[Depends(require_admin)])
-    get_one_endpoint = fr.route_options(responses={404: None})
-```
-
-`path` replaces the path of the route, as in `fr.route_options("/new")`. For a
-list without a hidden route with a slash at the end, set `path=""` on the list
-route and on the create route. In a new path, write `{id}` for
-[the id parameter of the view](#id-param). A path such as `/{role_id}` on a route
-with `id: IDType` raises an error when the view registers, because nothing would
-read `role_id`. Set the name with `id_param`.
-`methods=["PUT"]` changes only the HTTP method. The route still updates only the
-fields that the client sends. A status code without a body, such as 204, also
-removes the response model of the route. For the list route, set
-`list_response_schema`, not `response_model`. For a delete with a body, write the
-method. An option does not change the order of the routes. So a route that the
-class writes, such as `GET /stats`, stays before the item route.
-
-A subclass inherits the options and can change them further. A plain class can
-hold options for several views. Put it before the view class, as in
-`class TagView(QuietRoutes, fr.AsyncRestView)`, as for any other method of a mixin.
-After the view class, the options do nothing.
-
-A name that is not a route of a base class raises
-{class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`
-when Python defines the class. Set `fr.route_options` in the class body. An
-argument that FastAPI does not know raises a `TypeError` when the view registers,
-as it does on a route decorator.
-
-A method with a route decorator states the whole route. So options from a base
-class do not apply to it. Write such a method when the change needs code, such as
-a decorator on the route or a response header. It can call the method of the base
-class, so the route works as before:
-
-```python
-    @fr.post("/")
-    async def create_endpoint(
-        self, data: CreateSchema, response: Response
-    ) -> ResponseSchema:
-        obj = await super().create_endpoint(data)
-        response.headers["Location"] = f"{self.prefix}/{obj.id}"
-        return obj
-```
-
-`ResponseSchema` keeps the view's response as the response model; see
-[Name the view's schemas in a custom route](#name-the-view-schemas). A route
-that you declare keeps the path that you give it. Restly changes only a path
-parameter annotated `IDType`. A parameter `id` with this type gets the name and
-the converter of the view, and another parameter gets only the converter; see
-[Choose the name of the id parameter](#id-param).
+{func}`fr.modify_route <fastapi_restly.views.modify_route>`; see
+[Change one option of a route](#modify-route).
 
 A subclass inherits an explicit `operation_id` too. Each `operation_id` must be
 unique in the app's spec.

@@ -228,11 +228,106 @@ This table maps each need to its setting:
 | A list filter of your own | Decorate a method with {func}`fr.list_filter <fastapi_restly.views.list_filter>` ([Add a filter of your own](#own-list-filter)) |
 | A query key of your own next to the list params, not a filter | Declare it on the endpoint method or in a dependency ([Accept extra query parameters](#extra-query-parameters)) |
 | OpenAPI metadata or dependencies on every route | Set {attr}`tags <fastapi_restly.views.View.tags>`, {attr}`responses <fastapi_restly.views.View.responses>` or {attr}`dependencies <fastapi_restly.views.View.dependencies>` ([Share behavior with base views](#share-behaviour-with-base-views)) |
-| One option of a route, such as its name, status code or dependencies | Set {func}`fr.route_options <fastapi_restly.views.route_options>` under the name of the route method ([OpenAPI](#crud-route-metadata)) |
+| One option of a route, such as its name, status code or dependencies | Use {func}`fr.modify_route <fastapi_restly.views.modify_route>` under the name of the route method ([Change one option of a route](#modify-route)) |
 | Another session for one view | Override the `session` annotation ([Database & Configuration](#session-dependency-one-view)) |
 
 [View Reference](#view-class-attributes) lists the type and the default of
 each attribute.
+
+(modify-route)=
+### Change one option of a route
+
+To change one option of a route that a view inherits, use
+{func}`fr.modify_route <fastapi_restly.views.modify_route>` under the name of
+the route method. The route keeps its method and its other options:
+
+```python
+class InvoiceView(fr.AsyncRestView):
+    prefix = "/invoices"
+    model = Invoice
+    schema = InvoiceSchema
+
+    get_many_endpoint = fr.modify_route(
+        summary="List invoices", operation_id="billing_list_invoices"
+    )
+    create_endpoint = fr.modify_route(status_code=200)
+    update_endpoint = fr.modify_route(methods=["PUT"])
+```
+
+This changes the route of this view and its subclasses. The route of the base
+class stays the same.
+
+It takes the same arguments as a route decorator. The hooks of the view run as
+before. Restly still fills in what you do not pass: the list params, and the name
+and the summary. When you pass `name`, FastAPI makes the summary and the operation
+ID from that name, unless you pass them too. The table in
+[The names and operation IDs of the CRUD routes](#default-route-metadata)
+lists the endpoint methods.
+
+:::{admonition} Details
+:class: details
+
+Each argument replaces the one of the inherited route. `dependencies` and
+`responses` add up, as they do on a view. `dependencies` run base first, so a
+subclass cannot remove a check of its base. `responses` add up per status code,
+and a status code set to `None` is left out:
+
+```python
+    delete_endpoint = fr.modify_route(dependencies=[Depends(require_admin)])
+    get_one_endpoint = fr.modify_route(responses={404: None})
+```
+
+FastAPI adds the 422 response itself, so `{422: None}` does not remove it.
+
+`path` replaces the path of the route, as in `fr.modify_route("/new")`. For a
+list without a hidden route with a slash at the end, set `path=""` on the list
+route and on the create route. In a new path, write `{id}` for
+[the id parameter of the view](#id-param). A path such as `/{role_id}` on a route
+with `id: IDType` raises an error when the view registers, because nothing would
+read `role_id`. Set the name with `id_param`.
+
+`methods=["PUT"]` changes only the HTTP method. The route still updates only the
+fields that the client sends. A status code without a body, such as 204, also
+removes the response model of the route. For the list route, set
+`list_response_schema`, not `response_model`. For a delete with a body, write the
+method.
+
+An option does not change the order of the routes. So a route that the
+class writes, such as `GET /stats`, stays before the item route.
+
+A subclass inherits the options and can change them further. A plain class can
+hold options for several views. Put it before the view class, as in
+`class TagView(QuietRoutes, fr.AsyncRestView)`, as for any other method of a mixin.
+After the view class, the options do nothing.
+
+A name that is not a route of a base class raises
+{class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`
+when Python defines the class. Use `fr.modify_route` in the class body. An
+argument that FastAPI does not know raises a `TypeError` when the view registers,
+as it does on a route decorator.
+
+A method with a route decorator states the whole route. So options from a base
+class do not apply to it. Write such a method when the change needs code, such as
+a decorator on the route or a response header. It can call the method of the base
+class, so the route works as before:
+
+```python
+    @fr.post("/")
+    async def create_endpoint(
+        self, data: CreateSchema, response: Response
+    ) -> ResponseSchema:
+        obj = await super().create_endpoint(data)
+        response.headers["Location"] = f"{self.prefix}/{obj.id}"
+        return obj
+```
+
+`ResponseSchema` keeps the view's response as the response model; see
+[Name the view's schemas in a custom route](#name-the-view-schemas). A route
+that you declare keeps the path that you give it. Restly changes only a path
+parameter annotated `IDType`. A parameter `id` with this type gets the name and
+the converter of the view, and another parameter gets only the converter; see
+[Choose the name of the id parameter](#id-param).
+:::
 
 (exclude-crud-routes)=
 ## Exclude CRUD routes

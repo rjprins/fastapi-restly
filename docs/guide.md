@@ -54,8 +54,9 @@ These are the parts, and the page that explains each one:
   CRUD route. To change what an action does, override the business method,
   such as `update`. A read has a final load, `get_one` or `get_many`, in
   place of a business method: the scope and the loader options decide what
-  it reads. To change the HTTP contract, such as the status code, replace
-  the endpoint method. A handler is final. See
+  it reads. To change one option of a route, such as the status code, use
+  {func}`fr.modify_route <fastapi_restly.views.modify_route>`. For a change that
+  needs code, replace the endpoint method. A handler is final. See
   [Request Lifecycle & Hooks](lifecycle.md).
 - **Commit**: a write route commits after the business method.
   `before_action_commit` runs just before the commit, and
@@ -110,8 +111,8 @@ set, override or call on a view.
   and register a view, routes that are not CRUD, such as login and webhooks, and
   how views share behavior through base classes.
 - [CRUD Routes](crud_routes.md): the five default routes, async or sync, the
-  name of the id in the path, how to leave some routes out, and how to serve a
-  child resource under its parent.
+  name of the id in the path, how to change one option of a route, how to leave
+  some routes out, and how to serve a child resource under its parent.
 - [Request Lifecycle & Hooks](lifecycle.md): the steps of a request, which
   method to override for each change, a value on each row, a lookup by
   another key, custom routes, what commits when, several writes in one
@@ -147,8 +148,8 @@ filter, sort and page parameters to the URL.
   chooses, filters of your own, and list params that you write yourself.
 - [Errors](errors.md): raise a 404 or a 403, see why a duplicate value gives
   a 409, and change the error body.
-- [OpenAPI](openapi.md): the tags, names and operation IDs of the routes, how
-  to change one option of a route, and how to document a custom route.
+- [OpenAPI](openapi.md): the tags, names and operation IDs of the routes, and
+  how to document a custom route.
 
 ## Access
 

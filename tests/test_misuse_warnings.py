@@ -136,18 +136,18 @@ def test_an_override_of_a_custom_route_without_a_decorator_warns():
     assert "ReportsNoDaily.daily replaces an inherited route" in messages[0]
 
 
-def test_route_options_do_not_warn():
+def test_modify_route_does_not_warn():
     class WithOptions(fr.IDMixin, SharedBase):
         title: orm.Mapped[str]
 
     class WithOptionsView(fr.AsyncRestView):
         prefix = "/with-options"
         model = WithOptions
-        get_many_endpoint = fr.route_options(summary="All")
-        get_one_endpoint = fr.route_options(summary="One")
-        create_endpoint = fr.route_options(status_code=200)
-        update_endpoint = fr.route_options(methods=["PUT"])
-        delete_endpoint = fr.route_options(status_code=200)
+        get_many_endpoint = fr.modify_route(summary="All")
+        get_one_endpoint = fr.modify_route(summary="One")
+        create_endpoint = fr.modify_route(status_code=200)
+        update_endpoint = fr.modify_route(methods=["PUT"])
+        delete_endpoint = fr.modify_route(status_code=200)
 
     assert _register(WithOptionsView) == []
 

@@ -41,7 +41,7 @@ from ._base import (
     ListResult,
     View,
     _added_dependencies,
-    _RouteOptions,
+    _ModifiedRoute,
     _serves_route,
 )
 from ._class_based_view import (
@@ -399,7 +399,7 @@ def _reject_id_param_twice(view_cls: Any, prefix: str, path: str) -> None:
 def _reject_unread_path_parameter(
     view_cls: Any, name: str, path: str, endpoint: Callable, route: Any
 ) -> None:
-    """A route with ``fr.route_options("/{role_id}")`` and a parameter ``id: IDType``
+    """A route with ``fr.modify_route("/{role_id}")`` and a parameter ``id: IDType``
     looks right, but ``id`` reads the query and nothing reads the path. So OpenAPI
     is wrong and each request answers 422. A dependency can read the path."""
     if not _is_view_id_param(endpoint):
@@ -781,10 +781,10 @@ def _init_api_router(view_cls: type[View]) -> fastapi.APIRouter:
     # Find all endpoint functions in this class and add them to the router
     list_parameters: list[dict[str, Any]] | None = None
     for name, attr in list(view_cls.__dict__.items()):
-        if isinstance(attr, _RouteOptions):
+        if isinstance(attr, _ModifiedRoute):
             raise RestlyConfigurationError(
-                f"{view_cls.__name__}.{name} got a fr.route_options after the "
-                f"class was defined. Set it in the class body."
+                f"{view_cls.__name__}.{name} got fr.modify_route after the "
+                f"class was defined. Use it in the class body."
             )
         if not hasattr(attr, "_api_route_args"):
             continue

@@ -41,6 +41,7 @@ fastapi_restly:
   - include_view
   - list_filter
   - models
+  - modify_route
   - none_of
   - objects
   - open_async_session
@@ -52,7 +53,6 @@ fastapi_restly:
   - query
   - resolve_scope
   - route
-  - route_options
   - schemas
   - testing
   - views
@@ -182,12 +182,12 @@ fastapi_restly.views:
   - get
   - include_view
   - list_filter
+  - modify_route
   - patch
   - post
   - put
   - resolve_scope
   - route
-  - route_options
 
 submodule-only exports:
 fastapi_restly.clauses:

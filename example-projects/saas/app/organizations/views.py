@@ -54,7 +54,7 @@ class OrganizationView(fr.AsyncRestView[Organization]):
         return org
 
     # Bind identity for deletion, including its relationship loads.
-    delete_endpoint = fr.route_options(dependencies=[SetCurrentContextDep])
+    delete_endpoint = fr.modify_route(dependencies=[SetCurrentContextDep])
 
     async def authorize(
         self, action: str, obj: Organization | None = None, data: Any = None

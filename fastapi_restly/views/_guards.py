@@ -408,8 +408,8 @@ _RENAMED_METHOD_HINTS = {
 # Removed before 1.0, with what to use instead.
 _REMOVED_SETTINGS = {
     "route_options": (
-        "Set fr.route_options under the name of the route method, such as "
-        "create_endpoint = fr.route_options(status_code=200)."
+        "Use fr.modify_route under the name of the route method, such as "
+        "create_endpoint = fr.modify_route(status_code=200)."
     ),
     "extra_query_params": (
         "Declare the key where your code reads it: a parameter of the endpoint "

@@ -51,12 +51,12 @@ from ._base import (
     ViewRoute,
     delete,
     get,
+    modify_route,
     patch,
     post,
     put,
     resolve_scope,
     route,
-    route_options,
 )
 from ._include import include_view
 from ._list_params import list_filter
@@ -111,9 +111,9 @@ __all__ = [
     "get",
     "include_view",
     "list_filter",
+    "modify_route",
     "patch",
     "post",
     "put",
     "route",
-    "route_options",
 ]

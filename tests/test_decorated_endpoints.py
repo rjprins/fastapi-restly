@@ -253,9 +253,9 @@ def test_a_decorator_on_an_inherited_crud_route_sync(sync_db, decorator):
 
 
 @pytest.mark.parametrize("decorator", DECORATORS)
-def test_a_decorator_under_route_options_async(client, decorator):
+def test_a_decorator_under_modify_route_async(client, decorator):
     class OptionsThingView(_thing_views(fr.AsyncRestView, decorator)):
-        create_endpoint = fr.route_options(status_code=200)
+        create_endpoint = fr.modify_route(status_code=200)
 
     fr.include_view(client.app, OptionsThingView)
     create_tables()
@@ -271,11 +271,11 @@ def test_a_decorator_under_route_options_async(client, decorator):
 
 
 @pytest.mark.parametrize("decorator", DECORATORS)
-def test_a_decorator_under_route_options_sync(sync_db, decorator):
+def test_a_decorator_under_modify_route_sync(sync_db, decorator):
     engine, _ = sync_db
 
     class OptionsThingView(_thing_views(fr.RestView, decorator)):
-        create_endpoint = fr.route_options(status_code=200)
+        create_endpoint = fr.modify_route(status_code=200)
 
     app = fastapi.FastAPI()
     fr.include_view(app, OptionsThingView)

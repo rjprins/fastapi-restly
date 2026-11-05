@@ -32,6 +32,7 @@ through `fr`.
 | {func}`fr.list_filter <fastapi_restly.views.list_filter>` | Make a view method the filter for a key of the list params. |
 | {class}`fr.ListResult <fastapi_restly.views.ListResult>` | The objects, total count, and list params of a list, before response serialization. |
 | {class}`fr.ModelDefaults <fastapi_restly.models.ModelDefaults>` | Restly's defaults for models, added to your own declarative base. |
+| {func}`fr.modify_route <fastapi_restly.views.modify_route>` | Change the options of an inherited route, and keep the rest. |
 | {class}`fr.MustExist <fastapi_restly.schemas.MustExist>` | Scalar foreign-key annotation that checks the referenced row exists. |
 | {func}`fr.none_of <fastapi_restly.clauses.none_of>` | Match the rows where none of the query clauses match. |
 | {class}`fr.NoPagination <fastapi_restly.views.NoPagination>` | Settings for a view's `pagination` that returns every row, optionally with an envelope of your own. |
@@ -48,7 +49,6 @@ through `fr`.
 | {func}`fr.resolve_scope <fastapi_restly.views.resolve_scope>` | Resolve the read scope for a view or model. |
 | {class}`fr.RestView <fastapi_restly.views.RestView>` | CRUD view using a synchronous SQLAlchemy session. |
 | {func}`fr.route <fastapi_restly.views.route>` | Decorate an endpoint method for any HTTP method. |
-| {func}`fr.route_options <fastapi_restly.views.route_options>` | Change the options of an inherited route, and keep the rest. |
 | {data}`fr.SessionDep <fastapi_restly.db.SessionDep>` | FastAPI dependency annotation for a synchronous session. |
 | {class}`fr.TimestampsMixin <fastapi_restly.models.TimestampsMixin>` | Model fields for creation and update timestamps. |
 | {class}`fr.TimestampsSchemaMixin <fastapi_restly.schemas.TimestampsSchemaMixin>` | Read-only creation and update timestamps in a schema. |

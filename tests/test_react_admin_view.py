@@ -1294,7 +1294,7 @@ def test_list_sends_the_status_of_the_route(request, view_base):
         prefix = "/things"
         model = Thing
         schema = ThingSchema
-        get_many_endpoint = fr.route_options(status_code=206)
+        get_many_endpoint = fr.modify_route(status_code=206)
 
     app = FastAPI()
     fr.include_view(app, ThingView)

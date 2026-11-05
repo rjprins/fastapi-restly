@@ -114,9 +114,9 @@ Use these decorators on methods in a view class:
 
 The shorthand decorators explicitly set the default status code shown. Pass `status_code=` to override it.
 
-To change the options of a route that a class inherits, set
-{func}`fr.route_options <fastapi_restly.views.route_options>` under the name of
-the route method; see [Change one option of a route](#crud-route-metadata).
+To change the options of a route that a class inherits, use
+{func}`fr.modify_route <fastapi_restly.views.modify_route>` under the name of
+the route method; see [Change one option of a route](#modify-route).
 
 To add a decorator from another library, such as a rate limit, see
 [Add a decorator of your own](#decorators-on-view-methods).

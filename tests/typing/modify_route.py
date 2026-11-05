@@ -19,7 +19,7 @@ class TagSchema(fr.IDSchema[Tag]):
 
 
 class QuietRoutes:
-    delete_endpoint = fr.route_options(status_code=200)
+    delete_endpoint = fr.modify_route(status_code=200)
 
 
 @fr.include_view(app)
@@ -28,9 +28,9 @@ class TagView(QuietRoutes, fr.AsyncRestView):
     model = Tag
     schema = TagSchema
 
-    get_one_endpoint = fr.route_options(responses={404: None})
-    create_endpoint = fr.route_options("/new", name="create_tag")
-    update_endpoint = fr.route_options(
+    get_one_endpoint = fr.modify_route(responses={404: None})
+    create_endpoint = fr.modify_route("/new", name="create_tag")
+    update_endpoint = fr.modify_route(
         methods=["PUT"], dependencies=[Depends(lambda: None)]
     )
 

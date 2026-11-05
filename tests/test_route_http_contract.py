@@ -341,8 +341,8 @@ def _recorder(log: list[str], name: str) -> Any:
     return Depends(record)
 
 
-def test_route_options_change_one_argument_and_keep_the_rest(make_client):
-    client = make_client(create_endpoint=fr.route_options(status_code=200))
+def test_modify_route_changes_one_argument_and_keeps_the_rest(make_client):
+    client = make_client(create_endpoint=fr.modify_route(status_code=200))
 
     operation = client.get("/openapi.json").json()["paths"]["/gadgets"]["post"]
     assert set(operation["responses"]) == {"200", "422"}
@@ -357,10 +357,10 @@ def test_route_options_change_one_argument_and_keep_the_rest(make_client):
     assert response.json()["name"] == "a"
 
 
-def test_route_options_with_a_status_without_a_body_drop_the_response_model(
+def test_modify_route_with_a_status_without_a_body_drops_the_response_model(
     make_client,
 ):
-    client = make_client(update_endpoint=fr.route_options(status_code=204))
+    client = make_client(update_endpoint=fr.modify_route(status_code=204))
     created = client.post("/gadgets", json={"name": "a"}).json()
 
     responses = client.get("/openapi.json").json()["paths"]["/gadgets/{gadget_id}"][
@@ -373,13 +373,13 @@ def test_route_options_with_a_status_without_a_body_drop_the_response_model(
     assert client.get(f"/gadgets/{created['id']}").json()["name"] == "b"
 
 
-def test_route_options_with_a_status_with_a_body_bring_the_response_model_back(
+def test_modify_route_with_a_status_with_a_body_brings_the_response_model_back(
     make_client, view_base
 ):
     class NoBody(view_base):
-        update_endpoint = fr.route_options(status_code=204)
+        update_endpoint = fr.modify_route(status_code=204)
 
-    client = make_client(NoBody, update_endpoint=fr.route_options(status_code=200))
+    client = make_client(NoBody, update_endpoint=fr.modify_route(status_code=200))
     created = client.post("/gadgets", json={"name": "a"}).json()
 
     responses = client.get("/openapi.json").json()["paths"]["/gadgets/{gadget_id}"][
@@ -391,16 +391,16 @@ def test_route_options_with_a_status_with_a_body_bring_the_response_model_back(
     assert response.json()["name"] == "b"
 
 
-def test_route_options_keep_a_status_without_a_body_down_the_classes(
+def test_modify_route_keeps_a_status_without_a_body_down_the_classes(
     make_client, view_base
 ):
     class NoBody(view_base):
-        update_endpoint = fr.route_options(status_code=204)
+        update_endpoint = fr.modify_route(status_code=204)
 
     class Plain(NoBody):
         pass
 
-    client = make_client(Plain, update_endpoint=fr.route_options(summary="Change it"))
+    client = make_client(Plain, update_endpoint=fr.modify_route(summary="Change it"))
 
     operation = client.get("/openapi.json").json()["paths"]["/gadgets/{gadget_id}"][
         "patch"
@@ -409,21 +409,21 @@ def test_route_options_keep_a_status_without_a_body_down_the_classes(
     assert "content" not in operation["responses"]["204"]
 
 
-def test_route_options_keep_a_response_model_that_they_name_on_a_status_without_a_body(
+def test_modify_route_keeps_a_response_model_that_it_names_on_a_status_without_a_body(
     view_base, Gadget
 ):
     class GadgetView(view_base):
         prefix = "/gadgets"
         model = Gadget
         schema = GadgetSchema
-        update_endpoint = fr.route_options(status_code=204, response_model=GadgetSchema)
+        update_endpoint = fr.modify_route(status_code=204, response_model=GadgetSchema)
 
     with pytest.raises(AssertionError, match="must not have a response body"):
         fr.include_view(FastAPI(), GadgetView)
 
 
-def test_route_options_change_the_method(make_client):
-    client = make_client(update_endpoint=fr.route_options(methods=["PUT"]))
+def test_modify_route_changes_the_method(make_client):
+    client = make_client(update_endpoint=fr.modify_route(methods=["PUT"]))
     created = client.post("/gadgets", json={"name": "a"}).json()
 
     path = f"/gadgets/{created['id']}"
@@ -431,8 +431,8 @@ def test_route_options_change_the_method(make_client):
     client.patch(path, json={"name": "c"}, assert_status_code=405)
 
 
-def test_route_options_on_delete_answer_the_new_status(make_client):
-    client = make_client(delete_endpoint=fr.route_options(status_code=200))
+def test_modify_route_on_delete_answers_the_new_status(make_client):
+    client = make_client(delete_endpoint=fr.modify_route(status_code=200))
     created = client.post("/gadgets", json={"name": "a"}).json()
 
     spec = client.get("/openapi.json").json()
@@ -440,7 +440,7 @@ def test_route_options_on_delete_answer_the_new_status(make_client):
     assert client.delete(f"/gadgets/{created['id']}").status_code == 200
 
 
-def test_route_options_keep_the_hooks_of_the_view(make_client, view_base):
+def test_modify_route_keeps_the_hooks_of_the_view(make_client, view_base):
     class Upper(view_base):
         if issubclass(view_base, fr.AsyncRestView):
 
@@ -456,48 +456,48 @@ def test_route_options_keep_the_hooks_of_the_view(make_client, view_base):
                 obj.name = obj.name.upper()
                 return obj
 
-    client = make_client(Upper, create_endpoint=fr.route_options(status_code=200))
+    client = make_client(Upper, create_endpoint=fr.modify_route(status_code=200))
 
     assert client.post("/gadgets", json={"name": "a"}).json()["name"] == "A"
 
 
-def test_route_options_add_dependencies_after_those_of_the_base(make_client, view_base):
+def test_modify_route_adds_dependencies_after_those_of_the_base(make_client, view_base):
     log: list[str] = []
 
     class Base(view_base):
-        create_endpoint = fr.route_options(dependencies=[_recorder(log, "base")])
+        create_endpoint = fr.modify_route(dependencies=[_recorder(log, "base")])
 
     client = make_client(
         Base,
         dependencies=[_recorder(log, "view")],
-        create_endpoint=fr.route_options(dependencies=[_recorder(log, "leaf")]),
+        create_endpoint=fr.modify_route(dependencies=[_recorder(log, "leaf")]),
     )
     client.post("/gadgets", json={"name": "a"})
 
     assert log == ["view", "base", "leaf"]
 
 
-def test_route_options_that_list_a_base_dependency_again_run_it_there(
+def test_modify_route_that_lists_a_base_dependency_again_runs_it_there(
     make_client, view_base
 ):
     log: list[str] = []
     guard = _recorder(log, "guard")
 
     class Base(view_base):
-        create_endpoint = fr.route_options(dependencies=[guard])
+        create_endpoint = fr.modify_route(dependencies=[guard])
 
     client = make_client(
         Base,
-        create_endpoint=fr.route_options(dependencies=[_recorder(log, "first"), guard]),
+        create_endpoint=fr.modify_route(dependencies=[_recorder(log, "first"), guard]),
     )
     client.post("/gadgets", json={"name": "a"})
 
     assert log == ["first", "guard"]
 
 
-def test_route_options_add_responses_per_status_code(Gadget):
+def test_modify_route_adds_responses_per_status_code(Gadget):
     class Base(fr.RestView):
-        create_endpoint = fr.route_options(
+        create_endpoint = fr.modify_route(
             responses={409: {"description": "Taken"}, 418: {"description": "Teapot"}}
         )
 
@@ -505,10 +505,10 @@ def test_route_options_add_responses_per_status_code(Gadget):
         prefix = "/gadgets"
         model = Gadget
         schema = GadgetSchema
-        create_endpoint = fr.route_options(
+        create_endpoint = fr.modify_route(
             responses={402: {"description": "Pay"}, 418: None}
         )
-        get_one_endpoint = fr.route_options(responses={404: None})
+        get_one_endpoint = fr.modify_route(responses={404: None})
 
     statuses = _statuses(GadgetView)
     assert statuses["/gadgets", "post"] == {"201", "402", "409", "422"}
@@ -528,12 +528,12 @@ def test_route_options_add_responses_per_status_code(Gadget):
     ],
     ids=["summary", "description", "operation_id", "tags", "deprecated", "extra"],
 )
-def test_route_options_pass_an_argument_to_fastapi(options, key, value, Gadget):
+def test_modify_route_passes_an_argument_to_fastapi(options, key, value, Gadget):
     class GadgetView(fr.RestView):
         prefix = "/gadgets"
         model = Gadget
         schema = GadgetSchema
-        create_endpoint = fr.route_options(**options)
+        create_endpoint = fr.modify_route(**options)
 
     app = FastAPI()
     fr.include_view(app, GadgetView)
@@ -541,12 +541,12 @@ def test_route_options_pass_an_argument_to_fastapi(options, key, value, Gadget):
     assert app.openapi()["paths"]["/gadgets"]["post"][key] == value
 
 
-def test_route_options_with_a_name_give_fastapi_the_id_and_the_summary(Gadget):
+def test_modify_route_with_a_name_gives_fastapi_the_id_and_the_summary(Gadget):
     class GadgetView(fr.RestView):
         prefix = "/gadgets"
         model = Gadget
         schema = GadgetSchema
-        create_endpoint = fr.route_options(name="create_gadget")
+        create_endpoint = fr.modify_route(name="create_gadget")
 
     app = FastAPI()
     fr.include_view(app, GadgetView)
@@ -557,17 +557,17 @@ def test_route_options_with_a_name_give_fastapi_the_id_and_the_summary(Gadget):
     assert str(app.url_path_for("create_gadget")) == "/gadgets"
 
 
-def test_route_options_hide_a_route_from_the_spec_only(make_client):
-    client = make_client(create_endpoint=fr.route_options(include_in_schema=False))
+def test_modify_route_hides_a_route_from_the_spec_only(make_client):
+    client = make_client(create_endpoint=fr.modify_route(include_in_schema=False))
 
     assert "post" not in client.get("/openapi.json").json()["paths"]["/gadgets"]
     assert client.post("/gadgets", json={"name": "a"}).status_code == 201
 
 
-def test_route_options_change_the_path(make_client):
+def test_modify_route_changes_the_path(make_client):
     client = make_client(
-        create_endpoint=fr.route_options("/new"),
-        get_one_endpoint=fr.route_options(path="/{id}/detail"),
+        create_endpoint=fr.modify_route("/new"),
+        get_one_endpoint=fr.modify_route(path="/{id}/detail"),
     )
 
     created = client.post("/gadgets/new", json={"name": "a"}).json()
@@ -577,12 +577,12 @@ def test_route_options_change_the_path(make_client):
     client.get("/gadgets/abc/detail", assert_status_code=404)
 
 
-def test_route_options_with_an_empty_path_leave_out_the_trailing_slash_route(Gadget):
+def test_modify_route_with_an_empty_path_leaves_out_the_trailing_slash_route(Gadget):
     class GadgetView(fr.RestView):
         prefix = "/gadgets"
         model = Gadget
         schema = GadgetSchema
-        create_endpoint = fr.route_options(path="")
+        create_endpoint = fr.modify_route(path="")
 
     app = FastAPI()
     fr.include_view(app, GadgetView)
@@ -595,8 +595,8 @@ def test_route_options_with_an_empty_path_leave_out_the_trailing_slash_route(Gad
     assert posts == ["/gadgets"]
 
 
-def test_route_options_keep_the_list_params(make_client):
-    client = make_client(get_many_endpoint=fr.route_options(summary="All gadgets"))
+def test_modify_route_keeps_the_list_params(make_client):
+    client = make_client(get_many_endpoint=fr.modify_route(summary="All gadgets"))
     client.post("/gadgets", json={"name": "a"})
     client.post("/gadgets", json={"name": "b"})
 
@@ -609,22 +609,22 @@ def test_route_options_keep_the_list_params(make_client):
     assert "page_size" in {parameter["name"] for parameter in operation["parameters"]}
 
 
-def test_route_options_change_the_response_model(make_client):
+def test_modify_route_changes_the_response_model(make_client):
     class Name(fr.BaseSchema):
         name: str
 
-    client = make_client(get_one_endpoint=fr.route_options(response_model=Name))
+    client = make_client(get_one_endpoint=fr.modify_route(response_model=Name))
     created = client.post("/gadgets", json={"name": "a"}).json()
 
     assert client.get(f"/gadgets/{created['id']}").json() == {"name": "a"}
 
 
-def test_route_options_leave_the_base_and_other_views_alone(Gadget):
+def test_modify_route_leaves_the_base_and_other_views_alone(Gadget):
     class ChangedView(fr.RestView):
         prefix = "/changed"
         model = Gadget
         schema = GadgetSchema
-        create_endpoint = fr.route_options(status_code=200)
+        create_endpoint = fr.modify_route(status_code=200)
 
     class OtherView(fr.RestView):
         prefix = "/other"
@@ -636,18 +636,18 @@ def test_route_options_leave_the_base_and_other_views_alone(Gadget):
     assert fr.RestView.create_endpoint._api_route_args[1]["status_code"] == 201
 
 
-def test_a_subclass_inherits_route_options_and_changes_them_further(Gadget):
+def test_a_subclass_inherits_modify_route_and_changes_the_route_further(Gadget):
     class Base(fr.RestView):
         model = Gadget
         schema = GadgetSchema
-        create_endpoint = fr.route_options(status_code=200, summary="Base")
+        create_endpoint = fr.modify_route(status_code=200, summary="Base")
 
     class Child(Base):
         prefix = "/child"
 
     class Grandchild(Child):
         prefix = "/grand"
-        create_endpoint = fr.route_options(summary="Grandchild")
+        create_endpoint = fr.modify_route(summary="Grandchild")
 
     app = FastAPI()
     fr.include_view(app, Child)
@@ -663,12 +663,12 @@ def test_a_subclass_inherits_route_options_and_changes_them_further(Gadget):
     assert "200" in operation["responses"]
 
 
-def test_a_plain_mixin_holds_route_options_for_a_view(make_client):
+def test_a_plain_mixin_holds_modify_route_for_a_view(make_client):
     class Quiet:
-        create_endpoint = fr.route_options(status_code=200, summary="Mixin")
+        create_endpoint = fr.modify_route(status_code=200, summary="Mixin")
 
     class Named:
-        create_endpoint = fr.route_options(summary="Front")
+        create_endpoint = fr.modify_route(summary="Front")
 
     client = make_client(Named, Quiet)
 
@@ -677,11 +677,11 @@ def test_a_plain_mixin_holds_route_options_for_a_view(make_client):
     assert client.post("/gadgets", json={"name": "a"}).status_code == 200
 
 
-def test_a_written_route_replaces_all_route_options_and_reaches_them_with_super(
+def test_a_written_route_replaces_modify_route_and_reaches_it_with_super(
     make_client, view_base
 ):
     class Base(view_base):
-        create_endpoint = fr.route_options(status_code=200, summary="Base")
+        create_endpoint = fr.modify_route(status_code=200, summary="Base")
 
     class Written(Base):
         if issubclass(view_base, fr.AsyncRestView):
@@ -703,7 +703,7 @@ def test_a_written_route_replaces_all_route_options_and_reaches_them_with_super(
     assert client.post("/gadgets", json={"name": "a"}).status_code == 201
 
 
-def test_route_options_on_a_custom_route_of_a_plain_view():
+def test_modify_route_on_a_custom_route_of_a_plain_view():
     class Reports(fr.View):
         prefix = "/reports"
 
@@ -712,7 +712,7 @@ def test_route_options_on_a_custom_route_of_a_plain_view():
             return {}
 
     class Quiet(Reports):
-        daily = fr.route_options(deprecated=True)
+        daily = fr.modify_route(deprecated=True)
 
     app = FastAPI()
     fr.include_view(app, Quiet)
@@ -723,44 +723,44 @@ def test_route_options_on_a_custom_route_of_a_plain_view():
 
 
 @pytest.mark.parametrize("name", ["create", "creat_endpoint", "prefix"])
-def test_route_options_that_name_no_route_raise(name):
+def test_modify_route_that_names_no_route_raises(name):
     with pytest.raises(
         RestlyConfigurationError,
-        match=f"BadView.{name} is a fr.route_options, but the class inherits no",
+        match=f"BadView.{name} uses fr.modify_route, but the class inherits no",
     ):
-        type("BadView", (fr.RestView,), {name: fr.route_options(status_code=200)})
+        type("BadView", (fr.RestView,), {name: fr.modify_route(status_code=200)})
 
 
-def test_route_options_over_a_route_that_a_base_removed_raise():
+def test_modify_route_over_a_route_that_a_base_removed_raises():
     class NoCreate(fr.RestView):
         create_endpoint = None
 
     with pytest.raises(RestlyConfigurationError, match="inherits no route method"):
 
         class BadView(NoCreate):
-            create_endpoint = fr.route_options(status_code=200)
+            create_endpoint = fr.modify_route(status_code=200)
 
 
-def test_route_options_with_an_unknown_argument_fail_as_a_decorator_does(Gadget):
+def test_modify_route_with_an_unknown_argument_fails_as_a_decorator_does(Gadget):
     class GadgetView(fr.RestView):
         prefix = "/gadgets"
         model = Gadget
         schema = GadgetSchema
-        create_endpoint = fr.route_options(stauts_code=200)
+        create_endpoint = fr.modify_route(stauts_code=200)
 
     with pytest.raises(TypeError, match="stauts_code"):
         fr.include_view(FastAPI(), GadgetView)
 
 
-def test_route_options_set_after_the_class_body_raise(Gadget):
+def test_modify_route_set_after_the_class_body_raises(Gadget):
     class GadgetView(fr.RestView):
         prefix = "/gadgets"
         model = Gadget
         schema = GadgetSchema
 
-    GadgetView.create_endpoint = fr.route_options(status_code=200)
+    GadgetView.create_endpoint = fr.modify_route(status_code=200)
 
-    with pytest.raises(RestlyConfigurationError, match="Set it in the class body"):
+    with pytest.raises(RestlyConfigurationError, match="Use it in the class body"):
         fr.include_view(FastAPI(), GadgetView)
 
 
@@ -959,8 +959,8 @@ def test_each_view_gets_its_own_id_parameter_on_a_shared_route(
     assert GadgetView.annotated._api_route_args[0] == "/{id}/annotated"
 
 
-def test_route_options_with_a_path_follow_the_id_parameter(make_client):
-    client = make_client(get_one_endpoint=fr.route_options(path="/by-id/{id}"))
+def test_modify_route_with_a_path_follows_the_id_parameter(make_client):
+    client = make_client(get_one_endpoint=fr.modify_route(path="/by-id/{id}"))
 
     assert _path_parameter_of(client, "/gadgets/by-id/{gadget_id}", "get")
     created = client.post("/gadgets", json={"name": "a"}).json()
@@ -974,7 +974,7 @@ def test_a_dependency_on_an_item_route_reads_the_name_in_the_path(make_client):
         seen.append(gadget_id)
 
     client = make_client(
-        get_one_endpoint=fr.route_options(dependencies=[Depends(remember)])
+        get_one_endpoint=fr.modify_route(dependencies=[Depends(remember)])
     )
     created = client.post("/gadgets", json={"name": "a"}).json()
 
@@ -1199,7 +1199,7 @@ def test_a_path_without_the_id_parameter_is_the_same_for_any_parent(view_base, G
 
     class Child(Parent):
         prefix = "/child"
-        delete_endpoint = fr.route_options(path="/one")
+        delete_endpoint = fr.modify_route(path="/one")
 
     fr.include_view(app, Child)
 
@@ -1224,7 +1224,7 @@ def test_a_new_path_with_an_unread_parameter_is_refused(
 
     class Child(Parent):
         prefix = "/child"
-        get_one_endpoint = fr.route_options("/{role_id}")
+        get_one_endpoint = fr.modify_route("/{role_id}")
 
     with pytest.raises(
         RestlyConfigurationError,
@@ -1239,7 +1239,7 @@ def test_a_query_id_next_to_a_path_parameter_that_a_dependency_reads_is_kept(
     def owner(owner_name: str) -> None: ...
 
     client = make_client(
-        get_one_endpoint=fr.route_options(
+        get_one_endpoint=fr.modify_route(
             "/of/{owner_name}", dependencies=[Depends(owner)]
         )
     )
@@ -1267,7 +1267,7 @@ def test_an_option_above_a_custom_route_leaves_the_custom_route_first(
         schema = GadgetSchema
         id_type = str
 
-        get_one_endpoint = fr.route_options(summary="One")
+        get_one_endpoint = fr.modify_route(summary="One")
 
         @fr.get("/stats")
         def stats(self) -> dict[str, int]:
@@ -1296,7 +1296,7 @@ def test_an_option_in_a_child_leaves_the_custom_route_first(
 
     class Child(Parent):
         prefix = "/child"
-        get_one_endpoint = fr.route_options(summary="One")
+        get_one_endpoint = fr.modify_route(summary="One")
 
     order = _order_of(Child)
     assert order.index("GET /gadgets/child/stats") < order.index(
@@ -1319,7 +1319,7 @@ def test_an_option_keeps_the_order_of_the_routes(view_base, Gadget):
         model = Gadget
         schema = GadgetSchema
 
-        update_endpoint = fr.route_options(summary="Change")
+        update_endpoint = fr.modify_route(summary="Change")
 
         @fr.get("/stats")
         def stats(self) -> dict[str, int]:
@@ -1340,11 +1340,11 @@ def test_a_status_without_a_body_also_drops_the_model_of_a_decorator(view_base, 
 
     class Quiet(Parent):
         prefix = "/quiet"
-        archive = fr.route_options(status_code=204)
+        archive = fr.modify_route(status_code=204)
 
     class Loud(Quiet):
         prefix = "/loud"
-        archive = fr.route_options(status_code=200)
+        archive = fr.modify_route(status_code=200)
 
     app = FastAPI()
     fr.include_view(app, Quiet)
@@ -1359,7 +1359,7 @@ def test_a_status_without_a_body_also_drops_the_model_of_a_decorator(view_base, 
 
 @pytest.mark.parametrize("status", [404, "404"])
 def test_a_status_set_to_none_is_left_out_as_int_and_as_text(make_client, status):
-    client = make_client(get_one_endpoint=fr.route_options(responses={status: None}))
+    client = make_client(get_one_endpoint=fr.modify_route(responses={status: None}))
 
     responses = client.app.openapi()["paths"]["/gadgets/{gadget_id}"]["get"][
         "responses"
@@ -1403,7 +1403,7 @@ def test_the_hint_for_a_prefix_uses_the_converter_of_the_view(
     assert hint in str(caught.value)
 
 
-def test_route_options_over_a_written_base_give_no_misuse_warning(
+def test_modify_route_over_a_written_base_gives_no_misuse_warning(
     view_base, Gadget, recwarn
 ):
     class Base(view_base):
@@ -1416,7 +1416,7 @@ def test_route_options_over_a_written_base_give_no_misuse_warning(
 
     class Child(Base):
         prefix = "/child"
-        create_endpoint = fr.route_options(status_code=200)
+        create_endpoint = fr.modify_route(status_code=200)
 
     fr.configure(warn_on_misuse=True)
     try:

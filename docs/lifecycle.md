@@ -48,8 +48,10 @@ all five actions: `update_endpoint` calls `handle_update`, which calls
   calls. It owns the HTTP contract: the route decorator, the parameters and
   the `response_model`. It returns the row, and Restly builds the response with
   {meth}`to_single_response <fastapi_restly.views.BaseRestView.to_single_response>`.
-  Replace it only to change that contract, such as the status code. See
-  [Change the status code, headers or response of one route](#replace-endpoint-method).
+  To change one option of the route, such as the status code, use
+  {func}`fr.modify_route <fastapi_restly.views.modify_route>`. Replace the method
+  only when the change needs code. See
+  [Change the status code or headers of one route](#replace-endpoint-method).
 - The **handler**, `handle_<verb>`, runs the steps. It calls
   {meth}`authorize <fastapi_restly.views.RestView.authorize>`, checks the
   [references](#reference-exists) in the data, and then calls the business
@@ -195,7 +197,8 @@ of some columns, SQLAlchemy leaves the loader options out.
 | How one object becomes a response | {meth}`to_single_response <fastapi_restly.views.BaseRestView.to_single_response>` ([Responses](#to-single-response)) |
 | The list response | {attr}`list_response_schema <fastapi_restly.views.BaseRestView.list_response_schema>` ([Responses](#list-schema)) |
 | The response shape of every route | endpoint methods replaced on a base view ([Responses](#every-route-shape)) |
-| The HTTP contract of one route: status, headers, parameters | `<verb>_endpoint` ([below](#replace-endpoint-method)) |
+| One option of a route: status code, name, path, dependencies | {func}`fr.modify_route <fastapi_restly.views.modify_route>` ([CRUD Routes](#modify-route)) |
+| The headers or the parameters of one route, or what it returns | `<verb>_endpoint` ([below](#replace-endpoint-method)) |
 | A path that is not CRUD: a lookup, an action such as publish | a method with {func}`@fr.get <fastapi_restly.views.get>` or {func}`@fr.post <fastapi_restly.views.post>` ([read route](#custom-read-route), [action route](#custom-action-route)) |
 | A lookup by another key, such as a slug or an email | In a custom route, call {meth}`handle_get_one <fastapi_restly.views.RestView.handle_get_one>` with an expression ([below](#natural-key-route)) |
 | A list of a subset, such as one project's tasks | In a custom route, call {meth}`handle_get_many <fastapi_restly.views.RestView.handle_get_many>` with `where=` ([Scopes](#per-read-where)) |
@@ -205,7 +208,7 @@ of some columns, SQLAlchemy leaves the loader options out.
 
 Start at the business method of a write, or at the declarations of a read.
 Move a side effect that depends on the commit to a hook. Replace the endpoint
-method only when the HTTP contract changes.
+method only when a change to the HTTP contract needs code.
 
 (business-methods)=
 ## Change what an action does
@@ -818,9 +821,9 @@ task, and nothing tries it again.
 ## Change the status code or headers of one route
 
 Business methods and hooks keep the HTTP contract of the CRUD route. To change
-only an option of the route, such as its status code, set
-{func}`fr.route_options <fastapi_restly.views.route_options>`; see
-[Change one option of a route](#crud-route-metadata). Replace the endpoint method
+only an option of the route, such as its status code, use
+{func}`fr.modify_route <fastapi_restly.views.modify_route>`; see
+[Change one option of a route](#modify-route). Replace the endpoint method
 when the change needs code: the headers, the parameters or what the route
 returns. To change the shape of the response body, such
 as an envelope around one object, see

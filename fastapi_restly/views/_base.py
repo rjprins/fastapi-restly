@@ -298,7 +298,7 @@ class View:
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
         super().__init_subclass__(**kwargs)
-        _apply_route_options(cls)
+        _apply_modified_routes(cls)
         _reject_route_names_of_settings(cls)
 
     @classmethod
@@ -387,25 +387,25 @@ def delete(path: str, **api_route_kwargs: Any) -> Callable[..., Any]:
 
 
 @dataclasses.dataclass(frozen=True, eq=False)
-class _RouteOptions:
-    """What :func:`route_options` returns. When the class is defined, a copy of
+class _ModifiedRoute:
+    """What :func:`modify_route` returns. When the class is defined, a copy of
     the inherited route takes its place."""
 
     path: str | None
     api_route_kwargs: dict[str, Any]
 
 
-def route_options(path: str | None = None, **api_route_kwargs: Any) -> Any:
+def modify_route(path: str | None = None, **api_route_kwargs: Any) -> Any:
     """Change the options of a route that the view inherits, and keep the rest.
 
-    Set it in the class body, under the name of the route method::
+    Use it in the class body, under the name of the route method::
 
         class TagView(fr.AsyncRestView):
             prefix = "/tags"
             model = Tag
 
-            create_endpoint = fr.route_options(status_code=200, name="create_tag")
-            delete_endpoint = fr.route_options(dependencies=[Depends(require_admin)])
+            create_endpoint = fr.modify_route(status_code=200, name="create_tag")
+            delete_endpoint = fr.modify_route(dependencies=[Depends(require_admin)])
 
     It takes the arguments of a route decorator, such as :func:`post`: they go
     to FastAPI's ``APIRouter.add_api_route()``. ``path`` replaces the path of
@@ -416,15 +416,19 @@ def route_options(path: str | None = None, **api_route_kwargs: Any) -> Any:
     status code, and a status code set to ``None`` is left out. A status code
     without a body, such as 204, also removes the response model of the route.
 
-    A class with a ``route_options`` that names no inherited route raises
-    :class:`~fastapi_restly.exc.RestlyConfigurationError` when it is defined.
+    This changes the route of this view and its subclasses. The route of the
+    base class stays the same.
+
+    A name that is not an inherited route raises
+    :class:`~fastapi_restly.exc.RestlyConfigurationError` when the class is
+    defined.
     """
-    return _RouteOptions(path, api_route_kwargs)
+    return _ModifiedRoute(path, api_route_kwargs)
 
 
-def _apply_route_options(cls: type) -> None:
+def _apply_modified_routes(cls: type) -> None:
     """Put a copy of the inherited route in the place of each
-    :func:`route_options` that ``cls`` gets.
+    :func:`modify_route` that ``cls`` gets.
 
     So the attribute is a normal route for the rest of Restly, and
     ``super().create_endpoint(...)`` finds a function. A plain mixin holds its
@@ -435,19 +439,19 @@ def _apply_route_options(cls: type) -> None:
         name
         for klass in cls.__mro__
         for name, value in vars(klass).items()
-        if isinstance(value, _RouteOptions)
+        if isinstance(value, _ModifiedRoute)
     }
     for name in sorted(names):
         values = [vars(klass)[name] for klass in cls.__mro__ if name in vars(klass)]
         options = list(
-            itertools.takewhile(lambda v: isinstance(v, _RouteOptions), values)
+            itertools.takewhile(lambda v: isinstance(v, _ModifiedRoute), values)
         )
         if not options:
             continue
         endpoint = values[len(options)] if len(values) > len(options) else None
         if not hasattr(endpoint, "_api_route_args"):
             raise RestlyConfigurationError(
-                f"{cls.__name__}.{name} is a fr.route_options, but the class "
+                f"{cls.__name__}.{name} uses fr.modify_route, but the class "
                 f"inherits no route method with this name. Use the name of a "
                 f"route method, such as create_endpoint."
             )
@@ -481,7 +485,7 @@ def _apply_route_options(cls: type) -> None:
         copied = _copy_route(endpoint, cls, name)
         copied._api_route_args = (path, route_kwargs)  # type: ignore[attr-defined]
         copied._dropped_response_model = dropped  # type: ignore[attr-defined]
-        copied._from_route_options = True  # type: ignore[attr-defined]
+        copied._from_modify_route = True  # type: ignore[attr-defined]
         # Delete first: in the class dict, a name keeps its first place. The routes
         # that the class writes come first, see the copy of the inherited routes.
         if name in vars(cls):

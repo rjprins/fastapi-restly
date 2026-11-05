@@ -165,7 +165,8 @@ business method either: `create`, `update` or `delete`. Both fail with
 of a mixin. A plain `View` has no business methods, so these three names are
 free there. A CRUD view class that defines `get_one`, `get_many` or `select`
 fails when Python creates it too, because the loads are final. Give the
-route another name; its path stays the same. To replace a CRUD route,
+route another name; its path stays the same. To change one option of a CRUD
+route, see [Change one option of a route](#modify-route). To replace a CRUD route,
 override its endpoint method, such as `create_endpoint`; see
 [Change the status code or headers of one route](#replace-endpoint-method).
 :::
@@ -695,6 +696,22 @@ subclass also inherits
 {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>`,
 so a base view can leave out the same CRUD routes in every subclass; see
 [Exclude CRUD routes](#exclude-crud-routes).
+
+To change one option of a route that a subclass inherits, use
+{func}`fr.modify_route <fastapi_restly.views.modify_route>` under the name of the
+method. The route keeps its code and its other options:
+
+```python
+@fr.include_view(app)
+class UserView(FieldsRouteView):
+    prefix = "/users"
+    model = User
+    schema = UserSchema
+
+    fields = fr.modify_route(summary="The fields of a user")
+```
+
+[Change one option of a route](#modify-route) has the details.
 
 (prefix-concatenation)=
 ### Concatenate URL prefixes

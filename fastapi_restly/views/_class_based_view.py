@@ -41,11 +41,11 @@ def _copy_all_parent_class_endpoints_into_this_subclass(view_cls: type[View]):
     """
     for name, endpoint in _get_all_parent_endpoints(view_cls).items():
         if name in view_cls.__dict__:
-            # This endpoint is already overridden! A fr.route_options changes no
+            # This endpoint is already overridden! fr.modify_route changes no
             # place: its route stands where the inherited route would stand, after
             # the routes that the class writes, such as GET /stats before GET /{id}.
             own = view_cls.__dict__[name]
-            if getattr(own, "_from_route_options", False):
+            if getattr(own, "_from_modify_route", False):
                 delattr(view_cls, name)
                 setattr(view_cls, name, own)
             continue

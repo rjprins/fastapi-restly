@@ -80,8 +80,8 @@ def _warn_on_misuse(view_cls: type[View]) -> None:
         for endpoint in sorted(_ENDPOINT_METHOD_NAMES & own.keys()):
             if not hasattr(own[endpoint], "_api_route_args"):
                 continue
-            # fr.route_options changes the HTTP contract and has no code.
-            if getattr(own[endpoint], "_from_route_options", False):
+            # fr.modify_route changes the HTTP contract and has no code.
+            if getattr(own[endpoint], "_from_modify_route", False):
                 continue
             verb = endpoint.removesuffix("_endpoint")
             source = _source_of(own[endpoint])

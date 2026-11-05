@@ -61,12 +61,12 @@ from .views import (
     get,
     include_view,
     list_filter,
+    modify_route,
     patch,
     post,
     put,
     resolve_scope,
     route,
-    route_options,
 )
 
 try:
@@ -134,7 +134,7 @@ __all__ = [
     "resolve_scope",
     # Views — route decorators
     "route",
-    "route_options",
+    "modify_route",
     "get",
     "post",
     "put",

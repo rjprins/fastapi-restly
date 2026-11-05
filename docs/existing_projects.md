@@ -192,8 +192,8 @@ contracts:
    [Choose the name of the id parameter](#id-param).
 3. A route that differs in one option, such as its name, its status code or its
    path, stays on the view with
-   {func}`fr.route_options <fastapi_restly.views.route_options>`; see
-   [Change one option of a route](#crud-route-metadata). Keep routes with another
+   {func}`fr.modify_route <fastapi_restly.views.modify_route>`; see
+   [Change one option of a route](#modify-route). Keep routes with another
    contract out of the change. For example, a `PUT` update that replaces the whole
    row can stay hand-written: leave it out with
    {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>`
