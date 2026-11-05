@@ -1,8 +1,8 @@
 """The key settings: ``include_filters``, ``exclude_filters``,
 ``include_sort_keys`` and ``exclude_sort_keys``.
 
-An entry is a key as the client sends it, or a pattern. ``*`` matches any
-characters except ``.``, so it stays within one level. By default a list has
+An entry is a key in the Python names of the fields, or a pattern. ``*``
+matches any characters except ``.``, so it stays within one level. By default a list has
 the keys of the resource's own fields, and no dotted keys.
 """
 
@@ -1056,6 +1056,255 @@ def test_the_key_of_a_serialization_alias_finds_the_row(app):
 
     rows = client.get("/people", params={"fullName": "Bob", "sort": "-fullName"})
     assert [row["fullName"] for row in rows.json()["data"]] == ["Bob"]
+
+
+# ---------------------------------------------------------------------------
+# The settings take Python names
+# ---------------------------------------------------------------------------
+
+
+class AliasBase(DeclarativeBase):
+    pass
+
+
+class Maker(AliasBase):
+    __tablename__ = "keys_alias_maker"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    created_at: Mapped[datetime.datetime]
+
+
+class Product(AliasBase):
+    __tablename__ = "keys_alias_product"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    created_at: Mapped[datetime.datetime]
+    maker_id: Mapped[int] = mapped_column(ForeignKey(Maker.id))
+    maker: Mapped[Maker] = relationship()
+
+
+class MakerSchema(fr.IDSchema):
+    created_at: datetime.datetime = pydantic.Field(alias="createdAt")
+
+
+class ProductSchema(fr.IDSchema):
+    created_at: datetime.datetime = pydantic.Field(alias="createdAt")
+    maker: MakerSchema = pydantic.Field(alias="supplier")
+
+
+def product_params(**settings: Any) -> type[pydantic.BaseModel]:
+    return derive_list_params_schema(
+        ProductSchema, Product, pagination=None, **settings
+    )
+
+
+def test_a_filter_setting_takes_python_names():
+    model = product_params(include_filters=("created_at", "maker.created_at__gte"))
+
+    assert set(model.model_fields) - {"sort"} == {
+        "createdAt",
+        "supplier.createdAt__gte",
+    }
+
+
+def test_a_pattern_takes_python_names():
+    model = product_params(include_filters=("maker.*",))
+
+    keys = set(model.model_fields) - {"sort"}
+    assert "supplier.createdAt__gte" in keys
+    assert all(key.startswith("supplier.") for key in keys)
+
+
+def test_exclude_filters_takes_python_names():
+    model = product_params(exclude_filters=("created_at",))
+
+    assert not any(key.startswith("createdAt") for key in model.model_fields)
+    assert "id__in" in model.model_fields
+
+
+def test_the_sort_settings_take_python_names():
+    model = product_params(
+        include_sort_keys=("*", "maker.*"),
+        exclude_sort_keys=("id",),
+        default_sort="-created_at,maker.created_at",
+    )
+    record = _record_of(model)
+    assert record is not None
+
+    assert record.sort_keys == ("createdAt", "supplier.id", "supplier.createdAt")
+    # as a client writes it, so OpenAPI shows it
+    assert record.default_sort == "-createdAt,supplier.createdAt"
+    assert model.model_fields["sort"].default == "-createdAt,supplier.createdAt"
+
+
+def test_a_default_sort_from_python_names_sorts_the_list(app):
+    @fr.include_view(app)
+    class ProductView(fr.AsyncRestView):
+        prefix = "/products"
+        model = Product
+        schema = ProductSchema
+        default_sort = "-created_at"
+
+    client = RestlyTestClient(app)
+    asyncio.run(fr.db.async_create_all(AliasBase))
+
+    async def add_rows() -> None:
+        day = datetime.datetime(2026, 1, 1)
+        async with fr.db.get_async_engine().begin() as connection:
+            await connection.execute(
+                Maker.__table__.insert(), [{"id": 1, "created_at": day}]
+            )
+            await connection.execute(
+                Product.__table__.insert(),
+                [
+                    {"id": 1, "created_at": day, "maker_id": 1},
+                    {"id": 2, "created_at": day.replace(day=2), "maker_id": 1},
+                ],
+            )
+
+    asyncio.run(add_rows())
+
+    rows = client.get("/products").json()["data"]
+    assert [row["id"] for row in rows] == [2, 1]
+    operation = client.get("/openapi.json").json()["paths"]["/products"]["get"]
+    (sort,) = [p for p in operation["parameters"] if p["name"] == "sort"]
+    assert sort["schema"]["default"] == "-createdAt"
+
+
+@pytest.mark.parametrize(
+    "settings, message",
+    [
+        (
+            {"include_filters": ("createdAt",)},
+            "include_filters: 'createdAt' is the name in the URL. The key "
+            "settings take the Python name of a field, so write 'created_at'.",
+        ),
+        (
+            {"exclude_filters": ("createdAt",)},
+            "exclude_filters: 'createdAt' is the name in the URL. The key "
+            "settings take the Python name of a field, so write 'created_at'.",
+        ),
+        (
+            {"include_filters": ("supplier.createdAt__gte",)},
+            "include_filters: 'supplier.createdAt__gte' is the name in the URL. "
+            "The key settings take the Python name of a field, so write "
+            "'maker.created_at__gte'.",
+        ),
+        (
+            {"include_filters": ("supplier.*",)},
+            "include_filters: 'supplier.*' matches only names in the URL, such "
+            "as 'supplier.id'. The key settings take the Python names of the "
+            "fields, such as 'maker.id'.",
+        ),
+        (
+            {"include_sort_keys": ("createdAt",)},
+            "include_sort_keys: 'createdAt' is the name in the URL. The key "
+            "settings take the Python name of a field, so write 'created_at'.",
+        ),
+        (
+            {"default_sort": "-createdAt"},
+            "default_sort: 'createdAt' is the name in the URL. A key is the "
+            "Python name of a field, so write 'created_at'.",
+        ),
+    ],
+)
+def test_a_name_in_the_url_fails(settings, message):
+    with pytest.raises(RestlyConfigurationError) as exc_info:
+        product_params(**settings)
+
+    assert str(exc_info.value) == message
+
+
+def test_an_inherited_name_in_the_url_fails(app):
+    class AppView(fr.AsyncRestView):
+        exclude_filters = ("createdAt",)
+
+    class ProductView(AppView):
+        prefix = "/products"
+        model = Product
+        schema = ProductSchema
+
+    with pytest.raises(RestlyConfigurationError) as exc_info:
+        fr.include_view(app, ProductView)
+
+    assert str(exc_info.value) == (
+        "ProductView.exclude_filters (from AppView): 'createdAt' is the name in "
+        "the URL. The key settings take the Python name of a field, so write "
+        "'created_at'."
+    )
+
+
+def test_an_inherited_python_name_may_match_no_key(app):
+    class AppView(fr.AsyncRestView):
+        exclude_filters = ("username",)
+
+    class ProductView(AppView):
+        prefix = "/products"
+        model = Product
+        schema = ProductSchema
+
+    fr.include_view(app, ProductView)
+
+
+def test_a_message_shows_both_names():
+    with pytest.raises(RestlyConfigurationError) as exc_info:
+        product_params(include_filters=("created_at__icontains",))
+
+    assert str(exc_info.value) == (
+        "include_filters: 'created_at__icontains' matches no filter key of "
+        "ProductSchema. The filter keys of 'created_at' (createdAt in the URL) "
+        "are: created_at, created_at__in, created_at__ne, created_at__not_in, "
+        "created_at__gte, created_at__lte, created_at__gt, created_at__lt. "
+        "Only a field on a text column has __icontains."
+    )
+
+    with pytest.raises(RestlyConfigurationError) as exc_info:
+        product_params(include_sort_keys=("name",))
+
+    assert str(exc_info.value) == (
+        "include_sort_keys: 'name' matches no sort key of ProductSchema. The "
+        "sort keys are: id, created_at (createdAt in the URL), maker.id "
+        "(supplier.id in the URL), maker.created_at (supplier.createdAt in the "
+        "URL)."
+    )
+
+
+def test_the_hint_for_a_reserved_key_gives_the_python_name():
+    class PageBase(DeclarativeBase):
+        pass
+
+    class Book(PageBase):
+        __tablename__ = "keys_alias_book"
+        id: Mapped[int] = mapped_column(primary_key=True)
+        page_number: Mapped[int]
+
+    class BookSchema(fr.IDSchema):
+        page_number: int = pydantic.Field(alias="page")
+
+    with pytest.raises(
+        RestlyConfigurationError, match=r"exclude_filters = \('page_number',\)"
+    ):
+        derive_list_params_schema(BookSchema, Book)
+
+    model = derive_list_params_schema(
+        BookSchema, Book, exclude_filters=("page_number",)
+    )
+    assert model.model_fields["page"].annotation is int
+
+
+def test_the_hint_for_an_own_key_gives_the_python_name(app):
+    class ProductView(fr.AsyncRestView):
+        prefix = "/products"
+        model = Product
+        schema = ProductSchema
+
+        @fr.list_filter("createdAt")
+        def filter_created(self, value: datetime.datetime) -> None:
+            return None
+
+    with pytest.raises(RestlyConfigurationError) as exc_info:
+        fr.include_view(app, ProductView)
+
+    assert "exclude_filters = ('created_at',)" in str(exc_info.value)
+    assert "removes created_at__in and" in str(exc_info.value)
 
 
 # ---------------------------------------------------------------------------

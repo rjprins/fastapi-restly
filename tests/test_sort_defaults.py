@@ -147,8 +147,8 @@ def test_a_default_sort_key_that_the_schema_does_not_have_fails(views):
 
     assert str(exc_info.value) == (
         "SpoolView.default_sort: 'created_at' is not a field of SpoolSchema "
-        "to sort on. A key is a field as the client writes it in the sort "
-        "parameter. The fields to sort on are: id, name, rank, used."
+        "to sort on. A key is the Python name of a field. The fields to sort "
+        "on are: id, name, rank, used."
     )
 
 
@@ -163,9 +163,9 @@ def test_an_inherited_default_sort_without_its_keys_fails(views):
 
     assert str(exc_info.value) == (
         "SpoolView.default_sort (from AppView): 'created_at' is not a field of "
-        "SpoolSchema to sort on. A key is a field as the client writes it in "
-        "the sort parameter. The fields to sort on are: id, name, rank, used. "
-        "Set SpoolView.default_sort = None for primary key order."
+        "SpoolSchema to sort on. A key is the Python name of a field. The "
+        "fields to sort on are: id, name, rank, used. Set "
+        "SpoolView.default_sort = None for primary key order."
     )
 
 

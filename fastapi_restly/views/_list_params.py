@@ -82,6 +82,8 @@ def list_filter(key: str) -> Callable[[_F], _F]:
     operator, such as ``name__length``. The operator may be one that Restly
     generates for other fields, or a new one. Before the last ``__`` comes a
     field with filters, as in the generated keys, such as ``vendor.name``.
+    The key is the key in the URL, so a field goes by its alias when it has
+    one. The key settings, such as ``exclude_filters``, use Python names.
 
     The key is always on: ``include_filters`` and ``exclude_filters`` choose
     among the generated keys only. A subclass drops the key by setting the

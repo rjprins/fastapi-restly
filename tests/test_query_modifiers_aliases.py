@@ -122,7 +122,7 @@ class TestIterFieldsIncludingNestedWithAliases:
         fields = list(_iter_fields_including_nested(SchemaWithAliases))
 
         # Check that aliases are used
-        field_names = [name for name, _ in fields]
+        field_names = [name for name, _, _ in fields]
         assert "userName" in field_names
         assert "userEmail" in field_names
         assert "age" in field_names  # No alias
@@ -140,7 +140,7 @@ class TestIterFieldsIncludingNestedWithAliases:
         fields = list(_iter_fields_including_nested(SchemaWithoutAliases))
 
         # Check that field names are used
-        field_names = [name for name, _ in fields]
+        field_names = [name for name, _, _ in fields]
         assert "user_name" in field_names
         assert "user_email" in field_names
         assert "age" in field_names

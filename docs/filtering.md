@@ -301,7 +301,7 @@ the rules of [Filter on a related row](#relation-filtering).
 Without `sort`, the list is in primary key order. For another order when the
 client sends no `sort`, set
 {attr}`default_sort <fastapi_restly.views.BaseRestView.default_sort>`. It is
-written as the client writes `sort`:
+written as `sort`, with the Python names of the fields:
 
 ```python
 class UserView(fr.AsyncRestView):
@@ -654,8 +654,9 @@ class ItemView(fr.AsyncRestView):
     include_sort_keys = ("name", "created_at")
 ```
 
-An entry is a key as the client sends it, such as `name__icontains`, or a
-pattern. In a pattern, `*` matches any characters except `.`. So
+An entry is a key with the Python name of its field, such as
+`name__icontains`, or a pattern. For a field with an alias, see
+[Use aliases in the URL](#public-names). In a pattern, `*` matches any characters except `.`. So
 `"created_at__*"` is every filter on `created_at` with a suffix, and
 `"vendor.*"` is every key on the fields of `vendor`. OpenAPI shows only the
 keys that are on, and another key gets `422`.
@@ -852,6 +853,9 @@ The URL must then use the aliases:
 GET /articles?writer.authorName=Alice    # accepted
 GET /articles?author.name=Alice          # rejected: use the aliases
 ```
+
+The key settings of a view use the Python names in each part of the path. So
+`include_filters = ("author.name",)` turns on `?writer.authorName=`.
 :::
 
 (foreign-key-filtering)=
@@ -919,6 +923,22 @@ GET /users?user_name=Alice       # rejected: the Python name is not public
 ```
 
 To use another key in the URL, change the alias.
+
+The key settings of a view, such as `include_filters` and `default_sort`, use
+the Python names. Only the client uses the alias:
+
+```python
+class UserView(fr.AsyncRestView):
+    ...
+    include_filters = ("user_name__icontains",)
+    default_sort = "user_name"
+```
+
+The client then sends `?userName__icontains=al`, and OpenAPI shows `userName`
+as the default of `sort`. An entry with the public name, such as `"userName"`,
+fails when the view registers, also when the view inherits it. The key of
+[a filter of your own](#own-list-filter) is the key in the URL, because that
+filter adds the key.
 
 :::{admonition} Details
 :class: details

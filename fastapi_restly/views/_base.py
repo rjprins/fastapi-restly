@@ -706,23 +706,25 @@ class BaseRestView(
     #: :class:`AsyncReactAdminView`).
     pagination: ClassVar[Pagination | None] = _DEFAULT_PAGINATION
     #: The filter keys that the list params keep, from the keys that Restly
-    #: generates from :attr:`response_schema`. An entry is a key as the
-    #: client sends it, such as ``"name__icontains"``, or a pattern. ``*``
+    #: generates from :attr:`response_schema`. An entry is a key with the
+    #: Python name of its field, such as ``"name__icontains"``, also for a
+    #: field with an alias, or a pattern. ``*``
     #: matches any characters except ``.``, so ``"created_at__*"`` is every
     #: filter on ``created_at`` with a suffix, and ``"vendor.*"`` is every
     #: key on the fields of ``vendor``. The default, ``("*",)``, keeps the
     #: keys of the resource's own fields, and no dotted keys. ``()`` keeps
     #: none. An entry that the view sets and that matches no key fails when
-    #: the view registers.
+    #: the view registers. So does an entry with the name in the URL of a
+    #: field with an alias, also when the view inherits it.
     include_filters: ClassVar[tuple[str, ...]] = ("*",)
     #: The filter keys that the list params leave out, after
     #: :attr:`include_filters`. The entries are the same as there, but a name
     #: without a suffix leaves out the whole field: the plain key and each key
     #: with a suffix. So ``("name",)`` also removes ``name__in``.
     exclude_filters: ClassVar[tuple[str, ...]] = ()
-    #: The keys that ``sort`` accepts: a field as the client writes it in
-    #: ``?sort=``, without the ``-``, such as ``"name"`` or
-    #: ``"vendor.name"``, or a pattern as in :attr:`include_filters`. The
+    #: The keys that ``sort`` accepts: the Python name of a field, such as
+    #: ``"name"`` or ``"vendor.name"``, or a pattern as in
+    #: :attr:`include_filters`. The
     #: default, ``("*",)``, is the resource's own fields. A sort key never goes
     #: through a to-many relationship. With ``()``, the list has no ``sort``
     #: parameter.
@@ -734,14 +736,14 @@ class BaseRestView(
     #: ``"order_by"`` for fastapi-filter. The old name is then free for a
     #: filter key.
     sort_query_param: ClassVar[str] = "sort"
-    #: The sort when the request has none, as a client writes it in
-    #: ``?sort=``, such as ``"-created_at"``. It becomes the default of the
-    #: sort parameter, so OpenAPI shows it. A key must be a field of
-    #: :attr:`response_schema` that a sort key could have, but
-    #: :attr:`include_sort_keys` does not have to keep it. Use each key only
-    #: once. ``None`` (the default) sorts by the primary key. The primary key
-    #: is always the last term. A view that inherits it and does not have all
-    #: its keys sorts by the primary key.
+    #: The sort when the request has none, written as ``?sort=`` with the
+    #: Python names of the fields, such as ``"-created_at"``. It becomes the
+    #: default of the sort parameter, with the names in the URL, so OpenAPI
+    #: shows it. A key must be a field of :attr:`response_schema` that a sort
+    #: key could have, but :attr:`include_sort_keys` does not have to keep
+    #: it. Use each key only once. ``None`` (the default) sorts by the primary
+    #: key. The primary key is always the last term. A view that inherits it
+    #: and does not have all its keys fails when it registers.
     default_sort: ClassVar[str | None] = None
     #: Where a sort puts NULLs: ``"last"`` (the default) or ``"first"`` in
     #: both directions, on every database. ``None`` leaves them where the

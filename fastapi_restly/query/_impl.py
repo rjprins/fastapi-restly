@@ -122,18 +122,19 @@ class _ListParamsRecord:
     """
 
     pagination: _AnyPagination
-    #: The key settings, as tuples of patterns.
+    #: The key settings, as tuples of patterns in Python names.
     include_filters: tuple[str, ...]
     exclude_filters: tuple[str, ...]
     include_sort_keys: tuple[str, ...]
     exclude_sort_keys: tuple[str, ...]
     #: The name of the sort parameter.
     sort_query_param: str
-    #: The sort when the request has none, as the view sets it.
+    #: The sort when the request has none, as a client writes it.
     default_sort: str | None
-    #: The keys of ``default_sort``.
+    #: The keys of ``default_sort``, as a client writes them.
     default_sort_keys: tuple[str, ...]
-    #: The sort keys that are on, in the order of the schema.
+    #: The sort keys that are on, as a client writes them, in the order of
+    #: the schema.
     sort_keys: tuple[str, ...]
     #: The view's own filter keys.
     own_filters: tuple[_OwnFilter, ...]
@@ -175,8 +176,8 @@ def _record_of(params_model: type) -> _ListParamsRecord | None:
 
 
 def _check_default_sort(label: str, value: Any) -> None:
-    """Reject a ``default_sort`` that is not sort keys as a client writes
-    them in the sort parameter.
+    """Reject a ``default_sort`` that is not sort keys, written as the sort
+    parameter takes them.
 
     :raises RestlyConfigurationError: ``value`` is not ``None`` or a string
         of keys separated by commas, or it has a key more than once.
@@ -507,7 +508,9 @@ def derive_list_params_schema(
     repeated key.
 
     The four key settings choose which of these keys the model has. Each
-    entry is a key as the client sends it, or a pattern. ``*`` in a pattern
+    entry is a key with the Python name of its field, also for a field with
+    an alias, or a pattern. An entry with the name in the URL of such a field
+    raises an error. ``*`` in a pattern
     matches any characters except ``.``, so it stays within one level.
     By default the model has the keys of the resource's own fields, and no
     dotted keys. An entry that matches no key raises an error.
@@ -547,12 +550,14 @@ def derive_list_params_schema(
         ``include_sort_keys``.
     :param sort_query_param: The name of the sort parameter, such as
         ``"order_by"``.
-    :param default_sort: The sort when the request has none, such as
-        ``"-created_at"``. It becomes the default of the sort parameter. A
-        key must be a field that a sort key could have, but
+    :param default_sort: The sort when the request has none, with the
+        Python names of the fields, such as ``"-created_at"``. It becomes the
+        default of the sort parameter, with the names in the URL. A key must
+        be a field that a sort key could have, but
         ``include_sort_keys`` does not have to keep it.
     :raises fastapi_restly.exc.RestlyConfigurationError: An entry of a key
-        setting matches no key, or is not a key or pattern. The sort
+        setting matches no key, matches only names in the URL, or is not a
+        key or pattern. The sort
         parameter has the name of a page parameter. A key of
         ``default_sort`` is not a field to sort on, or appears twice.
     """
@@ -578,7 +583,7 @@ def _derive_list_params(
     pagination: _AnyPagination,
     settings: _abc.Mapping[str, Any],
     owner: str | None = None,
-    unchecked: _abc.Set[str] = frozenset(),
+    inherited: _abc.Mapping[str, str] | None = None,
     own_filters: _abc.Sequence[_OwnFilter] = (),
     sort_query_param: str = _SORT_QUERY_PARAM,
     default_sort: str | None = None,
@@ -587,8 +592,9 @@ def _derive_list_params(
     """:func:`derive_list_params_schema`, for a view too.
 
     :param owner: The view, for the messages.
-    :param unchecked: The key settings whose entries may match no key: the
-        ones that a view inherits. A base view serves many schemas.
+    :param inherited: The key settings that a view inherits, each with the
+        view that sets it. Their entries may match no key, because a base
+        view serves many schemas.
     :param own_filters: The view's own filter keys, which are always on.
     :param default_sort_from: The base view that ``default_sort`` comes
         from, for the messages. It is checked too: an order that does not
@@ -610,44 +616,68 @@ def _derive_list_params(
     fields: dict[str, Any] = settings._list_params_fields()
 
     reserved = _reserved_names(pagination, sort_query_param)
-    filter_fields: dict[str, Any] = {}
+    # The key settings name a field by its Python name, and a client by the
+    # name that a response shows. So each key below is in Python names, and
+    # its value holds the key in the URL.
+    filter_fields: dict[str, tuple[str, Any]] = {}
     # The filter keys of each field, for the messages.
     keys_of_field: dict[str, list[str]] = {}
-    sort_keys: list[str] = []
-    for name, field in _iter_fields_including_nested(response_schema):
+    # The name in the URL of each field with a column.
+    url_names: dict[str, str] = {}
+    sort_keys: dict[str, str] = {}
+    for url_name, name, field in _iter_fields_including_nested(response_schema):
         # Only emit params for fields that resolve to a filterable column on the
         # model -- using the very predicate the request path applies. A
         # relationship/collection field (e.g. ``books: list[BookRef]``) or a
         # reference traversal that does not resolve would otherwise advertise
         # filters in OpenAPI that always fail at request time.
         try:
-            relationships, column = _resolve_column(model, name, response_schema)
+            relationships, column = _resolve_column(model, url_name, response_schema)
         except BadQueryParam:
             continue
+        url_names[name] = url_name
         # ``sort=tags.name`` has no clear meaning when an item has several
         # tags, and the join repeats rows.
         if _is_sortable(field, column) and not any(
             relationship.property.uselist for relationship in relationships
         ):
-            sort_keys.append(name)
-        field_filters = _filter_fields(response_schema, name, field, column)
-        filter_fields.update(field_filters)
-        keys_of_field[name] = list(field_filters)
+            sort_keys[name] = url_name
+        field_filters = _filter_fields(response_schema, url_name, field, column)
+        keys_of_field[name] = []
+        for url_key, filter_field in field_filters.items():
+            key = name + url_key.removeprefix(url_name)
+            filter_fields[key] = (url_key, filter_field)
+            keys_of_field[name].append(key)
 
     schema_name = _written_name(response_schema)
-    for name in ("include_filters", "exclude_filters"):
-        if name not in unchecked and patterns[name] != _KEY_SETTING_DEFAULTS[name]:
+    url_filter_keys = {key: url_key for key, (url_key, _) in filter_fields.items()}
+    inherited = inherited or {}
+    for name in _KEY_SETTINGS:
+        is_filter_setting = name in ("include_filters", "exclude_filters")
+        label = _setting_label(owner, name)
+        # also for a setting that the view inherits: the entry would leave
+        # the keys on, or off, without a sign
+        _check_url_names(
+            f"{label} (from {inherited[name]})" if name in inherited else label,
+            patterns[name],
+            url_filter_keys if is_filter_setting else sort_keys,
+            url_names,
+            whole_fields=name == "exclude_filters",
+        )
+        if name in inherited or patterns[name] == _KEY_SETTING_DEFAULTS[name]:
+            continue
+        if is_filter_setting:
             _check_filter_entries(
-                _setting_label(owner, name),
+                label,
                 patterns[name],
                 keys_of_field,
+                url_names,
                 schema_name,
                 whole_fields=name == "exclude_filters",
             )
-    for name in ("include_sort_keys", "exclude_sort_keys"):
-        if name not in unchecked and patterns[name] != _KEY_SETTING_DEFAULTS[name]:
+        else:
             _check_sort_entries(
-                _setting_label(owner, name), patterns[name], sort_keys, schema_name
+                label, patterns[name], sort_keys, url_names, schema_name
             )
 
     label = _setting_label(owner, "default_sort")
@@ -655,36 +685,54 @@ def _derive_list_params(
         f"{label} (from {default_sort_from})" if default_sort_from else label,
         default_sort,
         sort_keys,
+        url_names,
         schema_name,
         hint=(
             f" Set {label} = None for primary key order." if default_sort_from else ""
         ),
     )
-    sort_keys = _pick_keys(
-        sort_keys, patterns["include_sort_keys"], patterns["exclude_sort_keys"]
+    # OpenAPI and the record hold the sort as a client writes it
+    url_default_sort = (
+        None
+        if default_sort is None
+        else ",".join(
+            ("-" if term.startswith("-") else "") + sort_keys[term.removeprefix("-")]
+            for term in default_sort.split(",")
+        )
     )
-    if sort_keys:
-        fields[sort_query_param] = _sort_field(sort_keys, default_sort)
+    url_sort_keys = [
+        sort_keys[key]
+        for key in _pick_keys(
+            list(sort_keys),
+            patterns["include_sort_keys"],
+            patterns["exclude_sort_keys"],
+        )
+    ]
+    if url_sort_keys:
+        fields[sort_query_param] = _sort_field(url_sort_keys, url_default_sort)
     for key in _pick_keys(
         list(filter_fields),
         patterns["include_filters"],
         _whole_fields(patterns["exclude_filters"]),
     ):
-        if key in reserved:
+        url_key, filter_field = filter_fields[key]
+        if url_key in reserved:
             raise RestlyConfigurationError(
                 f"{_setting_label(owner, 'list_params_schema')}: the filter key "
-                f"{key!r} of {schema_name} is also a page or sort parameter. Give "
-                "the field a Pydantic alias, rename the page or sort parameter, or "
-                f"leave the field out with exclude_filters = ({key!r},)."
+                f"{url_key!r} of {schema_name} is also a page or sort parameter. "
+                "Give the field a Pydantic alias, rename the page or sort "
+                "parameter, or leave the field out with "
+                f"exclude_filters = ({key!r},)."
             )
-        fields[key] = filter_fields[key]
+        fields[url_key] = filter_field
     for own in own_filters:
         _check_own_key(
             _setting_label(owner, own.method),
             own.key,
             fields,
             reserved,
-            keys_of_field,
+            url_names,
+            {url_key: key for key, url_key in url_filter_keys.items()},
             schema_name,
         )
         annotation = own.annotation if own.always else Optional[own.annotation]
@@ -705,9 +753,9 @@ def _derive_list_params(
         pagination=pagination,
         **patterns,
         sort_query_param=sort_query_param,
-        default_sort=default_sort,
-        default_sort_keys=default_sort_keys,
-        sort_keys=tuple(sort_keys),
+        default_sort=url_default_sort,
+        default_sort_keys=tuple(sort_keys[key] for key in default_sort_keys),
+        sort_keys=tuple(url_sort_keys),
         own_filters=tuple(own_filters),
     )
     return params_model
@@ -716,15 +764,17 @@ def _derive_list_params(
 def _default_sort_keys(
     label: str,
     default_sort: str | None,
-    sort_keys: list[str],
+    sort_keys: _abc.Mapping[str, str],
+    url_names: _abc.Mapping[str, str],
     schema_name: str,
     *,
     hint: str = "",
 ) -> tuple[str, ...]:
-    """The keys of ``default_sort``.
+    """The keys of ``default_sort``, in Python names.
 
     :param sort_keys: Every key that the schema can sort on, before the key
-        settings choose.
+        settings choose, with its name in the URL.
+    :param url_names: The name in the URL of each field with a column.
     :param hint: The end of the message.
     :raises RestlyConfigurationError: a key is not in ``sort_keys``.
     """
@@ -734,16 +784,104 @@ def _default_sort_keys(
     for key in keys:
         if key in sort_keys:
             continue
-        message = (
-            f"{label}: {key!r} is not a field of {schema_name} to sort on. "
-            "A key is a field as the client writes it in the sort parameter."
-        )
-        if sort_keys:
-            message += f" The fields to sort on are: {', '.join(sort_keys)}."
+        python_name = _python_name_of(key, url_names)
+        if python_name in sort_keys:
+            message = (
+                f"{label}: {key!r} is the name in the URL. A key is the Python "
+                f"name of a field, so write {python_name!r}."
+            )
         else:
-            message += f" {schema_name} has no fields to sort on."
+            message = (
+                f"{label}: {key!r} is not a field of {schema_name} to sort on. "
+                "A key is the Python name of a field."
+            )
+            if sort_keys:
+                message += (
+                    f" The fields to sort on are: {_names(sort_keys, url_names)}."
+                )
+            else:
+                message += f" {schema_name} has no fields to sort on."
         raise RestlyConfigurationError(message + hint)
     return keys
+
+
+def _python_name_of(url_name: str, url_names: _abc.Mapping[str, str]) -> str | None:
+    """The Python name of the field that has ``url_name`` in the URL, when the
+    two names differ."""
+    return next(
+        (
+            name
+            for name, url in url_names.items()
+            if url == url_name and name != url_name
+        ),
+        None,
+    )
+
+
+def _names(names: _abc.Iterable[str], url_names: _abc.Mapping[str, str]) -> str:
+    """Fields for a message, each with its name in the URL when that differs,
+    such as ``id, created_at (createdAt in the URL)``."""
+    return ", ".join(_name(name, url_names) for name in names)
+
+
+def _name(name: str, url_names: _abc.Mapping[str, str]) -> str:
+    url_name = url_names.get(name, name)
+    return name if url_name == name else f"{name} ({url_name} in the URL)"
+
+
+def _quoted_name(name: str, url_names: _abc.Mapping[str, str]) -> str:
+    """A field for a message, as :func:`_name`, with quotes: ``'created_at'
+    (createdAt in the URL)``."""
+    return repr(name) + _name(name, url_names).removeprefix(name)
+
+
+def _check_url_names(
+    label: str,
+    entries: tuple[str, ...],
+    url_keys: _abc.Mapping[str, str],
+    url_names: _abc.Mapping[str, str],
+    *,
+    whole_fields: bool = False,
+) -> None:
+    """Raise for an entry that matches a key only by its name in the URL.
+
+    The key settings take Python names. Such an entry would leave the keys
+    on, or off, without a sign, so this check runs also for a setting that a
+    view inherits.
+
+    :param url_keys: Each key in Python names, with the key in the URL.
+    :param whole_fields: A bare name stands for the whole field, as in
+        ``exclude_filters``; see :func:`_whole_fields`.
+    """
+    for entry in entries:
+        patterns = _whole_fields((entry,)) if whole_fields else (entry,)
+        regexes = [_pattern_regex(pattern) for pattern in patterns]
+        if any(regex.fullmatch(key) for regex in regexes for key in url_keys):
+            continue
+        matched = next(
+            (
+                (key, url_key)
+                for key, url_key in url_keys.items()
+                if any(regex.fullmatch(url_key) for regex in regexes)
+            ),
+            None,
+        )
+        if matched is None:
+            continue
+        key, url_key = matched
+        field, _ = _split_key(entry)
+        python_name = _python_name_of(field, url_names)
+        if "*" not in entry and python_name is not None:
+            raise RestlyConfigurationError(
+                f"{label}: {entry!r} is the name in the URL. The key settings "
+                "take the Python name of a field, so write "
+                f"{python_name + entry.removeprefix(field)!r}."
+            )
+        raise RestlyConfigurationError(
+            f"{label}: {entry!r} matches only names in the URL, such as "
+            f"{url_key!r}. The key settings take the Python names of the "
+            f"fields, such as {key!r}."
+        )
 
 
 def _split_key(key: str) -> tuple[str, str]:
@@ -759,14 +897,16 @@ def _check_own_key(
     key: str,
     fields: dict[str, Any],
     reserved: _abc.Set[str],
-    keys_of_field: dict[str, list[str]],
+    url_names: _abc.Mapping[str, str],
+    python_keys: _abc.Mapping[str, str],
     schema_name: str,
 ) -> None:
     """Reject an own filter key that the list params already have, or that
-    does not read as the generated keys do.
+    does not read as the generated keys do. An own key is a key in the URL.
 
-    :param keys_of_field: The generated filter keys of each field, also the
-        keys that are off.
+    :param url_names: The name in the URL of each field with a column.
+    :param python_keys: Each generated filter key in the URL, also the keys
+        that are off, with the key in Python names, for the messages.
 
     :raises RestlyConfigurationError: the key is a page parameter or the
         sort parameter, or a generated filter key that is on, or it has
@@ -780,7 +920,7 @@ def _check_own_key(
     # ``__`` splits a field from an operator, and ``.`` walks to a related
     # field, in every key
     field, _ = _split_key(key)
-    if ("__" in key or "." in key) and field not in keys_of_field:
+    if ("__" in key or "." in key) and field not in url_names.values():
         what = (
             f"the key {key!r} starts with {field!r}, which is"
             if field != key
@@ -791,20 +931,22 @@ def _check_own_key(
             "with '__' or '.' starts with a field, as the generated keys do. Or "
             "choose a key without '__' and '.'."
         )
-        if keys_of_field:
-            message += f" The fields with filters are: {', '.join(keys_of_field)}."
+        if url_names:
+            message += f" The fields with filters are: {', '.join(url_names.values())}."
         else:
             message += f" {schema_name} has no fields with filters."
         raise RestlyConfigurationError(message)
     if key in fields:
+        python_key = python_keys.get(key, key)
         message = (
             f"{label}: the key {key!r} is also a generated filter key. To "
-            f"replace it, leave it out with exclude_filters = ({key!r},)."
+            f"replace it, leave it out with exclude_filters = ({python_key!r},)."
         )
         if "__" not in key:
             message += (
-                f" That also removes {key}__in and the other keys of the field. "
-                "To keep them, list the keys you want in include_filters instead."
+                f" That also removes {python_key}__in and the other keys of the "
+                "field. To keep them, list the keys you want in include_filters "
+                "instead."
             )
         raise RestlyConfigurationError(message)
 
@@ -1080,6 +1222,7 @@ def _check_filter_entries(
     label: str,
     entries: tuple[str, ...],
     keys_of_field: dict[str, list[str]],
+    url_names: _abc.Mapping[str, str],
     schema_name: str,
     *,
     whole_fields: bool = False,
@@ -1089,6 +1232,8 @@ def _check_filter_entries(
     The message lists the keys of the field that the entry names, or the
     fields that have filters.
 
+    :param keys_of_field: The filter keys of each field, in Python names.
+    :param url_names: The name in the URL of each field with a column.
     :param whole_fields: A bare name stands for the whole field, as in
         ``exclude_filters``; see :func:`_whole_fields`.
     """
@@ -1105,10 +1250,11 @@ def _check_filter_entries(
         field, suffix = _split_key(entry)
         if "*" not in field and field in keys_of_field:
             field_keys = ", ".join(keys_of_field[field])
+            named = _quoted_name(field, url_names)
             if field_keys:
-                message += f" The filter keys of {field!r} are: {field_keys}."
+                message += f" The filter keys of {named} are: {field_keys}."
             else:
-                message += f" {field!r} has no filter keys."
+                message += f" {named} has no filter keys."
             if keys_of_field[field] in ([], [f"{field}__isnull"]):
                 message += f" {_ISNULL_ONLY_HINT}"
                 if not keys_of_field[field]:
@@ -1117,16 +1263,26 @@ def _check_filter_entries(
                 message += f" {_SUFFIX_HINTS[suffix]}"
         elif "*" not in entry:
             if keys_of_field:
-                message += f" The fields with filters are: {', '.join(keys_of_field)}."
+                message += (
+                    f" The fields with filters are: {_names(keys_of_field, url_names)}."
+                )
             else:
                 message += f" {schema_name} has no fields with filters."
         raise RestlyConfigurationError(message)
 
 
 def _check_sort_entries(
-    label: str, entries: tuple[str, ...], sort_keys: list[str], schema_name: str
+    label: str,
+    entries: tuple[str, ...],
+    sort_keys: _abc.Collection[str],
+    url_names: _abc.Mapping[str, str],
+    schema_name: str,
 ) -> None:
-    """Raise for the first entry that matches no sort key."""
+    """Raise for the first entry that matches no sort key.
+
+    :param sort_keys: Every sort key, in Python names.
+    :param url_names: The name in the URL of each field with a column.
+    """
     for entry in entries:
         if any(_pattern_regex(entry).fullmatch(key) for key in sort_keys):
             continue
@@ -1134,7 +1290,7 @@ def _check_sort_entries(
         if "__" in entry:
             message += " A sort key has no suffix."
         if sort_keys:
-            message += f" The sort keys are: {', '.join(sort_keys)}."
+            message += f" The sort keys are: {_names(sort_keys, url_names)}."
         else:
             message += f" {schema_name} has no sort keys."
         raise RestlyConfigurationError(message)
@@ -1542,8 +1698,12 @@ def _written_name(schema_cls: _SchemaClass) -> str:
 def _iter_fields_including_nested(
     schema_cls: _SchemaClass,
     prefix: str = "",
+    python_prefix: str = "",
     _followed: frozenset[_SchemaClass] = frozenset(),
-) -> Iterator[tuple[str, FieldInfo]]:
+) -> Iterator[tuple[str, str, FieldInfo]]:
+    """Each field that can have keys, with its path in the URL and its path
+    in Python names, such as ``("vendor.createdAt", "vendor.created_at",
+    field)``."""
     for name, field in schema_cls.model_fields.items():
         # A field whose value a response never shows, such as a WriteOnly
         # field or a SecretStr, is never a filter or sort key.
@@ -1556,6 +1716,7 @@ def _iter_fields_including_nested(
         if "__" in public_name or "." in public_name:
             continue
         full_name = f"{prefix}.{public_name}" if prefix else public_name
+        python_name = f"{python_prefix}.{name}" if python_prefix else name
         nested = _get_nested_schema(field)
         if nested and not _is_idref_field(field):
             # Follow each nested schema once in a path. A schema that names
@@ -1563,10 +1724,10 @@ def _iter_fields_including_nested(
             # ``parent.name`` but not ``parent.parent.name``, and the walk ends.
             if nested not in _followed:
                 yield from _iter_fields_including_nested(
-                    nested, full_name, _followed | {nested}
+                    nested, full_name, python_name, _followed | {nested}
                 )
         else:
-            yield full_name, field
+            yield full_name, python_name, field
 
 
 def _resolve_field_name(schema_cls: _SchemaClass, public_name: str) -> str | None:

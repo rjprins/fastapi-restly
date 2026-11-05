@@ -196,6 +196,14 @@ miss it.
 34. Generated list params now forbid a key that they do not have. In a route outside
     a view, with `Annotated[ListParams, Query()]`, an unknown key now gets `422`. A
     view still follows `unknown_query_params`.
+35. The key settings now take the Python names of the fields: `include_filters`,
+    `exclude_filters`, `include_sort_keys`, `exclude_sort_keys` and `default_sort`,
+    on a view and in `derive_list_params_schema`. Before, an entry was the key in
+    the URL, so it used the alias of a field with one. Such an entry now fails when
+    the view registers, also when the view inherits it, and the message gives the
+    Python name. Write `created_at` for a field with the alias `createdAt`, also in
+    each part of a dotted key. The URL does not change, and neither does the key of
+    `fr.list_filter`.
 
 ### Added
 
