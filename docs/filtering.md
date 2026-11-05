@@ -962,8 +962,10 @@ filter adds the key.
 :class: details
 
 A public name with `.` or `__` gets no filter and no sort key, because `__` splits
-a field from an operator, and `.` walks to a related field. The field still goes
-out in a response, and the view starts. A setting that names such a key fails,
+a field from an operator, and `.` walks to a related field. A public name that
+starts with `_`, such as `_id`, gets none either, because Pydantic takes such a
+name as a private attribute. The field still goes out in a response, and the view
+starts. A setting that names such a key fails,
 because it matches no key.
 :::
 

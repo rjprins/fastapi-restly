@@ -225,10 +225,12 @@ class TestDeriveSchemaListParams:
         fields = derive_list_params_schema(SortFieldSchema, WidgetModel).model_fields
         assert "sort__in" not in fields
 
-    @pytest.mark.parametrize("alias", ["na__me", "na.me"])
+    @pytest.mark.parametrize("alias", ["na__me", "na.me", "_name"])
     def test_a_name_that_a_key_cannot_hold_gets_no_keys(self, alias):
         """``__`` splits a field from an operator and ``.`` walks to a related
-        field, so a key cannot hold such a name. The schema still works."""
+        field, so a key cannot hold such a name. Pydantic takes a name that
+        starts with ``_`` as a private attribute, so the list params cannot
+        hold it either. The schema still works."""
 
         class StrangeAliasSchema(pydantic.BaseModel):
             id: int
@@ -236,7 +238,7 @@ class TestDeriveSchemaListParams:
 
         schema = derive_list_params_schema(StrangeAliasSchema, WidgetModel)
 
-        assert not [key for key in schema.model_fields if key.startswith("na")]
+        assert not [key for key in schema.model_fields if "na" in key]
         assert "id__in" in schema.model_fields
         with pytest.raises(pydantic.ValidationError):
             schema.model_validate({"sort": alias})

@@ -1771,9 +1771,11 @@ def _iter_fields_including_nested(
             continue
         public_name = _public_name(name, field)
         # ``__`` splits a field from an operator, and ``.`` walks to a related
-        # field, so a name that holds either cannot be read from a key. Such a
-        # field gets no keys, and the view still starts.
-        if "__" in public_name or "." in public_name:
+        # field, so a name that holds either cannot be read from a key. Pydantic
+        # takes a name that starts with ``_`` as a private attribute, so the list
+        # params cannot hold a field for it. Such a field gets no keys, and the
+        # view still starts.
+        if "__" in public_name or "." in public_name or public_name.startswith("_"):
             continue
         full_name = f"{prefix}.{public_name}" if prefix else public_name
         python_name = f"{python_prefix}.{name}" if python_prefix else name
