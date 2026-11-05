@@ -215,6 +215,13 @@ miss it.
     `__in` or `__not_in` cannot hold `None` either, so `?note__not_in=x,` gets
     `422` too. `FilterKey.parse()` refuses such a value with `400`. A `None` that
     your code puts in the list params is still no filter.
+37. Silent: a dict that you pass as list params, such as
+    `view.get_many({"id__in": allowed_ids})`, now keeps its values as values. An
+    empty list on `__in` now matches no rows, where it matched every row, and on
+    `__not_in` it keeps every row. A set or a tuple now holds several values, where
+    it became one text, such as `{'a', 'b'}`. `{"note": None}` now leaves the key
+    out, where it looked for the text `None`. Check code that builds such a dict
+    from a list that can be empty.
 
 ### Added
 

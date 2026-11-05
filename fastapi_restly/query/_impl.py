@@ -1215,10 +1215,13 @@ def _search_value(value: Any) -> str | None:
     """The value of a text search: one piece of text, without spaces around
     it. An empty value is no filter.
 
-    :raises ValueError: the text holds a NUL character.
+    :raises ValueError: the value is a collection, such as a list from code,
+        or the text holds a NUL character.
     """
     if value is None:
         return None
+    if isinstance(value, (list, tuple, set, frozenset, dict)):
+        raise ValueError("A text search takes one piece of text.")
     text = str(value).strip()
     check_text(text)
     return text or None

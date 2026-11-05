@@ -1190,6 +1190,12 @@ out the keys that the route reads, such as `mode` above. Any other key gets
 such a route. A dict, as in `view.get_many({"name": "axe"})`, holds list
 params only, so a key that they do not have always gets `422`.
 
+The values of a dict stay values, so `{"id": 5}` needs no text. A list, a tuple
+or a set holds several values. An empty one matches no rows on `__in`, as
+SQLAlchemy's `in_([])` does, and keeps every row on `__not_in`. So
+`{"id__in": allowed_ids}` reads no rows when `allowed_ids` is empty. `None`
+leaves the key out.
+
 On an async view, `apply_filters` is `async def`, as `apply_list_params` is.
 A view can override it to add a condition to every list, and to every route
 that calls it. `apply_list_params` calls it first. Add the condition to the

@@ -13,6 +13,7 @@ from typing import Annotated, Any
 import pydantic
 import pytest
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
 from pydantic import Field, HttpUrl, field_validator
 from sqlalchemy import ForeignKey, String, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -624,3 +625,74 @@ def test_a_filter_key_of_your_own_caps_a_number():
 
     with pytest.raises(fr.exc.BadQueryParam, match="between -1e50 and 1e50"):
         key.parse("1e400")
+
+
+# ---------------------------------------------------------------------------
+# A mapping from code holds values, not text
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def crates(sync_db):
+    engine, make_session = sync_db
+
+    class Crate(fr.IDMixin, SharedBase):
+        label: Mapped[str]
+        note: Mapped[str | None] = mapped_column(default=None)
+
+    class CrateSchema(fr.IDSchema):
+        label: str
+        note: str | None = None
+
+    class CrateView(fr.RestView):
+        prefix = "/crates"
+        model = Crate
+        schema = CrateSchema
+
+    SharedBase.metadata.create_all(engine)
+    with make_session() as session:
+        session.add_all(
+            [Crate(label="a"), Crate(label="b", note="None"), Crate(label="c")]
+        )
+        session.flush()
+        view = CrateView()
+        view.session = session
+        yield view
+
+
+def labels(view: Any, list_params: dict[str, Any]) -> list[str]:
+    return sorted(row.label for row in view.get_many(list_params).objects)
+
+
+def test_an_empty_list_on_in_matches_no_rows(crates):
+    assert labels(crates, {"id__in": []}) == []
+    assert labels(crates, {"id__not_in": []}) == ["a", "b", "c"]
+
+
+def test_a_set_or_a_tuple_holds_several_values(crates):
+    assert labels(crates, {"label__in": {"a", "b"}}) == ["a", "b"]
+    assert labels(crates, {"label__in": ("a",)}) == ["a"]
+    assert labels(crates, {"label": ["a"]}) == ["a"]
+
+
+def test_none_leaves_the_key_out(crates):
+    # it does not look for the text "None"
+    assert labels(crates, {"note": None}) == ["a", "b", "c"]
+
+
+def test_a_value_stays_a_value(crates):
+    assert labels(crates, {"id": 1}) == ["a"]
+
+
+@pytest.mark.parametrize("key", ["label", "label__icontains", "id"])
+def test_an_empty_list_on_a_key_that_takes_one_value_fails(crates, key):
+    with pytest.raises(RequestValidationError) as exc_info:
+        crates.get_many({key: []})
+
+    (error,) = exc_info.value.errors()
+    assert error["loc"] == ("query", key)
+
+
+def test_an_unknown_key_with_none_fails(crates):
+    with pytest.raises(RequestValidationError):
+        crates.get_many({"lable": None})

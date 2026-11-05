@@ -375,7 +375,9 @@ def reject_unknown_query_keys(
         raise _unknown_keys_error(query, unknown)
 
 
-def _unknown_keys_error(query: QueryParams, keys: set[str]) -> RequestValidationError:
+def _unknown_keys_error(
+    query: Mapping[str, Any], keys: set[str]
+) -> RequestValidationError:
     """The error for unknown query keys, in the shape of FastAPI's own
     validation errors."""
     return RequestValidationError(
@@ -519,29 +521,39 @@ def _list_params_fields(params_model: type[pydantic.BaseModel]) -> _ListParamsFi
 def _validate_list_params(
     params_model: type[pydantic.BaseModel],
     fields: _ListParamsFields,
-    query: QueryParams,
+    query: QueryParams | Mapping[str, list[Any]],
     request: fastapi.Request | None = None,
 ) -> pydantic.BaseModel:
     """Validate ``params_model`` from ``query``, as FastAPI validates a
     query model. A key of another reader on the route of ``request`` does not
     reach the model, so ``extra="forbid"`` accepts it.
 
+    :param query: The query, or the values of each key, as
+        :func:`_values_by_key` gives them for a mapping.
     :raises RequestValidationError: a key that takes one value is repeated,
         or a value fails the validation of its field. The location of each
         error starts with ``"query"``.
     """
+    values_of = (
+        {key: query.getlist(key) for key in query.keys()}
+        if isinstance(query, QueryParams)
+        else query
+    )
     field_keys = {key for key, _, _ in fields}
     repeated = [
-        _repeated_key_error(key, query.getlist(key), field_keys)
+        _repeated_key_error(key, values_of[key], field_keys)
         for key, _, every_value in fields
-        if not every_value and len(query.getlist(key)) > 1
+        if not every_value and len(values_of.get(key, ())) > 1
     ]
     if repeated:
         raise RequestValidationError(repeated)
     data: dict[str, Any] = {}
     for key, field, every_value in fields:
-        if key in query:
-            data[key] = query.getlist(key) if every_value else query[key]
+        if key in values_of:
+            values = values_of[key]
+            # an empty list comes only from code; a key that takes one
+            # value refuses it
+            data[key] = values if every_value or not values else values[0]
         elif not field.is_required():
             default = field.get_default()
             if default is not None:
@@ -551,13 +563,13 @@ def _validate_list_params(
     others = (
         []
         if _record_of(params_model) is not None
-        else [key for key in query.keys() if key not in field_keys]
+        else [key for key in values_of if key not in field_keys]
     )
     if others and request is not None:
         route_keys = _route_query_keys(request)
         others = [key for key in others if key not in route_keys]
     for key in others:
-        values = query.getlist(key)
+        values = values_of[key]
         data[key] = values[0] if len(values) == 1 else values
     try:
         return params_model.model_validate(data)
@@ -592,27 +604,36 @@ def _validate_raw_list_params(
 ) -> pydantic.BaseModel:
     """Validate query parameters that a caller passes instead of list params.
 
-    The values are validated as on the list route. In a mapping, a list
-    value is a repeated key.
+    The values are validated as on the list route; see :func:`_values_by_key`
+    for a mapping.
 
     :raises RequestValidationError: a key is not a key of ``params_model``,
         or a value fails the validation of its field.
     """
     fields = _list_params_fields(params_model)
-    if isinstance(raw, QueryParams):
-        query = raw
-    else:
-        query = QueryParams(
-            [
-                (key, item)
-                for key, value in dict(raw).items()
-                for item in (value if isinstance(value, (list, tuple)) else [value])
-            ]
-        )
-    unknown = set(query.keys()) - {key for key, _, _ in fields}
+    query = raw if isinstance(raw, QueryParams) else _values_by_key(raw)
+    unknown = set(raw.keys()) - {key for key, _, _ in fields}
     if unknown:
-        raise _unknown_keys_error(query, unknown)
+        raise _unknown_keys_error(raw, unknown)
     return _validate_list_params(params_model, fields, query)
+
+
+def _values_by_key(raw: Mapping[str, Any]) -> dict[str, list[Any]]:
+    """The values of each key of a mapping from code, such as
+    ``{"id__in": allowed_ids}``.
+
+    Each value stays a value, and is not made text. A list, a tuple or a set
+    holds the values of a repeated key. An empty one stays empty: ``__in``
+    then matches no rows, ``__not_in`` every row, and a key that takes one
+    value refuses it. ``None`` leaves the key out, as for list params.
+    """
+    return {
+        key: list(value)
+        if isinstance(value, (list, tuple, set, frozenset))
+        else [value]
+        for key, value in raw.items()
+        if value is not None
+    }
 
 
 def _reads_every_value(field: FieldInfo) -> bool:
