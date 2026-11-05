@@ -391,7 +391,7 @@ async def test_a_time_out_of_range_in_utc_is_a_client_error_with_asyncpg(
         assert_status_code=422,
     )
     await restly_async_client.get(
-        "/filtered-notes", params={"due_at__gte": late}, assert_status_code=400
+        "/filtered-notes", params={"due_at__gte": late}, assert_status_code=422
     )
 
 
