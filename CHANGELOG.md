@@ -226,6 +226,9 @@ miss it.
 
 ### Fixed
 
+- `before_action_commit` no longer runs after a `session.rollback()` or a
+  `session.close()` in the write action. Before, a hook with an outside effect ran
+  for a write that was not saved.
 - The error for list params of your own without page fields now fits a list with
   its own `limit` and `offset`. Its advice was `PagedListParams`, which gives page
   numbers, or `pagination = None`. With `pagination = None`, an envelope with a

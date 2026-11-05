@@ -157,6 +157,37 @@ async def test_a_read_before_the_change_stays_outside_the_transaction(
         assert _names(env) == ["a"]
 
 
+async def test_a_rollback_in_the_action_does_not_run_the_before_hook(
+    asynchronous, tmp_path
+):
+    """The action is over at the rollback. The hook may have an outside effect,
+    so it must not run for a write that is not saved."""
+
+    async def rollback(session):
+        await call(session.rollback())
+
+    async with _tags(asynchronous, tmp_path) as env:
+        env.step = rollback
+        with pytest.raises(RuntimeError, match="commits nothing"):
+            await call(env.view.handle_create(env.schema(name="a")))
+        assert env.before_calls == []
+        assert _names(env) == []
+
+
+async def test_a_close_in_the_action_does_not_run_the_before_hook(
+    asynchronous, tmp_path
+):
+    async def close(session):
+        await call(session.close())
+
+    async with _tags(asynchronous, tmp_path) as env:
+        env.step = close
+        with pytest.raises(RuntimeError, match="commits nothing"):
+            await call(env.view.handle_create(env.schema(name="a")))
+        assert env.before_calls == []
+        assert _names(env) == []
+
+
 @pytest.mark.skipif(
     sys.version_info < (3, 12), reason="sqlite3 has autocommit from Python 3.12"
 )

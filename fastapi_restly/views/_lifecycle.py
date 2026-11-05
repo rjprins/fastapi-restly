@@ -476,6 +476,7 @@ async def _async_joined_bracket(
         try:
             with _remember_checked_references(session, checked), _change(session, obj):
                 yield bracket
+            owner.require_active()
             new = await _async_save(host, bracket.subject, written)
             await host.before_action_commit(action, new=new, old=old)
             await session.flush()
@@ -517,6 +518,7 @@ def _joined_bracket(
         try:
             with _remember_checked_references(session, checked), _change(session, obj):
                 yield bracket
+            owner.require_active()
             new = _save(host, bracket.subject, written)
             host.before_action_commit(action, new=new, old=old)
             session.flush()
