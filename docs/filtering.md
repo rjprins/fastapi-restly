@@ -106,9 +106,10 @@ Not every field gets every suffix:
 - `__isnull` exists only on a column that can be NULL, and on each dotted key,
   because a related row can be missing. On another column, it would give the
   same answer for each row.
-- A field that holds a `dict` or a `list`, such as a `JSON` or `ARRAY`
-  column, has no filter but `__isnull`. A value from the URL cannot become a
-  collection, so the other filters would fail on every request. Such a field
+- A field that holds a `dict` or a `list` has no filter but `__isnull`. This
+  covers a `JSON` or `ARRAY` column, and a `pydantic.Json[list]` or
+  `pydantic.Json[dict]` field on any column. The other filters would fail or
+  find no row on every request. Such a field
   is no sort key either: a document or a list has no order that a client
   means, and PostgreSQL's `json` type has none at all.
 - A field on a JSON column has no filter but `__isnull` too, also when it holds one

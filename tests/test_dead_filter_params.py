@@ -181,22 +181,31 @@ def test_collection_typed_fields_are_no_sort_keys():
     )
 
 
-def test_a_json_typed_field_keeps_its_filters_on_a_column_that_is_not_json():
-    """``pydantic.Json[dict]`` LOOKS like a collection field (its annotation is
-    ``dict``) but its validation parses the query string as JSON, so on a
-    column that is not JSON its filters stay. On a JSON column it has only
-    ``__isnull``, as each field on such a column has."""
+def test_a_json_typed_field_follows_the_type_inside():
+    """``pydantic.Json[int]`` parses the query value as JSON, so it keeps its
+    filters. ``Json[dict]`` and ``Json[list]`` hold no value of a column, so
+    they get only ``__isnull``, as a ``dict`` field does."""
 
     class RowSchema(fr.BaseSchema):
-        name: pydantic.Json[dict]
-        jmeta: pydantic.Json[dict] | None = None
+        name: pydantic.Json[int]
+        meta: pydantic.Json[dict] | None = None
+        tags: pydantic.Json[list[int]] | None = None
 
     fields = derive_list_params_schema(RowSchema, JsonColumnRow).model_fields
 
-    for alive in ("name", "name__in", "name__ne", "jmeta__isnull"):
+    for alive in ("name", "name__in", "name__ne", "meta__isnull", "tags__isnull"):
         assert alive in fields, alive
-    for dead in ("jmeta", "jmeta__in", "jmeta__ne"):
+    for dead in ("meta", "meta__in", "meta__ne", "tags", "tags__in", "tags__ne"):
         assert dead not in fields, dead
+
+
+def test_a_json_dict_field_on_a_text_column_gets_no_value_keys():
+    class RowSchema(fr.BaseSchema):
+        name: pydantic.Json[dict]
+
+    fields = derive_list_params_schema(RowSchema, JsonColumnRow).model_fields
+
+    assert not [key for key in fields if key.startswith("name")]
 
 
 @pytest.mark.parametrize(

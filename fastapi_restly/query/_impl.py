@@ -385,18 +385,13 @@ def _supports_scalar_operators(field: FieldInfo) -> bool:
     principle applied to non-column fields.
 
     The check mirrors what the request path's ``_value_parser`` (full Pydantic
-    field validation) will accept. A ``pydantic.Json[...]`` field counts as
-    scalar: its validation parses the query string as JSON, so its filters
-    work. ``str``/``bytes`` are collections in the abc sense but coerce fine,
-    so they stay scalar.
+    field validation) will accept. A ``pydantic.Json[...]`` field follows the
+    type inside: ``Json[int]`` is scalar, and ``Json[list]`` and
+    ``Json[dict]`` are not, because a list or a dict is no value of a column.
+    ``str``/``bytes`` are collections in the abc sense but coerce fine, so
+    they stay scalar.
     """
-    annotation, metadata = _unwrap_type(field.annotation)
-    metadata = [*field.metadata, *metadata]
-    # ``pydantic.Json`` is a real class at runtime; the type stubs model it as
-    # an ``Annotated`` factory, hence the cast.
-    json_marker = cast(type, pydantic.Json)
-    if any(isinstance(item, json_marker) for item in metadata):
-        return True
+    annotation, _ = _unwrap_type(field.annotation)
     origin = get_origin(annotation) or annotation
     # a flag, such as an IntFlag, is a Collection on Python 3.11+ because it
     # can hold several flags, but a value from the URL is one flag value

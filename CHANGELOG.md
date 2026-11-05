@@ -342,6 +342,9 @@ miss it.
   on a create, in a filter, or both, and which ones depended on the database. A
   `datetime` in a filter on SQLite found no rows. A URL that is too long for
   `String(n)` is now `422`.
+- A `pydantic.Json[list]` or `pydantic.Json[dict]` field has only `__isnull`, as a
+  `list` or `dict` field has. Before, it had the filters for one value on a text
+  column, and each request with them gave `400`, `500`, or no rows.
 - The error for list params of your own without page fields now fits a list with
   its own `limit` and `offset`. Its advice was `PagedListParams`, which gives page
   numbers, or `pagination = None`. With `pagination = None`, an envelope with a
