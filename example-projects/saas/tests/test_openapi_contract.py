@@ -96,10 +96,10 @@ def test_each_resource_has_one_type_in_openapi(restly_app: FastAPI) -> None:
     ("path", "method", "status", "name"),
     [
         ("/tasks/trash", "get", "200", "TaskListResponse"),
-        ("/tasks/{task_id}/restore", "post", "201", "TaskResponse"),
-        ("/tasks/{task_id}/start", "post", "201", "TaskResponse"),
+        ("/tasks/{id}/restore", "post", "201", "TaskResponse"),
+        ("/tasks/{id}/start", "post", "201", "TaskResponse"),
         ("/projects/trash", "get", "200", "ProjectListResponse"),
-        ("/projects/{project_id}/restore", "post", "201", "ProjectResponse"),
+        ("/projects/{id}/restore", "post", "201", "ProjectResponse"),
         ("/projects/by-slug/{slug}", "get", "200", "ProjectResponse"),
         ("/organizations", "post", "201", "OrganizationResponse"),
         ("/users/me", "get", "200", "UserResponse"),

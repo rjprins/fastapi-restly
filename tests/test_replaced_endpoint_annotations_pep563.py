@@ -134,7 +134,36 @@ def test_string_markers_on_replaced_endpoint_get_the_schema_types(
     assert response.json() == {"id": created["id"], "name": "Desk", "price": 1.0}
     client.patch("/products/abc", json={"name": "Desk"}, assert_status_code=404)
 
-    operation = client.app.openapi()["paths"]["/products/{product_id}"]["patch"]
+    operation = client.app.openapi()["paths"]["/products/{id}"]["patch"]
     assert "requestBody" in operation
     response_schema = operation["responses"]["200"]["content"]["application/json"]
     assert response_schema["schema"]["$ref"].endswith("/ProductResponse")
+
+
+@pytest.mark.parametrize("asynchronous", [False, True], ids=["sync", "async"])
+def test_a_marker_in_quotes_works_as_one_without_quotes(request, asynchronous):
+    client, make_tables = _client_and_tables(request, asynchronous)
+
+    class Product(fr.IDMixin, SharedBase):
+        name: Mapped[str]
+        price: Mapped[float]
+
+    base: Any = fr.AsyncRestView if asynchronous else fr.RestView
+
+    class ProductView(base):
+        prefix = "/products"
+        model = Product
+        schema = ProductSchema
+
+        @fr.get("/{id}/quoted")
+        def quoted(self, id: "fr.views.IDType") -> dict[str, Any]:  # noqa: UP037
+            return {"id": id}
+
+    fr.include_view(client.app, ProductView)
+    make_tables()
+
+    assert client.get("/products/5/quoted").json() == {"id": 5}
+    operation = client.app.openapi()["paths"]["/products/{id}/quoted"]["get"]
+    parameter = operation["parameters"][0]
+    assert parameter["name"] == "id"
+    assert parameter["schema"]["type"] == "integer"

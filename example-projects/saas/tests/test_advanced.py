@@ -7,7 +7,7 @@ class TestReportingEndpoints:
     """Test reporting/stats endpoints."""
 
     def test_project_stats(self, client):
-        """Test GET /projects/{project_id}/stats returns correct counts."""
+        """Test GET /projects/{id}/stats returns correct counts."""
         # Create project
         response = client.post("/projects", json={"name": "Stats Project"})
         project_id = response.json()["id"]

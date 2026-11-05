@@ -58,11 +58,11 @@ def test_openapi_shows_only_the_generated_names():
         "UserListResponse",
     }
     assert _ref(app, "/users", "get") == "UserListResponse"
-    assert _ref(app, "/users/{user_id}", "get") == "UserResponse"
+    assert _ref(app, "/users/{id}", "get") == "UserResponse"
     assert _ref(app, "/users", "post", "201") == "UserResponse"
-    assert _ref(app, "/users/{user_id}", "patch") == "UserResponse"
+    assert _ref(app, "/users/{id}", "patch") == "UserResponse"
     assert _body_ref(app, "/users", "post") == "UserCreate"
-    assert _body_ref(app, "/users/{user_id}", "patch") == "UserUpdate"
+    assert _body_ref(app, "/users/{id}", "patch") == "UserUpdate"
     assert UserView.list_params_schema.__name__ == "UserListParams"
 
 
@@ -135,7 +135,7 @@ def test_the_response_class_is_built_without_write_only_fields_too():
 
     app = fastapi.FastAPI()
     fr.include_view(app, NoteView)
-    assert _ref(app, "/notes/{note_id}", "get") == "NoteResponse"
+    assert _ref(app, "/notes/{id}", "get") == "NoteResponse"
     assert "NoteSchema" not in _components(app)
 
 
@@ -154,7 +154,7 @@ def test_react_admin_put_returns_the_response_class():
         model = Tag
         schema = TagSchema
 
-    assert _ref(app, "/tags/{tag_id}", "put") == "TagResponse"
+    assert _ref(app, "/tags/{id}", "put") == "TagResponse"
     assert "TagSchema" not in _components(app)
 
 

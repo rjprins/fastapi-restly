@@ -99,10 +99,10 @@ def test_a_route_documents_404_where_a_row_can_be_missing(Gadget):
             return {}
 
     assert _with_404(GadgetView) == {
-        ("/gadgets/{gadget_id}", "get"),
-        ("/gadgets/{gadget_id}", "patch"),
-        ("/gadgets/{gadget_id}", "delete"),
-        ("/gadgets/{gadget_id}/archive", "post"),
+        ("/gadgets/{id}", "get"),
+        ("/gadgets/{id}", "patch"),
+        ("/gadgets/{id}", "delete"),
+        ("/gadgets/{id}/archive", "post"),
     }
 
 
@@ -295,7 +295,7 @@ def test_a_route_response_can_hold_a_marker_next_to_a_removed_status(Gadget):
 
     app = FastAPI()
     fr.include_view(app, GadgetView)
-    operation = app.openapi()["paths"]["/gadgets/{gadget_id}"]["get"]
+    operation = app.openapi()["paths"]["/gadgets/{id}"]["get"]
     assert "404" not in operation["responses"]
     assert "application/json" in operation["responses"]["409"]["content"]
 
@@ -328,7 +328,7 @@ def test_delete_answers_the_status_of_its_route(make_client, view_base):
     created = client.post("/gadgets", json={"name": "a"}).json()
 
     spec = client.get("/openapi.json").json()
-    assert "200" in spec["paths"]["/gadgets/{gadget_id}"]["delete"]["responses"]
+    assert "200" in spec["paths"]["/gadgets/{id}"]["delete"]["responses"]
     response = client.delete(f"/gadgets/{created['id']}")
     assert response.status_code == 200
     client.get(f"/gadgets/{created['id']}", assert_status_code=404)
@@ -363,9 +363,9 @@ def test_modify_route_with_a_status_without_a_body_drops_the_response_model(
     client = make_client(update_endpoint=fr.modify_route(status_code=204))
     created = client.post("/gadgets", json={"name": "a"}).json()
 
-    responses = client.get("/openapi.json").json()["paths"]["/gadgets/{gadget_id}"][
-        "patch"
-    ]["responses"]
+    responses = client.get("/openapi.json").json()["paths"]["/gadgets/{id}"]["patch"][
+        "responses"
+    ]
     assert "content" not in responses["204"]
     response = client.patch(f"/gadgets/{created['id']}", json={"name": "b"})
     assert response.status_code == 204
@@ -382,9 +382,9 @@ def test_modify_route_with_a_status_with_a_body_brings_the_response_model_back(
     client = make_client(NoBody, update_endpoint=fr.modify_route(status_code=200))
     created = client.post("/gadgets", json={"name": "a"}).json()
 
-    responses = client.get("/openapi.json").json()["paths"]["/gadgets/{gadget_id}"][
-        "patch"
-    ]["responses"]
+    responses = client.get("/openapi.json").json()["paths"]["/gadgets/{id}"]["patch"][
+        "responses"
+    ]
     assert "$ref" in responses["200"]["content"]["application/json"]["schema"]
     response = client.patch(f"/gadgets/{created['id']}", json={"name": "b"})
     assert response.status_code == 200
@@ -402,9 +402,7 @@ def test_modify_route_keeps_a_status_without_a_body_down_the_classes(
 
     client = make_client(Plain, update_endpoint=fr.modify_route(summary="Change it"))
 
-    operation = client.get("/openapi.json").json()["paths"]["/gadgets/{gadget_id}"][
-        "patch"
-    ]
+    operation = client.get("/openapi.json").json()["paths"]["/gadgets/{id}"]["patch"]
     assert operation["summary"] == "Change it"
     assert "content" not in operation["responses"]["204"]
 
@@ -436,7 +434,7 @@ def test_modify_route_on_delete_answers_the_new_status(make_client):
     created = client.post("/gadgets", json={"name": "a"}).json()
 
     spec = client.get("/openapi.json").json()
-    assert "200" in spec["paths"]["/gadgets/{gadget_id}"]["delete"]["responses"]
+    assert "200" in spec["paths"]["/gadgets/{id}"]["delete"]["responses"]
     assert client.delete(f"/gadgets/{created['id']}").status_code == 200
 
 
@@ -512,8 +510,8 @@ def test_modify_route_adds_responses_per_status_code(Gadget):
 
     statuses = _statuses(GadgetView)
     assert statuses["/gadgets", "post"] == {"201", "402", "409", "422"}
-    assert "404" not in statuses["/gadgets/{gadget_id}", "get"]
-    assert "404" in statuses["/gadgets/{gadget_id}", "patch"]
+    assert "404" not in statuses["/gadgets/{id}", "get"]
+    assert "404" in statuses["/gadgets/{id}", "patch"]
 
 
 @pytest.mark.parametrize(
@@ -774,103 +772,18 @@ def _path_parameter_of(client: RestlyTestClient, path: str, method: str) -> Any:
     return parameter
 
 
-def test_the_id_parameter_takes_its_name_from_the_model(make_client):
-    client = make_client()
-
-    parameter = _path_parameter_of(client, "/gadgets/{gadget_id}", "get")
-    assert parameter["name"] == "gadget_id"
-    assert parameter["schema"]["title"] == "Gadget Id"
-    assert str(client.app.url_path_for("get_one", gadget_id=1)) == "/gadgets/1"
-    created = client.post("/gadgets", json={"name": "a"}).json()
-    assert client.get(f"/gadgets/{created['id']}").json() == created
-    assert (
-        client.patch(f"/gadgets/{created['id']}", json={"name": "b"}).json()["name"]
-        == "b"
-    )
-    client.delete(f"/gadgets/{created['id']}")
-    # the converter of the id type stays
-    client.get("/gadgets/abc", assert_status_code=404)
-
-
-def test_the_id_parameter_leaves_out_a_final_model_of_the_class_name(view_base):
-    class GadgetModel(fr.IDMixin, SharedBase):
-        name: Mapped[str]
-
-    class HTTPServer(fr.IDMixin, SharedBase):
-        name: Mapped[str]
-
-    class Model(fr.IDMixin, SharedBase):
-        name: Mapped[str]
-
-    for model, name in (
-        (GadgetModel, "gadget_id"),
-        (HTTPServer, "http_server_id"),
-        (Model, "model_id"),
-    ):
-
-        class ModelView(view_base):
-            prefix = "/things"
-
-        ModelView.model = model
-        app = FastAPI()
-        fr.include_view(app, ModelView)
-        assert f"/things/{{{name}}}" in app.openapi()["paths"]
-
-
-def test_id_param_without_a_converter_leaves_the_validation_to_fastapi(make_client):
-    client = make_client(id_param="item_id")
-
-    assert _path_parameter_of(client, "/gadgets/{item_id}", "get")["name"] == "item_id"
-    response = client.get("/gadgets/abc", assert_status_code=422)
-    assert response.json()["detail"][0]["loc"] == ["path", "item_id"]
-    created = client.post("/gadgets", json={"name": "a"}).json()
-    assert client.get(f"/gadgets/{created['id']}").json() == created
-
-
-def test_id_param_with_a_converter_answers_404_for_a_wrong_value(make_client):
-    client = make_client(id_param="item_id:int")
-
-    assert "/gadgets/{item_id:int}" in _route_paths_of(client)
-    client.get("/gadgets/abc", assert_status_code=404)
-
-
-def test_id_param_can_keep_the_name_id(make_client):
-    client = make_client(id_param="id:int")
-
-    assert "/gadgets/{id:int}" in _route_paths_of(client)
-    assert _path_parameter_of(client, "/gadgets/{id}", "get")["name"] == "id"
-    assert str(client.app.url_path_for("get_one", id=1)) == "/gadgets/1"
-
-
-def test_id_param_with_another_lookup(make_client, Gadget):
-    client = make_client(
-        id_param="slug", id_type=str, where_id=lambda self, id: Gadget.name == id
-    )
+def test_an_id_type_with_metadata_that_cannot_be_hashed_works(make_client):
+    client = make_client(id_type=Annotated[int, {"unit": "row"}])
 
     created = client.post("/gadgets", json={"name": "lamp"}).json()
-    assert _path_parameter_of(client, "/gadgets/{slug}", "get")["schema"]["type"] == (
-        "string"
-    )
-    assert client.get("/gadgets/lamp").json() == created
-    client.get("/gadgets/desk", assert_status_code=404)
+    assert client.get(f"/gadgets/{created['id']}").json() == created
+    assert _path_parameter_of(client, "/gadgets/{id}", "get")["name"] == "id"
 
 
-@pytest.mark.parametrize(
-    "written", ["{gadget_id}", "gadget-id", "gadget_id:", ":int", "a:b:c", ""]
-)
-def test_id_param_rejects_what_cannot_go_between_the_braces(make_client, written):
-    with pytest.raises(RestlyConfigurationError, match="id_param is"):
-        make_client(id_param=written)
-
-
-def test_a_custom_route_with_id_type_follows_the_id_parameter(make_client):
+def test_a_custom_route_with_id_type_gets_the_converter(make_client):
     class Routes:
         @fr.post("/{id}/publish")
         def publish(self, id: IDType) -> dict[str, Any]:
-            return {"id": id}
-
-        @fr.post("/{gadget_id}/spelled")
-        def spelled(self, id: IDType) -> dict[str, Any]:
             return {"id": id}
 
         @fr.post("/{id:str}/own-converter")
@@ -888,20 +801,142 @@ def test_a_custom_route_with_id_type_follows_the_id_parameter(make_client):
     client = make_client(Routes)
 
     assert {
-        "/gadgets/{gadget_id:int}/publish",
-        "/gadgets/{gadget_id:int}/spelled",
-        "/gadgets/{gadget_id:str}/own-converter",
-        "/gadgets/{gadget_id:int}/merge/{other_id:int}",
+        "/gadgets/{id:int}/publish",
+        "/gadgets/{id:str}/own-converter",
+        "/gadgets/{id:int}/merge/{other_id:int}",
         "/gadgets/{id}/as-written",
     } <= _route_paths_of(client)
     assert client.post("/gadgets/7/publish").json() == {"id": 7}
-    assert client.post("/gadgets/7/spelled").json() == {"id": 7}
     assert client.post("/gadgets/7/merge/8").json() == {"id": 7, "other_id": 8}
     assert client.post("/gadgets/7/as-written").json() == {"id": 7}
     client.post("/gadgets/abc/publish", assert_status_code=404)
+    client.post("/gadgets/abc/as-written", assert_status_code=422)
 
 
-def test_the_id_parameter_keeps_a_path_that_the_route_wrote(make_client):
+def _get_one_on_id(annotation: Any = int) -> Any:
+    @fr.get("/{id}")
+    def get_one_endpoint(self, id: annotation) -> dict[str, Any]:  # type: ignore[valid-type]
+        return {"id": id}
+
+    return get_one_endpoint
+
+
+def _get_one_on_gadget_id(**route_kwargs: Any) -> Any:
+    @fr.get("/{gadget_id}", **route_kwargs)
+    def get_one_endpoint(self, gadget_id: int) -> dict[str, Any]:
+        return {"id": gadget_id}
+
+    return get_one_endpoint
+
+
+def test_a_written_name_next_to_the_generated_id_is_refused(make_client):
+    with pytest.raises(RestlyConfigurationError) as caught:
+        make_client(get_one_endpoint=_get_one_on_gadget_id())
+
+    message = str(caught.value)
+    assert "differ only in the names of their parameters" in message
+    assert "/gadgets/{gadget_id} (GET get_one)" in message
+    assert "/gadgets/{id} (PATCH update)" in message
+
+
+def test_two_written_names_are_refused_as_openapi_says(make_client):
+    class Routes:
+        @fr.get("/{first}/report")
+        def read_report(self, first: int) -> dict[str, Any]:
+            return {}
+
+        @fr.post("/{second}/report")
+        def write_report(self, second: int) -> dict[str, Any]:
+            return {}
+
+    with pytest.raises(RestlyConfigurationError, match="differ only in the names"):
+        make_client(Routes)
+
+
+@pytest.mark.parametrize(
+    "attrs",
+    [
+        lambda: {"get_one_endpoint": _get_one_on_id(IDType)},
+        lambda: {"get_one_endpoint": _get_one_on_id()},
+        lambda: {
+            "get_one_endpoint": _get_one_on_gadget_id(),
+            "exclude_routes": (fr.ViewRoute.UPDATE, fr.ViewRoute.DELETE),
+        },
+    ],
+    ids=["id-type", "id-as-written", "no-other-route"],
+)
+def test_one_name_for_an_item_path_is_allowed(make_client, attrs):
+    client = make_client(**attrs())
+
+    item_paths = [path for path in client.app.openapi()["paths"] if "{" in path]
+    assert len(item_paths) == 1
+
+
+def test_a_route_that_the_spec_leaves_out_may_have_another_name(make_client):
+    client = make_client(
+        get_one_endpoint=_get_one_on_gadget_id(include_in_schema=False)
+    )
+
+    assert set(client.app.openapi()["paths"]) == {"/gadgets", "/gadgets/{id}"}
+    assert client.get("/gadgets/7").json() == {"id": 7}
+
+
+def test_a_plain_view_may_have_two_names(Gadget):
+    class Routes(fr.View):
+        prefix = "/plain"
+
+        @fr.get("/{first}")
+        def read(self, first: int) -> dict[str, Any]:
+            return {}
+
+        @fr.post("/{second}")
+        def write(self, second: int) -> dict[str, Any]:
+            return {}
+
+    app = FastAPI()
+    fr.include_view(app, Routes)
+
+    assert set(app.openapi()["paths"]) == {"/plain/{first}", "/plain/{second}"}
+
+
+def test_modify_route_with_a_path_keeps_the_converter(make_client):
+    client = make_client(get_one_endpoint=fr.modify_route(path="/by-id/{id}"))
+
+    assert "/gadgets/by-id/{id:int}" in _route_paths_of(client)
+    created = client.post("/gadgets", json={"name": "a"}).json()
+    assert client.get(f"/gadgets/by-id/{created['id']}").json() == created
+
+
+def _spec_parameter(client, path: str, method: str, name: str) -> dict[str, Any]:
+    operation = client.app.openapi()["paths"][path][method]
+    return next(p for p in operation["parameters"] if p["name"] == name)
+
+
+def test_an_id_type_in_a_type_alias_inside_annotated_gets_the_converter(
+    view_base, Gadget
+):
+    from typing_extensions import TypeAliasType
+
+    MyId = TypeAliasType("MyId", IDType)
+
+    class GadgetView(view_base):
+        prefix = "/gadgets"
+        model = Gadget
+        schema = GadgetSchema
+
+        @fr.get("/{id}/aliased")
+        def aliased(self, id: Annotated[MyId, Path(ge=1)]) -> dict[str, int]:
+            return {"id": id}
+
+    app = FastAPI()
+    fr.include_view(app, GadgetView)
+    client = RestlyTestClient(app)
+
+    assert "/gadgets/{id:int}/aliased" in _route_paths_of(client)
+    assert client.get("/gadgets/4/aliased").json() == {"id": 4}
+
+
+def test_a_path_on_the_id_keeps_its_arguments(make_client):
     class Routes:
         @fr.get("/{id}/annotated")
         def annotated(
@@ -918,117 +953,17 @@ def test_the_id_parameter_keeps_a_path_that_the_route_wrote(make_client):
     client = make_client(Routes)
 
     for route in ("annotated", "default"):
-        path = f"/gadgets/{{gadget_id}}/{route}"
+        path = f"/gadgets/{{id}}/{route}"
         parameter = _path_parameter_of(client, path, "get")
-        assert parameter["name"] == "gadget_id"
+        assert parameter["name"] == "id"
         assert parameter["description"] == "The id"
         assert parameter["schema"]["minimum"] == 5
         assert client.get(f"/gadgets/7/{route}").json() == {"id": 7}
         response = client.get(f"/gadgets/1/{route}", assert_status_code=422)
-        assert response.json()["detail"][0]["loc"] == ["path", "gadget_id"]
+        assert response.json()["detail"][0]["loc"] == ["path", "id"]
 
 
-def test_each_view_gets_its_own_id_parameter_on_a_shared_route(
-    view_base, Gadget, Owner
-):
-    class Routes(view_base):
-        @fr.get("/{id}/annotated")
-        def annotated(self, id: Annotated[IDType, Path(ge=5)]) -> dict[str, Any]:
-            return {"id": id}
-
-    class GadgetView(Routes):
-        prefix = "/gadgets"
-        model = Gadget
-
-    class OwnerView(Routes):
-        prefix = "/owners"
-        model = Owner
-
-    class ChosenView(GadgetView):
-        prefix = "/chosen"
-        id_param = "chosen_id"
-
-    app = FastAPI()
-    for view in (GadgetView, OwnerView, ChosenView):
-        fr.include_view(app, view)
-
-    paths = app.openapi()["paths"]
-    assert "/gadgets/{gadget_id}/annotated" in paths
-    assert "/owners/{owner_id}/annotated" in paths
-    assert "/gadgets/chosen/{chosen_id}/annotated" in paths
-    assert GadgetView.annotated._api_route_args[0] == "/{id}/annotated"
-
-
-def test_modify_route_with_a_path_follows_the_id_parameter(make_client):
-    client = make_client(get_one_endpoint=fr.modify_route(path="/by-id/{id}"))
-
-    assert _path_parameter_of(client, "/gadgets/by-id/{gadget_id}", "get")
-    created = client.post("/gadgets", json={"name": "a"}).json()
-    assert client.get(f"/gadgets/by-id/{created['id']}").json() == created
-
-
-def test_a_dependency_on_an_item_route_reads_the_name_in_the_path(make_client):
-    seen: list[int] = []
-
-    def remember(gadget_id: int) -> None:
-        seen.append(gadget_id)
-
-    client = make_client(
-        get_one_endpoint=fr.modify_route(dependencies=[Depends(remember)])
-    )
-    created = client.post("/gadgets", json={"name": "a"}).json()
-
-    client.get(f"/gadgets/{created['id']}")
-    assert seen == [created["id"]]
-
-
-def test_a_prefix_with_the_name_of_the_id_parameter_is_refused(view_base, Gadget):
-    class ChildView(view_base):
-        prefix = "/gadgets/{gadget_id}/children"
-        model = Gadget
-        schema = GadgetSchema
-
-    with pytest.raises(
-        RestlyConfigurationError,
-        match=r"ChildView: the path /gadgets/\{gadget_id\}/children/\{gadget_id:int\} "
-        r"has the parameter gadget_id two times.*id_param",
-    ):
-        fr.include_view(FastAPI(), ChildView)
-
-
-def test_a_prefix_with_the_name_of_the_id_parameter_works_with_id_param(
-    view_base, Gadget
-):
-    class ChildView(view_base):
-        prefix = "/gadgets/{gadget_id}/children"
-        model = Gadget
-        schema = GadgetSchema
-        id_param = "child_id:int"
-
-    app = FastAPI()
-    fr.include_view(app, ChildView)
-
-    assert "/gadgets/{gadget_id}/children/{child_id}" in app.openapi()["paths"]
-
-
-def test_a_prefix_with_the_parameter_id_keeps_it(view_base, Gadget):
-    class ChildView(view_base):
-        prefix = "/parents/{id}/children"
-        model = Gadget
-        schema = GadgetSchema
-
-    app = FastAPI()
-    fr.include_view(app, ChildView)
-
-    assert "/parents/{id}/children/{gadget_id}" in app.openapi()["paths"]
-
-
-def _spec_parameter(client, path: str, method: str, name: str) -> dict[str, Any]:
-    operation = client.app.openapi()["paths"][path][method]
-    return next(p for p in operation["parameters"] if p["name"] == name)
-
-
-def test_the_id_parameter_keeps_a_field_on_its_annotation(view_base, Gadget):
+def test_a_field_on_the_id_keeps_its_constraint(view_base, Gadget):
     class GadgetView(view_base):
         prefix = "/gadgets"
         model = Gadget
@@ -1042,44 +977,13 @@ def test_the_id_parameter_keeps_a_field_on_its_annotation(view_base, Gadget):
     fr.include_view(app, GadgetView)
     client = TestClient(app)
 
-    parameter = _spec_parameter(
-        client, "/gadgets/{gadget_id}/field", "get", "gadget_id"
-    )
+    parameter = _spec_parameter(client, "/gadgets/{id}/field", "get", "id")
     assert parameter["schema"]["exclusiveMinimum"] == 3
     assert client.get("/gadgets/3/field").status_code == 422
     assert client.get("/gadgets/4/field").json() == {"id": 4}
 
 
-@pytest.mark.parametrize("id_param", [None, "chosen_id", "id:int"])
-def test_the_id_parameter_keeps_a_validator_on_its_annotation(
-    view_base, Gadget, id_param
-):
-    def even(value: int) -> int:
-        if value % 2:
-            raise ValueError("not even")
-        return value
-
-    class GadgetView(view_base):
-        prefix = "/gadgets"
-        model = Gadget
-        schema = GadgetSchema
-
-        @fr.get("/{id}/even")
-        def is_even(
-            self, id: Annotated[IDType, pydantic.AfterValidator(even)]
-        ) -> dict[str, int]:
-            return {"id": id}
-
-    GadgetView.id_param = id_param
-    app = FastAPI()
-    fr.include_view(app, GadgetView)
-    client = TestClient(app)
-
-    assert client.get("/gadgets/3/even").status_code == 422
-    assert client.get("/gadgets/4/even").json() == {"id": 4}
-
-
-def test_the_id_parameter_keeps_a_constrained_id_type(view_base, Gadget):
+def test_a_constrained_id_type_keeps_its_constraint(view_base, Gadget):
     class GadgetView(view_base):
         prefix = "/gadgets"
         model = Gadget
@@ -1090,13 +994,13 @@ def test_the_id_parameter_keeps_a_constrained_id_type(view_base, Gadget):
     fr.include_view(app, GadgetView)
     client = TestClient(app)
 
-    parameter = _spec_parameter(client, "/gadgets/{gadget_id}", "get", "gadget_id")
+    parameter = _spec_parameter(client, "/gadgets/{id}", "get", "id")
     assert parameter["schema"]["exclusiveMinimum"] == 0
     assert client.get("/gadgets/0").status_code == 422
 
 
 @pytest.mark.parametrize("form", ["default", "annotated"])
-def test_an_id_from_a_dependency_stays_a_dependency(view_base, Gadget, form):
+def test_an_id_from_a_dependency_is_no_query_parameter(view_base, Gadget, form):
     def doubled(id: int) -> int:
         return id * 2
 
@@ -1125,67 +1029,6 @@ def test_an_id_from_a_dependency_stays_a_dependency(view_base, Gadget, form):
 
     assert "/gadgets/{id}/doubled" in app.openapi()["paths"]
     assert client.get("/gadgets/4/doubled").json() == {"id": 8}
-
-
-def test_an_id_type_in_a_type_alias_inside_annotated_follows_the_view(
-    view_base, Gadget
-):
-    from typing_extensions import TypeAliasType
-
-    MyId = TypeAliasType("MyId", IDType)
-
-    class GadgetView(view_base):
-        prefix = "/gadgets"
-        model = Gadget
-        schema = GadgetSchema
-
-        @fr.get("/{id}/aliased")
-        def aliased(self, id: Annotated[MyId, Path(ge=1)]) -> dict[str, int]:
-            return {"id": id}
-
-    app = FastAPI()
-    fr.include_view(app, GadgetView)
-    client = RestlyTestClient(app)
-
-    assert "/gadgets/{gadget_id}/aliased" in app.openapi()["paths"]
-    assert client.get("/gadgets/4/aliased").json() == {"id": 4}
-
-
-def test_a_route_parameter_with_the_name_of_the_id_parameter_is_refused(
-    view_base, Gadget
-):
-    class GadgetView(view_base):
-        prefix = "/gadgets"
-        model = Gadget
-        schema = GadgetSchema
-
-        @fr.post("/{id}/move")
-        def move(self, id: IDType, gadget_id: int) -> dict[str, int]:
-            return {"id": id}
-
-    with pytest.raises(
-        RestlyConfigurationError,
-        match=r"GadgetView\.move has a parameter gadget_id.*id: IDType.*id_param",
-    ):
-        fr.include_view(FastAPI(), GadgetView)
-
-
-def test_a_model_name_that_cannot_be_a_path_parameter_is_refused(view_base):
-    class Überweisung(fr.IDMixin, SharedBase):
-        name: Mapped[str]
-
-    class ÜberweisungSchema(fr.IDSchema):
-        name: str
-
-    class TransferView(view_base):
-        prefix = "/transfers"
-        model = Überweisung
-        schema = ÜberweisungSchema
-
-    with pytest.raises(
-        RestlyConfigurationError, match=r"TransferView.*überweisung_id.*ASCII.*id_param"
-    ):
-        fr.include_view(FastAPI(), TransferView)
 
 
 def test_a_path_without_the_id_parameter_is_the_same_for_any_parent(view_base, Gadget):
@@ -1228,7 +1071,11 @@ def test_a_new_path_with_an_unread_parameter_is_refused(
 
     with pytest.raises(
         RestlyConfigurationError,
-        match=r'Child\.get_one_endpoint: the path /\{role_id\}.*id_param = "role_id:int"',
+        match=(
+            r"Child\.get_one_endpoint: nothing reads the parameter role_id of the "
+            r"path /\{role_id\}\. The parameter id reads the query\. Write \{id\} in "
+            r"the path, or write the route method with a parameter role_id\."
+        ),
     ):
         fr.include_view(app, Child)
 
@@ -1274,7 +1121,7 @@ def test_an_option_above_a_custom_route_leaves_the_custom_route_first(
             return {"n": 1}
 
     order = _order_of(GadgetView)
-    assert order.index("GET /gadgets/stats") < order.index("GET /gadgets/{gadget_id}")
+    assert order.index("GET /gadgets/stats") < order.index("GET /gadgets/{id}")
 
 
 @pytest.mark.parametrize("registered_parent", [False, True])
@@ -1300,7 +1147,7 @@ def test_an_option_in_a_child_leaves_the_custom_route_first(
 
     order = _order_of(Child)
     assert order.index("GET /gadgets/child/stats") < order.index(
-        "GET /gadgets/child/{gadget_id}"
+        "GET /gadgets/child/{id}"
     )
 
 
@@ -1351,9 +1198,9 @@ def test_a_status_without_a_body_also_drops_the_model_of_a_decorator(view_base, 
     fr.include_view(app, Loud)
     paths = app.openapi()["paths"]
 
-    quiet = paths["/gadgets/quiet/{gadget_id}/archive"]["post"]["responses"]
+    quiet = paths["/gadgets/quiet/{id}/archive"]["post"]["responses"]
     assert "content" not in quiet["204"]
-    loud = paths["/gadgets/quiet/loud/{gadget_id}/archive"]["post"]["responses"]
+    loud = paths["/gadgets/quiet/loud/{id}/archive"]["post"]["responses"]
     assert "GadgetSchema" in str(loud["200"]["content"])
 
 
@@ -1361,46 +1208,8 @@ def test_a_status_without_a_body_also_drops_the_model_of_a_decorator(view_base, 
 def test_a_status_set_to_none_is_left_out_as_int_and_as_text(make_client, status):
     client = make_client(get_one_endpoint=fr.modify_route(responses={status: None}))
 
-    responses = client.app.openapi()["paths"]["/gadgets/{gadget_id}"]["get"][
-        "responses"
-    ]
+    responses = client.app.openapi()["paths"]["/gadgets/{id}"]["get"]["responses"]
     assert "404" not in responses
-
-
-def test_a_route_path_with_the_name_of_the_id_parameter_twice_is_refused(
-    view_base, Gadget
-):
-    class GadgetView(view_base):
-        prefix = "/gadgets"
-        model = Gadget
-        schema = GadgetSchema
-
-        @fr.get("/{id}/sub/{gadget_id}")
-        def sub(self, id: IDType) -> dict[str, int]:
-            return {"id": id}
-
-    with pytest.raises(
-        RestlyConfigurationError, match=r"gadget_id two times.*id_param"
-    ):
-        fr.include_view(FastAPI(), GadgetView)
-
-
-@pytest.mark.parametrize(
-    ("id_type", "hint"),
-    [(None, 'id_param = "child_id:int"'), (str, 'id_param = "child_id"')],
-)
-def test_the_hint_for_a_prefix_uses_the_converter_of_the_view(
-    view_base, Gadget, id_type, hint
-):
-    class ChildView(view_base):
-        prefix = "/gadgets/{gadget_id}/children"
-        model = Gadget
-        schema = GadgetSchema
-
-    ChildView.id_type = id_type
-    with pytest.raises(RestlyConfigurationError) as caught:
-        fr.include_view(FastAPI(), ChildView)
-    assert hint in str(caught.value)
 
 
 def test_modify_route_over_a_written_base_gives_no_misuse_warning(

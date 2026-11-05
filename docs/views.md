@@ -132,7 +132,7 @@ method and a default status code. [Endpoint decorators](#endpoint-decorators)
 lists the status codes. Pass `status_code=` to use another one.
 
 The path is relative to the view's prefix. With `prefix = "/users"`,
-`@fr.get("/{user_id}/summary")` serves `/users/{user_id}/summary`, and `@fr.get("")`
+`@fr.get("/{id}/summary")` serves `/users/{id}/summary`, and `@fr.get("")`
 serves `/users` itself.
 
 On a CRUD view, a custom route usually loads and writes through the view's
@@ -152,8 +152,8 @@ To serve one path with more than one HTTP method, use
 no method and no status code for you:
 
 ```python
-    @fr.route("/{photo_id}/thumbnail", methods=["GET", "HEAD"], status_code=200)
-    async def thumbnail(self, photo_id: int):
+    @fr.route("/{id}/thumbnail", methods=["GET", "HEAD"], status_code=200)
+    async def thumbnail(self, id: int):
         ...
 ```
 

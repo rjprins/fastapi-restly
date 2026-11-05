@@ -264,7 +264,7 @@ class TaskClauses(fr.ClauseNamespace):
     is_deleted = fr.where_clause(Task.deleted_at.is_not(None))
 
     # The read rule TaskView declares; shared here so ProjectView's
-    # /{project_id}/tasks route can never disagree with GET /tasks.
+    # /{id}/tasks route can never disagree with GET /tasks.
     visible = fr.all_of(assigned_to_current_user, fr.none_of(is_deleted))
     trashed = fr.all_of(assigned_to_current_user, is_deleted)
 

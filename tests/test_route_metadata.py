@@ -51,20 +51,20 @@ def test_two_view_operation_ids_and_summaries(base):
     expected = {
         ("/items", "get"): ("items_list", "List"),
         ("/items", "post"): ("items_create", "Create"),
-        ("/items/{item_id}", "get"): ("items_get", "Get"),
-        ("/items/{item_id}", "patch"): ("items_update", "Update"),
-        ("/items/{item_id}", "delete"): ("items_delete", "Delete"),
+        ("/items/{id}", "get"): ("items_get", "Get"),
+        ("/items/{id}", "patch"): ("items_update", "Update"),
+        ("/items/{id}", "delete"): ("items_delete", "Delete"),
         ("/users", "get"): ("users_list", "List"),
         ("/users", "post"): ("users_create", "Create"),
-        ("/users/{item_id}", "get"): ("users_get", "Get"),
-        ("/users/{item_id}", "patch"): ("users_update", "Update"),
-        ("/users/{item_id}", "delete"): ("users_delete", "Delete"),
+        ("/users/{id}", "get"): ("users_get", "Get"),
+        ("/users/{id}", "patch"): ("users_update", "Update"),
+        ("/users/{id}", "delete"): ("users_delete", "Delete"),
     }
     if issubclass(base, (fr.ReactAdminView, fr.AsyncReactAdminView)):
         expected.update(
             {
-                ("/items/{item_id}", "put"): ("items_put", "Update (PUT)"),
-                ("/users/{item_id}", "put"): ("users_put", "Update (PUT)"),
+                ("/items/{id}", "put"): ("items_put", "Update (PUT)"),
+                ("/users/{id}", "put"): ("users_put", "Update (PUT)"),
             }
         )
     assert _operations(app) == expected
@@ -102,12 +102,12 @@ def test_override_with_a_decorator_sets_metadata_and_keeps_the_route(base):
     app.include_router(router, prefix="/api")
 
     operations = _operations(app)
-    assert operations["/api/items/{item_id}", "get"] == ("catalog_get", "Get an item")
+    assert operations["/api/items/{id}", "get"] == ("catalog_get", "Get an item")
     assert operations["/api/items", "post"] == (
         "add_item_api_items_post",
         "Add an item",
     )
-    assert str(app.url_path_for("get_one", item_id=1)) == "/api/items/1"
+    assert str(app.url_path_for("get_one", id=1)) == "/api/items/1"
     assert str(app.url_path_for("add_item")) == "/api/items"
 
     # The markers give the overridden routes the view's types
@@ -117,7 +117,7 @@ def test_override_with_a_decorator_sets_metadata_and_keeps_the_route(base):
     assert body["$ref"].endswith("/ItemCreate")
     response = create["responses"]["201"]["content"]["application/json"]["schema"]
     assert response["$ref"].endswith("/ItemResponse")
-    (id_param,) = paths["/api/items/{item_id}"]["get"]["parameters"]
+    (id_param,) = paths["/api/items/{id}"]["get"]["parameters"]
     assert id_param["schema"]["type"] == "integer"
 
 
@@ -248,11 +248,8 @@ def test_operation_ids_follow_repeated_nested_router_mounts(base):
     operations = _operations(app)
     assert operations["/v1/catalog/items", "get"][0] == "v1_catalog_items_list"
     assert operations["/v2/catalog/items", "get"][0] == "v2_catalog_items_list"
-    assert operations["/v1/catalog/items/{item_id}", "get"][0] == "v1_catalog_items_get"
-    assert (
-        operations["/v2/catalog/items/{item_id}", "patch"][0]
-        == "v2_catalog_items_update"
-    )
+    assert operations["/v1/catalog/items/{id}", "get"][0] == "v1_catalog_items_get"
+    assert operations["/v2/catalog/items/{id}", "patch"][0] == "v2_catalog_items_update"
     ids = [operation_id for operation_id, _ in operations.values()]
     assert len(ids) == len(set(ids))
 
@@ -278,7 +275,7 @@ def test_operation_id_resource_preserves_scope_and_plural_spelling(
     fr.include_view(app, ItemView)
     operations = _operations(app)
     assert operations[prefix, "get"][0] == f"{resource}_list"
-    assert operations[prefix + "/{item_id}", "get"][0] == f"{resource}_get"
+    assert operations[prefix + "/{id}", "get"][0] == f"{resource}_get"
 
 
 @pytest.mark.parametrize("generator_source", ["app", "router", "mount", "route"])
@@ -292,7 +289,7 @@ def test_explicit_generators_override_crud_fallback_after_mount(base, generator_
         if generator_source == "route":
 
             @fr.get("/{id}", generate_unique_id_function=generate_id)
-            def get_one_endpoint(self, id: IDType):
+            def get_one_endpoint(self, id: int):
                 return {"id": id, "name": "Item"}
 
     kwargs = {"generate_unique_id_function": generate_id}
@@ -303,7 +300,7 @@ def test_explicit_generators_override_crud_fallback_after_mount(base, generator_
         router, prefix="/api", **(kwargs if generator_source == "mount" else {})
     )
     operations = _operations(app)
-    assert operations["/api/items/{item_id}", "get"][0] == "custom_get_one_get"
+    assert operations["/api/items/{id}", "get"][0] == "custom_get_one_get"
 
 
 def test_explicit_operation_id_wins_over_app_generator(base):

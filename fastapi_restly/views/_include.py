@@ -24,6 +24,7 @@ from typing import (
     get_type_hints,
     overload,
 )
+from uuid import UUID
 
 import fastapi
 import pydantic
@@ -60,12 +61,10 @@ from ._schema_types import (
     _evaluated,
     _is_id_type,
     _is_view_id_param,
-    _path_parameter,
     _pydantic_generic_args,
     _replace_schema_types,
     _schema_type_in,
-    _view_id_param,
-    _with_converter,
+    _view_id_type,
     _without_none,
 )
 
@@ -354,10 +353,9 @@ def _view_route_args(endpoint: Callable, view_cls: Any) -> tuple[str, dict[str, 
     """The path and the route arguments of ``endpoint``, for this view.
 
     ``response_model`` can hold a marker. A path parameter annotated
-    ``IDType`` gets the view's converter, unless the path gives one already,
-    and ``id`` also gets the name of the view's id parameter. The decorator's
-    arguments stay as written, so a subclass with another id type or another
-    model gets its own path.
+    ``IDType`` gets the converter of the view's id type, unless the path
+    gives one already. The decorator's arguments stay as written, so a
+    subclass with another id type gets its own path.
     """
     path, route_kwargs = endpoint._api_route_args  # type: ignore[attr-defined]
     response_model = route_kwargs.get("response_model")
@@ -369,31 +367,44 @@ def _view_route_args(endpoint: Callable, view_cls: Any) -> tuple[str, dict[str, 
             **route_kwargs,
             "responses": _filled_responses(route_kwargs["responses"], view_cls),
         }
-    id_name, converter = _view_id_param(view_cls)
-    default_converter = f":{converter}" if converter else ""
-    is_view_id_param = _is_view_id_param(endpoint)
-    for name, annotation in inspect.get_annotations(endpoint).items():
-        if _is_id_type(annotation, endpoint):
-            new_name = id_name if name == "id" and is_view_id_param else name
-            path = re.sub(
-                _path_parameter(name, new_name),
-                lambda found: f"{{{new_name}{found[1] or default_converter}}}",
-                path,
-            )
+    # Not a dict lookup: an id type with metadata, such as Annotated[int, {...}],
+    # cannot be hashed.
+    id_type = _view_id_type(view_cls)
+    converter = "int" if id_type is int else "uuid" if id_type is UUID else None
+    if converter is not None:
+        for name, annotation in inspect.get_annotations(endpoint).items():
+            if _is_id_type(annotation, endpoint):
+                path = path.replace(f"{{{name}}}", f"{{{name}:{converter}}}")
     return path, route_kwargs
 
 
-def _reject_id_param_twice(view_cls: Any, prefix: str, path: str) -> None:
-    """A path that names a parameter two times fails in Starlette, and only a view
-    can see that the name came from the model."""
-    name, converter = _view_id_param(view_cls)
-    if len(re.findall(_path_parameter(name), prefix + path)) > 1:
+def _reject_paths_that_differ_only_in_names(
+    view_cls: Any, api_router: fastapi.APIRouter
+) -> None:
+    """OpenAPI says: "Templated paths with the same hierarchy but different templated
+    names MUST NOT exist as they are identical." The spec shows both paths, and
+    with one HTTP method the server never reaches the second. A route that the spec
+    leaves out does not count."""
+    seen: dict[str, fastapi.routing.APIRoute] = {}
+    for route in api_router.routes:
+        if (
+            not isinstance(route, fastapi.routing.APIRoute)
+            or not route.include_in_schema
+        ):
+            continue
+        first = seen.setdefault(re.sub(r"\{[^}]*\}", "{}", route.path_format), route)
+        if first.path_format == route.path_format:
+            continue
         raise RestlyConfigurationError(
-            f"{view_cls.__name__}: the path {prefix}{path} has the parameter "
-            f"{name} two times. A path can use a name only once. Set another name "
-            f"on the view, such as "
-            f'id_param = "{_with_converter("child_id", converter)}".'
+            f"{view_cls.__name__}: the paths {_route_label(first)} and "
+            f"{_route_label(route)} differ only in the names of their parameters, and "
+            f"OpenAPI does not allow this. Use the same name in both paths."
         )
+
+
+def _route_label(route: fastapi.routing.APIRoute) -> str:
+    """The path of ``route``, with its methods and its name: ``/tags/{id} (PUT put)``."""
+    return f"{route.path_format} ({' '.join(sorted(route.methods))} {route.name})"
 
 
 def _reject_unread_path_parameter(
@@ -413,68 +424,19 @@ def _reject_unread_path_parameter(
     }
     unread = [found for found in re.findall(r"\{(\w+)", path) if found not in read]
     if unread:
-        converter = _view_id_param(view_cls)[1]
         raise RestlyConfigurationError(
-            f"{view_cls.__name__}.{name}: the path {path} has the parameter "
-            f"{unread[0]}, but nothing reads it, and the parameter id of the route "
-            f"reads the query. Write {{id}} in the path, and set the name on the "
-            f'view: id_param = "{_with_converter(unread[0], converter)}".'
+            f"{view_cls.__name__}.{name}: nothing reads the parameter {unread[0]} of "
+            f"the path {path}. The parameter id reads the query. Write {{id}} in the "
+            f"path, or write the route method with a parameter {unread[0]}."
         )
 
 
-def _with_id_param(view_cls: Any, name: str, endpoint: Callable, path: str) -> Callable:
-    """The endpoint that FastAPI calls, when the path names the view's id parameter.
-
-    FastAPI sees a parameter with the name in the path, so it reads it as any path
-    parameter: what the annotation says stays, such as a ``Field`` or a validator.
-    The method still gets ``id``. This is not on the class, so a subclass with
-    another name starts from what the author wrote.
-    """
-    id_name, converter = _view_id_param(view_cls)
-    if (
-        id_name == "id"
-        or not _is_view_id_param(endpoint)
-        or not re.search(_path_parameter(id_name), path)
-    ):
-        return endpoint
-    signature = inspect.signature(endpoint)
-    if id_name in signature.parameters:
-        raise RestlyConfigurationError(
-            f"{view_cls.__name__}.{name} has a parameter {id_name}, and the parameter "
-            f"id: IDType reads the path parameter with this name. Give one of them "
-            f"another name, or set another name on the view, such as "
-            f'id_param = "{_with_converter("item_id", converter)}".'
-        )
-    # A decorator without async around an async endpoint returns a coroutine.
-    if inspect.iscoroutinefunction(endpoint) or inspect.iscoroutinefunction(
-        inspect.unwrap(endpoint)
-    ):
-
-        @functools.wraps(endpoint)
-        async def wrapped(**kwargs: Any) -> Any:
-            kwargs["id"] = kwargs.pop(id_name)
-            return await endpoint(**kwargs)
-
-    else:
-
-        @functools.wraps(endpoint)
-        def wrapped(**kwargs: Any) -> Any:
-            kwargs["id"] = kwargs.pop(id_name)
-            return endpoint(**kwargs)
-
-    # FastAPI reads string annotations in the module of the function it
-    # calls; an older FastAPI does not look through the wrapper
-    wrapped.__signature__ = signature.replace(  # type: ignore[attr-defined]
-        parameters=[
-            param.replace(
-                name=id_name if param.name == "id" else param.name,
-                annotation=_evaluated(param.annotation, endpoint),
-            )
-            for param in signature.parameters.values()
-        ],
-        return_annotation=_evaluated(signature.return_annotation, endpoint),
-    )
-    return wrapped
+def _keep_annotations(wrapped: Callable, endpoint: Callable) -> None:
+    """Give a wrapper the annotations of ``endpoint``. On Python 3.14,
+    ``functools.wraps`` copies ``__annotate__``. A copy of a route has none, so
+    the wrapper would have no annotations, and a check that reads them would
+    see no id parameter."""
+    wrapped.__annotations__ = dict(inspect.get_annotations(endpoint))
 
 
 def _view_response_kind(view_cls: Any, endpoint: Callable) -> tuple[str | None, Any]:
@@ -613,6 +575,7 @@ def _with_view_response(
             result = endpoint(*args, **kwargs)
             return respond(args[0] if args else kwargs[self_name], result)
 
+    _keep_annotations(wrapped, endpoint)
     # FastAPI reads string annotations in the module of the function it
     # calls; an older FastAPI does not look through the wrapper
     wrapped.__signature__ = signature.replace(  # type: ignore[attr-defined]
@@ -794,7 +757,6 @@ def _init_api_router(view_cls: type[View]) -> fastapi.APIRouter:
         endpoint = attr
         if is_rest_view:
             path, route_kwargs = _view_route_args(endpoint, view_cls)
-            _reject_id_param_twice(view_cls, prefix, path)
         else:
             path, route_kwargs = endpoint._api_route_args
             _reject_schema_types_on_a_plain_view(view_cls, name, endpoint, route_kwargs)
@@ -828,7 +790,6 @@ def _init_api_router(view_cls: type[View]) -> fastapi.APIRouter:
             endpoint, route_kwargs = _with_view_response(
                 view_cls, endpoint, route_kwargs
             )
-            endpoint = _with_id_param(view_cls, name, endpoint, path)
         if getattr(endpoint, "_fr_list_guard", False):
             if list_parameters is None:
                 list_parameters = _list_openapi_parameters(
@@ -849,6 +810,8 @@ def _init_api_router(view_cls: type[View]) -> fastapi.APIRouter:
                 api_router.routes[-1].dependant,  # type: ignore[attr-defined]
                 (parameter["name"] for parameter in list_parameters or ()),
             )
+    if is_rest_view:
+        _reject_paths_that_differ_only_in_names(view_cls, api_router)
 
     return api_router
 

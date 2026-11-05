@@ -100,9 +100,9 @@ That view has these routes:
 ```http
 GET    /users       # list users, with filtering, sorting, and pagination
 POST   /users       # create a user
-GET    /users/{user_id}  # read one user
-PATCH  /users/{user_id}  # partially update one user
-DELETE /users/{user_id}  # delete one user
+GET    /users/{id}  # read one user
+PATCH  /users/{id}  # partially update one user
+DELETE /users/{id}  # delete one user
 ```
 
 Restly generates the Pydantic schemas from the model. The list returns a page
@@ -143,7 +143,7 @@ class UserView(fr.AsyncRestView):
         user.active = False  # keep the row
 ```
 
-`DELETE /users/{user_id}` still runs `authorize`, commits and returns 204. The
+`DELETE /users/{id}` still runs `authorize`, commits and returns 204. The
 other four routes do not change. See
 [Request Lifecycle & Hooks](https://www.fastapi-restly.org/lifecycle.html).
 

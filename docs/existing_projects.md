@@ -89,8 +89,8 @@ A plain FastAPI route can also sit next to a view, for an endpoint that is not
 part of the CRUD routes:
 
 ```python
-@api.get("/users/{user_id}/export")
-async def export_user(user_id: int):
+@api.get("/users/{id}/export")
+async def export_user(id: int):
     ...
 ```
 :::
@@ -165,8 +165,8 @@ class UserView(fr.AsyncRestView):
 fr.include_view(api, UserView)
 
 
-@api.delete("/users/{user_id}", status_code=204)
-async def delete_user(user_id: int):
+@api.delete("/users/{id}", status_code=204)
+async def delete_user(id: int):
     ...
 ```
 
@@ -199,10 +199,7 @@ contracts:
    ([the exact contract](#default-crud-behavior)). Other routes on the
    router, such as exports and actions, become custom routes on the view or
    stay as plain FastAPI routes next to it.
-2. The id in the path takes its name from the model, such as `{user_id}`. If
-   your paths have another name, set `id_param`; see
-   [Choose the name of the id parameter](#id-param).
-3. A route that differs in one option, such as its name, its status code or its
+2. A route that differs in one option, such as its name, its status code or its
    path, stays on the view with
    {func}`fr.modify_route <fastapi_restly.views.modify_route>`; see
    [Change one option of a route](#modify-route). Keep routes with another
@@ -210,7 +207,7 @@ contracts:
    row can stay hand-written: leave it out with
    {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>`
    until you change its contract.
-4. Write tests before you change anything. Test the responses of the old
+3. Write tests before you change anything. Test the responses of the old
    router with [`RestlyTestClient`](#test-clients). Then replace the router
    with the view and run the same tests again. A changed payload or status
    code then shows at once.

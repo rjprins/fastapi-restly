@@ -244,11 +244,8 @@ def _reject_bad_row_identity(label: str, id: Any) -> None:
         )
 
 
-def _primary_key_criterion(
-    model_cls: type[Any], id: Any, path_parameter: str
-) -> ColumnElement[bool]:
+def _primary_key_criterion(model_cls: type[Any], id: Any) -> ColumnElement[bool]:
     """The default :meth:`BaseRestView.where_id`: the primary key is ``id``.
-    ``path_parameter`` is the name of ``id`` in the path, for the error.
 
     :raises RequestValidationError: ``id`` does not fit the key column, such
         as a number out of the range of an ``Integer``. The database would
@@ -268,7 +265,7 @@ def _primary_key_criterion(
             [
                 {
                     "type": "value_error",
-                    "loc": ("path", path_parameter),
+                    "loc": ("path", "id"),
                     "msg": value_error_reason(exc),
                     "input": id,
                     "ctx": {"error": exc},

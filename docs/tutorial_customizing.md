@@ -488,7 +488,7 @@ Here is the blog with every change from this tutorial. The same file is the
 
 Write a test for each exercise.
 
-1. Add `POST /posts/{post_id}/unpublish`. Only the author may call it, and it
+1. Add `POST /posts/{id}/unpublish`. Only the author may call it, and it
    fails with 409 on a draft.
 2. Record when a post was published. Add a `published_at` column, set it in
    the publish route, and return it as a read-only field.

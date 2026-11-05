@@ -113,7 +113,7 @@ def test_a_function_as_the_response_class(client, Lamp):
     assert created["note"] == "noted"
     assert client.get(f"/lamps/{created['id']}").json()["note"] == "noted"
     paths = client.app.openapi()["paths"]
-    assert _response_ref(paths["/lamps/{lamp_id}"]["get"]) == "LampSchemaNoted"
+    assert _response_ref(paths["/lamps/{id}"]["get"]) == "LampSchemaNoted"
 
 
 def test_a_function_as_the_create_body_and_the_update_body(client, Lamp):
@@ -134,7 +134,7 @@ def test_a_function_as_the_create_body_and_the_update_body(client, Lamp):
     create_tables()
     paths = client.app.openapi()["paths"]
     assert _body_ref(paths["/lamps"]["post"]) == "LampIn"
-    assert _body_ref(paths["/lamps/{lamp_id}"]["patch"]) == "LampInUpdate"
+    assert _body_ref(paths["/lamps/{id}"]["patch"]) == "LampInUpdate"
     created = client.post("/lamps/", json={"name": "a"}).json()
     patched = client.patch(f"/lamps/{created['id']}", json={"name": "b"}).json()
     assert patched["name"] == "b"
@@ -226,12 +226,8 @@ def test_a_function_in_a_route_gets_the_view(client, Lamp):
     fr.include_view(client.app, BulbView)
     create_tables()
     paths = client.app.openapi()["paths"]
-    assert (
-        _response_ref(paths["/lamps/{lamp_id}/wrapped"]["get"]) == "Data_LampResponse_"
-    )
-    assert (
-        _response_ref(paths["/bulbs/{bulb_id}/wrapped"]["get"]) == "Data_BulbResponse_"
-    )
+    assert _response_ref(paths["/lamps/{id}/wrapped"]["get"]) == "Data_LampResponse_"
+    assert _response_ref(paths["/bulbs/{id}/wrapped"]["get"]) == "Data_BulbResponse_"
     created = client.post("/lamps/", json={"name": "a"}).json()
     assert client.get(f"/lamps/{created['id']}/wrapped").json() == {"data": created}
 
@@ -358,7 +354,7 @@ def test_two_objects_around_one_function_give_one_class(client, Lamp):
     fr.include_view(client.app, LampView)
     paths = client.app.openapi()["paths"]
     assert _response_ref(paths["/lamps/one"]["get"]) == "LampSchemaNoted"
-    assert _response_ref(paths["/lamps/{lamp_id}"]["get"]) == "LampSchemaNoted"
+    assert _response_ref(paths["/lamps/{id}"]["get"]) == "LampSchemaNoted"
 
 
 def test_a_function_reads_any_other_setting_in_any_order(Lamp):
@@ -1001,8 +997,8 @@ def test_endpoints_replaced_on_a_base_view_give_each_view_its_types(client, Lamp
     create_tables()
 
     paths = client.get("/openapi.json").json()["paths"]
-    assert _response_ref(paths["/lamps/{lamp_id}"]["get"]) == "Data_LampResponse_"
-    assert _response_ref(paths["/bulbs/{bulb_id}"]["get"]) == "Data_BulbResponse_"
+    assert _response_ref(paths["/lamps/{id}"]["get"]) == "Data_LampResponse_"
+    assert _response_ref(paths["/bulbs/{id}"]["get"]) == "Data_BulbResponse_"
     assert _response_ref(paths["/lamps"]["post"], "201") == "Data_LampResponse_"
     assert _body_ref(paths["/bulbs"]["post"]) == "BulbCreate"
 
@@ -1089,7 +1085,7 @@ def test_each_view_gets_its_own_keys(client, Lamp):
     spec = client.get("/openapi.json").json()
     assert _response_ref(spec["paths"]["/lamps"]["get"]) == "LampsList"
     assert _response_ref(spec["paths"]["/bulbs"]["get"]) == "BulbsList"
-    assert _response_ref(spec["paths"]["/lamps/{lamp_id}"]["get"]) == "LampSingle"
+    assert _response_ref(spec["paths"]["/lamps/{id}"]["get"]) == "LampSingle"
     schemas = spec["components"]["schemas"]
     assert set(schemas["LampSingle"]["properties"]) == {"lamp"}
     assert set(schemas["BulbsList"]["properties"]) == {"bulbs", "bulbsCount"}
@@ -1230,7 +1226,7 @@ def test_a_type_alias_of_a_marker(client, Lamp):
     calls.clear()
 
     spec = client.get("/openapi.json").json()
-    operation = spec["paths"]["/lamps/{lamp_id}/aliased"]["get"]
+    operation = spec["paths"]["/lamps/{id}/aliased"]["get"]
     assert _response_ref(operation) == "LampResponse"
     assert operation["parameters"][0]["schema"]["type"] == "integer"
     assert client.get("/lamps/1/aliased").json() == {"id": 1, "name": "desk"}
@@ -1281,7 +1277,7 @@ def test_a_marker_in_responses_of_a_route(client, Lamp, model, name):
     fr.include_view(client.app, LampView)
 
     spec = client.get("/openapi.json").json()
-    operation = spec["paths"]["/lamps/{lamp_id}/claim"]["post"]
+    operation = spec["paths"]["/lamps/{id}/claim"]["post"]
     assert _ref(_model_of(operation, "409")) == name
     assert operation["responses"]["409"]["description"] == "x"
     assert spec["components"]["schemas"]["LampResponse"]["properties"]

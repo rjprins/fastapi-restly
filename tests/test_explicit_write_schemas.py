@@ -220,7 +220,7 @@ def test_create_only_field(api):
     assert updated["body"] == "edited"
     assert updated["story_id"] == 1
     assert "story_id" in _body_properties(client, "post", "/comments")
-    assert "story_id" not in _body_properties(client, "patch", "/comments/{comment_id}")
+    assert "story_id" not in _body_properties(client, "patch", "/comments/{id}")
 
 
 def test_write_schema_readonly_is_still_skipped(api):
@@ -241,7 +241,7 @@ def test_generated_write_schemas_still_drop_readonly_fields(api):
     # response schema marks ReadOnly, so a client cannot set it.
     client = api.make_client()
 
-    for method, path in (("post", "/comments"), ("patch", "/comments/{comment_id}")):
+    for method, path in (("post", "/comments"), ("patch", "/comments/{id}")):
         properties = _body_properties(client, method, path)
         assert "body" in properties
         assert not {"id", "story_id", "note", "story"} & properties

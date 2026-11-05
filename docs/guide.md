@@ -110,9 +110,9 @@ set, override or call on a view.
 - [Views](views.md): the view classes, how to declare routes, add a decorator
   and register a view, routes that are not CRUD, such as login and webhooks, and
   how views share behavior through base classes.
-- [CRUD Routes](crud_routes.md): the five default routes, async or sync, the
-  name of the id in the path, how to change one option of a route, how to leave
-  some routes out, and how to serve a child resource under its parent.
+- [CRUD Routes](crud_routes.md): the five default routes, async or sync, how
+  to change one option of a route, how to leave some routes out, and how to
+  serve a child resource under its parent.
 - [Request Lifecycle & Hooks](lifecycle.md): the steps of a request, which
   method to override for each change, a value on each row, a lookup by
   another key, custom routes, what commits when, code that must commit, several

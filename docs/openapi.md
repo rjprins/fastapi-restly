@@ -129,7 +129,7 @@ documents itself like any FastAPI route:
         summary="Publish an article",
         responses={409: {"description": "Already published"}},
     )
-    async def publish(self, id: IDType): ...
+    async def publish(self, id: int): ...
 ```
 
 [Endpoint decorators](#endpoint-decorators) lists the decorators and their

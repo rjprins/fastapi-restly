@@ -189,10 +189,10 @@ def test_responses_merge_down_the_hierarchy(make_client):
     client = make_client(Billing, responses={418: {"description": "Teapot"}})
     spec = client.get("/openapi.json").json()
 
-    for path in ("/gadgets", "/gadgets/{gadget_id}"):
+    for path in ("/gadgets", "/gadgets/{id}"):
         for operation in spec["paths"][path].values():
             assert {"402", "418"} <= set(operation["responses"])
-    detail = spec["paths"]["/gadgets/{gadget_id}"]["get"]["responses"]
+    detail = spec["paths"]["/gadgets/{id}"]["get"]["responses"]
     assert detail["404"]["description"] == "Not found"
 
 
@@ -200,5 +200,5 @@ def test_subclass_response_wins_for_the_same_status(make_client):
     client = make_client(responses={404: {"description": "No such gadget"}})
     spec = client.get("/openapi.json").json()
 
-    detail = spec["paths"]["/gadgets/{gadget_id}"]["get"]["responses"]
+    detail = spec["paths"]["/gadgets/{id}"]["get"]["responses"]
     assert detail["404"]["description"] == "No such gadget"

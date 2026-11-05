@@ -222,9 +222,7 @@ def test_the_spec_of_a_route_without_a_response_stays_empty(client, User):
     create_tables()
 
     spec = client.get("/openapi.json").json()
-    content = spec["paths"]["/users/{user_id}/plain"]["get"]["responses"]["200"][
-        "content"
-    ]
+    content = spec["paths"]["/users/{id}/plain"]["get"]["responses"]["200"]["content"]
     assert content["application/json"]["schema"] == {}
 
 

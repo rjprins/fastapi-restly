@@ -83,7 +83,7 @@ def _response_ref(openapi, path, method, status="200"):
 
 def _id_param(openapi, path, method):
     (param,) = [
-        p for p in openapi["paths"][path][method]["parameters"] if p["in"] == "path"
+        p for p in openapi["paths"][path][method]["parameters"] if p["name"] == "id"
     ]
     return param["schema"]
 
@@ -302,21 +302,21 @@ def test_replaced_endpoint_with_markers_gets_the_schema_types(env):
     created = client.post("/products/", json={"name": "Lamp", "price": 1.0}).json()
     response = client.patch(f"/products/{created['id']}", json={"name": "Desk"})
     assert response.json() == {"id": created["id"], "name": "Desk", "price": 1.0}
-    # IDType gives the path the converter of the id type, as on the default routes
+    # IDType gives the path the converter of the id type, as on GET /{id}
     client.get("/products/abc", assert_status_code=404)
     client.patch("/products/abc", json={"name": "Desk"}, assert_status_code=404)
 
     create_ref = _body_ref(openapi, "/products", "post")
-    update_ref = _body_ref(openapi, "/products/{product_id}", "patch")
+    update_ref = _body_ref(openapi, "/products/{id}", "patch")
     schemas = openapi["components"]["schemas"]
     assert schemas[create_ref]["required"] == ["name", "price"]
     assert "required" not in schemas[update_ref]
-    assert _id_param(openapi, "/products/{product_id}", "get")["type"] == "integer"
-    assert _id_param(openapi, "/products/{product_id}", "patch")["type"] == "integer"
+    assert _id_param(openapi, "/products/{id}", "get")["type"] == "integer"
+    assert _id_param(openapi, "/products/{id}", "patch")["type"] == "integer"
     for path, method, status in [
-        ("/products/{product_id}", "get", "200"),
+        ("/products/{id}", "get", "200"),
         ("/products", "post", "201"),
-        ("/products/{product_id}", "patch", "200"),
+        ("/products/{id}", "patch", "200"),
     ]:
         assert _response_ref(openapi, path, method, status) == "ProductResponse"
 
@@ -466,13 +466,8 @@ def test_subclass_of_registered_view_fills_its_own_types(env):
     )
     assert response.json()["color"] == "blue"
 
-    assert (
-        _id_param(openapi, "/products/gadgets/{gadget_id}", "get")["format"] == "uuid"
-    )
-    assert (
-        _response_ref(openapi, "/products/gadgets/{gadget_id}", "get")
-        == "GadgetResponse"
-    )
+    assert _id_param(openapi, "/products/gadgets/{id}", "get")["format"] == "uuid"
+    assert _response_ref(openapi, "/products/gadgets/{id}", "get") == "GadgetResponse"
 
 
 def test_replaced_react_admin_put_keeps_explicit_schema_obj(env):
@@ -529,8 +524,8 @@ def test_default_react_admin_put_takes_update_schema(env):
     response = client.put(f"/products/{created['id']}", json={"name": "Desk"})
     assert response.json() == {"id": created["id"], "name": "Desk", "price": 1.0}
 
-    assert _body_ref(openapi, "/products/{product_id}", "put") == _body_ref(
-        openapi, "/products/{product_id}", "patch"
+    assert _body_ref(openapi, "/products/{id}", "put") == _body_ref(
+        openapi, "/products/{id}", "patch"
     )
 
 

@@ -51,9 +51,9 @@ Open <http://127.0.0.1:8000/docs>. The posts resource has five routes:
 |----------|---------------|-----------------|
 | `GET`    | `/posts`      | List posts      |
 | `POST`   | `/posts`      | Create a post   |
-| `GET`    | `/posts/{post_id}` | Get one post    |
-| `PATCH`  | `/posts/{post_id}` | Update one post |
-| `DELETE` | `/posts/{post_id}` | Delete one post |
+| `GET`    | `/posts/{id}` | Get one post    |
+| `PATCH`  | `/posts/{id}` | Update one post |
+| `DELETE` | `/posts/{id}` | Delete one post |
 
 Each route shows its request and response schema. Restly generated them from
 the model: `PostCreate` for the body of `POST`, `PostResponse` for a post in

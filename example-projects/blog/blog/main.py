@@ -88,9 +88,9 @@ class PostView(AuthoredView):
     class Action(fr.Action):
         PUBLISH = "publish"
 
-    @fr.post("/{post_id}/publish", status_code=200)
-    async def publish(self, post_id: int) -> Post:
-        post = await self.get_one(post_id)
+    @fr.post("/{id}/publish", status_code=200)
+    async def publish(self, id: int) -> Post:
+        post = await self.get_one(id)
         async with self.write_action(self.Action.PUBLISH, obj=post):
             if post.published:
                 raise fr.exc.Conflict("Already published")

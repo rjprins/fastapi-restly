@@ -614,7 +614,7 @@ class TestComputedFields:
         assert project["completion_percent"] == 50.0
 
     def test_project_stats_computed_fields(self, client):
-        """Test that /projects/{project_id}/stats returns computed metrics."""
+        """Test that /projects/{id}/stats returns computed metrics."""
         # Create project
         response = client.post("/projects", json={"name": "Computed Project"})
         project_id = response.json()["id"]
@@ -663,7 +663,7 @@ class TestTaskWorkflow:
     """Test task workflow state machine transitions."""
 
     def test_start_task(self, client):
-        """Test POST /tasks/{task_id}/start moves task from TODO to IN_PROGRESS."""
+        """Test POST /tasks/{id}/start moves task from TODO to IN_PROGRESS."""
         # Create project and task
         response = client.post("/projects", json={"name": "Workflow Project"})
         project_id = response.json()["id"]
@@ -684,7 +684,7 @@ class TestTaskWorkflow:
         assert started["version"] == original_version + 1
 
     def test_complete_task(self, client):
-        """Test POST /tasks/{task_id}/complete moves task from IN_PROGRESS to DONE."""
+        """Test POST /tasks/{id}/complete moves task from IN_PROGRESS to DONE."""
         # Create project and task
         response = client.post("/projects", json={"name": "Complete Project"})
         project_id = response.json()["id"]
@@ -706,7 +706,7 @@ class TestTaskWorkflow:
         assert completed["version"] == 3  # created=1, started=2, completed=3
 
     def test_reopen_task(self, client):
-        """Test POST /tasks/{task_id}/reopen moves task from DONE to IN_PROGRESS."""
+        """Test POST /tasks/{id}/reopen moves task from DONE to IN_PROGRESS."""
         # Create project and task
         response = client.post("/projects", json={"name": "Reopen Project"})
         project_id = response.json()["id"]

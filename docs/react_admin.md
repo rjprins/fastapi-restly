@@ -234,7 +234,7 @@ method that you override changes both routes. To give `PUT` its own rules,
 requires the complete record, while `PATCH` still accepts a part of it:
 
 ```python
-from fastapi_restly.views import IDType, ResponseSchema
+from fastapi_restly.views import ResponseSchema
 
 
 class ProductReplace(fr.BaseSchema):
@@ -247,7 +247,7 @@ class ProductView(fr.AsyncReactAdminView):
     model = Product
 
     @fr.put("/{id}")
-    async def put(self, id: IDType, payload: ProductReplace) -> ResponseSchema:
+    async def put(self, id: int, payload: ProductReplace) -> ResponseSchema:
         return await self.handle_update(id, payload)
 ```
 

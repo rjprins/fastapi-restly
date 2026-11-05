@@ -1,4 +1,3 @@
-import re
 from enum import Enum
 from functools import wraps
 from types import SimpleNamespace
@@ -51,9 +50,9 @@ def test_view_id_type_controls_openapi_path_parameter():
     app = FastAPI()
     fr.include_view(app, UUIDView)
 
-    parameter_schema = app.openapi()["paths"]["/uuid-models/{uuid_id}"]["get"][
-        "parameters"
-    ][0]["schema"]
+    parameter_schema = app.openapi()["paths"]["/uuid-models/{id}"]["get"]["parameters"][
+        0
+    ]["schema"]
     assert parameter_schema["type"] == "string"
     assert parameter_schema["format"] == "uuid"
 
@@ -190,15 +189,9 @@ def _pk_case(kind):
     )
 
 
-def _item_path(openapi, prefix):
-    """The path of the item routes. The name of its parameter follows the model."""
-    (path,) = [p for p in openapi["paths"] if re.fullmatch(rf"{prefix}/{{\w+}}", p)]
-    return path
-
-
 def _id_schema(openapi, path, method):
     (param,) = [
-        p for p in openapi["paths"][path][method]["parameters"] if p["in"] == "path"
+        p for p in openapi["paths"][path][method]["parameters"] if p["name"] == "id"
     ]
     return {
         key: param["schema"][key]
@@ -231,7 +224,7 @@ def test_id_parameter_takes_the_primary_key_type(flavor, kind):
 
     openapi = client.app.openapi()
     for method in ("get", "patch", "delete"):
-        assert _id_schema(openapi, _item_path(openapi, "/things"), method) == expected
+        assert _id_schema(openapi, "/things/{id}", method) == expected
 
 
 def test_id_parameter_follows_a_primary_key_with_another_name(flavor):
@@ -254,9 +247,7 @@ def test_id_parameter_follows_a_primary_key_with_another_name(flavor):
 
     client.post("/skus/", json={"code": "lamp-1", "name": "Lamp"})
     assert client.get("/skus/lamp-1").json() == {"code": "lamp-1", "name": "Lamp"}
-    assert _id_schema(client.app.openapi(), "/skus/{sku_id}", "get") == {
-        "type": "string"
-    }
+    assert _id_schema(client.app.openapi(), "/skus/{id}", "get") == {"type": "string"}
 
 
 def test_react_admin_put_takes_the_primary_key_type(flavor):
@@ -275,10 +266,7 @@ def test_react_admin_put_takes_the_primary_key_type(flavor):
     response = client.put(f"/things/{created['id']}", json={"name": "b"})
     assert response.json() == {"id": created["id"], "name": "b"}
     client.put("/things/not-a-uuid", json={"name": "b"}, assert_status_code=404)
-    assert (
-        _id_schema(client.app.openapi(), "/things/{uuid_thing_id}", "put")["format"]
-        == "uuid"
-    )
+    assert _id_schema(client.app.openapi(), "/things/{id}", "put")["format"] == "uuid"
 
 
 def test_replaced_endpoint_on_a_uuid_model_accepts_a_uuid(flavor):
@@ -324,7 +312,7 @@ def test_explicit_id_type_overrides_the_primary_key_type(flavor):
     client = flavor.client
 
     client.get("/things/abc", assert_status_code=404)
-    assert _id_schema(client.app.openapi(), "/things/{str_thing_id}", "get") == {
+    assert _id_schema(client.app.openapi(), "/things/{id}", "get") == {
         "type": "integer"
     }
 
@@ -355,10 +343,7 @@ def test_subclass_of_registered_view_derives_its_own_id_type(flavor):
     created = client.post("/things/gadgets/", json={"name": "a"}).json()
     assert client.get(f"/things/gadgets/{created['id']}").json() == created
     openapi = client.app.openapi()
-    assert (
-        _id_schema(openapi, "/things/gadgets/{uuid_thing_id}", "get")["format"]
-        == "uuid"
-    )
+    assert _id_schema(openapi, "/things/gadgets/{id}", "get")["format"] == "uuid"
 
 
 @pytest.mark.parametrize("base", [fr.RestView, fr.AsyncRestView])
@@ -385,7 +370,7 @@ def test_composite_primary_key_keeps_the_int_id(base):
     app = FastAPI()
     fr.include_view(app, PairView)
 
-    assert _id_schema(app.openapi(), "/pairs/{pair_id}", "get") == {"type": "integer"}
+    assert _id_schema(app.openapi(), "/pairs/{id}", "get") == {"type": "integer"}
 
 
 @pytest.mark.parametrize("kind", ["int", "uuid"])
@@ -415,9 +400,7 @@ def test_typed_item_routes_allow_later_static_routes(flavor, kind, react_admin):
         assert response.json() == {"name": "current user"}
         response = flavor.client.request(method, f"/api/things/{bad_id}")
         assert response.status_code == 404
-        openapi = app.openapi()
-        path = _item_path(openapi, "/api/things")
-        assert _id_schema(openapi, path, method.lower()) == expected
+        assert _id_schema(app.openapi(), "/api/things/{id}", method.lower()) == expected
 
 
 def test_integer_item_routes_accept_zero_but_not_negative_ids(flavor):
@@ -445,7 +428,7 @@ def test_integer_item_routes_accept_zero_but_not_negative_ids(flavor):
         assert response.status_code == 404
         response = client.request(method, "/things/0", json={"name": "b"})
         assert response.status_code == (204 if method == "DELETE" else 200)
-    assert str(client.app.url_path_for("get_one", thing_id=0)) == "/things/0"
+    assert str(client.app.url_path_for("get_one", id=0)) == "/things/0"
 
 
 def test_unconverted_id_type_keeps_fastapi_validation(flavor):
@@ -507,11 +490,11 @@ def test_id_paths_are_isolated_across_registered_relatives(flavor):
         for route in iter_routes(app.routes)
         if isinstance(original_route(route), APIRoute)
         for method in route.methods & methods
-        if "_id" in route.path
+        if "{id" in route.path
     }
-    for path in ("/things/{int_thing_id:int}", "/things/uuids/{uuid_thing_id:uuid}"):
+    for path in ("/things/{id:int}", "/things/uuids/{id:uuid}"):
         assert {(path, method) for method in methods} <= item_paths
-    assert {("/things/uuids/strings/{str_thing_id}", m) for m in methods} <= item_paths
+    assert {("/things/uuids/strings/{id}", m) for m in methods} <= item_paths
     for name in ("get_one_endpoint", "update_endpoint", "delete_endpoint", "put"):
         for view in (ThingView, UuidView, StrView, flavor.react_admin_base):
             assert getattr(view, name)._api_route_args[0] == "/{id}"
@@ -583,4 +566,4 @@ def test_redecorated_builtin_endpoint_keeps_its_custom_path(flavor):
     fr.include_view(flavor.client.app, ThingView)
     assert flavor.client.get("/things/lookup/5").json() == {"id": 5}
     flavor.client.get("/things/lookup/-1", assert_status_code=404)
-    assert "/things/lookup/{int_thing_id}" in flavor.client.app.openapi()["paths"]
+    assert "/things/lookup/{id}" in flavor.client.app.openapi()["paths"]

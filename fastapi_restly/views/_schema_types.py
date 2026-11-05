@@ -8,7 +8,6 @@ gets its own types. A setting of the view can hold a :class:`SchemaType` too.
 """
 
 import inspect
-import re
 import threading
 import types
 from contextvars import ContextVar
@@ -23,13 +22,10 @@ from typing import (
     get_args,
     get_origin,
 )
-from uuid import UUID
 
-from fastapi.params import Depends
 from sqlalchemy import inspect as sa_inspect
 
 from ..exc import RestlyConfigurationError
-from ..models._base import underscore
 from ..schemas._base import _alias_value, _model_id_type
 
 
@@ -160,7 +156,7 @@ def _marker(name: str, fn: Callable[[Any], Any]) -> SchemaType:
 
 
 def _view_id_type(view_cls: type) -> Any:
-    """The type of the id: ``id_type`` when set, else the model's primary key's.
+    """The ``{id}`` type: ``id_type`` when set, else the model's primary key's.
 
     A subclass with another model gets its own.
     """
@@ -172,44 +168,6 @@ def _view_id_type(view_cls: type) -> Any:
     if model is None or len(sa_inspect(model).primary_key) != 1:
         return int
     return _model_id_type(model) or int
-
-
-#: What ``id_param`` can hold: a name, and maybe a path converter.
-_ID_PARAM = re.compile(r"([A-Za-z_]\w*)(?::([A-Za-z_]\w*))?", re.ASCII)
-
-
-def _view_id_param(view_cls: type) -> tuple[str, str | None]:
-    """The name and the path converter of the view's id parameter.
-
-    ``id_param`` says both when set. Else the name comes from the model, so
-    ``Tag`` and ``TagModel`` give ``tag_id``, and the converter from the id type.
-    """
-    written = getattr(view_cls, "id_param", None)
-    if written is not None:
-        match = _ID_PARAM.fullmatch(written)
-        if match is None:
-            raise RestlyConfigurationError(
-                f"{view_cls.__name__}.id_param is {written!r}. Write a name, and "
-                f'maybe a path converter, without braces: "tag_id" or "tag_id:int".'
-            )
-        return match[1], match[2]
-    model = getattr(view_cls, "model", None)
-    converter = {int: "int", UUID: "uuid"}.get(_view_id_type(view_cls))
-    if model is None:
-        return "id", converter
-    name = f"{underscore(model.__name__.removesuffix('Model') or 'Model')}_id"
-    if _ID_PARAM.fullmatch(name) is None:
-        raise RestlyConfigurationError(
-            f"{view_cls.__name__}: the model gives the path parameter {name}, but a "
-            f"path parameter takes only ASCII letters, digits and _. Set the name on "
-            f'the view, such as id_param = "{_with_converter("item_id", converter)}".'
-        )
-    return name, converter
-
-
-def _with_converter(name: str, converter: str | None) -> str:
-    """``name``, as ``id_param`` writes it with ``converter``."""
-    return f"{name}:{converter}" if converter else name
 
 
 def _annotated_metadata(annotation: Any, func: Callable) -> list[Any]:
@@ -233,30 +191,15 @@ def _is_id_type(annotation: Any, func: Callable) -> bool:
 
 
 def _is_view_id_param(endpoint: Callable) -> bool:
-    """Whether the parameter ``id`` of a route is the view's id parameter: it is
-    annotated :data:`IDType`, and no dependency gives its value."""
+    """Whether a route has a parameter ``id`` annotated :data:`IDType`."""
     annotation = inspect.get_annotations(endpoint).get("id")
-    parameter = inspect.signature(endpoint).parameters.get("id")
-    if annotation is None or parameter is None or not _is_id_type(annotation, endpoint):
-        return False
-    return not any(
-        isinstance(item, Depends)
-        for item in (parameter.default, *_annotated_metadata(annotation, endpoint))
-    )
-
-
-def _path_parameter(*names: str) -> str:
-    """A regular expression for a path parameter with one of ``names``, also with
-    a converter. Its group is the converter."""
-    return rf"\{{(?:{'|'.join(names)})(:\w+)?\}}"
+    return annotation is not None and _is_id_type(annotation, endpoint)
 
 
 #: The view's id type: :attr:`~fastapi_restly.views.BaseRestView.id_type`,
 #: else the type of the model's primary key. A path parameter with this type
 #: gets the view's path converter, as the CRUD item routes do: ``{id:int}``
-#: for ``int`` and ``{id:uuid}`` for ``UUID``. A parameter named ``id`` is the
-#: view's id parameter: :attr:`~fastapi_restly.views.BaseRestView.id_param`
-#: gives its name in the path, and the Python name stays ``id``.
+#: for ``int`` and ``{id:uuid}`` for ``UUID``.
 IDType: TypeAlias = Annotated[Any, _marker("IDType", _view_id_type)]
 
 #: The view's response schema,
@@ -331,14 +274,16 @@ def _evaluated(annotation: Any, func: Callable) -> Any:
     """A string annotation, evaluated in the module of the route's author.
 
     A string that does not evaluate there, such as one that names a class of
-    a function body, stays a string.
+    a function body, stays a string. Quotes under ``from __future__ import
+    annotations`` give a string in a string, so this evaluates what it gets too.
     """
     if not isinstance(annotation, str):
         return annotation
     try:
-        return eval(annotation, inspect.unwrap(func).__globals__)  # noqa: S307
+        evaluated = eval(annotation, inspect.unwrap(func).__globals__)  # noqa: S307
     except Exception:
         return annotation
+    return evaluated if evaluated == annotation else _evaluated(evaluated, func)
 
 
 def _bare(annotation: Any) -> Any:

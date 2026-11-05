@@ -124,20 +124,12 @@ miss it.
 17. Silent: OpenAPI no longer has `x-resource-ref`. A client that reads it must
     stop. To keep it on one field, set it on that field:
     `pydantic.Field(json_schema_extra={"x-resource-ref": "authors"})`.
-17. Silent: the path parameter of an item route takes its name from the model. So
-    `/users/{id:int}` is now `/users/{user_id:int}`. The URLs stay the same, but
-    OpenAPI changes, so a client generated from it gets another parameter name. A
-    dependency on an item route that takes `id: int` now reads a required query
-    parameter and answers 422. It must take `user_id: int`. Also write
-    `app.url_path_for("get_one", user_id=1)`. A plain parameter of a dependency with
-    the new name, such as `user_id: int`, now reads the path and not the query. A
-    route with `id: IDType` and another parameter with the new name raises
-    `RestlyConfigurationError` when it registers. A model name with a letter outside
-    ASCII raises this error too: set `id_param`. A custom route with `/{id}` and
-    `id: IDType` also gets the new name, so `request.path_params` and
-    `app.url_path_for` use `user_id`. A custom route with `/{id}` and `id: int` keeps
-    `{id}`. To keep `{id}` on a view, set `id_param = "id:int"`. For a UUID key, set
-    `"id:uuid"`, and for a string key, set `"id"`.
+18. A CRUD view with two paths that differ only in the names of their parameters,
+    such as `/users/{id}` and a route of your own at `/users/{user_id}`, now raises
+    `RestlyConfigurationError` when it registers. OpenAPI does not allow such
+    paths, so the spec was wrong. Use the same name in both paths. A custom route
+    with `id: IDType` and a path parameter that nothing reads, such as `/by/{name}`,
+    now raises too. `id` read the query, and OpenAPI did not show `name`.
 
 ### Added
 
@@ -146,10 +138,6 @@ miss it.
   must keep its commit. The action then has no savepoint, and all else stays. So
   the action is no longer one transaction: what is committed stays saved when a
   later step raises. See "Code that must commit in a write action" in the guide.
-- `id_param`: the name of the id parameter in the path, and its converter. For
-  example, `id_param = "role_id"` gives `/roles/{role_id}`, and FastAPI answers 422
-  for a wrong value. `id_param = "role_id:int"` answers 404. The Python parameter
-  stays `id`.
 - `fr.modify_route`: change the options of a route that a view inherits, and keep
   the rest. Use it under the name of the route method, as in
   `create_endpoint = fr.modify_route(status_code=200, name="create_tag")`. The route
@@ -288,6 +276,11 @@ miss it.
 - `fr.configure(warn_on_misuse=True)` no longer warns about `session.commit()` on a
   plain `fr.View`. A route of a plain view that writes must commit. The warning told
   it to use `handle_<verb>()` or `write_action`, and a plain view has neither.
+- A view with an `id_type` such as `Annotated[int, {"unit": "row"}]`, with metadata
+  that cannot be hashed, no longer raises a `TypeError` when it registers.
+- `id: "IDType"` with quotes, under `from __future__ import annotations`, now works
+  as `id: IDType`. Before, the spec did not give the type, and the method got a
+  string.
 
 ## [0.13.0] - 2026-11-01
 

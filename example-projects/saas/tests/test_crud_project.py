@@ -145,7 +145,7 @@ class TestNestedRoutes:
     """Test nested routes for tasks within projects."""
 
     def test_list_project_tasks(self, client):
-        """Test GET /projects/{project_id}/tasks lists only that project's tasks."""
+        """Test GET /projects/{id}/tasks lists only that project's tasks."""
         # Create two projects
         response = client.post("/projects", json={"name": "Project 1"})
         project1_id = response.json()["id"]
@@ -200,7 +200,7 @@ class TestNestedRoutes:
         assert [task["id"] for task in listed] == [mine["id"]]
 
     def test_create_task_via_nested_route(self, client):
-        """Test POST /projects/{project_id}/tasks creates task with correct project_id."""
+        """Test POST /projects/{id}/tasks creates task with correct project_id."""
         # Create project
         response = client.post("/projects", json={"name": "Nested Project"})
         project_id = response.json()["id"]
@@ -233,13 +233,13 @@ class TestNaturalKeyRoutes:
     """The by-slug routes: retrieve and update under the natural key."""
 
     def test_get_by_slug(self, client):
-        """``GET /projects/by-slug/{slug}`` is ``GET /{project_id}`` under the other key."""
+        """``GET /projects/by-slug/{slug}`` is ``GET /{id}`` under the other key."""
         created = client.post("/projects", json={"name": "Apollo Program"}).json()
         assert created["slug"] == "apollo-program"
 
         found = client.get("/projects/by-slug/apollo-program").json()
         assert found["id"] == created["id"]
-        # the decorated fields come from get_one, as they do on GET /{project_id}
+        # the decorated fields come from get_one, as they do on GET /{id}
         assert found["task_count"] == 0
 
         client.get("/projects/by-slug/nope", assert_status_code=404)
@@ -258,7 +258,7 @@ class TestNaturalKeyRoutes:
         assert ours["id"] != theirs["id"]
 
     def test_update_by_slug(self, client):
-        """``PATCH`` by slug runs the same commit bracket as ``PATCH /{project_id}``."""
+        """``PATCH`` by slug runs the same commit bracket as ``PATCH /{id}``."""
         created = client.post("/projects", json={"name": "Gemini"}).json()
 
         updated = client.patch(
@@ -296,7 +296,7 @@ class TestProjectLifecycle:
     """Test project lifecycle (archive) functionality."""
 
     def test_archive_project(self, client):
-        """Test POST /projects/{project_id}/archive archives the project."""
+        """Test POST /projects/{id}/archive archives the project."""
         # Create project
         response = client.post("/projects", json={"name": "Project to Archive"})
         project = response.json()
