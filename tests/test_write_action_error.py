@@ -8,9 +8,9 @@ put the route's own ``session.begin_nested()`` around each call, as the docs
 of 0.12 showed, which still works.
 
 The engines are plain, as in production: SQLite without the SAVEPOINT fix
-that the test fixtures install. With the default settings of the driver, the
-release of a savepoint that began the transaction commits. So on SQLite, the
-``BEGIN`` that Restly sends before its savepoint is under test too.
+that the test fixtures install. Restly leaves the transaction to the driver.
+With the default settings of the driver, the savepoint of an action begins
+the transaction, so its release already commits, just before the commit.
 tests/postgres/test_write_action_error.py runs the same tests on PostgreSQL.
 """
 
@@ -298,9 +298,10 @@ async def test_a_release_that_fails_undoes_everything(orders):
     assert await _names(orders) == ["after"]
 
 
-async def test_a_commit_that_fails_after_the_release_undoes_everything(orders):
-    """The savepoint is gone, so the whole transaction rolls back. On SQLite,
-    the ``BEGIN`` before the savepoint keeps its release from committing."""
+async def test_a_commit_that_fails_after_the_release(orders):
+    """The savepoint is gone, so the whole transaction rolls back. On SQLite
+    with the default settings of the driver, the release already committed,
+    as with a plain ``begin_nested()``, so the row stays saved."""
     session = getattr(orders.session, "sync_session", orders.session)
 
     def fail_the_commit(session):
@@ -315,4 +316,5 @@ async def test_a_commit_that_fails_after_the_release_undoes_everything(orders):
         event.remove(session, "before_commit", fail_the_commit)
 
     await _create(orders, "after")
-    assert await _names(orders) == ["after"]
+    saved = ["lost", "after"] if orders.dialect == "sqlite" else ["after"]
+    assert await _names(orders) == saved

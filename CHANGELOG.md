@@ -212,6 +212,12 @@ miss it.
 - A subclass of a derived class can declare a field of `omit` again.
 - The check for two classes with the same name in OpenAPI now also runs on an app
   that has only plain `fr.View` classes. Before, it started with the first CRUD view.
+- On SQLite, Restly no longer sends a `BEGIN` of its own before the savepoint of a
+  write action. The driver begins the transaction, as with a plain
+  `session.begin_nested()`. So with the default settings of the driver, the end of
+  the savepoint can already commit, just before the commit. A write with
+  `sqlite+aiosqlite` and `connect_args={"autocommit": True}` is saved again.
+  See "Transactions on SQLite" in the guide.
 
 ### Removed
 

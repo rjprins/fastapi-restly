@@ -663,12 +663,12 @@ An error from `after_action_commit` does not undo the order: the order is
 saved. See [When `after_action_commit` raises](#after-action-commit-raises).
 When the commit itself fails, for example on a deferred constraint, Restly
 rolls back the whole transaction. This also expires the rows that were loaded
-before. On SQLite, Restly sends `BEGIN` before the savepoint. With the default
-settings of the driver, the end of the savepoint would commit already
-otherwise.
+before. On SQLite with the default settings of the driver, the end of the
+savepoint can already commit, just before the commit; see
+[Transactions on SQLite](#sqlite-transactions).
 
 The savepoint costs two more statements for each write: `SAVEPOINT` and
-`RELEASE SAVEPOINT`. On SQLite, `BEGIN` is a third.
+`RELEASE SAVEPOINT`.
 
 SQLAlchemy calls the listeners of the session for a savepoint too:
 `after_begin` when it begins, `before_commit` and `after_commit` when it ends,

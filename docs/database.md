@@ -387,6 +387,36 @@ the write lock. It then fails at once with `database is locked`, without
 waiting, also with WAL. A create or an update without a query of your own
 reads nothing there.
 
+(sqlite-transactions)=
+
+## Transactions on SQLite
+
+Restly leaves the transactions of SQLite to the driver, as SQLAlchemy does.
+With its default settings, Python's `sqlite3` driver, which `aiosqlite` also
+uses, begins a transaction only before a write, such as an `INSERT`. So the
+savepoint of a write action begins the transaction, where the change of the
+action begins. A read before the change, such as the load of the row of an
+update, holds no lock. A write at the same time as another one waits for it.
+
+When the savepoint begins the transaction, its end already commits, just
+before the commit. Three cases follow from this, as with a plain
+`session.begin_nested()`:
+
+- Code in a write action that rolls back, then writes in a savepoint of its
+  own, commits that write. The client gets a 500, and the row is saved.
+- A `before_commit` event of your own on the session that raises also gives
+  a 500, and the row is saved.
+- Do not open the driver with `connect_args={"autocommit": True}`. Its
+  `commit()` and `rollback()` then do nothing. After a write action that
+  fails, the connection can stay in the transaction of the savepoint, and the
+  writes after it on that connection are lost.
+
+SQLAlchemy shows how to turn on full transactions in
+[Transactions with SQLite and the sqlite3 driver](https://docs.sqlalchemy.org/en/20/dialects/sqlite.html#sqlite-transactions).
+Then a read also begins the transaction. So two updates at the same time can
+fail with `database is locked`, because each one reads its row before it
+writes.
+
 ## Internals
 
 (engine-defaults)=

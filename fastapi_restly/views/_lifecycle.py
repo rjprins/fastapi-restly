@@ -33,12 +33,12 @@ undoes only the changes of the bracket and keeps the other loaded objects, so
 the session stays usable, and a route can catch the error and write again.
 When the commit fails, the whole transaction rolls back, as
 ``with session.begin():`` does. The commit releases the savepoint, then
-commits. On SQLite, a ``BEGIN`` comes before the savepoint, so the release
-does not commit; see :func:`_begin_sqlite_transaction`.
+commits. On SQLite with the default settings of the driver, the savepoint
+begins the transaction, so its release commits, just before the commit. This is
+the same with a plain ``begin_nested()``, as SQLAlchemy documents.
 """
 
 import contextlib
-import sqlite3
 import warnings
 import weakref
 from collections.abc import AsyncIterator, Callable, Iterable, Iterator
@@ -49,7 +49,6 @@ from typing import Any, Protocol
 
 from sqlalchemy import event
 from sqlalchemy import inspect as sa_inspect
-from sqlalchemy.exc import UnboundExecutionError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import MANYTOONE, InstanceState, Session, SessionTransaction
 from sqlalchemy.orm.collections import collection_adapter
@@ -664,7 +663,6 @@ class _SharedWriteActionCommit:
         before the block stay outside the savepoint.
         """
         if self.savepoint is None:
-            _begin_sqlite_transaction(session)
             self.savepoint = session.begin_nested()
 
     def undo(self, session: Session) -> None:
@@ -990,42 +988,6 @@ def _belongs_to_transaction(
             return True
         transaction = transaction.parent
     return False
-
-
-#: The value of ``sqlite3.Connection.autocommit`` when the driver manages the
-#: transaction as before Python 3.12. Before 3.12, this is the only way.
-_LEGACY_TRANSACTION_CONTROL = getattr(sqlite3, "LEGACY_TRANSACTION_CONTROL", -1)
-
-
-def _begin_sqlite_transaction(session: Session) -> None:
-    """On SQLite, begin the transaction before the savepoint of a block.
-
-    With their default settings, pysqlite and aiosqlite begin a transaction
-    only before an ``INSERT``, an ``UPDATE`` or a ``DELETE``. So a
-    ``SAVEPOINT`` that comes first begins the transaction itself, and its
-    release commits, before the commit of the block. A ``BEGIN`` first keeps
-    the release inside the transaction, and only the commit commits.
-
-    Nothing changes when the driver is in a transaction already, or when it
-    leaves the transaction to the caller: with ``isolation_level=None``, as
-    SQLAlchemy's recipe for SQLite sets it, or with ``autocommit`` set.
-    """
-    try:
-        dialect = session.get_bind().dialect
-    except UnboundExecutionError:
-        return  # binds for each model only; each has its own dialect
-    if dialect.name != "sqlite":
-        return
-    connection = session.connection()
-    driver = connection.connection.driver_connection
-    if (
-        driver.in_transaction
-        or driver.isolation_level is None
-        or getattr(driver, "autocommit", _LEGACY_TRANSACTION_CONTROL)
-        != _LEGACY_TRANSACTION_CONTROL
-    ):
-        return
-    connection.exec_driver_sql("BEGIN")
 
 
 def _is_open(session: Session, savepoint: SessionTransaction) -> bool:
