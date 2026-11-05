@@ -43,8 +43,10 @@ from ..query._impl import (
     _NO_DEFAULT,
     _check_default_sort,
     _check_key_setting,
+    _inline_definitions,
     _OwnFilter,
     _query_key,
+    _split_key,
 )
 from ._guards import _owner, _route_parameters, _set_by
 from ._reads import _clause_element
@@ -521,10 +523,18 @@ def _validate_list_params(
     query model. A key of another reader on the route of ``request`` does not
     reach the model, so ``extra="forbid"`` accepts it.
 
-    :raises RequestValidationError: a value fails the validation of its
-        field. The location of each error starts with ``"query"``.
+    :raises RequestValidationError: a key that takes one value is repeated,
+        or a value fails the validation of its field. The location of each
+        error starts with ``"query"``.
     """
     field_keys = {key for key, _, _ in fields}
+    repeated = [
+        _repeated_key_error(key, query.getlist(key), field_keys)
+        for key, _, every_value in fields
+        if not every_value and len(query.getlist(key)) > 1
+    ]
+    if repeated:
+        raise RequestValidationError(repeated)
     data: dict[str, Any] = {}
     for key, field, every_value in fields:
         if key in query:
@@ -548,6 +558,24 @@ def _validate_list_params(
             for error in exc.errors(include_url=False)
         ]
         raise RequestValidationError(errors) from None
+
+
+def _repeated_key_error(
+    key: str, values: list[str], field_keys: Set[str]
+) -> dict[str, Any]:
+    """The error for a key that takes one value and that a client repeated.
+    It names the key that takes several values, when there is one."""
+    name, operator = _split_key(key)
+    several = {"": f"{name}__in", "ne": f"{name}__not_in"}.get(operator)
+    message = f"Send {key!r} only once. It takes one value."
+    if several in field_keys:
+        message += f" To send several values, use {several!r}."
+    return {
+        "type": "repeated_key",
+        "loc": ("query", key),
+        "msg": message,
+        "input": values,
+    }
 
 
 def _validate_raw_list_params(
@@ -622,6 +650,9 @@ def _list_openapi_parameters(
             properties.get(key, properties.get(name, {})), definitions
         )
         field_schema["title"] = field.title or key.title().replace("_", " ")
+        # the parameter has the description, so the schema needs no copy
+        if field.description:
+            field_schema.pop("description", None)
         parameter: dict[str, Any] = {
             "name": key,
             "in": "query",
@@ -634,21 +665,3 @@ def _list_openapi_parameters(
             parameter["deprecated"] = True
         parameters.append(parameter)
     return parameters
-
-
-def _inline_definitions(schema: Any, definitions: dict[str, Any]) -> Any:
-    """``schema`` with each ``#/$defs/...`` reference replaced by its target."""
-    if isinstance(schema, list):
-        return [_inline_definitions(item, definitions) for item in schema]
-    if not isinstance(schema, dict):
-        return schema
-    inlined = {
-        key: _inline_definitions(value, definitions)
-        for key, value in schema.items()
-        if key != "$ref"
-    }
-    reference = schema.get("$ref")
-    if isinstance(reference, str) and reference.startswith("#/$defs/"):
-        target = definitions[reference.removeprefix("#/$defs/")]
-        return {**_inline_definitions(target, definitions), **inlined}
-    return inlined

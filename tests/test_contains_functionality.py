@@ -11,8 +11,8 @@ from starlette.datastructures import QueryParams
 import fastapi_restly as fr
 from fastapi_restly.query._impl import (
     _apply_filtering,
+    _filter_clause,
     _is_string_field,
-    _make_where_clause,
     derive_list_params_schema,
 )
 
@@ -172,7 +172,7 @@ class TestContainsApplied:
             def like(self, pattern, escape=None):
                 return f"LIKE {pattern} ESCAPE {escape}"
 
-        result = _make_where_clause(MockColumn(), "john", "contains", lambda x: x)
+        result = _filter_clause(MockColumn(), "contains", "john", lambda x: x, "key")
         assert "LIKE %john%" in str(result)
         assert "ESCAPE \\" in str(result)
 
@@ -181,7 +181,7 @@ class TestContainsApplied:
             def ilike(self, pattern, escape=None):
                 return f"ILIKE {pattern} ESCAPE {escape}"
 
-        result = _make_where_clause(MockColumn(), "john", "icontains", lambda x: x)
+        result = _filter_clause(MockColumn(), "icontains", "john", lambda x: x, "key")
         assert "ILIKE %john%" in str(result)
         assert "ESCAPE \\" in str(result)
 

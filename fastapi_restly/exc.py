@@ -74,14 +74,15 @@ class Conflict(RestlyHTTPError):
 
 
 class BadQueryParam(RestlyHTTPError):
-    """HTTP 400 -- a list query parameter with a known key, whose value
+    """HTTP 400 -- a value that the list params did not validate, and that
     Restly cannot apply.
 
-    An example is a filter value that fails the validation of its field,
-    such as ``?age=old`` on an ``int`` field. On a list route, a query
-    string that does not match the list params, such as an unknown key or a
-    bad page, is a 422 instead: a ``RequestValidationError``, in the shape
-    that FastAPI uses for a bad parameter.
+    An example is a key inside the ``filter`` of a react-admin view, or a value
+    given to :meth:`FilterKey.parse <fastapi_restly.query.FilterKey.parse>`. On
+    a list route, a query string that does not match the list params, such as
+    an unknown key or a filter value of the wrong type, is a 422 instead: a
+    ``RequestValidationError``, in the shape that FastAPI uses for a bad
+    parameter.
     """
 
     status_code = 400

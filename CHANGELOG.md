@@ -130,6 +130,36 @@ miss it.
     paths, so the spec was wrong. Use the same name in both paths. A custom route
     with `id: IDType` and a path parameter that nothing reads, such as `/by/{name}`,
     now raises too. `id` read the query, and OpenAPI did not show `name`.
+19. Silent: only `__in` and the new `__not_in` split a value at commas. On a text
+    field, `?status=a,b` now looks for the text `a,b`, where it meant "a or b", and
+    `?status__ne=a,b` now hides almost nothing, where it hid both values. Neither
+    gives an error, so search your clients for such URLs. Write `?status__in=a,b`
+    and `?status__not_in=a,b`. On another type, such as `?id=1,2`, the request now
+    gets `422`.
+20. Silent: `__contains` and `__icontains` take one piece of text. So
+    `?name__icontains=john%20doe` now looks for `john doe`, where it looked for each
+    word. For every word, write a filter of your own; see "Search for text" in the
+    guide.
+21. A key that takes one value now gets `422` when it comes twice, also for a text
+    search, `sort`, the page parameters, a key of your own and list params of your
+    own. Before, a repeated `__contains` added a condition, and any other key took
+    the last value. Change a client that sends `?name=a&name=b` to `?name__in=a,b`.
+    `__in` and `__not_in` read each value of a repeated key. Outside a view,
+    `fr.query.apply_list_params` still takes the last value of a `QueryParams`.
+22. A filter value that fails now gets `422` in the form of FastAPI, not `400`, and
+    `loc` names the key. Change a client or a test that expects `400` or reads the
+    text of its `detail`. A handler for `RestlyHTTPError` no longer gets these errors;
+    a handler for `RequestValidationError` does. A key inside the `filter` of a
+    react-admin view, and `FilterKey.parse()`, keep the `400`.
+23. Silent: a filter value no longer has the bounds of its field, such as `gt` or
+    `min_length`. `?price=-1` on a field with `gt=0` is now `200` with no rows, where
+    it was `400`. OpenAPI no longer shows bounds on these keys. If a bound kept a
+    value away from a column type that Restly does not check, such as a type of a
+    dialect, that value now reaches the database, which can answer with a `500`.
+    Write the limit in a field validator for this; a validator still runs.
+24. Silent: the fields of generated list params now hold the type of their field, not
+    text. So `list_params.price__gte` is a `Decimal`, `list_params.price__in` is a
+    list, and a reference gives its id. Change code that reads them as text.
 
 ### Added
 
@@ -138,6 +168,7 @@ miss it.
   must keep its commit. The action then has no savepoint, and all else stays. So
   the action is no longer one transaction: what is committed stays saved when a
   later step raises. See "Code that must commit in a write action" in the guide.
+- `__not_in`, on each field that has `__in`: rows with none of these values.
 - `fr.modify_route`: change the options of a route that a view inherits, and keep
   the rest. Use it under the name of the route method, as in
   `create_endpoint = fr.modify_route(status_code=200, name="create_tag")`. The route
@@ -176,6 +207,9 @@ miss it.
 
 ### Changed
 
+- Each filter key in OpenAPI has the type of its field, such as `integer` or a date,
+  not text. Each description is written once, not on both the parameter and its
+  schema.
 - Restly builds a view's schemas when something first reads them, once for each
   view. Registration no longer writes them on the view class.
 - Registration raises `RestlyConfigurationError` for a schema setting that is not

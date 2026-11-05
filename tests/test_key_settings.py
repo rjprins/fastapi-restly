@@ -146,6 +146,7 @@ def test_a_star_stays_within_one_level(pattern, expected):
             {
                 "created_at__in",
                 "created_at__ne",
+                "created_at__not_in",
                 "created_at__isnull",
                 "created_at__gte",
                 "created_at__lte",
@@ -258,15 +259,15 @@ def test_apply_list_params_checks_a_sort_that_skipped_validation():
             {"include_filters": ("active__icontains",)},
             "include_filters: 'active__icontains' matches no filter key of "
             "ItemSchema. The filter keys of 'active' are: active, active__in, "
-            "active__ne, active__isnull. Only text fields have __contains and "
-            "__icontains.",
+            "active__ne, active__not_in, active__isnull. Only text fields have "
+            "__contains and __icontains.",
         ),
         (
             {"exclude_filters": ("id__contains",)},
             "exclude_filters: 'id__contains' matches no filter key of "
             "ItemSchema. The filter keys of 'id' are: id, id__in, id__ne, "
-            "id__isnull, id__gte, id__lte, id__gt, id__lt. Only text fields "
-            "have __contains and __icontains.",
+            "id__not_in, id__isnull, id__gte, id__lte, id__gt, id__lt. Only text "
+            "fields have __contains and __icontains.",
         ),
         (
             {"include_filters": ("active__gte",)},

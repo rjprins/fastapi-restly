@@ -4,17 +4,30 @@ A query-string filter is one column. Validating it through the schema's
 ``validate_assignment`` on a ``model_construct()`` skeleton ran the model
 validators too, so a cross-field rule (severity required when the type is a
 bug) saw an empty skeleton and turned every legal filter into a 400. The value
-now validates through the field's own core schema: field validators,
-constraints and the model config still apply, model validators do not.
+now validates through the field's own core schema: field validators and the
+model config still apply. Bounds and model validators do not.
 """
 
 import json
 import uuid
+from datetime import date, datetime
+from decimal import Decimal
 from typing import Annotated, Any
 
 import pydantic
 import pytest
-from pydantic import ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    UUID4,
+    AwareDatetime,
+    ConfigDict,
+    Field,
+    HttpUrl,
+    PastDate,
+    StrictBool,
+    StrictInt,
+    field_validator,
+    model_validator,
+)
 from sqlalchemy import Enum
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -145,20 +158,70 @@ def test_list_filter_with_field_name_dependent_validator(client):
     rows = client.get("/items", params={"displayName": "Alice", "code": "A1"}).json()
     assert [row["displayName"] for row in rows["data"]] == ["Alice"]
 
-    response = client.get("/items", params={"code": "ABCDE"}, assert_status_code=400)
-    assert response.json() == {
-        "detail": "Invalid filter value for 'code': 'ABCDE'. "
-        "Value error, value is too long"
-    }
+    response = client.get("/items", params={"code": "ABCDE"}, assert_status_code=422)
+    error = response.json()["detail"][0]
+    assert error["loc"] == ["query", "code"]
+    assert error["msg"] == "Value error, value is too long"
 
 
-def test_field_constraint_still_rejects():
+def test_a_filter_value_has_the_type_of_the_field_without_its_bounds():
+    """A filter compares a value and does not store it, so ``?score__gte=0`` is
+    fine on a field with ``gt=0``. What only refuses a value goes, on every
+    type. What changes a value stays."""
+
     class Schema(pydantic.BaseModel):
-        score: Annotated[int, Field(gt=0)]
+        score: Annotated[int, Field(gt=0, multiple_of=5)]
+        price: Annotated[Decimal, Field(gt=0, max_digits=4, decimal_places=2)]
+        nick: Annotated[str, Field(min_length=3, max_length=5, pattern="^[a-z]+$")]
+        optional: Annotated[int, Field(gt=0)] | None = None
+        day: Annotated[date, Field(gt=date(2024, 1, 1))]
+        past: PastDate
+        aware: AwareDatetime
+        site: HttpUrl
+        strict_int: StrictInt
+        strict_flag: StrictBool
+        token: UUID4
+        lower: Annotated[str, pydantic.StringConstraints(to_lower=True, min_length=9)]
 
-    assert _filter_value_parser(Schema, "score", None)("5") == 5
+    def value(field: str, text: str) -> Any:
+        return _filter_value_parser(Schema, field, None)(text)
+
+    assert value("score", "0") == 0
+    assert value("price", "-1.23456") == Decimal("-1.23456")
+    assert value("nick", "AB") == "AB"
+    assert value("optional", "-1") == -1
+    assert value("day", "2000-01-01") == date(2000, 1, 1)
+    assert value("past", "2999-01-01") == date(2999, 1, 1)
+    assert value("aware", "2024-01-01T00:00:00") == datetime(2024, 1, 1)
+    assert str(value("site", "ftp://a.example")) == "ftp://a.example/"
+    assert value("strict_int", "7") == 7
+    assert value("strict_flag", "true") is True
+    any_version = "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
+    assert str(value("token", any_version)) == any_version
+    assert value("lower", "ABC") == "abc"
+
+    # the type still counts
+    for field, text in (("score", "x"), ("day", "x"), ("site", "x"), ("token", "x")):
+        with pytest.raises(BadQueryParam):
+            value(field, text)
+
+
+def test_a_bound_after_a_validator_of_your_own_stays():
+    """Pydantic cannot put a bound on the type after a validator, so it is a
+    function in the schema, and Restly cannot tell it from your own check."""
+
+    def double(value: int) -> int:
+        return value * 2
+
+    class Schema(pydantic.BaseModel):
+        score: Annotated[int, pydantic.AfterValidator(double), Field(gt=0)]
+        either: Annotated[Decimal | int, Field(gt=0)]
+
+    assert _filter_value_parser(Schema, "score", None)("2") == 4
     with pytest.raises(BadQueryParam):
         _filter_value_parser(Schema, "score", None)("0")
+    with pytest.raises(BadQueryParam):
+        _filter_value_parser(Schema, "either", None)("0")
 
 
 def test_bad_type_still_rejects():
@@ -219,8 +282,7 @@ def test_recursive_schema_scalar_filters():
             return value.lower()
 
     assert _filter_value_parser(Node, "nodeName", None)("  Alice ") == "alice"
-    with pytest.raises(BadQueryParam):
-        _filter_value_parser(Node, "nodeName", None)(" ")
+    assert _filter_value_parser(Node, "nodeName", None)(" ") == ""
 
 
 def test_recursive_schema_model_validators_are_not_run():
@@ -352,10 +414,8 @@ def test_a_value_outside_the_labels_of_an_enum_column_is_a_400(client):
         {"status__in": "draft,bogus"},
         {"status__ne": "bogus"},
     ):
-        response = client.get("/labelled-posts", params=params, assert_status_code=400)
-        assert response.json()["detail"] == (
-            "Invalid filter value for 'status': 'bogus'. Use one of: draft, published."
-        )
+        response = client.get("/labelled-posts", params=params, assert_status_code=422)
+        assert response.json()["detail"][0]["msg"] == "Use one of: draft, published."
     client.get("/labelled-posts?status__contains=dr", assert_status_code=422)
 
 
@@ -442,20 +502,25 @@ def test_a_field_of_type_any_gets_the_python_type_of_its_column(client):
     ]
     assert names("/admin/gadgets", {"filter": json.dumps({"id": ids[2]})}) == ["c"]
 
-    for path, params in [
-        ("/gadgets", {"id": "nope"}),
-        ("/admin/gadgets", {"filter": json.dumps({"id": ["nope"]})}),
-    ]:
-        response = client.get(path, params=params, assert_status_code=400)
-        assert response.json()["detail"].startswith(
-            "Invalid filter value for 'id': 'nope'. Input should be a valid UUID"
-        )
+    response = client.get("/gadgets", params={"id": "nope"}, assert_status_code=422)
+    error = response.json()["detail"][0]
+    assert error["loc"] == ["query", "id"]
+    assert error["msg"].startswith("Input should be a valid UUID")
+    # a key inside the value of another key: react-admin's filter
+    response = client.get(
+        "/admin/gadgets",
+        params={"filter": json.dumps({"id": ["nope"]})},
+        assert_status_code=400,
+    )
+    assert response.json()["detail"].startswith(
+        "Invalid filter value for 'id': 'nope'. Input should be a valid UUID"
+    )
 
     # an integer key: text that is no number was no row on SQLite and a 500
     # on PostgreSQL, and a number beyond the column was a 500 there too
-    response = client.get("/sleepers", params={"id": "abc"}, assert_status_code=400)
-    assert response.json()["detail"].startswith(
-        "Invalid filter value for 'id': 'abc'. Input should be a valid integer"
+    response = client.get("/sleepers", params={"id": "abc"}, assert_status_code=422)
+    assert response.json()["detail"][0]["msg"].startswith(
+        "Input should be a valid integer"
     )
-    response = client.get("/sleepers", params={"id": 2**31}, assert_status_code=400)
-    assert "The number is out of range" in response.json()["detail"]
+    response = client.get("/sleepers", params={"id": 2**31}, assert_status_code=422)
+    assert "The number is out of range" in response.json()["detail"][0]["msg"]

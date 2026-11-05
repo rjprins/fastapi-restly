@@ -266,8 +266,8 @@ def test_a_mapping_is_validated_like_query_params(view_class):
 
         @fr.get("/repeated")
         async def repeated(self) -> list[str]:
-            # a list is a repeated key: both terms must match
-            params = {"name__icontains": ["a", "p"]}
+            # a list is a repeated key: any of the values
+            params = {"name__in": ["apple", "pear"]}
             stmt = await self.apply_filters(select(Item), params)
             return [item.name for item in (await self.session.scalars(stmt))]
 

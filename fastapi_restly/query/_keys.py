@@ -101,8 +101,9 @@ class FilterKey:
         ``key.column == key.parse(value)``.
 
         The value goes through the validation of the field, as in the
-        generated filters, so the validators of the field run too. They get
-        only this field, so ``info.data`` is ``{}``; see
+        generated filters, so the validators of the field run too, and its
+        bounds, such as ``gt``, do not count. The validators get only this
+        field, so ``info.data`` is ``{}``; see
         :ref:`filter-value-validation`. The value can be text from a URL or a
         value from JSON, and a number becomes text for a text field. ``None``
         stays ``None`` when the field allows it, so ``key.column == None``

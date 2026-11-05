@@ -564,15 +564,13 @@ def test_icontains_folds_non_ascii_case(restly_client):
     assert _names(response) == ["Öland"]
 
 
-def test_a_value_outside_the_labels_of_a_native_enum_is_a_400(restly_client):
+def test_a_value_outside_the_labels_of_a_native_enum_is_a_client_error(restly_client):
     response = restly_client.get("/labelled/", params={"status": "draft"})
     assert [row["status"] for row in response.json()["data"]] == ["draft"]
     response = restly_client.get(
-        "/labelled/", params={"status": "bogus"}, assert_status_code=400
+        "/labelled/", params={"status": "bogus"}, assert_status_code=422
     )
-    assert response.json()["detail"] == (
-        "Invalid filter value for 'status': 'bogus'. Use one of: draft, published."
-    )
+    assert response.json()["detail"][0]["msg"] == "Use one of: draft, published."
     restly_client.get("/labelled/?status__contains=dr", assert_status_code=422)
     response = restly_client.get(
         "/admin/labelled/",
@@ -937,7 +935,7 @@ async def test_a_time_out_of_range_in_utc_is_a_client_error_on_psycopg(
         )
         listed = await client.get("/meetings/", params={"ends_at__gte": late})
     assert created.status_code == 422, created.text
-    assert listed.status_code == 400, listed.text
+    assert listed.status_code == 422, listed.text
 
 
 @pytest.mark.asyncio
@@ -993,19 +991,19 @@ async def test_a_value_that_does_not_fit_its_column_is_a_client_error_on_psycopg
             "uuid text": await client.get("/keyed/", params={"id": "nope"}),
         }
     assert {name: response.status_code for name, response in responses.items()} == {
-        "filter": 400,
-        "in": 400,
+        "filter": 422,
+        "in": 422,
         "path": 422,
         "body": 422,
         "reference": 404,
-        "nul": 400,
-        "nul contains": 400,
+        "nul": 422,
+        "nul contains": 422,
         "nul body": 422,
         "long body": 422,
         "long filter": 200,
-        "id text": 400,
-        "id range": 400,
-        "uuid text": 400,
+        "id text": 422,
+        "id range": 422,
+        "uuid text": 422,
     }
 
 

@@ -287,11 +287,10 @@ def test_auto_generated_schema_with_a_timedelta(client):
     )
     for value in ("P3000000D", "-P800000D"):
         response = client.get(
-            "/tasks", params={"duration__gte": value}, assert_status_code=400
+            "/tasks", params={"duration__gte": value}, assert_status_code=422
         )
-        assert response.json()["detail"] == (
-            f"Invalid filter value for 'duration': {value!r}. {reason}"
-        )
+        error = response.json()["detail"][0]
+        assert (error["loc"], error["msg"]) == (["query", "duration__gte"], reason)
         response = client.post(
             "/tasks",
             json={"name": "endless", "duration": value},

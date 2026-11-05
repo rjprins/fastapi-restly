@@ -436,7 +436,7 @@ def test_labels_get_no_range_filters():
     def keys(name: str) -> list[str]:
         return [key for key in fields if key == name or key.startswith(f"{name}__")]
 
-    plain = ["", "__in", "__ne", "__isnull"]
+    plain = ["", "__in", "__ne", "__not_in", "__isnull"]
     labels = ("direction", "priority", "wrapped", "direction_value", "color_value")
     # status_text is text, but its Enum column holds labels: no __contains
     for name in (*labels, "size", "status_text"):
@@ -470,6 +470,7 @@ def test_a_flag_gets_the_plain_filters_and_no_range_filters():
         "permission",
         "permission__in",
         "permission__ne",
+        "permission__not_in",
         "permission__isnull",
     ]
 

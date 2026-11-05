@@ -98,13 +98,57 @@ def test_range_operator_on_datetime_column(people_client):
     assert names == ["Bob", "Carol"]
 
 
-def test_or_list_filter(people_client):
+def test_in_filter_on_ids(people_client):
     rows_before = _rows(people_client.get("/people/"))
     target_ids = _ids(rows_before)
     csv = ",".join(str(i) for i in target_ids)
 
-    response = people_client.get(f"/people/?id={csv}")
+    response = people_client.get(f"/people/?id__in={csv}")
     assert _ids(_rows(response)) == target_ids
+
+
+def test_a_plain_key_takes_the_whole_value(people_client):
+    """Only ``__in`` and ``__not_in`` split on commas."""
+    people_client.get("/people/?id=1,2,3", assert_status_code=422)
+    assert _rows(people_client.get("/people/?name=Alice,Bob")) == []
+
+
+def test_in_takes_a_repeated_key_with_each_value_as_it_is(people_client):
+    response = people_client.get("/people/?name__in=Alice&name__in=Bob")
+    assert sorted(r["name"] for r in _rows(response)) == ["Alice", "Bob"]
+
+    # with one key, a comma separates; with several, it is part of the value
+    assert _rows(people_client.get("/people/?name__in=Alice,Bob&name__in=x")) == []
+    response = people_client.get("/people/?name__in=Alice, Bob")
+    assert sorted(r["name"] for r in _rows(response)) == ["Alice", "Bob"]
+
+
+@pytest.mark.parametrize(
+    ("url", "named"),
+    [
+        ("/people/?name=a&name=b", "name__in"),
+        ("/people/?name__ne=a&name__ne=b", "name__not_in"),
+        ("/people/?name__icontains=a&name__icontains=b", None),
+        ("/people/?sort=name&sort=id", None),
+    ],
+)
+def test_a_key_that_takes_one_value_cannot_repeat(people_client, url, named):
+    response = people_client.get(url, assert_status_code=422)
+    error = response.json()["detail"][0]
+    assert error["type"] == "repeated_key"
+    key = url.split("?")[1].split("=")[0]
+    assert error["loc"] == ["query", key]
+    assert (named in error["msg"]) if named else ("To send" not in error["msg"])
+
+
+def test_a_bad_value_in_a_list_names_its_position(people_client):
+    response = people_client.get("/people/?id__in=1,x,y", assert_status_code=422)
+    detail = response.json()["detail"]
+    assert [error["loc"] for error in detail] == [
+        ["query", "id__in", 1],
+        ["query", "id__in", 2],
+    ]
+    assert detail[0]["input"] == "x"
 
 
 def test_explicit_in_filter_operator(people_client):
@@ -113,15 +157,10 @@ def test_explicit_in_filter_operator(people_client):
     assert names == ["Alice", "Carol"]
 
 
-def test_or_list_filter_on_datetime_column(people_client):
-    """B2.3: OR-comma on a typed (non-string) column must also work.
-
-    The filter parameters are typed as ``Optional[list[str]]`` so Pydantic
-    accepts comma-separated values regardless of the underlying column
-    type, and the parser layer coerces each value separately.
-    """
+def test_in_filter_on_datetime_column(people_client):
+    """Each value of ``__in`` is validated on its own."""
     response = people_client.get(
-        "/people/?created_at=2024-06-01T00:00:00,2024-09-15T00:00:00"
+        "/people/?created_at__in=2024-06-01T00:00:00,2024-09-15T00:00:00"
     )
     names = sorted(r["name"] for r in _rows(response))
     assert names == ["Alice", "Bob"]
@@ -139,11 +178,17 @@ def test_ne_filter(people_client):
     assert names == ["Alice", "Carol"]
 
 
-def test_ne_with_comma_means_not_in(people_client):
-    """``status__ne=a,b`` excludes both values (NOT IN semantics)."""
-    response = people_client.get("/people/?name__ne=Bob,Carol")
+def test_not_in_filter(people_client):
+    response = people_client.get("/people/?name__not_in=Bob,Carol")
     names = sorted(r["name"] for r in _rows(response))
     assert names == ["Alice"]
+
+    response = people_client.get("/people/?name__not_in=Bob&name__not_in=Carol")
+    assert sorted(r["name"] for r in _rows(response)) == ["Alice"]
+
+    # ``__ne`` takes the whole value
+    response = people_client.get("/people/?name__ne=Bob,Carol")
+    assert sorted(r["name"] for r in _rows(response)) == ["Alice", "Bob", "Carol"]
 
 
 @pytest.mark.parametrize(
@@ -200,25 +245,17 @@ def test_range_operators_not_emitted_for_bool(client, annotation):
     )
 
 
-def test_repeated_contains_ands_predicates(people_client):
-    """B2.4: repeating ``__contains`` should AND the predicates.
-
-    ``c`` matches Alice (ali-c-e) and Carol; ``e`` matches only Alice.
-    ANDing the two yields Alice only.
-    """
-    # Sanity check: the first term alone matches two rows.
-    response = people_client.get("/people/?name__contains=c")
-    names = sorted(r["name"] for r in _rows(response))
-    assert names == ["Alice", "Carol"]
-
-    # Both terms together should narrow to Alice.
-    response = people_client.get("/people/?name__contains=e&name__contains=c")
-    names = sorted(r["name"] for r in _rows(response))
-    assert names == ["Alice"]
-
-    # Fully disjoint terms must return no rows.
-    response = people_client.get("/people/?name__contains=hi&name__contains=ho")
-    assert _rows(response) == []
+def test_a_text_search_takes_one_phrase(people_client):
+    """Spaces around the text go, and an empty value is no filter. A space
+    inside is part of the text."""
+    assert sorted(
+        r["name"] for r in _rows(people_client.get("/people/?name__contains=c"))
+    ) == ["Alice", "Carol"]
+    assert sorted(
+        r["name"] for r in _rows(people_client.get("/people/?name__icontains=%20c%20"))
+    ) == ["Alice", "Carol"]
+    assert _rows(people_client.get("/people/?name__icontains=a c")) == []
+    assert len(_rows(people_client.get("/people/?name__icontains=%20"))) == 3
 
 
 def test_icontains_uses_case_insensitive_matching(people_client):

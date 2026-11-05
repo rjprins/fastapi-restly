@@ -68,7 +68,7 @@ from .._pagination import (
 )
 from ..exc import NotFound, RestlyConfigurationError, RestlySkippedFilterMethodsWarning
 from ..objects import snapshot as _object_snapshot
-from ..query._impl import _coerce_to_query_params, _OwnFilter, _record_of
+from ..query._impl import _list_params_values, _OwnFilter, _record_of
 from ..query._paged import (
     _PAGINATION_OF_BASE,
     _page_fields_base,
@@ -1173,13 +1173,6 @@ class BaseRestView(
         :meth:`to_single_response` may return an instance of another model."""
         return _as_response(type(self).response_schema, self.to_single_response(obj))
 
-    def _to_query_params(self, list_params: Any) -> QueryParams:
-        if isinstance(list_params, (QueryParams, pydantic.BaseModel)):
-            return _coerce_to_query_params(list_params, pagination=self.pagination)
-        if isinstance(list_params, dict):
-            return QueryParams({k: str(v) for k, v in list_params.items()})
-        return QueryParams(list_params)
-
     def to_list_response(self, list_result: ListResult[ModelT]) -> Any:
         """Build the list response body: an instance of
         :attr:`list_response_schema`.
@@ -1205,13 +1198,13 @@ class BaseRestView(
             return _type_adapter(envelope).validate_python(
                 data, from_attributes=True, by_alias=False, by_name=True
             )
-        params = (
-            self._to_query_params(list_result.list_params)
+        values = (
+            _list_params_values(list_result.list_params, pagination=self.pagination)
             if pagination._has_pages
-            else QueryParams()
+            else {}
         )
         return _build_envelope(
-            envelope, pagination._page_info(data, list_result.total_count or 0, params)
+            envelope, pagination._page_info(data, list_result.total_count or 0, values)
         )
 
     def snapshot(self, obj: Any) -> dict[str, Any]:

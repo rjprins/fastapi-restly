@@ -299,7 +299,7 @@ Each kind of rule has one place:
 | The format or the range of one value | A Pydantic validator or a `Field` constraint on the schema | 422 |
 | A field that a client cannot set | [`ReadOnly`](#readonly-and-writeonly), or [your own create and update schemas](#explicit-write-schemas) | The value is ignored |
 | The shape of a JSON document | A Pydantic model as the type of the column; see [Store a Pydantic model in a JSON column](#json-document-columns) | 422 |
-| A value that its column can hold, such as a number in the range of `Integer` | Nothing for the generic types of SQLAlchemy, a `Field` constraint for other types; see [Column validation](#column-validation) | 422, or 400 in a filter |
+| A value that its column can hold, such as a number in the range of `Integer` | Nothing for the generic types of SQLAlchemy, a `Field` constraint for other types; see [Column validation](#column-validation) | 422 |
 | A referenced row must exist | {class}`fr.MustExist <fastapi_restly.schemas.MustExist>` or a reference field; see [Relationships](#reference-exists) | 404 |
 | A value must be unique | A unique constraint on the column; see [Errors](#default-exception-handling) | 409 |
 | A rule that needs the database, the stored row or the caller | The `create` or `update` business method; see [Request Lifecycle & Hooks](#business-methods) | The error that you raise |
@@ -387,9 +387,8 @@ A text column takes text. A field of another type over such a column, such as
 `https://a.example/`. A filter compares the same text, so a value from a
 response finds its row.
 
-A value that does not fit gets 422 in a request body or in the path, and
-400 in a filter. A reference id that does not fit gets 404, as for a row
-that does not exist.
+A value that does not fit gets 422. A reference id that does not fit gets 404,
+as for a row that does not exist.
 
 :::{admonition} Details
 :class: details
@@ -421,7 +420,8 @@ is, as in SQLAlchemy:
 
 The database then checks the value. On PostgreSQL, a value that does not
 fit is an error, and the client gets a 500. For a 422, put the limit on the
-field of the schema. Its validation runs on filter values too; see
+field of the schema. A filter does not check a `Field` limit, so for a 422 in a
+filter too, write the limit in a field validator; see
 [Filter values go through the field's validation](#filter-value-validation).
 
 | Column | Field of the schema |
@@ -592,7 +592,7 @@ a time without an offset, so give its column a field of type
 `fr.UTCDatetime`, which gives every time the offset of UTC.
 
 A time that is not between the years 1 and 9999 in UTC, such as
-`9999-12-31T23:30:00-01:00`, gets 422 in a request body and 400 in a filter.
+`9999-12-31T23:30:00-01:00`, gets 422.
 
 A `date`, and a time of day of type `time`, have no rule. A time of day has
 no date, so summer time can change its time in UTC. A `time` column without

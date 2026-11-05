@@ -17,12 +17,12 @@ style.
 
 import abc
 import dataclasses
+from collections.abc import Mapping
 from math import ceil
 from typing import Annotated, Any, ClassVar, Generic, Optional, Self, cast
 
 import pydantic
 from sqlalchemy import Select
-from starlette.datastructures import QueryParams
 from typing_extensions import TypeVar
 
 from .exc import BadQueryParam, RestlyConfigurationError
@@ -168,24 +168,27 @@ class Pagination(abc.ABC):
         return None
 
     @abc.abstractmethod
-    def _apply(self, stmt: Select[Any], query_params: QueryParams) -> Select[Any]:
-        """``stmt`` with the page that ``query_params`` ask for."""
+    def _apply(self, stmt: Select[Any], values: Mapping[str, Any]) -> Select[Any]:
+        """``stmt`` with the page that ``values`` ask for.
+
+        :param values: The values of the list params by query key.
+        """
 
     @abc.abstractmethod
     def _page_info(
-        self, data: list[Any], total_count: int, params: QueryParams
+        self, data: list[Any], total_count: int, values: Mapping[str, Any]
     ) -> dict[str, Any]:
         """What the envelope is filled from.
 
         :param data: The rows of the response.
         :param total_count: The result of the count query.
-        :param params: The list params as query parameters. Empty on a style
-            without pages.
+        :param values: The values of the list params by query key. Empty on a
+            style without pages.
         """
 
     def _page_info_sample(self) -> dict[str, Any]:
         """The page info of an empty page, to check an envelope."""
-        return self._page_info([], 0, QueryParams())
+        return self._page_info([], 0, {})
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
@@ -331,23 +334,23 @@ class NumberedPagination(Pagination):
     def _own_list_params_keys(self) -> dict[str, str]:
         return {"page": self.page_query_param, "page_size": self.page_size_query_param}
 
-    def _apply(self, stmt: Select[Any], query_params: QueryParams) -> Select[Any]:
-        page_size = _get_int(query_params, self.page_size_query_param)
+    def _apply(self, stmt: Select[Any], values: Mapping[str, Any]) -> Select[Any]:
+        page_size = _get_int(values, self.page_size_query_param)
         if page_size is None:
             return stmt
-        page = _get_int(query_params, self.page_query_param) or 1
+        page = _get_int(values, self.page_query_param) or 1
         return stmt.limit(page_size).offset((page - 1) * page_size)
 
     def _page_info(
-        self, data: list[Any], total_count: int, params: QueryParams
+        self, data: list[Any], total_count: int, values: Mapping[str, Any]
     ) -> dict[str, Any]:
-        page_size = int(
-            params.get(self.page_size_query_param) or self.default_page_size
-        )
+        page_size = _get_int(values, self.page_size_query_param)
+        if page_size is None:
+            page_size = self.default_page_size
         return {
             "data": data,
             "total_count": total_count,
-            "page": int(params.get(self.page_query_param) or 1),
+            "page": _get_int(values, self.page_query_param) or 1,
             "page_size": page_size,
             "total_pages": ceil(total_count / page_size) if page_size > 0 else 0,
         }
@@ -468,20 +471,21 @@ class OffsetPagination(Pagination):
     def _own_list_params_keys(self) -> dict[str, str]:
         return {"limit": self.limit_query_param, "offset": self.offset_query_param}
 
-    def _apply(self, stmt: Select[Any], query_params: QueryParams) -> Select[Any]:
-        limit = _get_int(query_params, self.limit_query_param)
+    def _apply(self, stmt: Select[Any], values: Mapping[str, Any]) -> Select[Any]:
+        limit = _get_int(values, self.limit_query_param)
         if limit is not None:
             stmt = stmt.limit(limit)
-        return stmt.offset(_get_int(query_params, self.offset_query_param) or 0)
+        return stmt.offset(_get_int(values, self.offset_query_param) or 0)
 
     def _page_info(
-        self, data: list[Any], total_count: int, params: QueryParams
+        self, data: list[Any], total_count: int, values: Mapping[str, Any]
     ) -> dict[str, Any]:
+        limit = _get_int(values, self.limit_query_param)
         return {
             "data": data,
             "total_count": total_count,
-            "limit": int(params.get(self.limit_query_param) or self.default_limit),
-            "offset": int(params.get(self.offset_query_param) or 0),
+            "limit": self.default_limit if limit is None else limit,
+            "offset": _get_int(values, self.offset_query_param) or 0,
         }
 
 
@@ -522,11 +526,11 @@ class NoPagination(Pagination):
     def _list_params_fields(self) -> dict[str, Any]:
         return {}
 
-    def _apply(self, stmt: Select[Any], query_params: QueryParams) -> Select[Any]:
+    def _apply(self, stmt: Select[Any], values: Mapping[str, Any]) -> Select[Any]:
         return stmt
 
     def _page_info(
-        self, data: list[Any], total_count: int, params: QueryParams
+        self, data: list[Any], total_count: int, values: Mapping[str, Any]
     ) -> dict[str, Any]:
         """Every row is on the one page, so the total is the number of rows."""
         return {"data": data, "total_count": len(data)}
@@ -552,13 +556,13 @@ def _query_settings(pagination: Pagination | None) -> tuple[Any, ...]:
     )
 
 
-def _get_int(query_params: QueryParams, param_name: str) -> Optional[int]:
-    value = query_params.get(param_name)
-    if not value:
+def _get_int(values: Mapping[str, Any], param_name: str) -> Optional[int]:
+    value = values.get(param_name)
+    if value is None or value == "":
         return None
     try:
         return int(value)
-    except ValueError:
+    except (TypeError, ValueError):
         raise BadQueryParam(
             f"Invalid value for {param_name!r}: {value!r}. Use an integer."
         )

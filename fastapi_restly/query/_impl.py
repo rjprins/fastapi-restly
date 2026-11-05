@@ -21,9 +21,15 @@ from typing import (
 
 import pydantic
 import sqlalchemy
-from pydantic import Field
+from pydantic import Field, PydanticInvalidForJsonSchema
 from pydantic.fields import FieldInfo
-from pydantic_core import PydanticCustomError, SchemaValidator, core_schema
+from pydantic.json_schema import GenerateJsonSchema
+from pydantic_core import (
+    PydanticCustomError,
+    SchemaValidator,
+    ValidationError,
+    core_schema,
+)
 from sqlalchemy import ColumnElement, Select, TypeDecorator
 from sqlalchemy.orm import DeclarativeBase, aliased
 from sqlalchemy.orm.attributes import InstrumentedAttribute
@@ -326,7 +332,7 @@ def _is_idref_field(field: FieldInfo) -> bool:
 def _supports_scalar_operators(field: FieldInfo) -> bool:
     """False for collection-typed fields (``dict``, ``list[str]``, ``Sequence``,
     ...) that no query-string value can coerce into: ``eq``/``__in``/``__ne``
-    (and range) filters on such a field would always 400 at request time, so
+    (and range) filters on such a field would always fail at request time, so
     only ``__isnull`` is generated -- the same advertise-only-what-works
     principle applied to non-column fields.
 
@@ -440,7 +446,7 @@ def derive_list_params_schema(
     ``limit`` and ``offset``), sorting (``sort``), and filters. Each field of ``response_schema`` that maps to a
     column of ``model`` gives filter keys, and its type decides which ones.
     Every such field gives the plain key and the keys with the suffixes
-    ``__in``, ``__ne`` and ``__isnull``. A type with an order, such as a
+    ``__in``, ``__ne``, ``__not_in`` and ``__isnull``. A type with an order, such as a
     number, text, a date or an int enum, also gives ``__gte``, ``__lte``,
     ``__gt`` and ``__lt``, unless the column has SQLAlchemy's ``Enum`` type,
     which holds labels. Text also gives ``__contains`` and
@@ -453,6 +459,11 @@ def derive_list_params_schema(
     ``__isnull`` too, also when it holds one value, such as a ``str``: the
     database compares the JSON text, not the value. A field of a nested
     schema gives dotted keys, such as ``vendor.name``.
+
+    Each key has the type of the field and its validators, without its bounds,
+    such as ``gt``: a filter compares a value, and does not store it. Only
+    ``__in`` and ``__not_in`` take several values, separated by commas or from a
+    repeated key.
 
     The four key settings choose which of these keys the model has. Each
     entry is a key as the client sends it, or a pattern. ``*`` in a pattern
@@ -566,7 +577,7 @@ def _derive_list_params(
         # model -- using the very predicate the request path applies. A
         # relationship/collection field (e.g. ``books: list[BookRef]``) or a
         # reference traversal that does not resolve would otherwise advertise
-        # filters in OpenAPI that always 400 at request time.
+        # filters in OpenAPI that always fail at request time.
         try:
             relationships, column = _resolve_column(model, name, response_schema)
         except BadQueryParam:
@@ -577,7 +588,7 @@ def _derive_list_params(
             relationship.property.uselist for relationship in relationships
         ):
             sort_keys.append(name)
-        field_filters = _filter_fields(name, field, column)
+        field_filters = _filter_fields(response_schema, name, field, column)
         filter_fields.update(field_filters)
         keys_of_field[name] = list(field_filters)
 
@@ -753,49 +764,51 @@ def _setting_label(owner: str | None, name: str) -> str:
     return f"{owner}.{name}" if owner else name
 
 
-def _filter_fields(name: str, field: FieldInfo, column: Any) -> dict[str, Any]:
+def _filter_fields(
+    response_schema: _SchemaClass, name: str, field: FieldInfo, column: Any
+) -> dict[str, Any]:
     """The filter keys of one field, as fields of the list params model.
 
+    A key has the type of its field, and takes one value. Only ``__in`` and
+    ``__not_in`` take several. A text search takes one piece of text, and
+    ``__isnull`` a bool. A field that holds a collection, such as a ``dict``,
+    or that has a JSON column, gets only ``__isnull``. A value from the URL
+    cannot become a collection, and a JSON column holds JSON text, so a filter
+    on it finds no row on SQLite and fails on PostgreSQL.
+
+    :param response_schema: The schema that the key ``name`` starts from.
+    :param name: The field as the client names it, such as ``vendor.name``.
+    :param field: The field.
     :param column: The column of the field, whose type can take the range
         keys away.
     """
     fields: dict[str, Any] = {}
-    # Type filter parameters as ``Optional[list[str]]`` instead of the
-    # column's true type) so FastAPI/Starlette preserve repeated query
-    # parameters as a list and downstream ``_value_parser`` can perform
-    # field-type coercion. ``__isnull`` stays a scalar bool because
-    # repeating it makes no sense.
-    # Collection/JSON-typed fields (``dict``, ``list[str]``) resolve to
-    # real columns, but no query-string value can coerce into them, so
-    # every operator except ``__isnull`` would 400 at request time. A JSON
-    # column holds JSON text, so a filter on it compares the text, also for
-    # a field that holds one value: it finds no row on SQLite and fails on
-    # PostgreSQL.
     supports_scalar = _supports_scalar_operators(field) and not _has_json_type(column)
     if supports_scalar:
-        eq_desc = (
-            f"Filter by ``{name}``. Comma-separated values are OR-combined "
-            "(SQL ``IN``). Repeat the parameter to AND multiple predicates."
+        schema_cls, field_name = _field_of(response_schema, name)
+        read = _checked_reader(schema_cls, field_name, column)
+        value_schema = _value_json_schema(schema_cls, field_name, column)
+
+        def one_value(description: str) -> Any:
+            return _key_field(value_schema, _one_value(read), description)
+
+        def several_values(description: str) -> Any:
+            return _key_field(
+                {"type": "array", "items": value_schema},
+                _several_values(read),
+                description,
+                annotation=Optional[list[Any]],
+            )
+
+        fields[name] = one_value(f"Rows where ``{name}`` is this value.")
+        fields[f"{name}__in"] = several_values(
+            f"Rows where ``{name}`` is one of these values. Separate the values "
+            "with commas, or repeat the key."
         )
-        ne_desc = (
-            f"Exclude rows where ``{name}`` matches. Comma-separated values "
-            "are AND-combined (SQL ``NOT IN``)."
-        )
-        in_desc = (
-            f"Filter by ``{name}`` with explicit SQL ``IN`` semantics. "
-            "Provide comma-separated values."
-        )
-        fields[name] = (
-            Annotated[Optional[list[str]], Field(description=eq_desc)],
-            None,
-        )
-        fields[f"{name}__in"] = (
-            Annotated[Optional[list[str]], Field(description=in_desc)],
-            None,
-        )
-        fields[f"{name}__ne"] = (
-            Annotated[Optional[list[str]], Field(description=ne_desc)],
-            None,
+        fields[f"{name}__ne"] = one_value(f"Rows where ``{name}`` is not this value.")
+        fields[f"{name}__not_in"] = several_values(
+            f"Rows where ``{name}`` is none of these values. Separate the values "
+            "with commas, or repeat the key."
         )
     fields[f"{name}__isnull"] = (
         Annotated[
@@ -817,45 +830,127 @@ def _filter_fields(name: str, field: FieldInfo, column: Any) -> dict[str, Any]:
             ("__gt", ">"),
             ("__lt", "<"),
         ):
-            fields[f"{name}{suffix}"] = (
-                Annotated[
-                    Optional[list[str]], Field(description=f"``{name} {sql} value``.")
-                ],
-                None,
-            )
+            fields[f"{name}{suffix}"] = one_value(f"``{name} {sql} value``.")
 
     # an Enum column holds labels: LIKE would search the stored names, and a
     # native ENUM on PostgreSQL has no LIKE at all
     if supports_scalar and _is_string_field(field) and _enum_type(column) is None:
-        fields[f"{name}__contains"] = (
-            Annotated[
-                Optional[list[str]],
-                Field(
-                    description=(
-                        f"Case-sensitive substring search on "
-                        f"``{name}``. Repeat the parameter to AND "
-                        "multiple terms; whitespace inside one value is "
-                        "also AND-split as a convenience."
-                    )
-                ),
-            ],
-            None,
+        fields[f"{name}__contains"] = _key_field(
+            {"type": "string"},
+            _search_value,
+            f"Rows where ``{name}`` holds this text. The case counts.",
         )
-        fields[f"{name}__icontains"] = (
-            Annotated[
-                Optional[list[str]],
-                Field(
-                    description=(
-                        f"Case-insensitive substring search on "
-                        f"``{name}``. Repeat the parameter to AND "
-                        "multiple terms; whitespace inside one value is "
-                        "also AND-split as a convenience."
-                    )
-                ),
-            ],
-            None,
+        fields[f"{name}__icontains"] = _key_field(
+            {"type": "string"},
+            _search_value,
+            f"Rows where ``{name}`` holds this text, in any case.",
         )
     return fields
+
+
+def _key_field(
+    value_schema: dict[str, Any],
+    validate: Callable[[Any], Any],
+    description: str,
+    *,
+    annotation: Any = Optional[Any],
+) -> tuple[Any, None]:
+    """A filter key as a field of the list params model, with no default.
+
+    Restly validates the value itself, so the type in OpenAPI comes from
+    ``value_schema``: the type of the field, without its bounds.
+
+    :param value_schema: The JSON schema of the key's value.
+    :param validate: Gives the value of the key, from the value in the URL.
+    :param description: The text of the key in OpenAPI.
+    :param annotation: The type of the key, a list for a key with several
+        values, so that the list route reads each value of a repeated key.
+    """
+    json_schema: dict[str, Any] = {}
+    if value_schema:
+        options = (
+            value_schema["anyOf"] if set(value_schema) == {"anyOf"} else [value_schema]
+        )
+        json_schema = {"anyOf": [*options, {"type": "null"}]}
+    return (
+        Annotated[
+            annotation,
+            pydantic.PlainValidator(validate),
+            pydantic.WithJsonSchema(json_schema),
+            Field(description=description),
+        ],
+        None,
+    )
+
+
+def _one_value(read: Callable[[Any], Any]) -> Callable[[Any], Any]:
+    """The validator of a filter key that takes one value."""
+
+    def validate(value: Any) -> Any:
+        if value is None:
+            return None
+        try:
+            return read(value)
+        except _BadValue as exc:
+            raise PydanticCustomError(
+                cast(Any, exc.error_type), cast(Any, exc.reason)
+            ) from exc
+
+    return validate
+
+
+def _several_values(read: Callable[[Any], Any]) -> Callable[[Any], Any]:
+    """The validator of ``__in`` and ``__not_in``. An error names the position
+    of the value that fails."""
+
+    def validate(value: Any) -> Any:
+        if value is None:
+            return None
+        values: list[Any] = []
+        errors: list[Any] = []
+        for position, item in enumerate(_listed_values(value)):
+            try:
+                values.append(read(item))
+            except _BadValue as exc:
+                errors.append(
+                    {
+                        "type": PydanticCustomError(
+                            cast(Any, exc.error_type), cast(Any, exc.reason)
+                        ),
+                        "loc": (position,),
+                        "input": item,
+                    }
+                )
+        if errors:
+            raise ValidationError.from_exception_data("list", errors)
+        return values
+
+    return validate
+
+
+def _listed_values(value: Any) -> list[Any]:
+    """The values of ``__in`` and ``__not_in``. One text is split at each comma,
+    and spaces around each part go. With several values, as from a repeated key,
+    each value stays as it is, so a value can hold a comma."""
+    values = (
+        list(value) if isinstance(value, (list, tuple, set, frozenset)) else [value]
+    )
+    if len(values) == 1 and isinstance(values[0], str):
+        return [part.strip() for part in values[0].split(",")]
+    return values
+
+
+def _search_value(value: Any) -> str | None:
+    """The value of a text search: one piece of text, without spaces around
+    it. An empty value is no filter.
+
+    :raises ValueError: the text holds a NUL character.
+    """
+    if value is None:
+        return None
+    text = str(value).strip()
+    check_text(text)
+    return text or None
 
 
 #: Why a field has only ``__isnull``, for the messages.
@@ -873,7 +968,7 @@ _SUFFIX_HINTS = {
         "enums, have __gte, __lte, __gt and __lt. A column of SQLAlchemy's "
         "Enum type has none.",
     ),
-    **dict.fromkeys(("", "in", "ne"), _ISNULL_ONLY_HINT),
+    **dict.fromkeys(("", "in", "ne", "not_in"), _ISNULL_ONLY_HINT),
 }
 
 
@@ -1071,9 +1166,9 @@ _STATEMENT_JOINS: "weakref.WeakKeyDictionary[Select[Any], _JoinAliases]" = (
 
 def _read_list_params(
     list_params: pydantic.BaseModel | QueryParams, pagination: Any
-) -> tuple[_ListParamsRecord | None, _AnyPagination, str, QueryParams]:
+) -> tuple[_ListParamsRecord | None, _AnyPagination, str, dict[str, Any]]:
     """The record of ``list_params``, the pagination to apply, the name of
-    the sort parameter, and the list params as query parameters.
+    the sort parameter, and the values of the list params by query key.
 
     Without a record, as for hand-written list params, the sort parameter is
     ``sort``.
@@ -1101,10 +1196,8 @@ def _read_list_params(
             "page parameter another name."
         )
     own_keys = {own.key for own in record.own_filters} if record else set()
-    query_params = _coerce_to_query_params(
-        list_params, exclude=own_keys, pagination=pagination
-    )
-    return record, pagination, sort_query_param, query_params
+    values = _list_params_values(list_params, exclude=own_keys, pagination=pagination)
+    return record, pagination, sort_query_param, values
 
 
 def _keep_joins(source: Select[Any], stmt: Select[Any]) -> Select[Any]:
@@ -1148,15 +1241,16 @@ def _apply_filters(
     pagination: _AnyPagination = cast(Any, _FROM_PARAMS),
 ) -> Select[Any]:
     """The first step of :func:`apply_list_params`: the generated filters."""
-    _, pagination, sort_query_param, query_params = _read_list_params(
+    record, pagination, sort_query_param, values = _read_list_params(
         list_params, pagination
     )
     aliases: _JoinAliases = {}
     stmt = _apply_filtering(
-        query_params,
+        values,
         stmt,
         model,
         response_schema,
+        validated=record is not None,
         aliases=aliases,
         pagination=pagination,
         sort_query_param=sort_query_param,
@@ -1176,11 +1270,11 @@ def _apply_sort_and_page(
     sort_nulls: SortNulls = "last",
 ) -> Select[Any]:
     """The last steps of :func:`apply_list_params`: the sort, then the page."""
-    record, pagination, sort_query_param, query_params = _read_list_params(
+    record, pagination, sort_query_param, values = _read_list_params(
         list_params, pagination
     )
     stmt = _apply_sorting(
-        query_params,
+        values,
         stmt,
         model,
         response_schema,
@@ -1192,7 +1286,7 @@ def _apply_sort_and_page(
         default_sort=record.default_sort if record else None,
         sort_nulls=sort_nulls,
     )
-    return _settings_of(pagination)._apply(stmt, query_params)
+    return _settings_of(pagination)._apply(stmt, values)
 
 
 def _query_key(name: str, field: FieldInfo) -> str:
@@ -1203,27 +1297,23 @@ def _query_key(name: str, field: FieldInfo) -> str:
     return field.alias or name
 
 
-def _coerce_to_query_params(
-    list_params: pydantic.BaseModel | QueryParams,
+def _list_params_values(
+    list_params: Any,
     *,
     exclude: _abc.Set[str] = frozenset(),
     pagination: _AnyPagination = None,
-) -> QueryParams:
-    """Normalise validated list params or raw QueryParams to QueryParams.
+) -> dict[str, Any]:
+    """The values of ``list_params`` by query key, without the keys that have
+    no value.
 
     Each field of a model goes under its query key. The page fields of list
     params of your own go under the names of ``pagination``, also when code
-    created them without a view.
-
-    When a dumped field is a list (e.g. a repeated ``name__contains``), each
-    element is expanded to its own ``(key, value)`` tuple so that
-    ``QueryParams.multi_items()`` later returns the original repeated values.
+    created them without a view. In a ``QueryParams``, the last value of a
+    repeated key counts, as in FastAPI, except on ``__in`` and ``__not_in``.
 
     :param exclude: The fields of a model to leave out.
     :param pagination: The pagination to read the page from.
     """
-    if isinstance(list_params, QueryParams):
-        return list_params
     if isinstance(list_params, pydantic.BaseModel):
         params_model = type(list_params)
         fields = params_model.model_fields
@@ -1233,23 +1323,35 @@ def _coerce_to_query_params(
             else {}
         )
         dumped = list_params.model_dump(
-            exclude_none=True, by_alias=False, mode="json", exclude=set(exclude)
+            exclude_none=True, by_alias=False, exclude=set(exclude)
         )
-        items: list[tuple[str, str]] = []
-        for name, value in dumped.items():
-            key = page_keys.get(name) or (
-                _query_key(name, fields[name]) if name in fields else name
-            )
-            if isinstance(value, list):
-                items.extend((key, str(item)) for item in value)
-            else:
-                items.append((key, str(value)))
-        return QueryParams(items)
-    return QueryParams(list_params)
+        return {
+            page_keys.get(name)
+            or (_query_key(name, fields[name]) if name in fields else name): value
+            for name, value in dumped.items()
+        }
+    if isinstance(list_params, _abc.Mapping) and not isinstance(
+        list_params, QueryParams
+    ):
+        return dict(list_params)
+    query = (
+        list_params
+        if isinstance(list_params, QueryParams)
+        else QueryParams(list_params)
+    )
+    return {
+        key: query.getlist(key) if _takes_several_values(key) else query[key]
+        for key in query.keys()
+    }
+
+
+def _takes_several_values(key: str) -> bool:
+    """Whether a generated filter key takes several values."""
+    return _split_key(key)[1] in {"in", "not_in"}
 
 
 def _apply_sorting(
-    query_params: QueryParams,
+    values: _abc.Mapping[str, Any],
     stmt: Select[Any],
     model: type[DeclarativeBase],
     schema_cls: _SchemaClass,
@@ -1273,7 +1375,9 @@ def _apply_sorting(
     if aliases is None:
         aliases = {}
     sorted_on: list[InstrumentedAttribute[Any]] = []
-    sort = query_params.get(sort_query_param) or ""
+    sort = values.get(sort_query_param) or ""
+    # a sort field of your own can be a list, such as ``sort: list[str]``
+    sort = ",".join(map(str, sort)) if isinstance(sort, list) else str(sort)
     if not sort.strip(","):
         # also a sort of only commas, which has no keys
         sort = default_sort or ""
@@ -1477,22 +1581,23 @@ def _resolve_column(
 
 
 def _apply_filtering(
-    query_params: QueryParams,
+    values: _abc.Mapping[str, Any],
     stmt: Select[Any],
     model: type[DeclarativeBase],
     schema_cls: _SchemaClass,
     *,
+    validated: bool = False,
     aliases: _JoinAliases | None = None,
     pagination: _AnyPagination = _DEFAULT_PAGINATION,
     sort_query_param: str = _SORT_QUERY_PARAM,
 ) -> Select[Any]:
-    """Apply ``key=value`` and ``key__op=value`` filters to ``stmt``.
+    """Apply ``key=value`` and ``key__op=value`` filters to ``stmt``. All
+    filters are combined with AND.
 
-    Multiple filters on the same column are AND-combined. Comma-separated
-    values within one parameter are OR-combined for ``eq`` (the default),
-    mapped to SQL ``IN`` for ``in``, and AND-combined for ``ne`` (so
-    ``status__ne=a,b`` means NOT IN (a, b)). For ``contains``/``icontains``
-    values are split on whitespace and AND-combined.
+    :param values: The values by key, as :func:`_list_params_values` gives them.
+    :param validated: The values come from generated list params, whose keys
+        validated them. So only the form of the column is left. Other values
+        still go through the validation of their field.
     """
     if aliases is None:
         aliases = {}
@@ -1501,7 +1606,7 @@ def _apply_filtering(
         list
     )
 
-    for key, raw_value in query_params.multi_items():
+    for key, value in values.items():
         if key in reserved:
             continue
 
@@ -1509,31 +1614,23 @@ def _apply_filtering(
         op = op or "eq"
 
         stmt, column = _join_column(stmt, model, column_name, schema_cls, aliases)
-
-        if op == "isnull":
-            try:
-                value = pydantic.TypeAdapter(bool).validate_python(raw_value)
-            except pydantic.ValidationError as exc:
-                raise BadQueryParam(
-                    f"Invalid filter value for {key!r}: {raw_value!r}. "
-                    "Use true or false."
-                ) from exc
-            filters[column].append(column.is_(None) if value else column.isnot(None))
-            continue
-
-        if op in {"contains", "icontains"}:
-            # LIKE takes the text as it is, without the field's validation
-            try:
-                check_text(raw_value)
-            except ValueError as exc:
-                raise BadQueryParam(
-                    f"Invalid filter value for {column_name!r}: {raw_value!r}. "
-                    f"{value_error_reason(exc)}"
-                ) from exc
-        parser = _filter_value_parser(schema_cls, column_name, column)
-        clause = _build_clause(column, raw_value, op, parser)
-        if clause is not None:
-            filters[column].append(clause)
+        parse = (
+            _column_value_parser(column, key)
+            if validated
+            else _filter_value_parser(schema_cls, column_name, column)
+        )
+        if op in {"in", "not_in"}:
+            # generated keys have split their values already
+            several = validated and isinstance(value, list)
+            terms = [value if several else _listed_values(value)]
+        else:
+            # a list field of your own, such as ``name__icontains: list[str]``,
+            # needs each of its values
+            terms = value if isinstance(value, list) else [value]
+        for term in terms:
+            clause = _filter_clause(column, op, term, parse, key)
+            if clause is not None:
+                filters[column].append(clause)
 
     for column, clauses in filters.items():
         and_clause = clauses[0] if len(clauses) == 1 else sqlalchemy.and_(*clauses)
@@ -1541,35 +1638,81 @@ def _apply_filtering(
     return stmt
 
 
-def _build_clause(
+def _filter_clause(
     column: InstrumentedAttribute[Any],
-    raw_value: str,
     op: str,
-    parser: Callable[[str], Any],
+    value: Any,
+    parse: Callable[[Any], Any],
+    key: str,
 ) -> ColumnElement[Any] | None:
-    """Combine multiple values within one parameter according to ``op`` semantics."""
+    """The condition of one filter key, or ``None`` when it asks for nothing,
+    as an empty text search does.
+
+    :raises BadQueryParam: the value fails, or the operator does not exist.
+    """
+    if op == "isnull":
+        try:
+            is_null = _BOOL_ADAPTER.validate_python(value)
+        except pydantic.ValidationError as exc:
+            raise BadQueryParam(
+                f"Invalid filter value for {key!r}: {value!r}. Use true or false."
+            ) from exc
+        return column.is_(None) if is_null else column.isnot(None)
     if op in {"contains", "icontains"}:
-        values = [v for v in raw_value.split() if v]
-        if not values:
+        # LIKE takes the text as it is, without the field's validation
+        try:
+            text = _search_value(value)
+        except ValueError as exc:
+            raise BadQueryParam(
+                f"Invalid filter value for {key!r}: {value!r}. "
+                f"{value_error_reason(exc)}"
+            ) from exc
+        if text is None:
             return None
-        clauses = [_make_where_clause(column, v, op, parser) for v in values]
-        return clauses[0] if len(clauses) == 1 else sqlalchemy.and_(*clauses)
-
-    values = raw_value.split(",")
-    if not values:
-        return None
+        pattern = f"%{_escape_like_value(text)}%"
+        if op == "contains":
+            return column.like(pattern, escape="\\")
+        return column.ilike(pattern, escape="\\")
     if op == "in":
-        return column.in_([parser(v) for v in values])
-    clauses = [_make_where_clause(column, v, op, parser) for v in values]
-    if len(clauses) == 1:
-        return clauses[0]
-    # ``ne`` with multiple values means NOT IN (...) — AND-combine, not OR.
+        return column.in_([parse(item) for item in value])
+    if op == "not_in":
+        return column.not_in([parse(item) for item in value])
+
+    parsed = parse(value)
+    if op == "eq":
+        return column == parsed
     if op == "ne":
-        return sqlalchemy.and_(*clauses)
-    return sqlalchemy.or_(*clauses)
+        return column != parsed
+    if op == "gte":
+        return column >= parsed
+    if op == "lte":
+        return column <= parsed
+    if op == "gt":
+        return column > parsed
+    if op == "lt":
+        return column < parsed
+    raise BadQueryParam(f"Unsupported filter operator: {op!r}")
 
 
-def _enum_value(enum_type: sqlalchemy.Enum, value: Any, key: str, raw: Any) -> Any:
+_BOOL_ADAPTER = pydantic.TypeAdapter(bool)
+
+
+class _BadValue(Exception):
+    """A filter value that fails: the client's error.
+
+    A generated key reports it as a ``422``. :class:`FilterKey` reports it as a
+    ``400``, because such a key is inside the value of another key.
+    """
+
+    def __init__(self, error_type: str, reason: str) -> None:
+        super().__init__(reason)
+        #: The type of the error, as in Pydantic.
+        self.error_type = error_type
+        #: Why the value fails, such as ``Input should be a valid integer``.
+        self.reason = reason
+
+
+def _enum_value(enum_type: sqlalchemy.Enum, value: Any) -> Any:
     """``value`` as a column of ``enum_type`` takes it: one of its labels, or
     a member of its enum class.
 
@@ -1579,19 +1722,14 @@ def _enum_value(enum_type: sqlalchemy.Enum, value: Any, key: str, raw: Any) -> A
     on, and a native ENUM on PostgreSQL rejects it with an error, which would
     be a 500 for the client.
 
-    :param key: The filter key that the client used, and ``raw`` its value,
-        for the message.
-    :raises BadQueryParam: the value is no label of the column.
+    :raises _BadValue: the value is no label of the column.
     """
     if value in enum_type.enums:
         return value
     for member in enum_type.enum_class or ():
         if value == member:
             return member
-    raise BadQueryParam(
-        f"Invalid filter value for {key!r}: {raw!r}. Use one of: "
-        f"{', '.join(enum_type.enums)}."
-    )
+    raise _BadValue("enum", f"Use one of: {', '.join(enum_type.enums)}.")
 
 
 def _filter_value_parser(
@@ -1633,20 +1771,8 @@ def _value_parser(
     schema_cls: _SchemaClass, field_name: str, column: Any, key: str
 ) -> Callable[[Any], Any]:
     """The parser of the values of one filter key: each value as a value for
-    ``column``.
+    ``column``. See :func:`_value_reader` and :func:`_column_step`.
 
-    A value goes through the validation of its field: a text from a URL, or
-    a value from JSON. ``None`` stays ``None``, for ``IS NULL``. An ``IDRef``
-    gives its id. A column of SQLAlchemy's ``Enum`` type takes only its
-    labels. A JSON column takes only ``None``: it holds JSON text, so SQL
-    cannot compare it with a value. A field of type ``Any``, such as the
-    ``id`` of ``fr.IDSchema``, and
-    the id of a reference get the Python type of the column, such as a
-    ``UUID`` from its text. Any other value goes through ``column_value``: a
-    text column takes text, a time gets the form of its column, a number must
-    fit an integer column, and text must hold no NUL character. Its length is
-    not checked: the filter compares the text, and PostgreSQL compares text of
-    any length.
     The generated filters and
     :class:`~fastapi_restly.query.FilterKey` build one parser for each key,
     so the work for the key is done once.
@@ -1656,14 +1782,8 @@ def _value_parser(
         gives it.
     :param key: The filter key that the client used, for the message.
     """
-    validator = _field_validator(schema_cls, field_name)
-    column_type = getattr(column, "type", None)
-    enum_type = _enum_type(column)
-    json_column = _has_json_type(column)
-    # A field of type Any, such as the id of fr.IDSchema, gives the value as
-    # it came, and so does a reference for its id.
-    untyped = _unwrap_type(schema_cls.model_fields[field_name].annotation)[0] is Any
-    to_python_type = _python_type_parser(column_type)
+    read = _value_reader(schema_cls, field_name, column)
+    to_column = _column_step(column)
 
     def parse(value: Any) -> Any:
         """``value`` as a value for the column.
@@ -1672,46 +1792,203 @@ def _value_parser(
             message has the reason, such as Pydantic's
             ``Input should be a valid integer``.
         """
-        if json_column and value is not None:
-            raise BadQueryParam(
-                f"Invalid filter value for {key!r}: {value!r}. A filter on a "
-                "JSON column can only check whether it is null."
-            )
-        # Only a validation error is the client's fault. Another exception
-        # from a validator is a bug, as it is for a request body.
         try:
-            values, _, _ = validator.validate_python({field_name: value})
-        except pydantic.ValidationError as exc:
-            reason = exc.errors()[0]["msg"]
-            raise BadQueryParam(
-                f"Invalid filter value for {key!r}: {value!r}. {reason}"
-            ) from exc
-        result = values[field_name]
-        if result is None:
-            return None
-        # An IDRef[T] FK field validates to an IDRef object; the SQL bind
-        # value is its scalar id, not the reference wrapper (which cannot bind).
-        reference = isinstance(result, IDSchema)
-        if reference:
-            result = result.id
-        elif enum_type is not None:
-            return _enum_value(enum_type, result, key, value)
-        try:
-            if (untyped or reference) and to_python_type is not None:
-                result = to_python_type(result)
-            return column_value(column_type, result)
-        except pydantic.ValidationError as exc:
-            reason = exc.errors()[0]["msg"]
-            raise BadQueryParam(
-                f"Invalid filter value for {key!r}: {value!r}. {reason}"
-            ) from exc
-        except ValueError as exc:
-            raise BadQueryParam(
-                f"Invalid filter value for {key!r}: {value!r}. "
-                f"{value_error_reason(exc)}"
-            ) from exc
+            return to_column(read(value))
+        except _BadValue as exc:
+            raise _invalid_filter_value(key, value, exc) from exc
 
     return parse
+
+
+def _column_value_parser(column: Any, key: str) -> Callable[[Any], Any]:
+    """The parser of a value that its key has validated: only the form of the
+    column is left. See :func:`_column_step`."""
+    to_column = _column_step(column)
+
+    def parse(value: Any) -> Any:
+        try:
+            return to_column(value)
+        except _BadValue as exc:
+            raise _invalid_filter_value(key, value, exc) from exc
+
+    return parse
+
+
+def _invalid_filter_value(key: str, value: Any, exc: _BadValue) -> BadQueryParam:
+    return BadQueryParam(f"Invalid filter value for {key!r}: {value!r}. {exc.reason}")
+
+
+def _checked_reader(
+    schema_cls: _SchemaClass, field_name: str, column: Any
+) -> Callable[[Any], Any]:
+    """The value of a generated key: the value of its field, as code reads it
+    from the list params, such as a ``Decimal``. It also checks that the
+    column can take the value, so a bad value fails with the other values of
+    the request."""
+    read = _value_reader(schema_cls, field_name, column)
+    to_column = _column_step(column)
+
+    def read_and_check(value: Any) -> Any:
+        result = read(value)
+        to_column(result)
+        return result
+
+    return read_and_check
+
+
+def _value_reader(
+    schema_cls: _SchemaClass, field_name: str, column: Any
+) -> Callable[[Any], Any]:
+    """A function that gives a value the type and the validators of its field.
+
+    A value goes through the validation of its field, without the bounds; see
+    :func:`_field_validator`: a text from a URL, or a value from JSON. ``None``
+    stays ``None``, for ``IS NULL``. An ``IDRef`` gives its id. A JSON column
+    takes only ``None``: it holds JSON text, so SQL cannot compare it with a
+    value. A field of type ``Any``, such as the ``id`` of ``fr.IDSchema``, and
+    the id of a reference get the Python type of the column, such as a
+    ``UUID`` from its text.
+
+    The function raises :class:`_BadValue` for a value that fails. Only a
+    validation error is the client's fault. Another exception from a validator
+    is a bug, as it is for a request body.
+    """
+    validator = _field_validator(schema_cls, field_name)
+    column_type = getattr(column, "type", None)
+    json_column = _has_json_type(column)
+    # A field of type Any, such as the id of fr.IDSchema, gives the value as
+    # it came, and so does a reference for its id.
+    untyped = _unwrap_type(schema_cls.model_fields[field_name].annotation)[0] is Any
+    # a column of SQLAlchemy's Enum type takes its labels; see _column_step
+    to_python_type = (
+        None if _enum_type(column) is not None else _python_type_parser(column_type)
+    )
+
+    def read(value: Any) -> Any:
+        if json_column and value is not None:
+            raise _BadValue(
+                "value_error",
+                "A filter on a JSON column can only check whether it is null.",
+            )
+        try:
+            values, _, _ = validator.validate_python({field_name: value})
+            result = values[field_name]
+            if result is None:
+                return None
+            # An IDRef[T] FK field validates to an IDRef object; the SQL bind
+            # value is its scalar id, not the reference wrapper (which cannot bind).
+            reference = isinstance(result, IDSchema)
+            if reference:
+                result = result.id
+            if (untyped or reference) and to_python_type is not None:
+                result = to_python_type(result)
+            return result
+        except pydantic.ValidationError as exc:
+            error = exc.errors()[0]
+            raise _BadValue(error["type"], error["msg"]) from exc
+
+    return read
+
+
+def _column_step(column: Any) -> Callable[[Any], Any]:
+    """A function that gives a value the form of its column.
+
+    A column of SQLAlchemy's ``Enum`` type takes only its labels. Any other
+    value goes through ``column_value``: a text column takes text, a time gets
+    the form of its column, a number must fit an integer column, and text must
+    hold no NUL character. Its length is not checked: the filter compares the
+    text, and PostgreSQL compares text of any length.
+
+    The function raises :class:`_BadValue` for a value that does not fit.
+    """
+    column_type = getattr(column, "type", None)
+    enum_type = _enum_type(column)
+
+    def to_column(value: Any) -> Any:
+        if value is None:
+            return None
+        if enum_type is not None:
+            return _enum_value(enum_type, value)
+        try:
+            return column_value(column_type, value)
+        except ValueError as exc:
+            raise _BadValue("value_error", value_error_reason(exc)) from exc
+
+    return to_column
+
+
+def _value_json_schema(
+    schema_cls: _SchemaClass, field_name: str, column: Any
+) -> dict[str, Any]:
+    """The JSON schema of one value of a filter key: the type of the field,
+    without its bounds, as :func:`_field_validator` validates it. A field of
+    type ``Any`` and a reference have the type of the column."""
+    field = schema_cls.model_fields[field_name]
+    if _unwrap_type(field.annotation)[0] is Any or _is_idref_field(field):
+        return _column_json_schema(column)
+    field_schema, definitions, _ = _field_core_schema(schema_cls, field_name)
+    while field_schema.get("type") in {"default", "nullable"}:
+        field_schema = field_schema["schema"]
+    if definitions:
+        field_schema = {
+            "type": "definitions",
+            "schema": field_schema,
+            "definitions": definitions,
+        }
+    try:
+        generated = GenerateJsonSchema().generate(field_schema)
+    except PydanticInvalidForJsonSchema:
+        return {}
+    schema = _inline_definitions(generated, generated.get("$defs", {}))
+    schema.pop("$defs", None)
+    return _value_schema_only(schema)
+
+
+def _column_json_schema(column: Any) -> dict[str, Any]:
+    """The JSON schema of the Python type of ``column``, or ``{}`` when the
+    column names none or Pydantic does not know the type."""
+    try:
+        python_type = getattr(column, "type", None).python_type  # type: ignore[union-attr]
+        schema = pydantic.TypeAdapter(python_type).json_schema()
+    except (
+        AttributeError,
+        NotImplementedError,
+        pydantic.PydanticSchemaGenerationError,
+        PydanticInvalidForJsonSchema,
+    ):
+        return {}
+    schema = _inline_definitions(schema, schema.get("$defs", {}))
+    schema.pop("$defs", None)
+    return _value_schema_only(schema)
+
+
+def _value_schema_only(schema: dict[str, Any]) -> dict[str, Any]:
+    """``schema`` without the names of its class and without ``null``. The key
+    has its own title and description, and can always be left out."""
+    schema = {k: v for k, v in schema.items() if k not in {"title", "description"}}
+    options = schema.get("anyOf")
+    if options is not None and set(schema) == {"anyOf"}:
+        options = [option for option in options if option != {"type": "null"}]
+        return options[0] if len(options) == 1 else {"anyOf": options}
+    return schema
+
+
+def _inline_definitions(schema: Any, definitions: dict[str, Any]) -> Any:
+    """``schema`` with each ``#/$defs/...`` reference replaced by its target."""
+    if isinstance(schema, list):
+        return [_inline_definitions(item, definitions) for item in schema]
+    if not isinstance(schema, dict):
+        return schema
+    inlined = {
+        key: _inline_definitions(value, definitions)
+        for key, value in schema.items()
+        if key != "$ref"
+    }
+    reference = schema.get("$ref")
+    if isinstance(reference, str) and reference.startswith("#/$defs/"):
+        target = definitions[reference.removeprefix("#/$defs/")]
+        return {**_inline_definitions(target, definitions), **inlined}
+    return inlined
 
 
 def _python_type_parser(column_type: Any) -> Callable[[Any], Any] | None:
@@ -1755,21 +2032,97 @@ def _python_type_adapter(python_type: type) -> pydantic.TypeAdapter[Any]:
         return pydantic.TypeAdapter(Annotated[Any, pydantic.AfterValidator(construct)])
 
 
-@functools.cache
-def _field_validator(schema_cls: _SchemaClass, field_name: str) -> SchemaValidator:
-    """A validator for a one-field mapping, cut from the model's core schema.
+#: The settings of a type in Pydantic's core schema that only refuse a value.
+_REFUSING_SETTINGS = frozenset(
+    {
+        "gt",
+        "ge",
+        "lt",
+        "le",
+        "multiple_of",
+        "max_digits",
+        "decimal_places",
+        "allow_inf_nan",
+        "min_length",
+        "max_length",
+        "pattern",
+        "now_op",
+        "now_utc_offset",
+        "tz_constraint",
+        "allowed_schemes",
+        "host_required",
+        "version",
+        "strict",
+    }
+)
 
-    The named field supplies ``ValidationInfo.field_name``. No other fields
-    are validated, so ``ValidationInfo.data`` is empty.
+#: The types of Pydantic's core schema that hold one value.
+_SINGLE_VALUE_TYPES = frozenset(
+    {
+        "bool",
+        "int",
+        "float",
+        "decimal",
+        "str",
+        "bytes",
+        "date",
+        "time",
+        "datetime",
+        "timedelta",
+        "uuid",
+        "url",
+        "multi-host-url",
+        "enum",
+    }
+)
 
-    Field validators, constraints and the model config apply; model validators
-    do not. A filter value is one column, so a cross-field rule has nothing to
-    compare against and would only reject legal filters (as validating through
-    ``validate_assignment`` on a ``model_construct()`` skeleton did).
+#: Where a part of Pydantic's core schema holds other parts.
+_INNER_SCHEMA_KEYS = (
+    "schema",
+    "lax_schema",
+    "strict_schema",
+    "json_schema",
+    "python_schema",
+)
 
-    A number becomes text for a text field. A value from a URL is text
-    already, and JSON, such as react-admin's ``filter``, has ``5`` for the
-    text ``"5"``.
+
+def _without_refusals(schema: Any) -> Any:
+    """``schema``, a part of Pydantic's core schema, without the settings that
+    only refuse a value. What changes a value stays, such as a validator or
+    ``strip_whitespace``.
+
+    A bound that Pydantic cannot put on the type itself stays, because it is a
+    function in the schema: on a union such as ``Decimal | int``, or after a
+    validator of your own.
+    """
+    if not isinstance(schema, dict):
+        return schema
+    copied = dict(schema)
+    kind = copied.get("type")
+    if kind in _SINGLE_VALUE_TYPES:
+        for setting in _REFUSING_SETTINGS:
+            copied.pop(setting, None)
+    for key in _INNER_SCHEMA_KEYS:
+        if key in copied and kind != "model":
+            copied[key] = _without_refusals(copied[key])
+    if isinstance(copied.get("steps"), list):
+        copied["steps"] = [_without_refusals(step) for step in copied["steps"]]
+    if isinstance(copied.get("choices"), list):
+        copied["choices"] = [
+            (_without_refusals(choice[0]), choice[1])
+            if isinstance(choice, tuple)
+            else _without_refusals(choice)
+            for choice in copied["choices"]
+        ]
+    return copied
+
+
+def _field_core_schema(
+    schema_cls: _SchemaClass, field_name: str
+) -> tuple[Any, Any, Any]:
+    """The core schema of one field, without the settings that only refuse a
+    value; see :func:`_without_refusals`. Also the definitions and the config of
+    the model.
     """
     core: Any = schema_cls.__pydantic_core_schema__
     definitions = core.get("definitions") if core.get("type") == "definitions" else None
@@ -1788,8 +2141,31 @@ def _field_validator(schema_cls: _SchemaClass, field_name: str) -> SchemaValidat
         node = node.get("schema")
     if node is None:
         raise LookupError(f"{schema_cls.__name__} has no model-fields core schema")
+    return _without_refusals(node["fields"][field_name]["schema"]), definitions, config
+
+
+@functools.cache
+def _field_validator(schema_cls: _SchemaClass, field_name: str) -> SchemaValidator:
+    """A validator for a one-field mapping, cut from the model's core schema.
+
+    The named field supplies ``ValidationInfo.field_name``. No other fields
+    are validated, so ``ValidationInfo.data`` is empty.
+
+    The type, the field validators and the model config apply. Bounds do not,
+    such as ``gt`` or ``min_length``: a filter compares a value, and does not
+    store it, so ``?price__gte=0`` is fine on a field with ``gt=0``. What
+    changes a value stays. Model validators do not apply either. A filter value
+    is one column, so a cross-field rule has nothing to compare against and
+    would only reject legal filters (as validating through
+    ``validate_assignment`` on a ``model_construct()`` skeleton did).
+
+    A number becomes text for a text field. A value from a URL is text
+    already, and JSON, such as react-admin's ``filter``, has ``5`` for the
+    text ``"5"``. For the same reason a value is never strict.
+    """
+    field_core, definitions, config = _field_core_schema(schema_cls, field_name)
     field_schema: Any = core_schema.model_fields_schema(
-        {field_name: core_schema.model_field(node["fields"][field_name]["schema"])}
+        {field_name: core_schema.model_field(field_core)}
     )
     if definitions:
         # A field typed with a class the schema uses more than once is a
@@ -1800,7 +2176,8 @@ def _field_validator(schema_cls: _SchemaClass, field_name: str) -> SchemaValidat
             "definitions": definitions,
         }
     filter_config = cast(
-        core_schema.CoreConfig, {**(config or {}), "coerce_numbers_to_str": True}
+        core_schema.CoreConfig,
+        {**(config or {}), "coerce_numbers_to_str": True, "strict": False},
     )
     return SchemaValidator(field_schema, filter_config)
 
@@ -1812,30 +2189,3 @@ def _get_nested_schema(field: FieldInfo | None) -> _SchemaClass | None:
     if isinstance(annotation, type) and issubclass(annotation, pydantic.BaseModel):
         return annotation
     return None
-
-
-def _make_where_clause(
-    column: InstrumentedAttribute[Any],
-    filter_value: str,
-    op: str,
-    parser: Callable[[str], Any],
-) -> ColumnElement[Any]:
-    if op == "contains":
-        return column.like(f"%{_escape_like_value(filter_value)}%", escape="\\")
-    if op == "icontains":
-        return column.ilike(f"%{_escape_like_value(filter_value)}%", escape="\\")
-
-    value = parser(filter_value)
-    if op == "gte":
-        return column >= value
-    if op == "lte":
-        return column <= value
-    if op == "gt":
-        return column > value
-    if op == "lt":
-        return column < value
-    if op == "ne":
-        return column != value
-    if op == "eq":
-        return column == value
-    raise BadQueryParam(f"Unsupported filter operator: {op!r}")

@@ -5,7 +5,7 @@ a page from the URL:
 
 ```text
 GET /users?name=John
-GET /users?status=active,pending
+GET /users?status__in=active,pending
 GET /users?age__gte=18&age__lt=65
 GET /users?deleted_at__isnull=true
 GET /users?email__icontains=example
@@ -63,11 +63,16 @@ A suffix on the name chooses another comparison:
 | `__lt` | `field < value` | `?age__lt=65` |
 | `__in` | `field IN (...)` | `?status__in=active,pending` |
 | `__ne` | `field != value` | `?status__ne=archived` |
+| `__not_in` | `field NOT IN (...)` | `?status__not_in=archived,deleted` |
 | `__contains` | `field LIKE '%value%'` | `?email__contains=Example` |
 | `__icontains` | `field ILIKE '%value%'` | `?email__icontains=example` |
 | `__isnull` | `field IS NULL` or `IS NOT NULL` | `?deleted_at__isnull=true` |
 
 `__isnull` takes `true` or `false`, not the text `null`.
+
+Each key has the type of its field. OpenAPI shows this type, and a value of
+the wrong type gets `422`; see
+[Filter values go through the field's validation](#filter-value-validation).
 
 :::{admonition} Details
 :class: details
@@ -120,17 +125,33 @@ key too, such as `?task_count__gte=1` and `?sort=-task_count`.
 (filter-value-validation)=
 ### Filter values go through the field's validation
 
-Equality, `__ne`, `__in` and the range filters validate each value with the
-field's Pydantic validation, so the field validators of the schema run on
-filter values too. A field of type `Any`, such as the `id` of
-{class}`fr.IDSchema <fastapi_restly.schemas.IDSchema>`, gives the value the
-Python type of its column, such as a `UUID` from its text. On a column of
-SQLAlchemy's `Enum` type, the value must also be one of its labels. A
-number must fit its integer column, such as the range of `Integer`, and text
-must hold no NUL character; see [Column validation](#column-validation). A
-filter does not check the length of text.
-A value that fails returns `400` (see
-[Why a bad list request returns 422 or 400](#list-request-errors)).
+Each filter value goes through the Pydantic validation of its field. The type
+counts, and so do the field validators of the schema. A value that fails gets
+`422`, in the form that FastAPI uses for any query parameter, and `loc` names
+the key:
+
+```json
+{
+  "detail": [
+    {
+      "type": "int_parsing",
+      "loc": ["query", "age__gte"],
+      "msg": "Input should be a valid integer, unable to parse string as an integer",
+      "input": "old"
+    }
+  ]
+}
+```
+
+A filter compares a value and does not store it, so the bounds of the field do
+not count, such as `gt` or `min_length`. With `price: Decimal = Field(gt=0)`,
+`?price__gte=0` works, and `?price=-1` finds no rows. OpenAPI does not show
+bounds on these keys.
+
+What changes a value stays, also for a filter. So a validator that turns euros
+into cents does this on `?cents=10` and on `?cents__gte=10`. A rich type stays
+too: `?site=https://a.example` compares with `https://a.example/`, as a
+request body stores it. So a client finds a row with the text that it sent.
 
 :::{admonition} Details
 :class: details
@@ -142,57 +163,87 @@ Restly validates one value at a time, without the other fields. So:
   also when the URL uses an alias.
 - {attr}`pydantic.ValidationInfo.data` is `{}`.
 
+The list params hold the value after this validation, such as a `Decimal` in
+`list_params.price__gte`, or a list in `list_params.price__in`. A reference
+gives its id.
+
+A field of type `Any`, such as the `id` of
+{class}`fr.IDSchema <fastapi_restly.schemas.IDSchema>`, gives the value the
+Python type of its column, such as a `UUID` from its text. On a column of
+SQLAlchemy's `Enum` type, the value must also be one of its labels. A number
+must fit its integer column, such as the range of `Integer`, and text must hold
+no NUL character; see [Column validation](#column-validation). A filter does
+not check the length of text.
+
+A bound stays in two cases, because Pydantic cannot put it on the type itself:
+after a validator of your own, and on a union such as `Decimal | int`. Pydantic
+makes such a bound a function, and Restly cannot tell it from your own check.
+
 `__contains` and `__icontains` use the text as it is. They only refuse a NUL
 character. `__isnull` reads a boolean.
 :::
 
-### Match one of several values
+(match-several-values)=
+### Match several values
 
-Values separated by commas in a plain equality filter are combined with OR:
-
-```text
-GET /users?status=active,pending
-```
-
-This gives `WHERE status = 'active' OR status = 'pending'`, which is the same
-as SQL `IN`. To make `IN` visible in the URL, use `__in`:
+`__in` and `__not_in` take several values. Separate them with commas, or repeat
+the key:
 
 ```text
 GET /users?status__in=active,pending
+GET /users?status__in=active&status__in=pending
+GET /users?status__not_in=archived,deleted
 ```
 
-### Exclude several values
-
-Values separated by commas in `__ne` are combined with AND. A row must differ
-from every value:
-
-```text
-GET /users?status__ne=archived,deleted
-```
-
-This gives `WHERE status != 'archived' AND status != 'deleted'`, which is the
-same as SQL `NOT IN`.
-
-### Search for text
-
-To require several pieces of text at once, repeat the parameter. Each value
-becomes its own `LIKE` or `ILIKE` condition, and the conditions are combined
-with AND:
-
-```text
-GET /users?name__contains=john&name__contains=doe
-GET /users?name__icontains=john&name__icontains=doe
-```
-
-`__contains` gives `WHERE name LIKE '%john%' AND name LIKE '%doe%'`.
-`__icontains` uses `ILIKE`.
+Every other key takes one value. A comma is part of that value, so `?name=Doe,John`
+looks for the name `Doe,John`. A key that takes one value and comes twice gets
+`422`, so a client cannot believe that the second value counts. This also holds
+for `sort`, the page parameters and keys of your own.
 
 :::{admonition} Details
 :class: details
 
-Restly also splits one `__contains` or `__icontains` value at each space, so
-`?name__contains=john%20doe` gives the same result. Prefer the repeated
-parameter when you build the URL yourself: it has only one meaning.
+With one key, each comma separates two values, and the spaces around a value go.
+With a repeated key, each value stays as it is, so it can hold a comma. A client
+that repeats the key sometimes and sends one value other times gets that one
+value split. To look for one value that holds a comma, use the plain key.
+
+The `loc` of an error on `__in` also has the position of the value, such as
+`["query", "id__in", 1]`.
+:::
+
+(search-text)=
+### Search for text
+
+`__icontains` finds one piece of text, in any case. `__contains` does the same,
+and the case counts:
+
+```text
+GET /users?name__icontains=john%20doe
+```
+
+The spaces around the text go, and an empty value is no filter. A space inside
+is part of the text, so this finds `John Doe`, and not `Doe, John`. To require
+every word, write a filter of your own:
+
+```python
+import sqlalchemy
+from sqlalchemy import ColumnElement
+
+
+@fr.list_filter("q")
+def filter_q(self, value: str) -> ColumnElement[bool] | None:
+    """Items whose name holds every word."""
+    words = value.split()
+    if not words:
+        return None
+    return sqlalchemy.and_(
+        *(Item.name.icontains(word, autoescape=True) for word in words)
+    )
+```
+
+:::{admonition} Details
+:class: details
 
 Restly escapes `%`, `_` and `\` before it builds the `LIKE` condition. A
 search finds the text as written; these characters are not wildcards. In a
@@ -203,7 +254,7 @@ every row.
 
 ### Combine filters on one field
 
-Repeat the parameter to add conditions with AND:
+Send several keys of one field to add conditions with AND:
 
 ```text
 GET /users?created_at__gte=2024-01-01&created_at__lt=2025-01-01
@@ -886,7 +937,7 @@ request at a time. Write a filter only on data that the client may see.
 :class: details
 
 `value: list[str]` reads a repeated key, as in `?tag=a&tag=b`. A plain type
-takes the last value, as in FastAPI.
+takes one value, and a repeated key gets `422`.
 
 The condition may use only the tables that are in the statement. A condition
 on another table, such as `Vendor.name == value`, raises `TypeError`, because
@@ -906,8 +957,8 @@ fails when the view registers. To replace a generated key, such as `name` or
 `name__icontains`, leave it out with `exclude_filters`, and decorate your own.
 
 A key with an operator looks like a generated key, but it works as your
-method does. It takes one value of the method's type, so a comma or a
-repeated key does not combine values, as they do for a generated key.
+method does. It has the type of the method's value, so a key of your own that
+ends in `__in` does not split its value at commas.
 
 A subclass inherits the key. It drops the key by setting the name of the
 method to `None`, as in `filter_popular = None`. A type checker rejects
@@ -1268,10 +1319,12 @@ it is the only query parameter of the route. Next to a dependency that reads
 validates the model from the query string itself, and shows each key as its
 own parameter in OpenAPI, next to the other parameters of the route.
 
-Apart from `__isnull`, the generated filter values are text in this model.
-Restly validates them against the field when
-{func}`apply_list_params <fastapi_restly.query.apply_list_params>` builds the
-query. A key of your own has the type of its method's value.
+Each generated filter key validates its value when Restly reads the query
+string; see
+[Filter values go through the field's validation](#filter-value-validation). So
+{func}`apply_list_params <fastapi_restly.query.apply_list_params>` gets values
+of the type of the field, and does not run the validators again. A key of your
+own has the type of its method's value.
 
 ## See also
 

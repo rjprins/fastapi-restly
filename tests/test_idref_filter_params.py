@@ -184,9 +184,9 @@ def _assert_fk_filtering(client, p1, p2):
     assert post_ids(f"?post_id__ne={p1}") == [p2]
     assert post_ids("?post_id__isnull=false") == [p1, p1, p2]
 
-    # A non-coercible id is a clean 400 (BadQueryParam), not a 500 -- the same
-    # convention as any other filter value that fails coercion.
-    client.get("/comments/?post_id=not-an-int", assert_status_code=400)
+    # A non-coercible id is a clean 422, not a 500 -- the same convention as any
+    # other filter value that fails validation.
+    client.get("/comments/?post_id=not-an-int", assert_status_code=422)
 
 
 def test_async_list_filters_by_idref_fk(client):

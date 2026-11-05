@@ -16,8 +16,8 @@ from fastapi_restly.query import apply_list_params, derive_list_params_schema
 from fastapi_restly.query._impl import (
     _apply_filtering,
     _apply_sorting,
+    _filter_clause,
     _filter_value_parser,
-    _make_where_clause,
 )
 
 from ._models import SharedBase
@@ -402,11 +402,17 @@ class TestApplyFiltering:
         assert "WHERE test_model.email IS NOT NULL" in str(result)
 
     def test__apply_filtering_multiple_values(self, select_query, mock_query_params):
-        """Test filtering with multiple values (OR)."""
+        """Only ``__in`` and ``__not_in`` split on commas."""
+        params = mock_query_params(name__in="John,Alice")
+        result = _apply_filtering(params, select_query, WidgetModel, WidgetSchema)
+
+        assert "IN" in str(result)
+
         params = mock_query_params(name="John,Alice")
         result = _apply_filtering(params, select_query, WidgetModel, WidgetSchema)
 
-        assert "OR" in str(result)
+        assert "IN" not in str(result).split("WHERE")[1]
+        assert "OR" not in str(result).split("WHERE")[1]
 
     def test__apply_filtering_multiple_filters(self, select_query, mock_query_params):
         """Test filtering with multiple filters (AND)."""
@@ -598,33 +604,33 @@ def _render_sql(stmt) -> str:
     return str(stmt.compile(compile_kwargs={"literal_binds": True}))
 
 
-class TestMakeWhereClause:
-    """Test _make_where_clause by compiling real SQL."""
+class TestFilterClause:
+    """Test _filter_clause by compiling real SQL."""
 
-    def test_make_where_clause_equals(self):
-        clause = _make_where_clause(WidgetModel.name, "John", "eq", str)
+    def test_filter_clause_equals(self):
+        clause = _filter_clause(WidgetModel.name, "eq", "John", str, "key")
         assert "name = 'John'" in _render_sql(
             sqlalchemy.select(WidgetModel).where(clause)
         )
 
-    def test_make_where_clause_greater_than(self):
-        clause = _make_where_clause(WidgetModel.age, "25", "gt", int)
+    def test_filter_clause_greater_than(self):
+        clause = _filter_clause(WidgetModel.age, "gt", "25", int, "key")
         assert "age > 25" in _render_sql(sqlalchemy.select(WidgetModel).where(clause))
 
-    def test_make_where_clause_greater_than_equal(self):
-        clause = _make_where_clause(WidgetModel.age, "18", "gte", int)
+    def test_filter_clause_greater_than_equal(self):
+        clause = _filter_clause(WidgetModel.age, "gte", "18", int, "key")
         assert "age >= 18" in _render_sql(sqlalchemy.select(WidgetModel).where(clause))
 
-    def test_make_where_clause_less_than(self):
-        clause = _make_where_clause(WidgetModel.age, "30", "lt", int)
+    def test_filter_clause_less_than(self):
+        clause = _filter_clause(WidgetModel.age, "lt", "30", int, "key")
         assert "age < 30" in _render_sql(sqlalchemy.select(WidgetModel).where(clause))
 
-    def test_make_where_clause_less_than_equal(self):
-        clause = _make_where_clause(WidgetModel.age, "65", "lte", int)
+    def test_filter_clause_less_than_equal(self):
+        clause = _filter_clause(WidgetModel.age, "lte", "65", int, "key")
         assert "age <= 65" in _render_sql(sqlalchemy.select(WidgetModel).where(clause))
 
-    def test_make_where_clause_not_equals(self):
-        clause = _make_where_clause(WidgetModel.name, "John", "ne", str)
+    def test_filter_clause_not_equals(self):
+        clause = _filter_clause(WidgetModel.name, "ne", "John", str, "key")
         assert "name != 'John'" in _render_sql(
             sqlalchemy.select(WidgetModel).where(clause)
         )
@@ -635,7 +641,7 @@ class TestMakeWhereClause:
 
         def clause(column):
             parser = _filter_value_parser(WidgetSchema, "created_at", column)
-            return _make_where_clause(column, "2024-01-01T00:00:00", "eq", parser)
+            return _filter_clause(column, "eq", "2024-01-01T00:00:00", parser, "key")
 
         aware_clause = clause(AwareRecord.occurred_at)
         naive_clause = clause(WidgetModel.created_at)
@@ -643,17 +649,17 @@ class TestMakeWhereClause:
         assert aware_clause.right.value == datetime(2024, 1, 1, tzinfo=timezone.utc)
         assert naive_clause.right.value == datetime(2024, 1, 1)
 
-    def test_make_where_clause_contains(self):
+    def test_filter_clause_contains(self):
         """contains operator should compile to LIKE with wildcards."""
-        clause = _make_where_clause(WidgetModel.name, "oh", "contains", str)
+        clause = _filter_clause(WidgetModel.name, "contains", "oh", str, "key")
         sql = _render_sql(sqlalchemy.select(WidgetModel).where(clause))
         assert "%oh%" in sql or "%%oh%%" in sql
         assert "LIKE" in sql
         assert "lower" not in sql.lower()
 
-    def test_make_where_clause_icontains(self):
+    def test_filter_clause_icontains(self):
         """icontains operator should compile to case-insensitive LIKE."""
-        clause = _make_where_clause(WidgetModel.name, "oh", "icontains", str)
+        clause = _filter_clause(WidgetModel.name, "icontains", "oh", str, "key")
         sql = _render_sql(sqlalchemy.select(WidgetModel).where(clause))
         # SQLite renders ILIKE as LIKE LOWER(...).
         assert "%oh%" in sql or "%%oh%%" in sql

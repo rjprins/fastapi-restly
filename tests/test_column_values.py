@@ -314,15 +314,14 @@ def test_a_value_that_does_not_fit_is_a_client_error(client):
     assert client.get("/things", params={"name": "toolong"}).json()["data"] == []
 
     response = client.get(
-        "/things", params={"count__in": f"1,{2**40}"}, assert_status_code=400
+        "/things", params={"count__in": f"1,{2**40}"}, assert_status_code=422
     )
-    assert detail(response) == (
-        f"Invalid filter value for 'count': '{2**40}'. {out_of_range}"
-    )
+    # the position tells which value of the list fails
+    assert detail(response) == (["query", "count__in", 1], out_of_range)
     response = client.get(
-        "/things", params={"name__contains": "a\x00b"}, assert_status_code=400
+        "/things", params={"name__contains": "a\x00b"}, assert_status_code=422
     )
-    assert detail(response) == f"Invalid filter value for 'name': 'a\\x00b'. {nul}"
+    assert detail(response) == (["query", "name__contains"], nul)
     response = client.get(
         "/admin/things",
         params={"filter": json.dumps({"count": 2**40})},

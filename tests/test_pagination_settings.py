@@ -788,7 +788,7 @@ def test_apply_list_params_reads_the_pagination_of_its_params_model():
 
     # without pagination, ``page`` is a filter, not a page number
     unpaginated = derive_list_params_schema(BookmarkSchema, Bookmark, pagination=None)
-    filtered = sql(unpaginated.model_validate({"page": ["3"]}))
+    filtered = sql(unpaginated.model_validate({"page": "3"}))
     assert "bookmark.page = 3" in filtered
     assert "LIMIT" not in filtered
 

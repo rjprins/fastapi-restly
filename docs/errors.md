@@ -27,7 +27,7 @@ a `fastapi.HTTPException`:
 | {class}`fr.exc.NotFound <fastapi_restly.exc.NotFound>` | `404` | The row does not exist, or the [scope](scopes.md) hides it. Restly raises it for `/{id}` routes and for a [reference](relationships.md) to a missing row. |
 | {class}`fr.exc.Forbidden <fastapi_restly.exc.Forbidden>` | `403` | The caller may not do this action. Raise it in {meth}`authorize <fastapi_restly.views.RestView.authorize>`. |
 | {class}`fr.exc.Conflict <fastapi_restly.exc.Conflict>` | `409` | The request does not fit the current state of the row, such as publishing a post that is already published. Restly raises it for a [database conflict](#default-exception-handling) in a write. |
-| {class}`fr.exc.BadQueryParam <fastapi_restly.exc.BadQueryParam>` | `400` | Restly cannot apply a value of the list params, such as a filter value that fails the validation of its field. |
+| {class}`fr.exc.BadQueryParam <fastapi_restly.exc.BadQueryParam>` | `400` | Restly cannot apply a value that the list params did not validate, such as a key inside the `filter` of a react-admin view. |
 
 Raise them from your own code: a business method, a hook or a custom route.
 The publish route of the blog example raises `Conflict` inside its write
@@ -68,20 +68,18 @@ are there too.
 (list-request-errors)=
 ## Why a bad list request returns 422 or 400
 
-Two steps check the query string of a list endpoint, and each has its own
-status code:
+A bad list request gets `422` in the form that FastAPI uses, with `loc` naming
+the key. This covers an unknown key, such as `?nope=1`, a sort key that the list
+does not have, such as `?sort=nope`, a value that fails the
+[validation](#filter-value-validation) of its field, such as `?age=old` on an
+`int` field, and a key that takes one value and
+[comes twice](#match-several-values).
 
-- `422`: the query string does not match the
-  [list params](filtering.md). This covers an unknown key,
-  such as `?nope=1`, a sort key that the list does not have, such as
-  `?sort=nope`, and a value of the wrong type for a typed parameter, such as
-  `?page_size=oops`.
-- `400`: the key is known, but Restly cannot apply the value. Restly raises
-  {class}`BadQueryParam <fastapi_restly.exc.BadQueryParam>` for a filter
-  value that fails the field's [validation](#filter-value-validation), such
-  as `?age=old` on an `int` field.
-
-The `detail` of a `400` names the parameter and says what is wrong:
+A list param that holds keys of its own is one value to FastAPI, so `loc` cannot
+name a key inside it. A bad key or value in there gets `400`, such as in the
+`filter` of a react-admin view. Restly raises
+{class}`BadQueryParam <fastapi_restly.exc.BadQueryParam>`, and its `detail` names
+the key and says what is wrong:
 
 ```text
 Invalid filter value for 'age': 'old'. Input should be a valid integer, unable to parse string as an integer
@@ -90,9 +88,8 @@ Invalid filter value for 'age': 'old'. Input should be a valid integer, unable t
 :::{admonition} Details
 :class: details
 
-The text after the value is Pydantic's reason. For a field validator of
-your own, it is Pydantic's text for your error, such as
-`Value error, value is too long`. An exception that is not a validation
+The reason is Pydantic's text. For a field validator of your own, it is
+Pydantic's text for your error, such as `Value error, value is too long`. An exception that is not a validation
 error, such as an `AttributeError` in your validator, is a bug and returns
 `500`, as it does for a request body.
 

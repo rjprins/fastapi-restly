@@ -398,11 +398,10 @@ def test_a_time_out_of_range_in_utc_is_a_client_error(api, column_type, time_typ
     reason = "Value error, In UTC, the time is not between the years 1 and 9999."
 
     response = api.client.get(
-        "/deadlines", params={"dueAt__gte": late}, assert_status_code=400
+        "/deadlines", params={"dueAt__gte": late}, assert_status_code=422
     )
-    assert response.json()["detail"] == (
-        f"Invalid filter value for 'dueAt': '{late}'. {reason}"
-    )
+    error = response.json()["detail"][0]
+    assert (error["loc"], error["msg"]) == (["query", "dueAt__gte"], reason)
 
     response = api.client.post(
         "/deadlines", json={"dueAt": late}, assert_status_code=422
