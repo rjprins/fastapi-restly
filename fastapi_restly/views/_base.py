@@ -1252,8 +1252,6 @@ class BaseRestView(
                         f"Remove {name}, and Restly generates it from the `schema` "
                         "of the view. Or set a class without `table=True`.",
                     )
-                elif name == "response_schema":
-                    _reject_table_subclass(value, where)
                 continue
             if isinstance(inspect.getattr_static(cls, name), SchemaType):
                 raise RestlyConfigurationError(
@@ -1278,6 +1276,14 @@ class BaseRestView(
                 )
 
     @classmethod
+    def _check_table_subclasses(cls) -> None:
+        """No schema of the view holds a subclass of a SQLModel table class, as
+        OpenAPI would show that class with no required fields."""
+        for name in _DEFAULT_SETTINGS:
+            if name != "list_params_schema":
+                _reject_table_subclass(getattr(cls, name), f"{cls.__name__}.{name}")
+
+    @classmethod
     def _check_list_response_schema(cls) -> None:
         """A class that the default ``GET /`` cannot fill fails here, and not
         on the first request."""
@@ -1296,9 +1302,6 @@ class BaseRestView(
                 "its items, so OpenAPI would show items without a type. Write "
                 f"{value.__name__}[UserSummary]."
             )
-        item_class = _list_item_class(value)
-        if item_class is not None:
-            _reject_table_subclass(item_class, f"The item class of {label}")
         # A view that replaces what fills the class decides what the class is.
         endpoint = getattr(cls, "get_many_endpoint", None)
         if (
@@ -1380,6 +1383,7 @@ class BaseRestView(
                 )
         cls._check_schema_settings()
         cls._check_write_schemas()
+        cls._check_table_subclasses()
         cls._check_list_response_schema()
         if not _uses_default(cls, "list_params_schema"):
             cls._check_declared_list_params_schema()

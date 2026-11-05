@@ -112,10 +112,10 @@ The table class itself can be the
 {attr}`response_schema <fastapi_restly.views.BaseRestView.response_schema>`. A
 subclass of it cannot, because OpenAPI would show no required fields.
 
-Restly checks these settings, and not every class inside them. A subclass of a
-table class still shows no required fields as a read-only field of a schema, in an
-envelope of your own whose items are not in a field named `data`, and on a custom
-route. So do not inherit from a table class.
+A subclass of a table class also fails inside a schema of the view, such as in a
+read-only field or in an envelope of your own. Restly does not check the classes of
+a custom route, and there a subclass shows no required fields. So do not inherit
+from a table class.
 
 A table class in a field that a client can write, such as `team: Team`, also
 fails when the view registers. A client could write a row through that field, with

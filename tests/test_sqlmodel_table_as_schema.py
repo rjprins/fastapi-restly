@@ -80,6 +80,14 @@ class ReadOnlyTeamHolder(pydantic.BaseModel):
     team: fr.ReadOnly[TeamRow | None] = None
 
 
+class ReadOnlyChildHolder(pydantic.BaseModel):
+    team: fr.ReadOnly[ChildOfTeamRow | None] = None
+
+
+class RowsOfChild(pydantic.BaseModel):
+    rows: list[ChildOfTeamRow]
+
+
 class TreeNode(pydantic.BaseModel):
     children: list["TreeNode"] = []
 
@@ -243,6 +251,40 @@ def test_a_table_class_in_a_writable_field_fails(view_base, setting, field_type)
     assert "a SQLModel table class" in message
     assert "fr.MustExist" in message
     assert "fr.ReadOnly" in message
+
+
+@pytest.mark.parametrize("view_base", [fr.RestView, fr.AsyncRestView])
+@pytest.mark.parametrize(
+    "setting, fields_or_type",
+    [
+        ("schema", {"team": (fr.ReadOnly[ChildOfTeamRow | None], None)}),
+        ("create_schema", {"team": (fr.ReadOnly[ChildOfTeamRow | None], None)}),
+        ("update_schema", {"team": (fr.ReadOnly[ChildOfTeamRow | None], None)}),
+        ("response_schema", {"team": (ChildOfTeamRow | None, None)}),
+        ("response_schema", {"holder": (ReadOnlyChildHolder | None, None)}),
+        ("list_response_schema", RowsOfChild),
+        ("list_response_schema", list[ReadOnlyChildHolder]),
+    ],
+)
+def test_a_subclass_of_a_table_class_inside_a_schema_fails(
+    view_base, setting, fields_or_type
+):
+    """OpenAPI would show the subclass with no required fields."""
+    value = fields_or_type
+    if isinstance(fields_or_type, dict):
+        value = pydantic.create_model("Shown", **fields_or_type)
+    view = type(
+        "PlayerView",
+        (view_base,),
+        {"prefix": "/players", "model": PlayerRow, setting: value},
+    )
+
+    with pytest.raises(RestlyConfigurationError) as info:
+        fr.include_view(fastapi.FastAPI(), view)
+
+    message = str(info.value)
+    assert f"PlayerView.{setting} holds ChildOfTeamRow, a subclass" in message
+    assert "no required fields" in message
 
 
 def test_a_table_class_in_a_field_of_a_generic_class_fails():

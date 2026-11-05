@@ -84,10 +84,10 @@ miss it.
       and any column. To let a client choose a row, send its id with `fr.MustExist`,
       `fr.IDRef` or `fr.IDSchema`. To show the row in responses, mark the field
       `fr.ReadOnly`.
-    - A subclass of a SQLModel table class as `response_schema`, or as the items of a
-      `list_response_schema` that is a list or an envelope with the field `data`.
-      OpenAPI showed no required fields. Use the table class itself, or a class that
-      does not inherit from it.
+    - A subclass of a SQLModel table class as `response_schema` or as the items of
+      `list_response_schema`, or anywhere inside a schema of the view, such as in a
+      read-only field. OpenAPI showed no required fields. Use the table class itself,
+      or a class that does not inherit from it.
 11. Silent: a custom route keeps the name of its method, without the name of the
     view. On `ItemView`, a method `stats` at `/items/stats` had the route name
     `itemview_stats`, the summary `Itemview Stats` and the operation ID
@@ -255,8 +255,9 @@ miss it.
   `derive_response_schema`, `derive_create_schema` and `derive_update_schema` fail when
   you call them with one. Before, with a table class as `schema`, each create gave
   `500` and OpenAPI showed no required fields. As `create_schema` or `update_schema`,
-  a wrong type was saved. A subclass of a table class also fails as `response_schema`
-  or as the items of a list response.
+  a wrong type was saved. A subclass of a table class also fails as `response_schema`,
+  as the items of a list response, or inside a schema of the view. OpenAPI showed it
+  with no required fields.
 - A SQLModel table class in a field that a client can write now fails when the view
   registers. Before, `POST {"team": {"id": 777, "is_admin": true}}` on a field
   `team: Team` wrote that row: a client could set any id and any column, with values

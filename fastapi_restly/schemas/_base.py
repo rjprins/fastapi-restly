@@ -2007,7 +2007,8 @@ def _reject_table_class(
     :raises RestlyConfigurationError: ``schema`` is a table class, or a
         subclass of one.
     """
-    _reject_table_subclass(schema, where)
+    if _is_table_subclass(schema):
+        _reject_table_subclass(schema, where)
     if schema.model_config.get("table") is True:
         raise RestlyConfigurationError(
             f"{where} is {schema.__name__}, a SQLModel table class. A table class "
@@ -2021,21 +2022,24 @@ def _reject_table_class(
         )
 
 
-def _reject_table_subclass(schema: type[pydantic.BaseModel], where: str) -> None:
-    """A subclass of a SQLModel table class cannot be a schema of a view at all.
+def _reject_table_subclass(annotation: Any, where: str) -> None:
+    """A schema of a view cannot be, or hold, a subclass of a SQLModel table class.
 
     The table class itself can go out as a response, but a subclass shows no
     required fields in OpenAPI, also with ``table=False``. It has no mapper, so
     ``derive_schema`` cannot take it either.
 
-    :raises RestlyConfigurationError: ``schema`` inherits from a table class.
+    :raises RestlyConfigurationError: the type ``annotation`` is such a class,
+        or holds one at any depth.
     """
-    if not is_mapped_class(schema) and _is_table_class(schema):
+    found = _class_in_type(annotation, _is_table_subclass)
+    if found is not None:
         raise RestlyConfigurationError(
-            f"{where} is {schema.__name__}, a subclass of a SQLModel table class. "
-            "It shows no required fields in OpenAPI. Use a class that does not "
-            "inherit from the table class: a schema that you write. SQLModel says "
-            "to inherit from a data model, not from a table class."
+            f"{where} {'is' if found is annotation else 'holds'} {found.__name__}, "
+            "a subclass of a SQLModel table class. It shows no required fields in "
+            "OpenAPI. Use a class that does not inherit from the table class: a "
+            "schema that you write. SQLModel says to inherit from a data model, not "
+            "from a table class."
         )
 
 
@@ -2046,28 +2050,45 @@ def _is_table_class(cls: type) -> bool:
     )
 
 
-def _writable_table_class(annotation: Any, seen: set[Any]) -> type | None:
-    """The first SQLModel table class that a client can write through a field
-    with the type ``annotation``, or ``None``.
+def _is_table_subclass(cls: type) -> bool:
+    """Whether ``cls`` inherits from a SQLModel table class, and has no table."""
+    return _is_table_class(cls) and not is_mapped_class(cls)
+
+
+def _class_in_type(
+    annotation: Any,
+    matches: Callable[[type], bool],
+    *,
+    writable_only: bool = False,
+    seen: set[Any] | None = None,
+) -> type | None:
+    """The first Pydantic class for which ``matches`` is true in the type
+    ``annotation``, or ``None``.
 
     This follows a type into its arguments, and a Pydantic class into its
-    fields. A ``ReadOnly`` field of a nested class takes no input. ``seen`` is
-    as in :func:`_alias_value`, and also holds the classes that the check has
-    followed.
+    fields. With ``writable_only``, it leaves out each ``ReadOnly`` field, as
+    such a field takes no input. ``seen`` is as in :func:`_alias_value`, and
+    also holds the classes that the check has followed.
     """
+    seen = set() if seen is None else seen
     annotation, _ = _unwrap_type(annotation, seen)
     if inspect.isclass(annotation) and issubclass(annotation, pydantic.BaseModel):
         if annotation in seen:
             return None
         seen.add(annotation)
-        if _is_table_class(annotation):
+        if matches(annotation):
             return annotation
-        fields = annotation.model_fields.values()
-        arguments = [f.annotation for f in fields if not _is_readonly(f)]
+        arguments = [
+            field.annotation
+            for field in annotation.model_fields.values()
+            if not (writable_only and _is_readonly(field))
+        ]
     else:
         arguments = list(get_args(annotation))
     for argument in arguments:
-        found = _writable_table_class(argument, seen)
+        found = _class_in_type(
+            argument, matches, writable_only=writable_only, seen=seen
+        )
         if found is not None:
             return found
     return None
@@ -2086,7 +2107,7 @@ def _reject_writable_table_class(schema: type[pydantic.BaseModel], where: str) -
     for name, field in schema.model_fields.items():
         if _is_readonly(field):
             continue
-        table = _writable_table_class(field.annotation, set())
+        table = _class_in_type(field.annotation, _is_table_class, writable_only=True)
         if table is not None:
             raise RestlyConfigurationError(
                 f"{where} has the field {name}, which holds {table.__name__}, a "
