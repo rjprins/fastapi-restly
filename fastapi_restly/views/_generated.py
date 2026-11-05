@@ -13,7 +13,7 @@ from typing import Any
 import pydantic
 
 from ..exc import RestlyConfigurationError
-from ..query._impl import _KEY_SETTINGS, _derive_list_params, _record_of
+from ..query._impl import _KEY_SETTINGS, _RECORDS, _derive_list_params, _record_of
 from ..query._paged import _completed_list_params, _takes_page_fields
 from ..schemas import (
     derive_create_schema,
@@ -104,7 +104,8 @@ def _generated_for(declarer: type) -> bool:
         return _GENERATED_FOR[declarer]
     declared = vars(declarer)["list_params_schema"]
     generated: type[pydantic.BaseModel] | None = None
-    if _record_of(declared) is not None:
+    # a subclass of generated list params is a class of your own
+    if declared in _RECORDS:
         try:
             generated = _derive_view_list_params(declarer)
         except (AttributeError, ValueError, RestlyConfigurationError):

@@ -323,3 +323,47 @@ def test_unknown_query_params_is_forbid_or_ignore():
 
         class ItemView(fr.AsyncRestView):
             unknown_query_params = "allow"  # type: ignore[assignment]
+
+
+@pytest.fixture
+def cents_client(request: pytest.FixtureRequest) -> RestlyTestClient:
+    class Coin(fr.IDMixin, SharedBase):
+        cents: Mapped[int]
+
+    class CoinSchema(fr.IDSchema):
+        cents: int
+
+    base = fr.query.derive_list_params_schema(CoinSchema, Coin)
+
+    class CoinParams(base):  # type: ignore[valid-type,misc]
+        @pydantic.field_validator("cents", mode="before")
+        @classmethod
+        def from_euros(cls, value: Any) -> Any:
+            return None if value is None else int(value) * 100
+
+    class CoinView(fr.RestView):
+        prefix = "/coins"
+        model = Coin
+        schema = CoinSchema
+        list_params_schema = CoinParams
+        unknown_query_params = "ignore"
+
+    app = FastAPI()
+    fr.include_view(app, CoinView)
+    _create_tables(request, sync=True)
+    client = RestlyTestClient(app)
+    for cents in (10, 1000, 100000):
+        client.post("/coins/", json={"cents": cents})
+    return client
+
+
+def test_a_subclass_of_generated_list_params_validates_each_value_once(cents_client):
+    response = cents_client.get("/coins/", params={"cents": "10"})
+
+    assert [coin["cents"] for coin in response.json()["data"]] == [1000]
+
+
+def test_a_subclass_of_generated_list_params_can_ignore_unknown_keys(cents_client):
+    response = cents_client.get("/coins/", params={"cents": "10", "_": "1"})
+
+    assert [coin["cents"] for coin in response.json()["data"]] == [1000]

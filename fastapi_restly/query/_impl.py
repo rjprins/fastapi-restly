@@ -171,8 +171,16 @@ _FROM_PARAMS = _FromParams()
 
 def _record_of(params_model: type) -> _ListParamsRecord | None:
     """What generated list params were created with, or ``None`` for
-    hand-written ones."""
-    return _RECORDS.get(params_model)
+    hand-written ones.
+
+    A subclass of generated list params has the record of its base, so it
+    reads its values as the base does.
+    """
+    for klass in params_model.__mro__:
+        record = _RECORDS.get(klass)
+        if record is not None:
+            return record
+    return None
 
 
 def _check_default_sort(label: str, value: Any) -> None:
