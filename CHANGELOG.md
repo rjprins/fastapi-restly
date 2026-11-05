@@ -136,22 +136,26 @@ miss it.
     `?status__ne=a,b` now hides almost nothing, where it hid both values. Neither
     gives an error, so search your clients for such URLs. Write `?status__in=a,b`
     and `?status__not_in=a,b`. On another type, such as `?id=1,2`, the request now
-    gets `422`.
+    gets `422`. The spaces around each value of `__in` and `__not_in` now go, so
+    `?name__in=a,%20b` finds the name `b`, where it looked for ` b`.
 20. Silent: `__icontains` takes one piece of text. So
     `?name__icontains=john%20doe` now looks for `john doe`, where it looked for each
     word. For every word, write a filter of your own; see "Search for text" in the
     guide.
 21. A key that takes one value now gets `422` when it comes twice, also for a text
     search, `sort`, the page parameters, a key of your own and list params of your
-    own. Before, a repeated `__icontains` added a condition, and any other key took
-    the last value. Change a client that sends `?name=a&name=b` to `?name__in=a,b`.
-    `__in` and `__not_in` read each value of a repeated key. Outside a view,
-    `fr.query.apply_list_params` still takes the last value of a `QueryParams`.
+    own. Before, a repeated filter key added a condition for each value, so
+    `?name=a&name=b` found no rows, and `sort` and the page parameters took the last
+    value. Change a client that sends `?name=a&name=b` to `?name__in=a,b`. Outside a
+    view, `fr.query.apply_list_params` still takes the last value of a `QueryParams`.
+    Silent: `__in` and `__not_in` read each value of a repeated key. So
+    `?name__in=a&name__in=b` now finds the names `a` and `b`, where it found no rows.
 22. A filter value that fails now gets `422` in the form of FastAPI, not `400`, and
     `loc` names the key. Change a client or a test that expects `400` or reads the
-    text of its `detail`. A handler for `RestlyHTTPError` no longer gets these errors;
-    a handler for `RequestValidationError` does. A key inside the `filter` of a
-    react-admin view, and `FilterKey.parse()`, keep the `400`.
+    text of its `detail`. A key inside the `filter` of a react-admin view, and
+    `FilterKey.parse()`, keep the `400`. Silent: a handler for `RestlyHTTPError` no
+    longer gets these errors, so the response no longer has the body of your handler.
+    A handler for `RequestValidationError` gets them.
 23. Silent: a filter value no longer has the bounds of its field, such as `gt` or
     `min_length`. `?price=-1` on a field with `gt=0` is now `200` with no rows, where
     it was `400`. OpenAPI no longer shows bounds on these keys. A number in a filter
@@ -173,21 +177,23 @@ miss it.
 27. `__contains` is gone, so `?name__contains=a` now gets `422`. Use `__icontains`.
     Its case counted on one database and not on another. For a search where the case
     counts, write a filter of your own; see "Search for text" in the guide. In list
-    params of your own, a field named `name__contains` now gets `400`.
+    params of your own, a field named `name__contains` now gets `400`. On a view
+    that ignores unknown keys, see step 38.
 28. `__isnull` now exists only on a column that can be NULL, and on each dotted key.
     So `?id__isnull=false` now gets `422`. On such a column, it gave the same answer
-    for each row.
+    for each row. On a view that ignores unknown keys, see step 38.
 29. `__gte`, `__lte`, `__gt` and `__lt` no longer exist on a text column, so
     `?name__gte=a` now gets `422`. The database sorts such values as text, so `"9"`
     comes after `"10"`. A field of type `date` on a text column keeps them. For
-    another field, write a filter of your own.
+    another field, write a filter of your own. On a view that ignores unknown keys,
+    see step 38.
 30. `__icontains` now follows the column, not the type of the field. A `str` field on
     a column that does not hold text loses it, so such a key now gets `422`. A field
     of another type on a text column, such as `HttpUrl`, gets it. An enum, a `Literal`
     and a `bool` do not. On a `TypeDecorator` column, only a `str` field gets it,
     and only when the type holds text inside. SQLAlchemy runs the type on the search
     text too, so a type that stores another value as text would search for
-    something else.
+    something else. On a view that ignores unknown keys, see step 38.
 31. Silent: in `exclude_filters`, a name without a suffix now leaves out the whole
     field. So `exclude_filters = ("name",)` also removes `name__in`, where it removed
     only `?name=`. To keep the other keys, list the keys in `include_filters`, such
@@ -197,7 +203,8 @@ miss it.
     `derive_list_params_schema`.
 33. A key now has the name that a response shows. So a field with a
     `serialization_alias` has its filter and sort keys under that name, and a client
-    that sends the alias or the Python name gets `422`. Change the client.
+    that sends the alias or the Python name gets `422`. Change the client. On a view
+    that ignores unknown keys, see step 38.
 34. Generated list params now forbid a key that they do not have. In a route outside
     a view, with `Annotated[ListParams, Query()]`, an unknown key now gets `422`. A
     view still follows `unknown_query_params`.
@@ -222,6 +229,10 @@ miss it.
     it became one text, such as `{'a', 'b'}`. `{"note": None}` now leaves the key
     out, where it looked for the text `None`. Check code that builds such a dict
     from a list that can be empty.
+38. Silent: a view with `unknown_query_params = "ignore"` ignores a key that it
+    does not have. So each key that steps 27, 28, 29, 30 and 33 remove now gives
+    `200` with the rows that the other keys find, where it filtered the rows. Search
+    the clients of such a view for these keys.
 
 ### Added
 

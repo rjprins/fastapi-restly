@@ -93,17 +93,15 @@ Pydantic's text for your error, such as `Value error, value is too long`. An exc
 error, such as an `AttributeError` in your validator, is a bug and returns
 `500`, as it does for a request body.
 
-A react-admin view follows the same two steps. JSON in `sort`, `range` or
-`filter` that does not have their shape gets a `422`. A sort key or a filter
-that the view cannot apply raises `BadQueryParam`. It checks a filter value
-against the type of the column, with Pydantic, so `"2020-01-01"` filters a
-date column and `"false"` a boolean column. A handler for
-{class}`RestlyHTTPError <fastapi_restly.exc.RestlyHTTPError>` shapes all
-these `400` answers; see [Change the error body](#error-envelope).
+On a react-admin view, JSON in `sort`, `range` or `filter` that does not have
+their shape gets `422`. A sort key or a filter inside them that the view cannot
+apply gets `400`, from `BadQueryParam`. Restly checks a value in `filter`
+against the type of its field, with Pydantic, so `"2020-01-01"` filters a
+`date` field and `"false"` a `bool` field.
 
-A filter value passes the first step as text. Restly checks it against the
-field only when it builds the query, so a bad filter value returns `400`, not
-`422`.
+A handler for {class}`RestlyHTTPError <fastapi_restly.exc.RestlyHTTPError>`
+shapes the `400` answers, and not the `422` answers; see
+[Change the error body](#error-envelope).
 :::
 
 (default-exception-handling)=
@@ -211,7 +209,8 @@ list routes get the same body, also on a react-admin view.
 Some errors are not a `RestlyHTTPError`, so this handler does not change them:
 
 - A `422` for a request body or a parameter that fails validation, such as
-  `?page_size=oops`, and for an unknown key of the list params. This is a
+  `?page_size=oops` or a bad filter value, and for an unknown key of the list
+  params. This is a
   `fastapi.exceptions.RequestValidationError`. Register a handler for it.
 - A plain `fastapi.HTTPException`. Restly raises one for a foreign key and
   its relationship field that name different rows (`422`). Register a
