@@ -1634,6 +1634,12 @@ def _list_params_values(
     created them without a view. In a ``QueryParams``, the last value of a
     repeated key counts, as in FastAPI, except on ``__in`` and ``__not_in``.
 
+    A generated key holds the value of its field, which stays as it is: a
+    dump would make a dataclass a dict. A value of list params of your own
+    goes through the validation of its field, as text from a URL does, so it
+    comes in its JSON form, such as ``"desc"`` for a member of a ``str``
+    enum, or a list for a tuple.
+
     :param exclude: The fields of a model to leave out.
     :param pagination: The pagination to read the page from.
     """
@@ -1645,9 +1651,17 @@ def _list_params_values(
             if pagination is not None and _takes_page_fields(params_model, pagination)
             else {}
         )
-        dumped = list_params.model_dump(
-            exclude_none=True, by_alias=False, exclude=set(exclude)
-        )
+        if _record_of(params_model) is not None:
+            dumped = {
+                name: value
+                for name in fields
+                if name not in exclude
+                and (value := getattr(list_params, name)) is not None
+            }
+        else:
+            dumped = list_params.model_dump(
+                mode="json", exclude_none=True, by_alias=False, exclude=set(exclude)
+            )
         return {
             page_keys.get(name)
             or (_query_key(name, fields[name]) if name in fields else name): value

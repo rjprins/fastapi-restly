@@ -6,6 +6,7 @@ does not store it. Only ``__in`` and ``__not_in`` take several values.
 """
 
 import asyncio
+import dataclasses
 import enum
 from datetime import date
 from decimal import Decimal
@@ -16,7 +17,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from pydantic import Field, HttpUrl, field_validator
-from sqlalchemy import ForeignKey, String, select
+from sqlalchemy import ForeignKey, Integer, String, TypeDecorator, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from starlette.datastructures import QueryParams
 
@@ -783,3 +784,87 @@ def test_mixed_labels_stay_as_they_are():
     assert not _has_number_labels(Literal[True, False])
     assert not _has_number_labels(Literal[1, True])
     assert not _has_number_labels(int)
+
+
+# ---------------------------------------------------------------------------
+# How the values of list params reach the filters
+# ---------------------------------------------------------------------------
+
+
+@dataclasses.dataclass(frozen=True)
+class Money:
+    cents: int
+
+
+class MoneyType(TypeDecorator[Money]):
+    impl = Integer
+    cache_ok = True
+
+    def process_bind_param(self, value: Any, dialect: Any) -> Any:
+        return None if value is None else value.cents
+
+    def process_result_value(self, value: Any, dialect: Any) -> Any:
+        return None if value is None else Money(value)
+
+
+def _money_from_text(value: Any) -> Any:
+    return Money(int(value)) if isinstance(value, str) else value
+
+
+class LabelSort(str, enum.Enum):
+    up = "label"
+    down = "-label"
+
+
+@pytest.fixture
+def shelves(sync_db):
+    engine, make_session = sync_db
+
+    class Shelf(fr.IDMixin, SharedBase):
+        label: Mapped[str]
+        price: Mapped[Money] = mapped_column(MoneyType)
+        stocked: Mapped[str]
+
+    class ShelfSchema(fr.IDSchema):
+        label: str
+        price: Annotated[Money, pydantic.BeforeValidator(_money_from_text)]
+        stocked: str
+
+    SharedBase.metadata.create_all(engine)
+    with make_session() as session:
+        session.add_all(
+            [
+                Shelf(label="a", price=Money(5), stocked="2024-01-31"),
+                Shelf(label="b", price=Money(7), stocked="2024-02-01"),
+            ]
+        )
+        session.commit()
+
+    def labels_of(list_params: Any) -> list[str]:
+        stmt = apply_list_params(select(Shelf), list_params, Shelf, ShelfSchema)
+        with make_session() as session:
+            return [row.label for row in session.scalars(stmt)]
+
+    return Shelf, ShelfSchema, labels_of
+
+
+def test_a_generated_key_keeps_the_value_of_its_field(shelves):
+    Shelf, ShelfSchema, labels_of = shelves
+    params_model = derive_list_params_schema(ShelfSchema, Shelf, pagination=None)
+
+    # a dump would make the dataclass a dict
+    assert labels_of(params_model(price="5")) == ["a"]
+
+
+def test_list_params_of_your_own_give_their_json_form(shelves):
+    class OwnParams(pydantic.BaseModel):
+        sort: LabelSort | None = None
+        stocked: date | None = None
+        label__icontains: tuple[str, ...] = ()
+
+    _, _, labels_of = shelves
+
+    assert labels_of(OwnParams(sort=LabelSort.down)) == ["b", "a"]
+    # the date goes to the text field as the text of its JSON form
+    assert labels_of(OwnParams(stocked=date(2024, 1, 31))) == ["a"]
+    assert labels_of(OwnParams(label__icontains=("a",))) == ["a"]
