@@ -36,6 +36,13 @@ When the commit fails, the whole transaction rolls back, as
 commits. On SQLite with the default settings of the driver, the savepoint
 begins the transaction, so its release commits, just before the commit. This is
 the same with a plain ``begin_nested()``, as SQLAlchemy documents.
+
+A view with ``atomic_write_actions = False`` takes two things away from its
+outermost bracket: the savepoint and the refusal of a commit. So code in its
+write actions may commit, and an error rolls back all that is not committed.
+All else stays. The outermost bracket decides for the brackets inside it, and
+they join it. The save leaves alone a row that the code took out of the
+session; see :func:`_left_out_of_save`.
 """
 
 import contextlib
@@ -73,6 +80,7 @@ class AsyncWriteHost(Protocol):
 
     session: Any
     model: Any
+    atomic_write_actions: bool
 
     def _get_reload_statements(self, subject: Any, others: list[Any]) -> list[Any]: ...
     async def authorize(
@@ -92,6 +100,7 @@ class WriteHost(Protocol):
 
     session: Any
     model: Any
+    atomic_write_actions: bool
 
     def _get_reload_statements(self, subject: Any, others: list[Any]) -> list[Any]: ...
     def authorize(self, action: str, obj: Any = None, data: Any = None) -> None: ...
@@ -194,6 +203,30 @@ def _new(subject: Any) -> Any:
     return subject if state.persistent else None
 
 
+def _left_out_of_save(session: Session, subject: Any) -> bool:
+    """Whether the save of a non-atomic action leaves ``subject`` alone.
+
+    True when the code of the action took a row of the database out of this
+    session: it expunged the row, gave it to another session, or deleted it and
+    committed. A plain route would not touch such a row either, and the code
+    may still use it, for example in a task. A detached row with a change is
+    not left out, because the save is there to write that change. If its row
+    was deleted, ``session.add`` raises, so the change is not lost without an
+    error. A new object has no row yet, so the save adds it.
+    """
+    state = _mapped_state(subject)
+    if state is None or not state.has_identity:
+        return False
+    if state.detached:
+        return not state.modified
+    return state.session_id != session.hash_key
+
+
+def _new_of_left_out(subject: Any) -> Any:
+    """``new`` for a row that the save left alone: ``None`` when its row is gone."""
+    return None if sa_inspect(subject).was_deleted else subject
+
+
 _WRITTEN_ROWS_KEY = "_fr_written_rows"
 
 
@@ -221,12 +254,13 @@ class _WrittenRows:
         #: left holding the old related row.
         self.stale: dict[int, tuple[Any, set[str]]] = {}
 
-    def others(self, subject: Any) -> list[Any]:
-        """The written rows, other than the subject, that are still rows."""
+    def others(self, subject: Any, session: Any) -> list[Any]:
+        """The written rows, other than the subject, that are still rows of
+        ``session``."""
         return [
             row
             for row in self.rows.values()
-            if row is not subject and sa_inspect(row).persistent
+            if row is not subject and row in session and sa_inspect(row).persistent
         ]
 
 
@@ -293,7 +327,7 @@ def _expire_stale(session: Session, written: _WrittenRows, saved: list[Any]) -> 
     The rows in ``saved`` are refreshed already."""
     skip = {id(row) for row in saved}
     for key, (obj, names) in written.stale.items():
-        if key not in skip and sa_inspect(obj).persistent:
+        if key not in skip and obj in session and sa_inspect(obj).persistent:
             session.expire(obj, list(names))
 
 
@@ -354,7 +388,7 @@ async def _async_save(host: AsyncWriteHost, subject: Any, written: _WrittenRows)
     state = _mapped_state(subject)
     if state is not None and state.persistent:
         await _async_refresh_saved(session, subject)
-    others = written.others(subject)
+    others = written.others(subject, session)
     for row in others:
         _expire_relationships(row)
     _expire_stale(session.sync_session, written, [subject, *others])
@@ -373,7 +407,7 @@ def _save(host: WriteHost, subject: Any, written: _WrittenRows) -> Any:
     state = _mapped_state(subject)
     if state is not None and state.persistent:
         _refresh_saved(session, subject)
-    others = written.others(subject)
+    others = written.others(subject, session)
     for row in others:
         _expire_relationships(row)
     _expire_stale(session, written, [subject, *others])
@@ -447,9 +481,12 @@ async def _async_bracket(
     the commit and the after-hooks. A bracket inside it joins it.
     """
     _warn_if_session_expires(host)
+    outermost = _shared_write_action_commit_owner(host.session) is None
     commit = (
-        _async_shared_write_action_commit(host.session, savepoint_at_start=False)
-        if _shared_write_action_commit_owner(host.session) is None
+        _async_shared_write_action_commit(
+            host.session, savepoint_at_start=False, atomic=host.atomic_write_actions
+        )
+        if outermost
         else contextlib.nullcontext()
     )
     async with commit, _async_joined_bracket(host, action, obj, data) as bracket:
@@ -468,7 +505,7 @@ async def _async_joined_bracket(
     await host.authorize(action, obj=row, data=data)
     checked = await _async_check_body_references(session, data)
     old = host.snapshot(row) if row is not None else None
-    if owner.savepoint is None:
+    if not owner.change_began:
         await session.run_sync(owner.begin_savepoint)
     bracket = _Bracket(obj)
     with _record_written_rows(session.sync_session, host.model) as written:
@@ -477,7 +514,13 @@ async def _async_joined_bracket(
             with _remember_checked_references(session, checked), _change(session, obj):
                 yield bracket
             owner.require_active()
-            new = await _async_save(host, bracket.subject, written)
+            if not owner.atomic and _left_out_of_save(
+                session.sync_session, bracket.subject
+            ):
+                await _async_save(host, None, written)
+                new = _new_of_left_out(bracket.subject)
+            else:
+                new = await _async_save(host, bracket.subject, written)
             await host.before_action_commit(action, new=new, old=old)
             await session.flush()
         except BaseException:
@@ -490,9 +533,12 @@ async def _async_joined_bracket(
 def _bracket(host: WriteHost, action: str, obj: Any, data: Any) -> Iterator[_Bracket]:
     """Sync variant of :func:`_async_bracket`."""
     _warn_if_session_expires(host)
+    outermost = _shared_write_action_commit_owner(host.session) is None
     commit = (
-        _shared_write_action_commit(host.session, savepoint_at_start=False)
-        if _shared_write_action_commit_owner(host.session) is None
+        _shared_write_action_commit(
+            host.session, savepoint_at_start=False, atomic=host.atomic_write_actions
+        )
+        if outermost
         else contextlib.nullcontext()
     )
     with commit, _joined_bracket(host, action, obj, data) as bracket:
@@ -519,7 +565,11 @@ def _joined_bracket(
             with _remember_checked_references(session, checked), _change(session, obj):
                 yield bracket
             owner.require_active()
-            new = _save(host, bracket.subject, written)
+            if not owner.atomic and _left_out_of_save(session, bracket.subject):
+                _save(host, None, written)
+                new = _new_of_left_out(bracket.subject)
+            else:
+                new = _save(host, bracket.subject, written)
             host.before_action_commit(action, new=new, old=old)
             session.flush()
         except BaseException:
@@ -551,7 +601,7 @@ def sync_write_action(
 
 @contextlib.asynccontextmanager
 async def _async_shared_write_action_commit(
-    session: AsyncSession, *, savepoint_at_start: bool = True
+    session: AsyncSession, *, savepoint_at_start: bool = True, atomic: bool = True
 ) -> AsyncIterator[None]:
     """Commit once after the outermost block, then await its surviving hooks.
 
@@ -559,14 +609,16 @@ async def _async_shared_write_action_commit(
     block of a write action, which opens it where its change begins. An
     exception that leaves the outermost block rolls back to the savepoint. The
     outermost block also turns an ``IntegrityError`` that escapes it, or that
-    its commit raises, into :class:`~fastapi_restly.exc.Conflict`.
+    its commit raises, into :class:`~fastapi_restly.exc.Conflict`. With
+    ``atomic=False``, from a view with ``atomic_write_actions = False``, the
+    outermost block opens no savepoint and refuses no commit.
     """
     pending: tuple[_QueuedAfterHook, ...] = ()
     outermost = _shared_write_action_commit_owner(session.sync_session) is None
     with (
         translate_integrity_errors(outermost=outermost),
         _join_shared_write_action_commit(
-            session.sync_session, asynchronous=True
+            session.sync_session, asynchronous=True, atomic=atomic
         ) as owner,
     ):
         try:
@@ -595,14 +647,14 @@ async def _async_shared_write_action_commit(
 
 @contextlib.contextmanager
 def _shared_write_action_commit(
-    session: Session, *, savepoint_at_start: bool = True
+    session: Session, *, savepoint_at_start: bool = True, atomic: bool = True
 ) -> Iterator[None]:
     """Sync counterpart of :func:`_async_shared_write_action_commit`."""
     pending: tuple[_QueuedAfterHook, ...] = ()
     outermost = _shared_write_action_commit_owner(session) is None
     with (
         translate_integrity_errors(outermost=outermost),
-        _join_shared_write_action_commit(session) as owner,
+        _join_shared_write_action_commit(session, atomic=atomic) as owner,
     ):
         try:
             if outermost and savepoint_at_start:
@@ -639,6 +691,9 @@ _LoadedObjects = dict[int, tuple[Any, set[str]]]
 @dataclass
 class _SharedWriteActionCommit:
     asynchronous: bool = False
+    #: False for a view with ``atomic_write_actions = False``: no savepoint,
+    #: and a commit in the block is allowed.
+    atomic: bool = True
     depth: int = 0
     aborted: bool = False
     committing: bool = False
@@ -657,14 +712,18 @@ class _SharedWriteActionCommit:
     savepoint: SessionTransaction | None = None
     #: Whether the commit began. Its first step releases the savepoint.
     commit_began: bool = False
+    #: Whether the change of the outermost block began, after the steps that
+    #: only read. Before it, an error has nothing to undo.
+    change_began: bool = False
 
     def begin_savepoint(self, session: Session) -> None:
-        """Open the savepoint of the outermost block, once.
+        """Open the savepoint of the outermost block, once, when it is atomic.
 
         ``begin_nested()`` first flushes what is pending, so the changes from
         before the block stay outside the savepoint.
         """
-        if self.savepoint is None:
+        self.change_began = True
+        if self.atomic and self.savepoint is None:
             self.savepoint = session.begin_nested()
 
     def undo(self, session: Session) -> None:
@@ -675,7 +734,9 @@ class _SharedWriteActionCommit:
         released the savepoint, or its release failed and left the savepoint
         unusable. Then roll back the whole transaction. Do the same when no
         savepoint was opened, but the transaction cannot go on, such as after
-        the flush of ``begin_nested()`` failed.
+        the flush of ``begin_nested()`` failed. A block that is not atomic has no
+        savepoint, so once its change began, it rolls back all that is not
+        committed.
         """
         savepoint = self.savepoint
         if (
@@ -684,7 +745,11 @@ class _SharedWriteActionCommit:
             and _is_open(session, savepoint)
         ):
             savepoint.rollback()
-        elif savepoint is not None or not session.is_active:
+        elif (
+            savepoint is not None
+            or not session.is_active
+            or (not self.atomic and self.change_began)
+        ):
             session.rollback()
 
     def require_active(self, *, asynchronous: bool = False) -> None:
@@ -788,7 +853,7 @@ async def _async_commit_shared_write_actions(
     session: AsyncSession, owner: _SharedWriteActionCommit
 ) -> None:
     owner.require_unrefused()
-    for obj, attributes in _objects_to_refresh(owner):
+    for obj, attributes in _objects_to_refresh(owner, session.sync_session):
         await session.refresh(obj, attribute_names=attributes)
     owner.committing = owner.commit_began = True
     try:
@@ -801,7 +866,7 @@ def _commit_shared_write_actions(
     session: Session, owner: _SharedWriteActionCommit
 ) -> None:
     owner.require_unrefused()
-    for obj, attributes in _objects_to_refresh(owner):
+    for obj, attributes in _objects_to_refresh(owner, session):
         session.refresh(obj, attribute_names=attributes)
     owner.committing = owner.commit_began = True
     try:
@@ -811,14 +876,16 @@ def _commit_shared_write_actions(
 
 
 def _objects_to_refresh(
-    owner: _SharedWriteActionCommit,
+    owner: _SharedWriteActionCommit, session: Session
 ) -> Iterator[tuple[Any, set[str]]]:
+    """The recorded objects of ``session`` that lost loaded attributes. A row
+    that the code gave to another session is not refreshed here."""
     loaded: _LoadedObjects = {}
     for records in owner.loaded.values():
         _add_loaded(loaded, records.values())
     for obj, attributes in loaded.values():
         state = sa_inspect(obj)
-        if state.persistent:
+        if state.persistent and state.session_id == session.hash_key:
             # A column refresh can clear expired_attributes while leaving
             # relationships unloaded. Recover those recorded relationships too.
             missing = attributes.intersection(state.unloaded)
@@ -885,11 +952,13 @@ def _require_shared_write_action_commit(
 
 @contextlib.contextmanager
 def _join_shared_write_action_commit(
-    session: Session, *, asynchronous: bool = False
+    session: Session, *, asynchronous: bool = False, atomic: bool = True
 ) -> Iterator[_SharedWriteActionCommit]:
+    """Join the open block of ``session``, or open one. Only the outermost
+    block uses ``atomic``: the blocks inside it join it as it is."""
     owner = _shared_write_action_commit_owner(session)
     if owner is None:
-        owner = _SharedWriteActionCommit(asynchronous=asynchronous)
+        owner = _SharedWriteActionCommit(asynchronous=asynchronous, atomic=atomic)
         _listen_once(session)
         session.info[_SHARED_WRITE_ACTION_COMMIT_KEY] = owner
     owner.depth += 1
@@ -930,7 +999,7 @@ def _reject_direct_commit(session: Session) -> None:
     so it goes on.
     """
     owner = _shared_write_action_commit_owner(session)
-    if owner is None or owner.committing:
+    if owner is None or owner.committing or not owner.atomic:
         return
     savepoint = session.get_nested_transaction()
     if savepoint is not None and savepoint is not owner.savepoint:
@@ -938,13 +1007,25 @@ def _reject_direct_commit(session: Session) -> None:
     owner.abort()
     raise RuntimeError(
         "session.commit() cannot be called inside a write_action() or "
-        "shared_write_action_commit() block. The outermost block owns the commit."
+        "shared_write_action_commit() block. The outermost block owns the commit, "
+        "so remove this commit. If it must stay, for example because other code "
+        "that calls this function needs it, set atomic_write_actions = False on "
+        "the view of the outermost write action. Its write actions may then "
+        "commit, but each is no longer one transaction. An outermost "
+        "shared_write_action_commit() block always refuses a commit."
     )
 
 
 def _abort_ended_transaction(session: Session, transaction: SessionTransaction) -> None:
+    """End the block with its transaction. A block that is not atomic goes on:
+    its code may commit."""
     owner = _shared_write_action_commit_owner(session)
-    if owner is not None and not owner.committing and transaction.parent is None:
+    if (
+        owner is not None
+        and owner.atomic
+        and not owner.committing
+        and transaction.parent is None
+    ):
         owner.abort()
 
 
@@ -963,8 +1044,9 @@ def _discard_rolled_back_hooks(
     while transaction.parent is not None and not transaction.nested:
         transaction = transaction.parent
     # The savepoint of the outermost block holds all its actions, as the
-    # transaction does when there is no savepoint.
-    if transaction.parent is None or transaction is owner.savepoint:
+    # transaction does when there is no savepoint. A block that is not atomic
+    # goes on, and only forgets the actions of the rolled back transaction.
+    if owner.atomic and (transaction.parent is None or transaction is owner.savepoint):
         owner.abort()
         return
     owner.pending[:] = [

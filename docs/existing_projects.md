@@ -135,6 +135,18 @@ and nothing warns you.
 [Build sessions with your own generator](#own-session-generator) has the
 details of both rules.
 
+(existing-code-that-commits)=
+
+## Use your own code that commits
+
+A view refuses a `session.commit()` in a write action, so a function of yours that
+commits gives a 500 there. Remove the commit if you can. If other code needs that
+commit, set `atomic_write_actions = False` on the view, or leave that route as a
+plain FastAPI route. With that setting, a write action of the view is no longer
+one transaction: when a step raises after the commit, the client gets an error,
+and what was committed stays saved. See
+[Code that must commit in a write action](#atomic-write-actions).
+
 (hand-written-crud-route)=
 
 ## Write one CRUD route by hand

@@ -317,6 +317,18 @@ def _check_list_settings(cls: type) -> None:
         )
 
 
+def _check_atomic_write_actions(cls: type) -> None:
+    """``None`` means the default for other settings, so it must not turn the
+    commit refusal off without a word."""
+    value = getattr(cls, "atomic_write_actions", True)
+    if not isinstance(value, bool):
+        raise RestlyConfigurationError(
+            f"{cls.__name__}.atomic_write_actions"
+            f"{_set_by(cls, 'atomic_write_actions')} must be True or False, "
+            f"got {value!r}."
+        )
+
+
 def _check_unknown_query_params(cls: type) -> None:
     value = vars(cls).get("unknown_query_params", "forbid")
     if value not in ("forbid", "ignore"):

@@ -106,23 +106,37 @@ def _warn_on_misuse(view_cls: type[View]) -> None:
 
     # 2. Manual session.commit() in a method of a CRUD view. The framework owns
     # the commit there; methods that go through write_action / handle_<verb> are
-    # exempt. On a plain View, a route that writes must commit itself.
+    # exempt. On a plain View, a route that writes must commit itself. A view
+    # with atomic_write_actions = False lets the code of its write actions
+    # commit, so there only a route that commits is a likely mistake: it skips
+    # the steps. The setting helps only code that runs in a write action.
     if issubclass(view_cls, BaseRestView):
         for attr, value in own.items():
             source = _source_of(value)
             if (
-                ".commit(" in source
-                and "write_action" not in source
-                and "handle_" not in source
+                ".commit(" not in source
+                or "write_action" in source
+                or "handle_" in source
             ):
-                warnings.warn(
-                    f"{name}.{attr} calls session.commit() directly. The framework "
-                    f"owns the commit: reuse handle_<verb>(), or bracket the "
-                    f"mutation with write_action(self.Action.<NAME>, ...) so "
-                    f"authorize / before_action_commit / after_action_commit run.",
-                    RestlyMisuseWarning,
-                    stacklevel=5,
-                )
+                continue
+            route = hasattr(value, "_api_route_args")
+            if not route and not view_cls.atomic_write_actions:
+                continue
+            hint = (
+                ""
+                if route
+                else " If this commit must stay, set atomic_write_actions = False "
+                "on the view."
+            )
+            warnings.warn(
+                f"{name}.{attr} calls session.commit() directly. The framework "
+                f"owns the commit: reuse handle_<verb>(), or bracket the "
+                f"mutation with write_action(self.Action.<NAME>, ...) so "
+                f"authorize / before_action_commit / after_action_commit run."
+                f"{hint}",
+                RestlyMisuseWarning,
+                stacklevel=5,
+            )
 
     # 3. A method that replaces an inherited route, with no route decorator:
     # the route is gone, and nothing else says so.

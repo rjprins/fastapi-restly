@@ -115,8 +115,8 @@ set, override or call on a view.
   some routes out, and how to serve a child resource under its parent.
 - [Request Lifecycle & Hooks](lifecycle.md): the steps of a request, which
   method to override for each change, a value on each row, a lookup by
-  another key, custom routes, what commits when, several writes in one
-  commit, and the same logic in a script or a worker.
+  another key, custom routes, what commits when, code that must commit, several
+  writes in one commit, and the same logic in a script or a worker.
 - [React Admin](react_admin.md): connect react-admin to a view, the list
   format and the routes that react-admin expects, to-many id arrays, CORS,
   and a list that shows no rows.

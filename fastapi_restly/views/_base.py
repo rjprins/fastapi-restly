@@ -95,6 +95,7 @@ from ._guards import (
     _FINAL_HANDLERS,
     _FINAL_LOADS,
     _REMOVED_DOMAIN_UTILITIES,
+    _check_atomic_write_actions,
     _check_list_settings,
     _check_load_hooks,
     _check_pagination_setting,
@@ -765,6 +766,19 @@ class BaseRestView(
         "list_params_schema"
     ]
 
+    #: Whether each write action of this view is one transaction. ``True`` (the
+    #: default) refuses a ``session.commit()`` in the action, and an error undoes
+    #: all of its work. ``False`` allows that commit, for code that must keep it,
+    #: such as a library, or a function that a job also calls. All else stays,
+    #: but the action is no longer one transaction: what is committed stays
+    #: saved when a later step raises, and ``after_action_commit`` does not run
+    #: then. There is no savepoint, so an error rolls back all that is not
+    #: committed, also the work of the route before the action. The outermost
+    #: write action decides for the actions inside it, and an outermost
+    #: ``shared_write_action_commit()`` block always refuses a commit. See "Code
+    #: that must commit in a write action" in the Lifecycle guide.
+    atomic_write_actions: ClassVar[bool] = True
+
     #: The ``fastapi.Request`` of the current request, which Restly sets for
     #: each request. After :func:`include_view`, a view that you create
     #: yourself must get ``request=`` (``None`` outside a request) and
@@ -874,6 +888,7 @@ class BaseRestView(
         _check_pagination_setting(cls)
         _check_list_settings(cls)
         _check_unknown_query_params(cls)
+        _check_atomic_write_actions(cls)
         _check_renamed_names(cls)
         _check_actions(cls)
 

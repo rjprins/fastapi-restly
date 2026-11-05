@@ -585,7 +585,9 @@ model ([Models](#write-path-values)), and every path gets it.
 Restly commits for you, once for each write action. The handler of a write
 route, or a {meth}`write_action <fastapi_restly.views.RestView.write_action>`
 block in a custom route, runs `before_action_commit`, commits, and then runs
-`after_action_commit`. Your business methods and hooks do not commit.
+`after_action_commit`. Your business methods and hooks do not commit. For code
+that must commit, see
+[Code that must commit in a write action](#atomic-write-actions).
 
 The session that Restly opens for a request does not commit when the request
 ends. It rolls back and closes. So a custom route that writes must commit
@@ -649,7 +651,9 @@ Rows that it changed, such as the row of an update, are expired. In async
 code, call `await session.refresh(obj)` before you read such a row. Inside a
 `shared_write_action_commit()` block, or inside the block of another action,
 an action has no savepoint of its own; see
-[Commit several writes together](#shared-write-action-commit).
+[Commit several writes together](#shared-write-action-commit). A view with
+`atomic_write_actions = False` has no savepoint; see
+[Code that must commit in a write action](#atomic-write-actions).
 
 A savepoint begins with a flush of what is pending in the session, as
 `begin_nested()` always does. So an object that a route adds to the session
@@ -682,6 +686,84 @@ can also make `database is locked` come sooner; see
 [Turn on WAL for SQLite](#sqlite-wal).
 :::
 
+(atomic-write-actions)=
+### Code that must commit in a write action
+
+A write action is one transaction, so Restly refuses a `session.commit()` in it.
+The client gets a 500, and nothing is saved. Remove that commit if you can. The
+action then saves all of its work or none of it.
+
+Some code must keep its commit: a library that commits, or a function that a job
+or a script also calls. For that code, set
+{attr}`atomic_write_actions <fastapi_restly.views.BaseRestView.atomic_write_actions>`
+to `False`, on the view or on a base view:
+
+```python
+class UserView(fr.AsyncRestView):
+    prefix = "/users"
+    model = User
+    schema = UserSchema
+    atomic_write_actions = False
+
+    async def create(self, data):
+        return await register_user(self.session, data)  # this function commits
+```
+
+This setting takes away two things: the refusal of a commit, and the savepoint.
+All else stays as on other views: `authorize`, the save, both hooks, a commit at
+the end, and a 409 for a conflict.
+
+:::{warning}
+The action is no longer one transaction. What the code committed stays saved when
+a later step raises: the client gets an error, the rows are saved, and
+`after_action_commit` does not run. This is also true for an error in
+`before_action_commit`. What that hook writes is not saved together with the rows
+of that commit, so an outbox row can be missing.
+:::
+
+An error rolls back all that is not committed, and not only the changes of the
+action, because there is no savepoint. A route that catches the error and goes on
+must load its rows again, because the rollback expires them.
+
+:::{admonition} Details
+:class: details
+
+The outermost write action decides, and the actions inside it join it, as on
+other views. So a handler inside the `write_action` block of this view does not
+commit on its own. The commit comes at the end of the outermost action, and then
+the `after_action_commit` hooks of all its actions run. Code inside an action of
+this view may commit, also in a handler of a view that keeps the default. Inside
+an action of a view that keeps the default, a commit is refused, also in a
+handler of this view. An outermost
+[`shared_write_action_commit()`](#shared-write-action-commit) block always refuses
+a commit, also on this view. Inside an action of this view, such a block joins
+the action, as an action does.
+
+Restly refuses only `session.commit()`. A commit on the connection, such as
+`session.connection().commit()`, is not refused, on any view.
+
+On this view, Restly does not check what else the code does with the transaction:
+
+- `session.rollback()` and `session.close()` undo all that is not committed, but
+  the action goes on, and the client gets a 2xx. So changes can be lost without
+  an error. A method that rolls back or closes the session must raise.
+- `with session.begin():` raises when a transaction is open, and the load of an
+  update opens one.
+
+The save leaves alone a row that your code took out of this session, because it
+expunged the row or gave it to another session. The save does not add that row
+and does not read it back, so a task can still use it. The hooks get it as `new`,
+but a change that a hook makes to it is not saved. The response uses it as it is,
+so what the response reads must be loaded. A row with a change is different: the
+save adds it and writes the change. A new row is different too: the save adds
+it. After a delete and a commit in your code, the hooks get `new=None`.
+
+[Django](https://docs.djangoproject.com/en/5.2/topics/db/transactions/) has the
+same choice. Its `atomic` refuses a commit, and `non_atomic_requests` takes one
+view function out of the transaction of the request. Here the setting is for
+every route of the view.
+:::
+
 (transaction-hooks)=
 ## Run code before or after the commit
 
@@ -690,7 +772,8 @@ Every write action calls two hooks around its commit:
 - {meth}`before_action_commit(action, new, old=None) <fastapi_restly.views.RestView.before_action_commit>`
   runs inside the transaction, before the commit. What it writes is committed
   together with the change, or not at all. Use it for outbox rows and audit
-  rows.
+  rows. A view with `atomic_write_actions = False` is different; see
+  [Code that must commit in a write action](#atomic-write-actions).
 - {meth}`after_action_commit(action, new, old=None) <fastapi_restly.views.RestView.after_action_commit>`
   runs after the commit, when the change is saved. Use it for email, webhooks
   and cache invalidation.

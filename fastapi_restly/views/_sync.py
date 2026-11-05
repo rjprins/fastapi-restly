@@ -247,7 +247,10 @@ class RestView(
         before you call it. An ``IntegrityError`` from ``authorize`` to
         the commit becomes :class:`~fastapi_restly.exc.Conflict` (409) when
         it leaves the outermost block, and stays raw inside it. A direct
-        ``session.commit()`` inside the block raises ``RuntimeError``.
+        ``session.commit()`` inside the block raises ``RuntimeError``. When
+        the outermost block is a write action of a view with
+        ``atomic_write_actions = False``, code in the block may commit, and
+        there is no savepoint: an error rolls back all that is not committed.
 
         :raises ValueError: the view's ``Action`` does not declare ``action``.
         :raises TypeError: ``obj`` is neither ``None`` nor an object of a
@@ -285,7 +288,9 @@ class RestView(
 
         After-hooks run in queue order and stop on the first exception. ``new``
         is the live object after all writes, while ``old`` is each action's
-        snapshot. Direct ``session.commit()`` calls raise ``RuntimeError``.
+        snapshot. Direct ``session.commit()`` calls raise ``RuntimeError``,
+        unless the block is inside a write action of a view with
+        ``atomic_write_actions = False``.
         An async write action needs an async outermost block; a sync one
         joins either.
         """

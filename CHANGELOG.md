@@ -141,6 +141,11 @@ miss it.
 
 ### Added
 
+- `atomic_write_actions`: a setting of a view, `True` by default. With `False`, code
+  in a write action may call `session.commit()`, for a library or a function that
+  must keep its commit. The action then has no savepoint, and all else stays. So
+  the action is no longer one transaction: what is committed stays saved when a
+  later step raises. See "Code that must commit in a write action" in the guide.
 - `id_param`: the name of the id parameter in the path, and its converter. For
   example, `id_param = "role_id"` gives `/roles/{role_id}`, and FastAPI answers 422
   for a wrong value. `id_param = "role_id:int"` answers 404. The Python parameter
