@@ -187,9 +187,9 @@ must fit its integer column, such as the range of `Integer`, and text must hold
 no NUL character; see [Column validation](#column-validation). A filter does
 not check the length of text.
 
-A bound stays in two cases, because Pydantic cannot put it on the type itself:
-after a validator of your own, and on a union such as `Decimal | int`. Pydantic
-makes such a bound a function, and Restly cannot tell it from your own check.
+A bound stays when Pydantic checks it with a function. This happens after a
+validator of your own, on a union such as `Decimal | int`, and on some types,
+such as `HttpUrl`. Restly cannot tell such a function from your own check.
 
 `__icontains` uses the text as it is. It only refuses a NUL character. `__isnull`
 reads a boolean.

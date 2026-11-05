@@ -9,7 +9,7 @@ unknown query key, and writes the OpenAPI parameters.
 import inspect
 import types
 import weakref
-from collections.abc import Iterator, Set
+from collections.abc import Iterator, Mapping, Set
 from typing import (
     Annotated,
     Any,
@@ -634,6 +634,40 @@ def _is_sequence_annotation(annotation: Any) -> bool:
         and not issubclass(candidate, (str, bytes))
         for candidate in (annotation, get_origin(annotation))
     )
+
+
+class _ListRouteExtra(dict[str, Any]):
+    """The ``openapi_extra`` of a list route, with one OpenAPI parameter for
+    each key of its list params.
+
+    FastAPI reads ``openapi_extra`` when it writes OpenAPI, and only then does
+    this write the parameters. The type of a filter key needs the complete
+    schema class, and a schema can name a class that is defined after the
+    view registers, as a route of FastAPI can.
+    """
+
+    def __init__(
+        self, extra: Mapping[str, Any], parameters: Callable[[], list[dict[str, Any]]]
+    ) -> None:
+        super().__init__(extra)
+        self._own_parameters = list(self.get("parameters", []))
+        self._parameters = parameters
+        # FastAPI skips an empty openapi_extra
+        dict.__setitem__(self, "parameters", self._own_parameters)
+
+    def _fill(self) -> None:
+        dict.__setitem__(
+            self, "parameters", [*self._parameters(), *self._own_parameters]
+        )
+
+    def items(self) -> Any:
+        self._fill()
+        return super().items()
+
+    def __getitem__(self, key: str) -> Any:
+        if key == "parameters":
+            self._fill()
+        return super().__getitem__(key)
 
 
 def _list_openapi_parameters(

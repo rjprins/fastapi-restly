@@ -321,3 +321,141 @@ def test_an_own_filter_key_cannot_repeat(client):
     assert error["type"] == "repeated_key"
     assert error["loc"] == ["query", "q"]
     assert error["input"] == ["a", "b"]
+
+
+# ---------------------------------------------------------------------------
+# Restly builds the type of a key when something first uses it
+# ---------------------------------------------------------------------------
+
+
+def test_a_view_registers_before_a_schema_that_its_schema_names():
+    from . import _forward_ref_view as module
+
+    asyncio.run(fr.db.async_create_all(module.Base))
+    client = RestlyTestClient(module.app)
+    client.post("/authors", json={"name": "Ada"})
+
+    assert [row["name"] for row in client.get("/authors?name=Ada").json()["data"]] == [
+        "Ada"
+    ]
+    client.get("/authors?id=x", assert_status_code=422)
+    operation = client.get("/openapi.json").json()["paths"]["/authors"]["get"]
+    found = {parameter["name"]: parameter for parameter in operation["parameters"]}
+    assert found["name"]["schema"]["anyOf"] == [{"type": "string"}, {"type": "null"}]
+
+
+def test_a_key_that_the_settings_leave_out_builds_nothing(monkeypatch):
+    from fastapi_restly.query import _impl
+
+    built: list[str] = []
+    original = _impl._checked_reader
+
+    def checked_reader(schema_cls: Any, field_name: str, column: Any) -> Any:
+        built.append(field_name)
+        return original(schema_cls, field_name, column)
+
+    monkeypatch.setattr(_impl, "_checked_reader", checked_reader)
+    params_model = derive_list_params_schema(
+        ProductSchema, Product, include_filters=("name",)
+    )
+    assert built == []
+    params_model.model_validate({"name": "a"})
+    assert built == ["name"]
+
+
+def test_openapi_takes_the_parameters_of_a_route_of_your_own(client):
+    @fr.include_view(client.app)
+    class ProductView(fr.AsyncRestView):
+        prefix = "/products"
+        model = Product
+        schema = ProductSchema
+        get_many_endpoint = fr.modify_route(
+            openapi_extra={
+                "x-owner": "me",
+                "parameters": [
+                    {"name": "x-trace", "in": "header", "schema": {"type": "string"}}
+                ],
+            }
+        )
+
+    operation = client.get("/openapi.json").json()["paths"]["/products"]["get"]
+    names = [parameter["name"] for parameter in operation["parameters"]]
+    assert operation["x-owner"] == "me"
+    assert names[-1] == "x-trace"
+    assert "name__in" in names
+
+
+class Tree(pydantic.BaseModel):
+    value: int = 1
+    child: "Tree | None" = None
+
+
+#: Each type registers, and OpenAPI is written.
+_UNUSUAL_TYPES = {
+    # a type that holds itself
+    "tree": Tree | int,
+    # a field that OpenAPI leaves out
+    "skipped": pydantic.json_schema.SkipJsonSchema[str],
+}
+
+
+@pytest.mark.parametrize("annotation", _UNUSUAL_TYPES.values(), ids=_UNUSUAL_TYPES)
+def test_an_unusual_type_registers(client, annotation):
+    class Note(fr.IDMixin, SharedBase):
+        text: Mapped[str]
+
+    NoteSchema = pydantic.create_model(
+        "NoteSchema", __base__=fr.IDSchema, text=(annotation, "x")
+    )
+
+    @fr.include_view(client.app)
+    class NoteView(fr.AsyncRestView):
+        prefix = "/notes"
+        model = Note
+        schema = NoteSchema
+
+    assert "text__in" in NoteView.list_params_schema.model_fields
+    client.get("/openapi.json")
+
+
+def test_no_bound_stays_on_a_type_alias_or_in_the_config(client):
+    from typing_extensions import TypeAliasType
+
+    Positive = TypeAliasType("Positive", Annotated[int, Field(gt=0)])
+
+    class Stock(fr.IDMixin, SharedBase):
+        code: Mapped[str]
+        count: Mapped[int] = mapped_column(default=1)
+        minimum: Mapped[int] = mapped_column(default=1)
+
+    class StockSchema(fr.IDSchema):
+        model_config = pydantic.ConfigDict(str_max_length=3)
+        code: str
+        # two fields with the alias make it a definition in the core schema
+        count: Positive = 1
+        minimum: Positive = 1
+
+    @fr.include_view(client.app)
+    class StockView(fr.AsyncRestView):
+        prefix = "/stock"
+        model = Stock
+        schema = StockSchema
+
+    create_tables()
+    client.post("/stock", json={"code": "abc"})
+    for params in ({"count__gte": "0"}, {"minimum": "-1"}, {"code": "abcdef"}):
+        client.get("/stock", params=params, assert_status_code=200)
+    operation = client.get("/openapi.json").json()["paths"]["/stock"]["get"]
+    found = {parameter["name"]: parameter for parameter in operation["parameters"]}
+    assert "exclusiveMinimum" not in str(found["count"]["schema"])
+
+
+def test_a_decimal_that_allows_nan_keeps_it():
+    class Reading(fr.IDMixin, SharedBase):
+        value: Mapped[Decimal]
+
+    class ReadingSchema(fr.IDSchema):
+        value: Annotated[Decimal, Field(allow_inf_nan=True)]
+
+    params_model = derive_list_params_schema(ReadingSchema, Reading)
+    assert params_model.model_validate({"value": "NaN"}).value.is_nan()

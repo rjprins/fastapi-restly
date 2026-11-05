@@ -26,6 +26,7 @@ from pydantic.fields import FieldInfo
 from pydantic.json_schema import GenerateJsonSchema
 from pydantic_core import (
     PydanticCustomError,
+    PydanticOmit,
     SchemaValidator,
     ValidationError,
     core_schema,
@@ -835,16 +836,17 @@ def _filter_fields(
     supports_scalar = _supports_scalar_operators(field) and not _has_json_type(column)
     if supports_scalar:
         schema_cls, field_name = _field_of(response_schema, name)
-        read = _checked_reader(schema_cls, field_name, column)
-        value_schema = _value_json_schema(schema_cls, field_name, column)
+        values = _KeyValues(schema_cls, field_name, column)
 
         def one_value(description: str) -> Any:
-            return _key_field(value_schema, _one_value(read), description)
+            return _key_field(
+                lambda: values.json_schema, _one_value(values.read), description
+            )
 
         def several_values(description: str) -> Any:
             return _key_field(
-                {"type": "array", "items": value_schema},
-                _several_values(read),
+                lambda: {"type": "array", "items": values.json_schema},
+                _several_values(values.read),
                 description,
                 annotation=Optional[list[Any]],
             )
@@ -885,15 +887,67 @@ def _filter_fields(
 
     if supports_scalar and _supports_text_search(field, column):
         fields[f"{name}__icontains"] = _key_field(
-            {"type": "string"},
+            lambda: {"type": "string"},
             _search_value,
             f"Rows where ``{name}`` holds this text, in any case.",
         )
     return fields
 
 
+class _KeyValues:
+    """How the filter keys of one field read a value, and its type in
+    OpenAPI.
+
+    Restly builds each of them when something first needs it: a request, or
+    OpenAPI. Both need the core schema of the whole schema class, which a
+    class that names a schema defined later does not have yet when the view
+    registers. And a key that the settings leave out costs nothing.
+    """
+
+    def __init__(self, schema_cls: _SchemaClass, field_name: str, column: Any) -> None:
+        self._schema_cls = schema_cls
+        self._field_name = field_name
+        self._column = column
+
+    @functools.cached_property
+    def _reader(self) -> Callable[[Any], Any]:
+        return _checked_reader(self._schema_cls, self._field_name, self._column)
+
+    def read(self, value: Any) -> Any:
+        """The value of a key, from the value in the URL; see
+        :func:`_checked_reader`."""
+        return self._reader(value)
+
+    @functools.cached_property
+    def json_schema(self) -> dict[str, Any]:
+        """The JSON schema of one value; see :func:`_value_json_schema`."""
+        return _value_json_schema(self._schema_cls, self._field_name, self._column)
+
+
+@dataclasses.dataclass(frozen=True)
+class _KeyJsonSchema:
+    """The JSON schema of a filter key in OpenAPI, built when OpenAPI is
+    first written. It replaces the schema that Pydantic would write, as
+    ``pydantic.WithJsonSchema`` does.
+
+    ``value_schema`` gives the JSON schema of the key's value. The key can
+    always be left out, so the schema also allows ``null``.
+    """
+
+    value_schema: Callable[[], dict[str, Any]]
+
+    def __get_pydantic_json_schema__(self, schema: Any, handler: Any) -> dict[str, Any]:
+        value_schema = self.value_schema()
+        if not value_schema:
+            return {}
+        options = (
+            value_schema["anyOf"] if set(value_schema) == {"anyOf"} else [value_schema]
+        )
+        return {"anyOf": [*options, {"type": "null"}]}
+
+
 def _key_field(
-    value_schema: dict[str, Any],
+    value_schema: Callable[[], dict[str, Any]],
     validate: Callable[[Any], Any],
     description: str,
     *,
@@ -904,23 +958,17 @@ def _key_field(
     Restly validates the value itself, so the type in OpenAPI comes from
     ``value_schema``: the type of the field, without its bounds.
 
-    :param value_schema: The JSON schema of the key's value.
+    :param value_schema: Gives the JSON schema of the key's value.
     :param validate: Gives the value of the key, from the value in the URL.
     :param description: The text of the key in OpenAPI.
     :param annotation: The type of the key, a list for a key with several
         values, so that the list route reads each value of a repeated key.
     """
-    json_schema: dict[str, Any] = {}
-    if value_schema:
-        options = (
-            value_schema["anyOf"] if set(value_schema) == {"anyOf"} else [value_schema]
-        )
-        json_schema = {"anyOf": [*options, {"type": "null"}]}
     return (
         Annotated[
             annotation,
             pydantic.PlainValidator(validate),
-            pydantic.WithJsonSchema(json_schema),
+            _KeyJsonSchema(value_schema),
             Field(description=description),
         ],
         None,
@@ -1994,7 +2042,8 @@ def _value_json_schema(
         }
     try:
         generated = GenerateJsonSchema().generate(field_schema)
-    except PydanticInvalidForJsonSchema:
+    except (PydanticInvalidForJsonSchema, PydanticOmit):
+        # PydanticOmit: SkipJsonSchema on the field, which OpenAPI leaves out
         return {}
     schema = _inline_definitions(generated, generated.get("$defs", {}))
     schema.pop("$defs", None)
@@ -2030,21 +2079,32 @@ def _value_schema_only(schema: dict[str, Any]) -> dict[str, Any]:
     return schema
 
 
-def _inline_definitions(schema: Any, definitions: dict[str, Any]) -> Any:
-    """``schema`` with each ``#/$defs/...`` reference replaced by its target."""
+def _inline_definitions(
+    schema: Any, definitions: dict[str, Any], _inside: frozenset[str] = frozenset()
+) -> Any:
+    """``schema`` with each ``#/$defs/...`` reference replaced by its target.
+
+    A type that holds itself, such as a tree, would never end. Its reference
+    inside itself becomes a schema without a type.
+
+    :param _inside: The definitions that the walk is inside.
+    """
     if isinstance(schema, list):
-        return [_inline_definitions(item, definitions) for item in schema]
+        return [_inline_definitions(item, definitions, _inside) for item in schema]
     if not isinstance(schema, dict):
         return schema
     inlined = {
-        key: _inline_definitions(value, definitions)
+        key: _inline_definitions(value, definitions, _inside)
         for key, value in schema.items()
         if key != "$ref"
     }
     reference = schema.get("$ref")
     if isinstance(reference, str) and reference.startswith("#/$defs/"):
-        target = definitions[reference.removeprefix("#/$defs/")]
-        return {**_inline_definitions(target, definitions), **inlined}
+        name = reference.removeprefix("#/$defs/")
+        if name in _inside:
+            return inlined
+        target = _inline_definitions(definitions[name], definitions, _inside | {name})
+        return {**target, **inlined}
     return inlined
 
 
@@ -2099,7 +2159,6 @@ _REFUSING_SETTINGS = frozenset(
         "multiple_of",
         "max_digits",
         "decimal_places",
-        "allow_inf_nan",
         "min_length",
         "max_length",
         "pattern",
@@ -2149,8 +2208,8 @@ def _without_refusals(schema: Any) -> Any:
     ``strip_whitespace``.
 
     A bound that Pydantic cannot put on the type itself stays, because it is a
-    function in the schema: on a union such as ``Decimal | int``, or after a
-    validator of your own.
+    function in the schema: on a union such as ``Decimal | int``, after a
+    validator of your own, or on a type such as ``HttpUrl``.
     """
     if not isinstance(schema, dict):
         return schema
@@ -2159,6 +2218,9 @@ def _without_refusals(schema: Any) -> Any:
     if kind in _SINGLE_VALUE_TYPES:
         for setting in _REFUSING_SETTINGS:
             copied.pop(setting, None)
+        # False refuses infinity and NaN, and True allows them on a Decimal
+        if copied.get("allow_inf_nan") is False:
+            del copied["allow_inf_nan"]
     for key in _INNER_SCHEMA_KEYS:
         if key in copied and kind != "model":
             copied[key] = _without_refusals(copied[key])
@@ -2178,8 +2240,8 @@ def _field_core_schema(
     schema_cls: _SchemaClass, field_name: str
 ) -> tuple[Any, Any, Any]:
     """The core schema of one field, without the settings that only refuse a
-    value; see :func:`_without_refusals`. Also the definitions and the config of
-    the model.
+    value; see :func:`_without_refusals`. Also the definitions, without them
+    too, and the config of the model.
     """
     core: Any = schema_cls.__pydantic_core_schema__
     definitions = core.get("definitions") if core.get("type") == "definitions" else None
@@ -2198,6 +2260,10 @@ def _field_core_schema(
         node = node.get("schema")
     if node is None:
         raise LookupError(f"{schema_cls.__name__} has no model-fields core schema")
+    if definitions:
+        # a type alias that two fields use, such as a bounded number, is a
+        # definition
+        definitions = [_without_refusals(definition) for definition in definitions]
     return _without_refusals(node["fields"][field_name]["schema"]), definitions, config
 
 
@@ -2232,9 +2298,14 @@ def _field_validator(schema_cls: _SchemaClass, field_name: str) -> SchemaValidat
             "schema": field_schema,
             "definitions": definitions,
         }
+    # the bounds of the model config go too
+    kept = {
+        name: value
+        for name, value in (config or {}).items()
+        if name not in {"str_max_length", "str_min_length"}
+    }
     filter_config = cast(
-        core_schema.CoreConfig,
-        {**(config or {}), "coerce_numbers_to_str": True, "strict": False},
+        core_schema.CoreConfig, {**kept, "coerce_numbers_to_str": True, "strict": False}
     )
     return SchemaValidator(field_schema, filter_config)
 

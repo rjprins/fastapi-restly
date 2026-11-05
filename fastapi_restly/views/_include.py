@@ -52,7 +52,13 @@ from ._class_based_view import (
 )
 from ._generated import _drop_stale_settings, _list_params_schema
 from ._guards import _check_removed_settings
-from ._list_params import _check_route_query_keys, _dependants, _list_openapi_parameters
+from ._list_params import (
+    _check_route_query_keys,
+    _dependants,
+    _list_openapi_parameters,
+    _list_params_fields,
+    _ListRouteExtra,
+)
 from ._misuse_lint import _warn_on_misuse
 from ._openapi_names import _ensure_patched
 from ._schema_types import (
@@ -742,7 +748,7 @@ def _init_api_router(view_cls: type[View]) -> fastapi.APIRouter:
     api_router = fastapi.APIRouter(prefix=prefix, tags=tags, dependencies=dependencies)
 
     # Find all endpoint functions in this class and add them to the router
-    list_parameters: list[dict[str, Any]] | None = None
+    list_parameters: Callable[[], list[dict[str, Any]]] | None = None
     for name, attr in list(view_cls.__dict__.items()):
         if isinstance(attr, _ModifiedRoute):
             raise RestlyConfigurationError(
@@ -792,12 +798,14 @@ def _init_api_router(view_cls: type[View]) -> fastapi.APIRouter:
             )
         if getattr(endpoint, "_fr_list_guard", False):
             if list_parameters is None:
-                list_parameters = _list_openapi_parameters(
-                    _list_params_schema(view_cls)
+                list_parameters = functools.cache(
+                    functools.partial(
+                        _list_openapi_parameters, _list_params_schema(view_cls)
+                    )
                 )
-            extra = dict(route_kwargs.get("openapi_extra") or {})
-            extra["parameters"] = [*list_parameters, *extra.get("parameters", [])]
-            route_kwargs["openapi_extra"] = extra
+            route_kwargs["openapi_extra"] = _ListRouteExtra(
+                route_kwargs.get("openapi_extra") or {}, list_parameters
+            )
         _add_api_route(api_router, view_cls, path, endpoint, route_kwargs)
         if is_rest_view:
             _reject_unread_path_parameter(
@@ -808,7 +816,10 @@ def _init_api_router(view_cls: type[View]) -> fastapi.APIRouter:
                 view_cls.__name__,
                 name,
                 api_router.routes[-1].dependant,  # type: ignore[attr-defined]
-                (parameter["name"] for parameter in list_parameters or ()),
+                (
+                    key
+                    for key, _, _ in _list_params_fields(_list_params_schema(view_cls))
+                ),
             )
     if is_rest_view:
         _reject_paths_that_differ_only_in_names(view_cls, api_router)
