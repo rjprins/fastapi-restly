@@ -331,11 +331,21 @@ def _supports_text_search(field: FieldInfo, column: Any) -> bool:
     """Whether ``field`` gets ``__icontains``. The column decides, because SQL
     searches the column: ``url: HttpUrl`` on a text column has it, and ``name:
     str`` on another column has not. Labels have it on no column. A column that
-    names no type, such as an expression, leaves it to the field."""
+    names no type, such as an expression, leaves it to the field.
+
+    A ``TypeDecorator`` needs a text type inside and a ``str`` field.
+    SQLAlchemy runs its ``process_bind_param`` on the search text too, so a
+    type that stores another value as text, such as a money amount or an
+    encrypted text, would search for something else.
+    """
     if _is_label_field(field):
         return False
-    if isinstance(getattr(column, "type", None), NullType):
-        return _unwrap_type(field.annotation)[0] is str
+    sql_type = getattr(column, "type", None)
+    is_text_field = _unwrap_type(field.annotation)[0] is str
+    if isinstance(sql_type, NullType):
+        return is_text_field
+    if isinstance(sql_type, TypeDecorator):
+        return is_text_field and _holds_text(column)
     return _holds_text(column)
 
 
@@ -1221,7 +1231,10 @@ _ISNULL_ONLY_HINT = (
 
 #: Why a field has no key with this suffix, for the messages.
 _SUFFIX_HINTS = {
-    "icontains": "Only a field on a text column has __icontains.",
+    "icontains": (
+        "Only a field on a text column has __icontains, and not an enum, a Literal "
+        "or a bool. On a TypeDecorator column, the field must be a str."
+    ),
     "isnull": "Only a column that can be NULL has __isnull.",
     **dict.fromkeys(
         ("gte", "lte", "gt", "lt"),

@@ -259,14 +259,16 @@ def test_apply_list_params_checks_a_sort_that_skipped_validation():
             "include_filters: 'active__icontains' matches no filter key of "
             "ItemSchema. The filter keys of 'active' are: active, active__in, "
             "active__ne, active__not_in. Only a field on a text column has "
-            "__icontains.",
+            "__icontains, and not an enum, a Literal or a bool. On a TypeDecorator "
+            "column, the field must be a str.",
         ),
         (
             {"exclude_filters": ("id__icontains",)},
             "exclude_filters: 'id__icontains' matches no filter key of "
             "ItemSchema. The filter keys of 'id' are: id, id__in, id__ne, "
             "id__not_in, id__gte, id__lte, id__gt, id__lt. Only a field on a text "
-            "column has __icontains.",
+            "column has __icontains, and not an enum, a Literal or a bool. On a "
+            "TypeDecorator column, the field must be a str.",
         ),
         (
             {"include_filters": ("active__gte",)},
@@ -1253,7 +1255,8 @@ def test_a_message_shows_both_names():
         "ProductSchema. The filter keys of 'created_at' (createdAt in the URL) "
         "are: created_at, created_at__in, created_at__ne, created_at__not_in, "
         "created_at__gte, created_at__lte, created_at__gt, created_at__lt. "
-        "Only a field on a text column has __icontains."
+        "Only a field on a text column has __icontains, and not an enum, a "
+        "Literal or a bool. On a TypeDecorator column, the field must be a str."
     )
 
     with pytest.raises(RestlyConfigurationError) as exc_info:

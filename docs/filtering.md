@@ -100,7 +100,9 @@ Not every field gets every suffix:
 - `__icontains` exists only for a field on a text column, whatever the type of
   the field. So an `HttpUrl` field on a text column has it, and a `str` field on
   a number column does not. Labels do not have it: a column of SQLAlchemy's
-  `Enum` type, an enum, a `Literal` and a `bool`.
+  `Enum` type, an enum, a `Literal` and a `bool`. On a
+  {class}`~sqlalchemy.types.TypeDecorator` column, only a `str` field has it,
+  because SQLAlchemy runs the type on the search text too.
 - `__isnull` exists only on a column that can be NULL, and on each dotted key,
   because a related row can be missing. On another column, it would give the
   same answer for each row.
@@ -721,7 +723,8 @@ registers. The message lists the keys of the field:
 ItemView.include_filters: 'price__icontains' matches no filter key of
 ItemSchema. The filter keys of 'price' are: price, price__in, price__ne,
 price__not_in, price__gte, price__lte, price__gt, price__lt. Only a field on a
-text column has __icontains.
+text column has __icontains, and not an enum, a Literal or a bool. On a
+TypeDecorator column, the field must be a str.
 ```
 
 A view inherits each setting on its own, as it inherits `pagination`. So a

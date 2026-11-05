@@ -184,7 +184,10 @@ miss it.
 30. `__icontains` now follows the column, not the type of the field. A `str` field on
     a column that does not hold text loses it, so such a key now gets `422`. A field
     of another type on a text column, such as `HttpUrl`, gets it. An enum, a `Literal`
-    and a `bool` do not.
+    and a `bool` do not. On a `TypeDecorator` column, only a `str` field gets it,
+    and only when the type holds text inside. SQLAlchemy runs the type on the search
+    text too, so a type that stores another value as text would search for
+    something else.
 31. Silent: in `exclude_filters`, a name without a suffix now leaves out the whole
     field. So `exclude_filters = ("name",)` also removes `name__in`, where it removed
     only `?name=`. To keep the other keys, list the keys in `include_filters`, such

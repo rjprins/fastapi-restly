@@ -1,12 +1,13 @@
 """``__icontains``: a search in text, on each field whose column holds text."""
 
 import warnings
+from decimal import Decimal
 from typing import Literal, NewType, Optional
 
 import pydantic
 import pytest
 from pydantic import BaseModel, Field, HttpUrl
-from sqlalchemy import Enum, ForeignKey, select
+from sqlalchemy import Enum, ForeignKey, Integer, String, TypeDecorator, select
 from sqlalchemy.exc import SADeprecationWarning
 from sqlalchemy.orm import Mapped, column_property, mapped_column, relationship
 from starlette.datastructures import QueryParams
@@ -110,6 +111,35 @@ class TestWhichFieldsHaveIt:
         fields = derive_list_params_schema(TaggedSchema, Tagged).model_fields
         assert "label__icontains" in fields
         assert "count__icontains" not in fields
+
+    def test_a_type_decorator_needs_text_inside_and_a_str_field(self):
+        class Money(TypeDecorator[str]):
+            """Stores an amount as text, such as ``12.50 EUR``."""
+
+            impl = String
+            cache_ok = True
+
+        class Code(TypeDecorator[int]):
+            impl = Integer
+            cache_ok = True
+
+        class SearchLedger(fr.IDMixin, SharedBase):
+            note: Mapped[str] = mapped_column(Money)
+            amount: Mapped[str] = mapped_column(Money)
+            code: Mapped[int] = mapped_column(Code)
+            label: Mapped[str] = mapped_column(Code)
+
+        class LedgerSchema(fr.IDSchema):
+            note: str
+            amount: Decimal
+            code: int
+            label: str
+
+        fields = derive_list_params_schema(LedgerSchema, SearchLedger).model_fields
+
+        assert "note__icontains" in fields
+        for name in ("amount", "code", "label"):
+            assert f"{name}__icontains" not in fields, name
 
     def test_an_alias_gives_the_name_of_the_key(self):
         class Schema(BaseModel):
