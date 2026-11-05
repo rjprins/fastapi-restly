@@ -160,6 +160,13 @@ miss it.
 24. Silent: the fields of generated list params now hold the type of their field, not
     text. So `list_params.price__gte` is a `Decimal`, `list_params.price__in` is a
     list, and a reference gives its id. Change code that reads them as text.
+25. Silent: `__ne` now keeps the rows where the field is NULL, as `__not_in` does.
+    Before, SQL left them out, so `?status__ne=archived` also hid each row without a
+    status. To leave them out too, add `&status__isnull=false`.
+26. Silent: a dotted filter key now uses a `LEFT OUTER JOIN`, as a sort key does. So
+    `?vendor.id__isnull=true` finds the rows without a vendor, where it found no
+    rows, and `?vendor.name__ne=acme` keeps them. A key that looks for a value, such
+    as `?vendor.name=acme`, gives the same rows as before.
 
 ### Added
 

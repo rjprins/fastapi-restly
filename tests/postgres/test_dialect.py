@@ -1,7 +1,7 @@
 """The dialect-divergent surface, pinned on real PostgreSQL.
 
 Everything here is invisible on SQLite and only runs when the subtree is pointed
-at PostgreSQL (see ``conftest.py``). Nine things are covered:
+at PostgreSQL (see ``conftest.py``). Ten things are covered:
 
 * ``contains`` (``LIKE``) is case-sensitive and ``icontains`` (``ILIKE``) folds
   case, for ASCII *and* non-ASCII input. On SQLite ``LIKE`` is
@@ -27,6 +27,8 @@ at PostgreSQL (see ``conftest.py``). Nine things are covered:
   the sync fixture's pinned connection, so a write through either is visible to
   the other within a test. This path only exists on a psycopg stack.
 * A text column takes text: PostgreSQL has no ``=`` for text and a number.
+* ``__ne`` and ``__not_in`` keep a row with NULL, on each type of column, and a
+  dotted key uses an outer join.
 * Times: a time without an offset is UTC. psycopg leaves the time zone to
   PostgreSQL, which reads such a time in the time zone of the session, so
   these tests give the session another time zone.
@@ -65,7 +67,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-from sqlalchemy.orm import Mapped, mapped_column, sessionmaker
+from sqlalchemy.orm import Mapped, mapped_column, relationship, sessionmaker
 
 import fastapi_restly as fr
 from fastapi_restly._integrity import _build_integrity_detail
@@ -199,6 +201,41 @@ class PgParent(fr.IDMixin, SharedBase):
     name: Mapped[str]  # NOT NULL, reused for the not-null violation
 
 
+class PgNullable(fr.IDMixin, SharedBase):
+    # each type in a filter that keeps NULL, which has its own SQL
+    name: Mapped[str]
+    count: Mapped[int | None]
+    label: Mapped[str | None]
+    day: Mapped[date | None]
+    moment: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    token: Mapped[uuid.UUID | None]
+    flag: Mapped[bool | None]
+    amount: Mapped[Decimal | None]
+    status: Mapped[str | None] = mapped_column(
+        Enum("draft", "published", name="pg_nullable_status")
+    )
+    parent_id: Mapped[int | None] = mapped_column(ForeignKey(PgParent.id))
+    parent: Mapped[PgParent | None] = relationship()
+
+
+class PgParentSchema(fr.IDSchema):
+    name: str
+
+
+class PgNullableSchema(fr.IDSchema):
+    name: str
+    count: int | None = None
+    label: str | None = None
+    day: date | None = None
+    moment: datetime | None = None
+    token: uuid.UUID | None = None
+    flag: bool | None = None
+    amount: Decimal | None = None
+    status: str | None = None
+    parent_id: int | None = None
+    parent: fr.ReadOnly[PgParentSchema | None] = None
+
+
 class PgChild(fr.IDMixin, SharedBase):
     # A plain scalar FK (no fr.MustExist), so existence is not pre-validated in
     # the app and the insert reaches the database constraint.
@@ -328,6 +365,21 @@ class PgOffsetPagedView(fr.AsyncRestView):
 
 
 @fr.include_view(_app)
+class PgNullableParentView(fr.AsyncRestView):
+    prefix = "/nullable-parents"
+    model = PgParent
+    schema = PgParentSchema
+
+
+@fr.include_view(_app)
+class PgNullableView(fr.AsyncRestView):
+    prefix = "/nullable"
+    model = PgNullable
+    schema = PgNullableSchema
+    include_filters = ("*", "parent.*")
+
+
+@fr.include_view(_app)
 class PgRichView(fr.AsyncRestView):
     prefix = "/rich"
     model = PgRich
@@ -438,6 +490,7 @@ class PgKeyedView(fr.AsyncRestView):
 
 
 _MODELS = [
+    PgNullable,
     PgRich,
     PgWord,
     PgRanked,
@@ -536,6 +589,52 @@ def test_a_text_column_takes_the_text_that_a_response_shows(restly_client):
     for name in body:
         found = restly_client.get("/rich", params={name: row[name]}).json()
         assert [item["id"] for item in found["data"]] == [row["id"]], name
+
+
+def test_ne_and_not_in_keep_a_row_with_null(restly_client):
+    """PostgreSQL has to find the type of the value in ``IS DISTINCT FROM`` too,
+    on every type of column. Each row has a value or NULL in each column."""
+    values = {
+        "count": ("5", "6"),
+        "label": ("a", "b"),
+        "day": ("2026-01-02", "2026-01-03"),
+        "moment": ("2026-01-02T03:04:05Z", "2026-01-03T03:04:05Z"),
+        "token": (
+            "00000000-0000-0000-0000-000000000001",
+            "00000000-0000-0000-0000-000000000002",
+        ),
+        "flag": ("true", "false"),
+        "amount": ("1.5", "2.5"),
+        "status": ("draft", "published"),
+    }
+    parent = restly_client.post(
+        "/nullable-parents", json={"name": "acme"}, assert_status_code=201
+    ).json()
+    restly_client.post(
+        "/nullable",
+        json={
+            "name": "first",
+            "parent_id": parent["id"],
+            **{key: pair[0] for key, pair in values.items()},
+        },
+        assert_status_code=201,
+    )
+    restly_client.post("/nullable", json={"name": "none"}, assert_status_code=201)
+
+    def found(**params: str) -> list[str]:
+        rows = restly_client.get("/nullable", params=params).json()["data"]
+        return sorted(row["name"] for row in rows)
+
+    for key, (same, other) in values.items():
+        assert found(**{f"{key}__ne": same}) == ["none"], key
+        assert found(**{f"{key}__ne": other}) == ["first", "none"], key
+        assert found(**{f"{key}__not_in": f"{same},{other}"}) == ["none"], key
+        assert found(**{f"{key}__not_in": other}) == ["first", "none"], key
+
+    assert found(**{"parent.name__ne": "acme"}) == ["none"]
+    assert found(**{"parent.name__not_in": "acme,b"}) == ["none"]
+    assert found(**{"parent.id__isnull": "true"}) == ["none"]
+    assert found(**{"parent.name": "acme"}) == ["first"]
 
 
 def test_contains_is_case_sensitive_for_ascii(restly_client):

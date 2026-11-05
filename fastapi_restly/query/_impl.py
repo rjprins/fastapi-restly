@@ -1496,9 +1496,8 @@ def _join_column(
 ) -> tuple[Select[Any], InstrumentedAttribute[Any]]:
     """Join each relationship path once and return its aliased leaf column.
 
-    A sort joins with a LEFT OUTER JOIN, so a row without the related row
-    stays in the list. A join that a filter added is an inner join: the
-    filter leaves out such a row anyway.
+    Each join is a LEFT OUTER JOIN, so a row without the related row has NULL
+    in the column, in a filter and in a sort.
     """
     relationships, column = _resolve_column(model, column_path, schema_cls, kind=kind)
     source: type[DeclarativeBase] | AliasedClass[Any] = model
@@ -1511,9 +1510,7 @@ def _join_column(
         if target is None:
             target = aliased(relationship.property.mapper)
             stmt = stmt.join_from(
-                source,
-                getattr(source, relationship.key).of_type(target),
-                isouter=kind == "sort",
+                source, getattr(source, relationship.key).of_type(target), isouter=True
             )
             aliases[path] = target
         source = target
@@ -1676,13 +1673,17 @@ def _filter_clause(
     if op == "in":
         return column.in_([parse(item) for item in value])
     if op == "not_in":
-        return column.not_in([parse(item) for item in value])
+        # NULL is none of these values, so the row stays; SQL leaves it out
+        return sqlalchemy.or_(
+            column.is_(None), column.not_in([parse(item) for item in value])
+        )
 
     parsed = parse(value)
     if op == "eq":
         return column == parsed
     if op == "ne":
-        return column != parsed
+        # NULL is not this value, so the row stays; SQL leaves it out
+        return column.is_distinct_from(parsed)
     if op == "gte":
         return column >= parsed
     if op == "lte":

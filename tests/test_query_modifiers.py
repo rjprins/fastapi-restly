@@ -385,7 +385,7 @@ class TestApplyFiltering:
         params = mock_query_params(name__ne="John")
         result = _apply_filtering(params, select_query, WidgetModel, WidgetSchema)
 
-        assert "WHERE test_model.name !=" in str(result)
+        assert "WHERE test_model.name IS DISTINCT FROM" in str(result)
 
     def test__apply_filtering_is_null(self, select_query, mock_query_params):
         """Test filtering with is null operator."""
@@ -631,7 +631,7 @@ class TestFilterClause:
 
     def test_filter_clause_not_equals(self):
         clause = _filter_clause(WidgetModel.name, "ne", "John", str, "key")
-        assert "name != 'John'" in _render_sql(
+        assert "name IS DISTINCT FROM 'John'" in _render_sql(
             sqlalchemy.select(WidgetModel).where(clause)
         )
 

@@ -62,13 +62,17 @@ A suffix on the name chooses another comparison:
 | `__gt` | `field > value` | `?age__gt=17` |
 | `__lt` | `field < value` | `?age__lt=65` |
 | `__in` | `field IN (...)` | `?status__in=active,pending` |
-| `__ne` | `field != value` | `?status__ne=archived` |
-| `__not_in` | `field NOT IN (...)` | `?status__not_in=archived,deleted` |
+| `__ne` | `field != value`, or NULL | `?status__ne=archived` |
+| `__not_in` | `field NOT IN (...)`, or NULL | `?status__not_in=archived,deleted` |
 | `__contains` | `field LIKE '%value%'` | `?email__contains=Example` |
 | `__icontains` | `field ILIKE '%value%'` | `?email__icontains=example` |
 | `__isnull` | `field IS NULL` or `IS NOT NULL` | `?deleted_at__isnull=true` |
 
 `__isnull` takes `true` or `false`, not the text `null`.
+
+`__ne` and `__not_in` keep the rows where the field is NULL. SQL leaves these
+rows out, but a client that asks for "not archived" also means the row without a
+status.
 
 Each key has the type of its field. OpenAPI shows this type, and a value of
 the wrong type gets `422`; see
@@ -779,10 +783,12 @@ GET /people?home_city.country.code=NL&work_city.country.code=DE
 ```
 
 Sorting accepts the same paths, when `include_sort_keys` has them. A filter
-and a sort on the same relationship share one join. The join of a filter is
-an inner join: a row without the related row is left out, also for a dotted
-`__isnull` filter. The join of a sort is a `LEFT OUTER JOIN`, so the row
-stays, and its value counts as NULL in the sort.
+and a sort on the same relationship share one join.
+
+Each join is a `LEFT OUTER JOIN`, so a row without the related row counts as
+NULL, as in any other filter. `?vendor.id__isnull=true` finds the rows without a
+vendor, and `?vendor.name__ne=acme` keeps them. A key that looks for a value,
+such as `?vendor.name=acme`, leaves them out.
 
 Aliases apply to every part of the path, the relationship and the field,
 because the list params always use the public names of the response

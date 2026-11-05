@@ -140,15 +140,20 @@ def test_a_sort_keeps_a_row_without_the_related_row(path_client):
     assert payload["total_count"] == 1
 
 
-def test_a_filter_through_a_missing_relationship_leaves_out_the_row(path_client):
+def test_a_missing_relationship_counts_as_null_in_a_filter(path_client):
     employee = path_client.get("/employees/14").json()
     assert employee["homeCity"] is None
 
     payload = path_client.get(
-        "/employees/", params={"homeCity.cityName__isnull": "true"}
+        "/employees/", params={"homeCity.cityName__isnull": "true", "id": "14"}
+    ).json()
+    assert [row["id"] for row in payload["data"]] == [14]
+    assert payload["total_count"] == 1
+
+    payload = path_client.get(
+        "/employees/", params={"homeCity.cityName": "nowhere", "id": "14"}
     ).json()
     assert payload["data"] == []
-    assert payload["total_count"] == 0
 
 
 def test_openapi_advertises_public_paths_and_unknown_paths_are_rejected(path_client):
