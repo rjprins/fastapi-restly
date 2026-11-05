@@ -976,9 +976,16 @@ def _filter_fields(
     """
     fields: dict[str, Any] = {}
     supports_scalar = _supports_scalar_operators(field) and not _has_json_type(column)
+    # a related row can be missing, so a dotted key can always be NULL
+    has_isnull = "." in name or _can_be_null(column)
     if supports_scalar:
         schema_cls, field_name = _field_of(response_schema, name)
-        values = _KeyValues(schema_cls, field_name, column)
+        values = _KeyValues(
+            schema_cls,
+            field_name,
+            column,
+            isnull_key=f"{name}__isnull" if has_isnull else None,
+        )
 
         def one_value(description: str) -> Any:
             return _key_field(
@@ -1003,8 +1010,7 @@ def _filter_fields(
             f"Rows where ``{name}`` is none of these values. Separate the values "
             "with commas, or repeat the key."
         )
-    # a related row can be missing, so a dotted key can always be NULL
-    if "." in name or _can_be_null(column):
+    if has_isnull:
         fields[f"{name}__isnull"] = (
             Annotated[
                 Optional[bool],
@@ -1046,14 +1052,27 @@ class _KeyValues:
     registers. And a key that the settings leave out costs nothing.
     """
 
-    def __init__(self, schema_cls: _SchemaClass, field_name: str, column: Any) -> None:
+    def __init__(
+        self,
+        schema_cls: _SchemaClass,
+        field_name: str,
+        column: Any,
+        *,
+        isnull_key: str | None = None,
+    ) -> None:
         self._schema_cls = schema_cls
         self._field_name = field_name
         self._column = column
+        self._isnull_key = isnull_key
 
     @functools.cached_property
     def _reader(self) -> Callable[[Any], Any]:
-        return _checked_reader(self._schema_cls, self._field_name, self._column)
+        return _checked_reader(
+            self._schema_cls,
+            self._field_name,
+            self._column,
+            isnull_key=self._isnull_key,
+        )
 
     def read(self, value: Any) -> Any:
         """The value of a key, from the value in the URL; see
@@ -1135,7 +1154,8 @@ def _one_value(read: Callable[[Any], Any]) -> Callable[[Any], Any]:
 
 def _several_values(read: Callable[[Any], Any]) -> Callable[[Any], Any]:
     """The validator of ``__in`` and ``__not_in``. An error names the position
-    of the value that fails."""
+    of the value that fails. A value cannot be ``None``: SQL compares no value
+    with NULL, so ``NOT IN ('a', NULL)`` would leave out every row."""
 
     def validate(value: Any) -> Any:
         if value is None:
@@ -1144,7 +1164,10 @@ def _several_values(read: Callable[[Any], Any]) -> Callable[[Any], Any]:
         errors: list[Any] = []
         for position, item in enumerate(_listed_values(value)):
             try:
-                values.append(read(item))
+                result = read(item)
+                if result is None:
+                    raise _BadValue("value_error", _NULL_IN_LIST)
+                values.append(result)
             except _BadValue as exc:
                 errors.append(
                     {
@@ -1160,6 +1183,10 @@ def _several_values(read: Callable[[Any], Any]) -> Callable[[Any], Any]:
         return values
 
     return validate
+
+
+#: Why ``__in`` or ``__not_in`` refuses ``None``, for the messages.
+_NULL_IN_LIST = "A list of values cannot hold null."
 
 
 def _listed_values(value: Any) -> list[Any]:
@@ -1935,13 +1962,17 @@ def _filter_clause(
         if text is None:
             return None
         return column.ilike(f"%{_escape_like_value(text)}%", escape="\\")
-    if op == "in":
-        return column.in_([parse(item) for item in value])
-    if op == "not_in":
+    if op in {"in", "not_in"}:
+        items = [parse(item) for item in value]
+        if any(item is None for item in items):
+            # SQL compares no value with NULL: NOT IN ('a', NULL) is never true
+            raise BadQueryParam(
+                f"Invalid filter value for {key!r}: {value!r}. {_NULL_IN_LIST}"
+            )
+        if op == "in":
+            return column.in_(items)
         # NULL is none of these values, so the row stays; SQL leaves it out
-        return sqlalchemy.or_(
-            column.is_(None), column.not_in([parse(item) for item in value])
-        )
+        return sqlalchemy.or_(column.is_(None), column.not_in(items))
 
     parsed = parse(value)
     if op == "eq":
@@ -2085,13 +2116,20 @@ def _invalid_filter_value(key: str, value: Any, exc: _BadValue) -> BadQueryParam
 
 
 def _checked_reader(
-    schema_cls: _SchemaClass, field_name: str, column: Any
+    schema_cls: _SchemaClass,
+    field_name: str,
+    column: Any,
+    *,
+    isnull_key: str | None = None,
 ) -> Callable[[Any], Any]:
     """The value of a generated key: the value of its field, as code reads it
     from the list params, such as a ``Decimal``. It also checks that the
     column can take the value, so a bad value fails with the other values of
-    the request."""
-    read = _value_reader(schema_cls, field_name, column)
+    the request.
+
+    :param isnull_key: The ``__isnull`` key of the field, for the messages.
+    """
+    read = _value_reader(schema_cls, field_name, column, isnull_key=isnull_key)
     to_column = _column_step(column)
 
     def read_and_check(value: Any) -> Any:
@@ -2103,13 +2141,19 @@ def _checked_reader(
 
 
 def _value_reader(
-    schema_cls: _SchemaClass, field_name: str, column: Any
+    schema_cls: _SchemaClass,
+    field_name: str,
+    column: Any,
+    *,
+    isnull_key: str | None = None,
 ) -> Callable[[Any], Any]:
     """A function that gives a value the type and the validators of its field.
 
     A value goes through the validation of its field, without the bounds; see
     :func:`_field_validator`: a text from a URL, or a value from JSON. ``None``
-    stays ``None``, for ``IS NULL``. An ``IDRef`` gives its id. A JSON column
+    stays ``None``, for ``IS NULL``. A value that a validator turns into
+    ``None``, such as an empty text, fails: a filter needs a value, and the
+    client did not ask for NULL. An ``IDRef`` gives its id. A JSON column
     takes only ``None``: it holds JSON text, so SQL cannot compare it with a
     value. A field of type ``Any``, such as the ``id`` of ``fr.IDSchema``, and
     the id of a reference get the Python type of the column, such as a
@@ -2118,8 +2162,15 @@ def _value_reader(
     The function raises :class:`_BadValue` for a value that fails. Only a
     validation error is the client's fault. Another exception from a validator
     is a bug, as it is for a request body.
+
+    :param isnull_key: The ``__isnull`` key of the field, for the messages.
     """
     validator = _field_validator(schema_cls, field_name)
+    becomes_null = (
+        "The value becomes null after validation, and a filter needs a value."
+    )
+    if isnull_key is not None:
+        becomes_null += f" To find the rows where it is null, send {isnull_key}=true."
     column_type = getattr(column, "type", None)
     json_column = _has_json_type(column)
     # A field of type Any, such as the id of fr.IDSchema, gives the value as
@@ -2140,6 +2191,8 @@ def _value_reader(
             values, _, _ = validator.validate_python({field_name: value})
             result = values[field_name]
             if result is None:
+                if value is not None:
+                    raise _BadValue("value_error", becomes_null)
                 return None
             # An IDRef[T] FK field validates to an IDRef object; the SQL bind
             # value is its scalar id, not the reference wrapper (which cannot bind).

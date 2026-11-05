@@ -350,9 +350,11 @@ def test_a_key_that_the_settings_leave_out_builds_nothing(monkeypatch):
     built: list[str] = []
     original = _impl._checked_reader
 
-    def checked_reader(schema_cls: Any, field_name: str, column: Any) -> Any:
+    def checked_reader(
+        schema_cls: Any, field_name: str, column: Any, **kwargs: Any
+    ) -> Any:
         built.append(field_name)
-        return original(schema_cls, field_name, column)
+        return original(schema_cls, field_name, column, **kwargs)
 
     monkeypatch.setattr(_impl, "_checked_reader", checked_reader)
     params_model = derive_list_params_schema(
@@ -459,3 +461,100 @@ def test_a_decimal_that_allows_nan_keeps_it():
 
     params_model = derive_list_params_schema(ReadingSchema, Reading)
     assert params_model.model_validate({"value": "NaN"}).value.is_nan()
+
+
+# ---------------------------------------------------------------------------
+# A value that a validator turns into None
+# ---------------------------------------------------------------------------
+
+
+def _empty_to_none(value: Any) -> Any:
+    return value or None
+
+
+class Memo(fr.IDMixin, Base):
+    __tablename__ = "key_types_memo"
+    note: Mapped[str | None] = mapped_column(default=None)
+    rank: Mapped[int] = mapped_column(default=0)
+
+
+class MemoSchema(fr.IDSchema):
+    note: Annotated[str | None, pydantic.BeforeValidator(_empty_to_none)] = None
+    rank: Annotated[int | None, pydantic.BeforeValidator(_empty_to_none)] = 0
+
+
+@pytest.fixture
+def memos(client: RestlyTestClient) -> RestlyTestClient:
+    @fr.include_view(client.app)
+    class MemoView(fr.AsyncRestView):
+        prefix = "/memos"
+        model = Memo
+        schema = MemoSchema
+
+    asyncio.run(fr.db.async_create_all(Base))
+    client.post("/memos", json={"note": "x", "rank": 1})
+    client.post("/memos", json={"note": "y", "rank": 2})
+    client.post("/memos", json={"note": None, "rank": 3})
+    return client
+
+
+def test_a_value_that_becomes_none_is_a_422_that_names_isnull(memos):
+    response = memos.get("/memos", params={"note": ""}, assert_status_code=422)
+
+    (error,) = response.json()["detail"]
+    assert error["loc"] == ["query", "note"]
+    assert error["msg"] == (
+        "The value becomes null after validation, and a filter needs a value. "
+        "To find the rows where it is null, send note__isnull=true."
+    )
+
+
+def test_a_range_key_that_becomes_none_is_a_422(memos):
+    response = memos.get("/memos", params={"rank__gte": ""}, assert_status_code=422)
+
+    (error,) = response.json()["detail"]
+    assert error["loc"] == ["query", "rank__gte"]
+    # the column cannot be NULL, so the field has no __isnull
+    assert error["msg"] == (
+        "The value becomes null after validation, and a filter needs a value."
+    )
+
+
+def test_a_list_item_that_becomes_none_is_a_422(memos):
+    response = memos.get(
+        "/memos", params={"note__not_in": "x,"}, assert_status_code=422
+    )
+
+    (error,) = response.json()["detail"]
+    assert error["loc"] == ["query", "note__not_in", 1]
+
+
+def test_an_empty_text_search_is_no_filter(memos):
+    rows = memos.get("/memos", params={"note__icontains": ""}).json()["data"]
+    assert len(rows) == 3
+
+
+def test_a_none_from_code_is_no_filter():
+    params_model = derive_list_params_schema(MemoSchema, Memo, pagination=None)
+
+    stmt = apply_list_params(select(Memo), params_model(note=None), Memo, MemoSchema)
+    assert stmt.whereclause is None
+
+
+def test_a_list_of_values_cannot_hold_none():
+    params_model = derive_list_params_schema(MemoSchema, Memo, pagination=None)
+
+    with pytest.raises(pydantic.ValidationError) as exc_info:
+        params_model(note__in=["x", None])
+
+    (error,) = exc_info.value.errors()
+    assert error["loc"] == ("note__in", 1)
+    assert error["msg"] == "A list of values cannot hold null."
+
+
+def test_a_filter_key_of_your_own_refuses_a_value_that_becomes_none():
+    key = fr.query.FilterKey(Memo, MemoSchema, "note")
+
+    with pytest.raises(fr.exc.BadQueryParam, match="becomes null after validation"):
+        key.parse("")
+    assert key.parse(None) is None

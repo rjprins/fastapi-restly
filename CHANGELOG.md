@@ -204,6 +204,12 @@ miss it.
     Python name. Write `created_at` for a field with the alias `createdAt`, also in
     each part of a dotted key. The URL does not change, and neither does the key of
     `fr.list_filter`.
+36. A filter value that a validator of its field turns into `None`, such as empty
+    text, now gets `422`. Before, `?note=` found the rows where `note` is NULL. A
+    client that wants these rows sends `?note__isnull=true`. A list of values for
+    `__in` or `__not_in` cannot hold `None` either, so `?note__not_in=x,` gets
+    `422` too. `FilterKey.parse()` refuses such a value with `400`. A `None` that
+    your code puts in the list params is still no filter.
 
 ### Added
 

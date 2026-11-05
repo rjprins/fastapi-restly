@@ -165,6 +165,11 @@ into cents does this on `?cents=10` and on `?cents__gte=10`. A rich type stays
 too: `?site=https://a.example` compares with `https://a.example/`, as a
 request body stores it. So a client finds a row with the text that it sent.
 
+A value that a validator turns into `None` gets `422`, such as empty text that
+a validator makes `None`. A filter needs a value. To find the rows without a
+value, the client sends `?note__isnull=true`, and the message says so. An
+empty `__icontains` stays no filter.
+
 :::{admonition} Details
 :class: details
 
