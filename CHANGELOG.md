@@ -154,10 +154,12 @@ miss it.
     react-admin view, and `FilterKey.parse()`, keep the `400`.
 23. Silent: a filter value no longer has the bounds of its field, such as `gt` or
     `min_length`. `?price=-1` on a field with `gt=0` is now `200` with no rows, where
-    it was `400`. OpenAPI no longer shows bounds on these keys. If a bound kept a
-    value away from a column type that Restly does not check, such as a type of a
-    dialect, that value now reaches the database, which can answer with a `500`.
-    Write the limit in a field validator for this; a validator still runs.
+    it was `400`. OpenAPI no longer shows bounds on these keys. A number in a filter
+    must be between `-1e50` and `1e50`, so a huge value gets `422`. If a bound kept a
+    value away from a column type that Restly does not check, that value now reaches
+    the database, which can answer with a `500`. Such types are `Numeric`, `Float`,
+    `Uuid` and the types of a dialect. Write the limit in a field validator for
+    this; a validator still runs.
 24. Silent: the fields of generated list params now hold the type of their field, not
     text. So `list_params.price__gte` is a `Decimal`, `list_params.price__in` is a
     list, and a reference gives its id. Change code that reads them as text.

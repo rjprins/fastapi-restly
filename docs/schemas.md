@@ -299,7 +299,7 @@ Each kind of rule has one place:
 | The format or the range of one value | A Pydantic validator or a `Field` constraint on the schema | 422 |
 | A field that a client cannot set | [`ReadOnly`](#readonly-and-writeonly), or [your own create and update schemas](#explicit-write-schemas) | The value is ignored |
 | The shape of a JSON document | A Pydantic model as the type of the column; see [Store a Pydantic model in a JSON column](#json-document-columns) | 422 |
-| A value that its column can hold, such as a number in the range of `Integer` | Nothing for the generic types of SQLAlchemy, a `Field` constraint for other types; see [Column validation](#column-validation) | 422 |
+| A value that its column can hold, such as a number in the range of `Integer` | Nothing for the generic integer and text types of SQLAlchemy, a `Field` constraint for other types; see [Column validation](#column-validation) | 422 |
 | A referenced row must exist | {class}`fr.MustExist <fastapi_restly.schemas.MustExist>` or a reference field; see [Relationships](#reference-exists) | 404 |
 | A value must be unique | A unique constraint on the column; see [Errors](#default-exception-handling) | 409 |
 | A rule that needs the database, the stored row or the caller | The `create` or `update` business method; see [Request Lifecycle & Hooks](#business-methods) | The error that you raise |
@@ -423,6 +423,7 @@ fit is an error, and the client gets a 500. For a 422, put the limit on the
 field of the schema. A filter does not check a `Field` limit, so for a 422 in a
 filter too, write the limit in a field validator; see
 [Filter values go through the field's validation](#filter-value-validation).
+A number in a filter is at most `1e50` in any case.
 
 | Column | Field of the schema |
 |---|---|

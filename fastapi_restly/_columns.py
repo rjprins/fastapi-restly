@@ -16,8 +16,9 @@ its row in a filter.
 
 Any other type gets the value as it is, as in SQLAlchemy: a type of a
 dialect, a subclass, a ``TypeDecorator``, or a type with variants from
-``with_variant()``. A constraint on the field of the schema checks its
-values.
+``with_variant()``. A constraint on the field of the schema checks such a
+value in a request body. A filter leaves out the constraints of the field,
+and takes a number only up to ``1e50``.
 """
 
 import datetime as _dt

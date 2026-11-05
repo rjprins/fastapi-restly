@@ -558,3 +558,69 @@ def test_a_filter_key_of_your_own_refuses_a_value_that_becomes_none():
     with pytest.raises(fr.exc.BadQueryParam, match="becomes null after validation"):
         key.parse("")
     assert key.parse(None) is None
+
+
+# ---------------------------------------------------------------------------
+# A number in a filter is at most 1e50, as in django-filter
+# ---------------------------------------------------------------------------
+
+
+class Gauge(fr.IDMixin, Base):
+    __tablename__ = "key_types_gauge"
+    amount: Mapped[Decimal]
+    reading: Mapped[Decimal]
+    ratio: Mapped[float]
+    count: Mapped[int]
+
+
+class GaugeSchema(fr.IDSchema):
+    amount: Annotated[Decimal, Field(max_digits=12)]
+    reading: Annotated[Decimal, Field(allow_inf_nan=True)]
+    ratio: float
+    count: int
+
+
+def gauge_params() -> type[pydantic.BaseModel]:
+    return derive_list_params_schema(GaugeSchema, Gauge, pagination=None)
+
+
+@pytest.mark.parametrize(
+    "key, value",
+    [
+        ("amount", "1e999999"),
+        ("amount__gte", "-1e51"),
+        ("reading", "Infinity"),
+        ("ratio", "1e400"),
+        ("ratio__lt", "-inf"),
+        ("ratio__in", "1,1e51"),
+    ],
+)
+def test_a_number_beyond_1e50_fails(key, value):
+    with pytest.raises(pydantic.ValidationError) as exc_info:
+        gauge_params().model_validate({key: value})
+
+    (error,) = exc_info.value.errors()
+    assert error["msg"] == "A number in a filter must be between -1e50 and 1e50."
+
+
+@pytest.mark.parametrize(
+    "key, value",
+    [("amount", "1e50"), ("amount", "-1e50"), ("ratio", "1e50"), ("reading", "NaN")],
+)
+def test_a_number_up_to_1e50_works(key, value):
+    gauge_params().model_validate({key: value})
+
+
+def test_the_limit_comes_before_the_range_of_an_integer_column():
+    with pytest.raises(pydantic.ValidationError) as exc_info:
+        gauge_params().model_validate({"count": str(10**60)})
+
+    (error,) = exc_info.value.errors()
+    assert "1e50" in error["msg"]
+
+
+def test_a_filter_key_of_your_own_caps_a_number():
+    key = fr.query.FilterKey(Gauge, GaugeSchema, "ratio")
+
+    with pytest.raises(fr.exc.BadQueryParam, match="between -1e50 and 1e50"):
+        key.parse("1e400")

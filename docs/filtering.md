@@ -192,6 +192,11 @@ must fit its integer column, such as the range of `Integer`, and text must hold
 no NUL character; see [Column validation](#column-validation). A filter does
 not check the length of text.
 
+A number in a filter must be between `-1e50` and `1e50`, as in django-filter.
+So a huge number, such as `?price=1e999999`, gets `422` and never reaches the
+database. A NaN stays when the field allows it. For a bigger number, write
+[a filter of your own](#own-list-filter).
+
 A bound stays when Pydantic checks it with a function. This happens after a
 validator of your own, on a union such as `Decimal | int`, and on some types,
 such as `HttpUrl`. Restly cannot tell such a function from your own check.

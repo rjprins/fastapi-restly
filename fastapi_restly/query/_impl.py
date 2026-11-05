@@ -2153,7 +2153,8 @@ def _value_reader(
     :func:`_field_validator`: a text from a URL, or a value from JSON. ``None``
     stays ``None``, for ``IS NULL``. A value that a validator turns into
     ``None``, such as an empty text, fails: a filter needs a value, and the
-    client did not ask for NULL. An ``IDRef`` gives its id. A JSON column
+    client did not ask for NULL. A number must be between ``-1e50`` and
+    ``1e50``; see :func:`_check_number_size`. An ``IDRef`` gives its id. A JSON column
     takes only ``None``: it holds JSON text, so SQL cannot compare it with a
     value. A field of type ``Any``, such as the ``id`` of ``fr.IDSchema``, and
     the id of a reference get the Python type of the column, such as a
@@ -2201,12 +2202,36 @@ def _value_reader(
                 result = result.id
             if (untyped or reference) and to_python_type is not None:
                 result = to_python_type(result)
+            _check_number_size(result)
             return result
         except pydantic.ValidationError as exc:
             error = exc.errors()[0]
             raise _BadValue(error["type"], error["msg"]) from exc
 
     return read
+
+
+#: The biggest number that a filter takes, as in django-filter. A filter
+#: leaves out the bounds of its field, and without a limit a huge number
+#: reaches the database: PostgreSQL then fails on ``1e400`` for a ``Float``
+#: column, or on a ``Decimal`` with many digits, which is a 500.
+_NUMBER_LIMIT = 1e50
+
+
+def _check_number_size(value: Any) -> None:
+    """Refuse a number above ``1e50`` or below ``-1e50``. NaN stays: a field
+    that allows it has a reason.
+
+    :raises _BadValue: the number is too big, or an infinity.
+    """
+    if isinstance(value, bool) or not isinstance(value, (int, float, _decimal.Decimal)):
+        return
+    if isinstance(value, _decimal.Decimal) and value.is_nan():
+        return
+    if abs(value) > _NUMBER_LIMIT:
+        raise _BadValue(
+            "value_error", "A number in a filter must be between -1e50 and 1e50."
+        )
 
 
 def _column_step(column: Any) -> Callable[[Any], Any]:
