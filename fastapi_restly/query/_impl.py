@@ -2170,7 +2170,9 @@ def _value_reader(
     stays ``None``, for ``IS NULL``. A value that a validator turns into
     ``None``, such as an empty text, fails: a filter needs a value, and the
     client did not ask for NULL. A number must be between ``-1e50`` and
-    ``1e50``; see :func:`_check_number_size`. An ``IDRef`` gives its id. A JSON column
+    ``1e50``; see :func:`_check_number_size`. A ``Literal`` of numbers and an
+    enum whose values are numbers read the number from the text first; see
+    :func:`_has_number_labels`. An ``IDRef`` gives its id. A JSON column
     takes only ``None``: it holds JSON text, so SQL cannot compare it with a
     value. A field of type ``Any``, such as the ``id`` of ``fr.IDSchema``, and
     the id of a reference get the Python type of the column, such as a
@@ -2190,9 +2192,11 @@ def _value_reader(
         becomes_null += f" To find the rows where it is null, send {isnull_key}=true."
     column_type = getattr(column, "type", None)
     json_column = _has_json_type(column)
+    annotation = _unwrap_type(schema_cls.model_fields[field_name].annotation)[0]
     # A field of type Any, such as the id of fr.IDSchema, gives the value as
     # it came, and so does a reference for its id.
-    untyped = _unwrap_type(schema_cls.model_fields[field_name].annotation)[0] is Any
+    untyped = annotation is Any
+    number_labels = _has_number_labels(annotation)
     # a column of SQLAlchemy's Enum type takes its labels; see _column_step
     to_python_type = (
         None if _enum_type(column) is not None else _python_type_parser(column_type)
@@ -2204,6 +2208,8 @@ def _value_reader(
                 "value_error",
                 "A filter on a JSON column can only check whether it is null.",
             )
+        if number_labels and isinstance(value, str):
+            value = _number_from_text(value)
         try:
             values, _, _ = validator.validate_python({field_name: value})
             result = values[field_name]
@@ -2225,6 +2231,38 @@ def _value_reader(
             raise _BadValue(error["type"], error["msg"]) from exc
 
     return read
+
+
+def _has_number_labels(annotation: Any) -> bool:
+    """Whether a field takes labels that are all numbers: a ``Literal`` such
+    as ``Literal[1, 2]``, or an enum whose values are all numbers.
+
+    A value from a URL is text, and Pydantic does not read ``"1"`` as ``1``
+    for such a field, as it does for an ``IntEnum``. Without help, the
+    filter key of such a field would refuse each value. A ``bool`` is no
+    number here, and ``Literal[1, "1"]`` stays as it is.
+    """
+    if get_origin(annotation) is Literal:
+        values: _abc.Sequence[Any] = get_args(annotation)
+    elif isinstance(annotation, type) and issubclass(annotation, enum.Enum):
+        values = [member.value for member in annotation]
+    else:
+        return False
+    return bool(values) and all(
+        isinstance(value, (int, float)) and not isinstance(value, bool)
+        for value in values
+    )
+
+
+def _number_from_text(text: str) -> Any:
+    """The number in ``text``: an ``int``, else a ``float``. Text that holds no
+    number stays as it is, and the validation of the field refuses it."""
+    for parse in (int, float):
+        try:
+            return parse(text)
+        except ValueError:
+            pass
+    return text
 
 
 #: The biggest number that a filter takes, as in django-filter. A filter

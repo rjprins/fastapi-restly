@@ -320,6 +320,10 @@ miss it.
 - `before_action_commit` no longer runs after a `session.rollback()` or a
   `session.close()` in the write action. Before, a hook with an outside effect ran
   for a write that was not saved.
+- A filter on a `Literal` of numbers, such as `Literal[1, 2]`, or on an enum whose
+  values are all numbers, now reads the number from the URL, as for an `IntEnum`.
+  So `?level=1` works. Before, each value got an error, and OpenAPI showed numbers
+  that the key did not take.
 - A text column takes text. A field of another type over `Mapped[str]`, such as
   `HttpUrl`, `IPv4Address`, `Path`, `UUID`, a plain `Enum`, `date`, `time`,
   `datetime`, `timedelta`, `Decimal`, `int` or `bool`, now stores the text that a

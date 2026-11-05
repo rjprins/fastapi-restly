@@ -6,9 +6,10 @@ does not store it. Only ``__in`` and ``__not_in`` take several values.
 """
 
 import asyncio
+import enum
 from datetime import date
 from decimal import Decimal
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 import pydantic
 import pytest
@@ -696,3 +697,89 @@ def test_an_empty_list_on_a_key_that_takes_one_value_fails(crates, key):
 def test_an_unknown_key_with_none_fails(crates):
     with pytest.raises(RequestValidationError):
         crates.get_many({"lable": None})
+
+
+# ---------------------------------------------------------------------------
+# Labels that are numbers read the number from the text
+# ---------------------------------------------------------------------------
+
+
+class Level(enum.Enum):
+    low = 1
+    high = 2
+
+
+class Prio(enum.IntEnum):
+    low = 1
+    high = 2
+
+
+class Task(fr.IDMixin, Base):
+    __tablename__ = "key_types_task"
+    lit: Mapped[int] = mapped_column(default=1)
+    level: Mapped[Level] = mapped_column(default=Level.low)
+    prio: Mapped[int] = mapped_column(default=1)
+    share: Mapped[float] = mapped_column(default=1.5)
+    maybe: Mapped[int | None] = mapped_column(default=None)
+
+
+class TaskSchema(fr.IDSchema):
+    lit: Literal[1, 2] = 1
+    level: Level = Level.low
+    prio: Prio = Prio.low
+    share: Literal[1.5, 2.5] = 1.5
+    maybe: Literal[1, 2] | None = None
+
+
+@pytest.fixture
+def tasks(client: RestlyTestClient) -> RestlyTestClient:
+    @fr.include_view(client.app)
+    class TaskView(fr.AsyncRestView):
+        prefix = "/tasks"
+        model = Task
+        schema = TaskSchema
+
+    asyncio.run(fr.db.async_create_all(Base))
+    client.post("/tasks", json={})
+    client.post(
+        "/tasks", json={"lit": 2, "level": 2, "prio": 2, "share": 2.5, "maybe": 2}
+    )
+    return client
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        {"lit": "2"},
+        {"lit__in": "2"},
+        {"level__not_in": "1"},
+        {"level": "2"},
+        {"level__ne": "1"},
+        {"prio": "2"},
+        {"share": "2.5"},
+        {"maybe": "2"},
+    ],
+)
+def test_a_label_that_is_a_number_comes_as_text(tasks, params):
+    rows = tasks.get("/tasks", params=params).json()["data"]
+    assert [row["lit"] for row in rows] == [2]
+
+
+@pytest.mark.parametrize("value", ["3", "x", "1.5"])
+def test_a_number_that_is_no_label_fails(tasks, value):
+    response = tasks.get("/tasks", params={"lit": value}, assert_status_code=422)
+
+    (error,) = response.json()["detail"]
+    assert error["loc"] == ["query", "lit"]
+    assert error["input"] == value
+
+
+def test_mixed_labels_stay_as_they_are():
+    from fastapi_restly.query._impl import _has_number_labels
+
+    assert _has_number_labels(Literal[1, 2.5])
+    assert _has_number_labels(Level)
+    assert not _has_number_labels(Literal[1, "1"])
+    assert not _has_number_labels(Literal[True, False])
+    assert not _has_number_labels(Literal[1, True])
+    assert not _has_number_labels(int)
