@@ -121,7 +121,8 @@ Not every field gets every suffix:
   [Add a filter of your own](#own-list-filter).
 - A {data}`WriteOnly <fastapi_restly.schemas.WriteOnly>` field, a field
   with `Field(exclude=True)`, and a field of Pydantic's secret types, such as
-  `SecretStr`, get no filter and are not a sort key. A filter on such a field
+  `SecretStr`, also in a union such as `SecretStr | int`, get no filter and
+  are not a sort key. A filter on such a field
   would let a client find out its value. Restly cannot see a value that a
   serializer hides, such as a number shown as `***-1234`. Leave such a field
   out with `exclude_filters` and `exclude_sort_keys`.

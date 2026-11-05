@@ -11,7 +11,7 @@ from typing import Any
 
 import pytest
 from fastapi import FastAPI
-from pydantic import Field
+from pydantic import Field, SecretBytes, SecretStr
 from sqlalchemy import ForeignKey, select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -141,6 +141,32 @@ def test_a_field_with_exclude_is_not_a_filter_or_sort_key(query):
     assert not [name for name in fields if name.startswith("token")]
     with pytest.raises(BadQueryParam):
         apply_list_params(select(Token), QueryParams(query), Token, TokenSchema)
+
+
+class Vault(Base):
+    __tablename__ = "writeonly_vault"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str]
+    code: Mapped[str]
+    token: Mapped[str]
+
+
+class VaultSchema(fr.IDSchema):
+    name: str
+    code: SecretStr | int
+    token: SecretStr | SecretBytes
+
+
+@pytest.mark.parametrize(
+    "query", ["code=a", "code__icontains=a", "sort=code", "token__icontains=a"]
+)
+def test_a_union_with_a_secret_type_is_not_a_filter_or_sort_key(query):
+    fields = derive_list_params_schema(VaultSchema, Vault).model_fields
+
+    assert "name" in fields
+    assert not [name for name in fields if name.startswith(("code", "token"))]
+    with pytest.raises(BadQueryParam):
+        apply_list_params(select(Vault), QueryParams(query), Vault, VaultSchema)
 
 
 @pytest.fixture(params=[fr.RestView, fr.AsyncRestView], ids=["sync", "async"])

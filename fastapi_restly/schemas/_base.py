@@ -1681,12 +1681,21 @@ def _hides_value(field: FieldInfo) -> bool:
     """Whether a response never shows the value of ``field``.
 
     A WriteOnly field, or one with ``exclude=True``, never goes out. A field
-    of one of Pydantic's secret types goes out masked. A filter or a sort on
-    such a field would let a client find out the value.
+    of one of Pydantic's secret types goes out masked, also in a union such
+    as ``SecretStr | int``. A filter or a sort on such a field would let a
+    client find out the value.
     """
     if field.exclude is True:
         return True
-    annotation, _ = _unwrap_type(field.annotation)
+    return _holds_secret(field.annotation, set())
+
+
+def _holds_secret(annotation: Any, seen: set[Any]) -> bool:
+    """Whether ``annotation`` is one of Pydantic's secret types, or a union
+    with one. ``seen`` is as in :func:`_alias_value`."""
+    annotation, _ = _unwrap_type(annotation, seen)
+    if get_origin(annotation) in (types.UnionType, Union):
+        return any(_holds_secret(arg, seen) for arg in get_args(annotation))
     origin = get_origin(annotation) or annotation
     return isinstance(origin, type) and issubclass(origin, _SECRET_TYPES)
 
