@@ -382,6 +382,11 @@ types of SQLAlchemy, so you do not write a validator for them:
 - Text must not hold a NUL character (`\x00`).
 - Text in a request body must fit the length of a `String(n)` column.
 
+A text column takes text. A field of another type over such a column, such as
+`url: HttpUrl` over `Mapped[str]`, stores the text that a response shows, here
+`https://a.example/`. A filter compares the same text, so a value from a
+response finds its row.
+
 A value that does not fit gets 422 in a request body or in the path, and
 400 in a filter. A reference id that does not fit gets 404, as for a row
 that does not exist.
@@ -397,6 +402,10 @@ that holds bigger numbers needs `BigInteger`, such as a column with a Unix
 time in milliseconds. A filter only compares a value with the column, and
 PostgreSQL compares text of any length, so the length counts only in a
 request body. A `CHAR` without a length holds one character, as in SQL.
+
+A value that has no text in a response, such as a dict, stays as it is, and so
+does a member of an enum with number values that does not inherit from `int`.
+The database driver then refuses it, because the field does not fit the column.
 
 Restly checks these types by their exact class: `Integer`, `SmallInteger`,
 `BigInteger`, `String`, `Text`, `Unicode` and `UnicodeText`, and the same

@@ -222,6 +222,13 @@ miss it.
 - `before_action_commit` no longer runs after a `session.rollback()` or a
   `session.close()` in the write action. Before, a hook with an outside effect ran
   for a write that was not saved.
+- A text column takes text. A field of another type over `Mapped[str]`, such as
+  `HttpUrl`, `IPv4Address`, `Path`, `UUID`, a plain `Enum`, `date`, `time`,
+  `datetime`, `timedelta`, `Decimal`, `int` or `bool`, now stores the text that a
+  response shows, and a filter finds its row with that text. Before, these gave `500`
+  on a create, in a filter, or both, and which ones depended on the database. A
+  `datetime` in a filter on SQLite found no rows. A URL that is too long for
+  `String(n)` is now `422`.
 - The error for list params of your own without page fields now fits a list with
   its own `limit` and `offset`. Its advice was `PagedListParams`, which gives page
   numbers, or `pagination = None`. With `pagination = None`, an envelope with a

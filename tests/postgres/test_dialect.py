@@ -1,7 +1,7 @@
 """The dialect-divergent surface, pinned on real PostgreSQL.
 
 Everything here is invisible on SQLite and only runs when the subtree is pointed
-at PostgreSQL (see ``conftest.py``). Eight things are covered:
+at PostgreSQL (see ``conftest.py``). Nine things are covered:
 
 * ``contains`` (``LIKE``) is case-sensitive and ``icontains`` (``ILIKE``) folds
   case, for ASCII *and* non-ASCII input. On SQLite ``LIKE`` is
@@ -26,6 +26,7 @@ at PostgreSQL (see ``conftest.py``). Eight things are covered:
   ``restly_session`` / ``restly_async_session`` -- the async session runs over
   the sync fixture's pinned connection, so a write through either is visible to
   the other within a test. This path only exists on a psycopg stack.
+* A text column takes text: PostgreSQL has no ``=`` for text and a number.
 * Times: a time without an offset is UTC. psycopg leaves the time zone to
   PostgreSQL, which reads such a time in the time zone of the session, so
   these tests give the session another time zone.
@@ -36,11 +37,13 @@ at PostgreSQL (see ``conftest.py``). Eight things are covered:
 """
 
 import asyncio
+import enum
 import json
 import math
 import uuid
 from contextlib import asynccontextmanager
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
+from decimal import Decimal
 
 import httpx
 import pydantic
@@ -137,6 +140,39 @@ class PgLabelled(fr.IDMixin, SharedBase):
 
 class PgLabelledSchema(fr.IDSchema):
     status: str
+
+
+class PgRichColor(enum.Enum):
+    red = "red"
+
+
+class PgRich(fr.IDMixin, SharedBase):
+    # text columns, with fields of other types
+    url: Mapped[str]
+    ip: Mapped[str]
+    token: Mapped[str]
+    color: Mapped[str]
+    day: Mapped[str]
+    at: Mapped[str]
+    moment: Mapped[str]
+    span: Mapped[str]
+    amount: Mapped[str]
+    count: Mapped[str]
+    flag: Mapped[str]
+
+
+class PgRichSchema(fr.IDSchema):
+    url: pydantic.HttpUrl
+    ip: pydantic.IPvAnyAddress
+    token: uuid.UUID
+    color: PgRichColor
+    day: date
+    at: time
+    moment: datetime
+    span: timedelta
+    amount: Decimal
+    count: int
+    flag: bool
 
 
 class PgShared(fr.IDMixin, SharedBase):
@@ -292,6 +328,13 @@ class PgOffsetPagedView(fr.AsyncRestView):
 
 
 @fr.include_view(_app)
+class PgRichView(fr.AsyncRestView):
+    prefix = "/rich"
+    model = PgRich
+    schema = PgRichSchema
+
+
+@fr.include_view(_app)
 class PgDocView(fr.AsyncRestView):
     prefix = "/docs"
     model = PgDoc
@@ -395,6 +438,7 @@ class PgKeyedView(fr.AsyncRestView):
 
 
 _MODELS = [
+    PgRich,
     PgWord,
     PgRanked,
     PgPaged,
@@ -470,6 +514,28 @@ def _names(response) -> list[str]:
 
 def _labels(response) -> list[str]:
     return [row["label"] for row in response.json()["data"]]
+
+
+def test_a_text_column_takes_the_text_that_a_response_shows(restly_client):
+    """PostgreSQL has no ``=`` for text and a number, a UUID or a date, so
+    each of these filters was a 500. Several fields could not even be stored."""
+    body = {
+        "url": "https://a.example",
+        "ip": "10.0.0.1",
+        "token": "00000000-0000-0000-0000-000000000001",
+        "color": "red",
+        "day": "2026-01-02",
+        "at": "03:04:05",
+        "moment": "2026-01-02T03:04:05Z",
+        "span": "PT1H",
+        "amount": "1.50",
+        "count": 7,
+        "flag": True,
+    }
+    row = restly_client.post("/rich", json=body, assert_status_code=201).json()
+    for name in body:
+        found = restly_client.get("/rich", params={name: row[name]}).json()
+        assert [item["id"] for item in found["data"]] == [row["id"]], name
 
 
 def test_contains_is_case_sensitive_for_ascii(restly_client):

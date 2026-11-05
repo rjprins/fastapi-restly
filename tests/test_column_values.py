@@ -4,13 +4,22 @@ The generic SQLAlchemy type of a column is the contract on every database:
 an ``Integer`` holds 32 bits, a ``String(5)`` stores five characters, and
 text holds no NUL character. PostgreSQL refuses such a value with a data
 error, which was a 500, and SQLite stored it, so the tests of an app on
-SQLite did not see it. Any other type gets the value as it is, as in
-SQLAlchemy. See ``tests/postgres`` for the same requests on PostgreSQL.
+SQLite did not see it. A text column takes text, so a field of another type
+over it stores the text that a response shows. Any other type gets the value
+as it is, as in SQLAlchemy. See ``tests/postgres`` for the same requests on
+PostgreSQL.
 """
 
 import asyncio
+import datetime
+import decimal
+import enum
+import ipaddress
 import json
+import pathlib
+import uuid
 
+import pydantic
 import pytest
 import sqlalchemy
 from fastapi import HTTPException
@@ -70,8 +79,7 @@ def test_stored_text_fits_the_length_of_its_column_and_text_holds_no_nul():
 def test_another_type_gets_the_value_as_it_is():
     """Restly checks only the generic types by their exact class. A type of
     a dialect, a subclass, an Enum, a TypeDecorator and a type from
-    with_variant() get the value as in SQLAlchemy. A number for a text
-    column is the field's matter."""
+    with_variant() get the value as in SQLAlchemy."""
     from sqlalchemy.dialects import mysql, oracle, postgresql
 
     class Shout(sqlalchemy.TypeDecorator[str]):
@@ -91,10 +99,163 @@ def test_another_type_gets_the_value_as_it_is():
         (Shout(), "a\x00b and longer"),
         (sqlalchemy.Integer().with_variant(BigInteger(), "postgresql"), 2**40),
         (sqlalchemy.Float(), 2**40),
-        (String(5), 2**40),
         (sqlalchemy.Integer(), True),
     ):
         assert column_value(column_type, value, stored=True) is value
+
+
+class _Color(enum.Enum):
+    red = "red"
+
+
+class _Size(enum.Enum):
+    big = 1
+
+
+class _Level(enum.IntEnum):
+    high = 3
+
+
+#: A field of a type other than text over a text column, and a value for it.
+_RICH_FIELDS = {
+    "url": (pydantic.HttpUrl, "https://a.example"),
+    "any_url": (pydantic.AnyUrl, "https://a.example/x"),
+    "ipv4": (ipaddress.IPv4Address, "10.0.0.1"),
+    "ipv6": (ipaddress.IPv6Address, "::1"),
+    "ip_any": (pydantic.IPvAnyAddress, "10.0.0.1"),
+    "network": (ipaddress.IPv4Network, "10.0.0.0/8"),
+    "path": (pathlib.Path, "/tmp/a"),
+    "token": (uuid.UUID, "00000000-0000-0000-0000-000000000001"),
+    "color": (_Color, "red"),
+    "level": (_Level, 3),
+    "day": (datetime.date, "2026-01-02"),
+    "at": (datetime.time, "03:04:05"),
+    "moment": (datetime.datetime, "2026-01-02T03:04:05Z"),
+    "span": (datetime.timedelta, "PT1H"),
+    "amount": (decimal.Decimal, "1.50"),
+    "ratio": (float, 1.5),
+    "count": (int, 7),
+    "flag": (bool, True),
+}
+
+
+@pytest.mark.parametrize("name", _RICH_FIELDS)
+def test_a_text_column_takes_the_text_that_a_response_shows(client, name):
+    """A value from a response finds its row, and a body and a filter agree."""
+    field_type, value = _RICH_FIELDS[name]
+
+    class Rich(fr.IDMixin, SharedBase):
+        value: Mapped[str]
+
+    schema = pydantic.create_model(
+        "RichSchema", __base__=fr.IDSchema, value=(field_type, ...)
+    )
+
+    @fr.include_view(client.app)
+    class RichView(fr.AsyncRestView):
+        prefix = "/rich"
+        model = Rich
+        response_schema = schema
+        create_schema = pydantic.create_model(
+            "RichCreateSchema", value=(field_type, ...)
+        )
+        update_schema = create_schema
+
+    create_tables()
+    row = client.post("/rich", json={"value": value}, assert_status_code=201).json()
+    shown = row["value"]
+    assert client.get(f"/rich/{row['id']}").json()["value"] == shown
+    found = client.get("/rich", params={"value": shown}).json()
+    assert [item["id"] for item in found["data"]] == [row["id"]]
+    assert client.patch(f"/rich/{row['id']}", json={"value": value}).json() == row
+
+
+@pytest.mark.parametrize(
+    ("value", "text"),
+    [
+        (
+            pydantic.TypeAdapter(pydantic.HttpUrl).validate_python("https://a.example"),
+            "https://a.example/",
+        ),
+        (uuid.UUID(int=1), "00000000-0000-0000-0000-000000000001"),
+        (_Color.red, "red"),
+        (_Level.high, "3"),
+        (datetime.date(2026, 1, 2), "2026-01-02"),
+        (decimal.Decimal("1.50"), "1.50"),
+        (7, "7"),
+        (True, "true"),
+        ("text", "text"),
+    ],
+)
+def test_the_text_of_a_value_for_a_text_column(value, text):
+    assert column_value(Text(), value) == text
+    assert column_value(String(), value, stored=True) == text
+
+
+@pytest.mark.parametrize("value", [None, _Size.big, {"a": 1}, ["a"], object()])
+def test_a_value_without_text_stays_as_it_is(value):
+    """The driver refuses it: the field does not fit the column. A plain enum
+    with number values stays too, because Pydantic cannot read it back from
+    the text of its number. An error from the serializer is not the client's
+    fault, so it must not become a 422."""
+    assert column_value(Text(), value) is value
+
+
+def test_the_text_of_a_value_must_fit_the_column(client):
+    class Link(fr.IDMixin, SharedBase):
+        url: Mapped[str] = mapped_column(String(10))
+
+    class LinkSchema(fr.IDSchema):
+        url: pydantic.HttpUrl
+
+    @fr.include_view(client.app)
+    class LinkView(fr.AsyncRestView):
+        prefix = "/links"
+        model = Link
+        schema = LinkSchema
+
+    create_tables()
+    response = client.post(
+        "/links", json={"url": "https://a-long-host.example"}, assert_status_code=422
+    )
+    error = response.json()["detail"][0]
+    assert error["loc"] == ["body", "url"]
+    assert "at most 10 characters" in error["msg"]
+
+
+def test_a_reference_with_a_text_id_is_not_turned_to_text(client):
+    class Group(SharedBase):
+        __tablename__ = "text_group"
+        code: Mapped[str] = mapped_column(primary_key=True)
+
+    class Member(fr.IDMixin, SharedBase):
+        group_code: Mapped[str] = mapped_column(ForeignKey("text_group.code"))
+
+    class MemberSchema(fr.IDSchema):
+        group_code: fr.MustExist[str, Group]
+
+    class GroupSchema(pydantic.BaseModel):
+        code: str
+
+    @fr.include_view(client.app)
+    class GroupView(fr.AsyncRestView):
+        prefix = "/groups"
+        model = Group
+        schema = GroupSchema
+
+    @fr.include_view(client.app)
+    class MemberView(fr.AsyncRestView):
+        prefix = "/members"
+        model = Member
+        schema = MemberSchema
+
+    create_tables()
+    client.post("/groups", json={"code": "a"}, assert_status_code=201)
+    row = client.post(
+        "/members", json={"group_code": "a"}, assert_status_code=201
+    ).json()
+    assert row["group_code"] == "a"
+    client.post("/members", json={"group_code": "b"}, assert_status_code=404)
 
 
 def test_a_value_that_does_not_fit_is_a_client_error(client):

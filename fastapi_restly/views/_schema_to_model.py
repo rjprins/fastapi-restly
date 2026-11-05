@@ -7,7 +7,6 @@ its relationship in one body name the same row.
 """
 
 import dataclasses
-from datetime import datetime, timedelta
 from typing import Any, Iterator, Protocol, cast
 
 import fastapi
@@ -236,17 +235,18 @@ def _column_ready(
     value: Any,
 ) -> Any:
     """A value in the form of its column, by the rule of ``column_value``: a
-    time gets the form of its column, and a number or a text must fit it.
-    The column stores the value, so text must also fit its length.
+    text column takes text, a time gets the form of its column, and a number
+    or a text must fit it. The column stores the value, so text must also fit
+    its length.
 
-    A field without a column keeps its value.
+    A field without a column keeps its value, and so does ``None``.
 
     :raises RequestValidationError: the value does not fit the column, such as
         a time out of range in UTC, or a number out of the range of an
         ``Integer``. The error has the form of a field's validation error, as
         ``fr.UTCDatetime`` gives it.
     """
-    if not isinstance(value, datetime | timedelta | int | str):
+    if value is None:
         return value
     mapper = sa_inspect(model_cls, raiseerr=False)
     column = None if mapper is None else mapper.columns.get(field_name)

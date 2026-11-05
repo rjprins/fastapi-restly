@@ -9,6 +9,11 @@ which is a 500, so the tests of an app on SQLite would not see it. A value
 that does not fit is then the client's error: a 422 or a 400 that names the
 field.
 
+A text column takes text. A field of another type, such as ``HttpUrl`` over
+``Mapped[str]``, gives a value that the database driver cannot take. It goes
+to the column as the text that a response shows, so that value also finds
+its row in a filter.
+
 Any other type gets the value as it is, as in SQLAlchemy: a type of a
 dialect, a subclass, a ``TypeDecorator``, or a type with variants from
 ``with_variant()``. A constraint on the field of the schema checks its
@@ -16,8 +21,11 @@ values.
 """
 
 import datetime as _dt
+import enum
+import json
 from typing import Any
 
+from pydantic_core import PydanticSerializationError, to_jsonable_python
 from sqlalchemy import (
     BIGINT,
     CHAR,
@@ -57,14 +65,16 @@ _TEXT_TYPES: frozenset[type[Any]] = frozenset(
 def column_value(column_type: Any, value: Any, *, stored: bool = False) -> Any:
     """``value`` as a column of ``column_type`` takes it.
 
-    A time or a duration goes through :func:`column_time`. A type in
-    ``_INTEGER_BITS`` or ``_TEXT_TYPES``, by its exact class and without
-    variants, is checked. A number must fit the integer type: 16 bits for
-    ``SmallInteger``, 32 for ``Integer`` and 64 for ``BigInteger``, as on
-    PostgreSQL, also on SQLite. Text must hold no NUL character, and text
-    that the column stores must fit the length of ``String(n)``. A ``CHAR``
-    without a length holds one character, as in SQL. Any other type gets the
-    value as it is.
+    A type in ``_TEXT_TYPES``, by its exact class and without variants, takes
+    text: a value of another type becomes the text that a response shows.
+    A time or a duration for any other column goes through
+    :func:`column_time`. A type in ``_INTEGER_BITS`` or ``_TEXT_TYPES``, by
+    its exact class and without variants, is checked. A number must fit the
+    integer type: 16 bits for ``SmallInteger``, 32 for ``Integer`` and 64 for
+    ``BigInteger``, as on PostgreSQL, also on SQLite. Text must hold no NUL
+    character, and text that the column stores must fit the length of
+    ``String(n)``. A ``CHAR`` without a length holds one character, as in
+    SQL. Any other type gets the value as it is.
 
     :param stored: The column stores the value, as for a request body. A
         filter only compares a value with the column, and PostgreSQL compares
@@ -72,12 +82,15 @@ def column_value(column_type: Any, value: Any, *, stored: bool = False) -> Any:
     :raises ValueError: the value does not fit the column. The message says
         why, for the client.
     """
+    variants = getattr(column_type, "_variant_mapping", None)
+    kind = type(column_type)
+    if value is not None and kind in _TEXT_TYPES and not variants:
+        value = _as_text(value)
     if isinstance(value, _dt.datetime | _dt.timedelta):
         return column_time(column_type, value)
-    if getattr(column_type, "_variant_mapping", None):
+    if variants:
         # another type on another database
         return value
-    kind = type(column_type)
     if isinstance(value, int) and not isinstance(value, bool):
         bits = _INTEGER_BITS.get(kind)
         if bits is not None:
@@ -93,6 +106,33 @@ def column_value(column_type: Any, value: Any, *, stored: bool = False) -> Any:
                 f"The text is too long: the column holds at most {length} {unit}."
             )
     return value
+
+
+def _as_text(value: Any) -> Any:
+    """``value`` as the text that a response shows: the text of a URL, a UUID
+    or a date, the value of an enum, and ``"7"`` or ``"true"`` for a number or
+    a bool. Text comes back as it is, and so does a value that has no such
+    text, such as a dict. The database driver then refuses it, as it does
+    without Restly, because the schema does not fit the column.
+    """
+    if isinstance(value, str):
+        return value
+    try:
+        plain = to_jsonable_python(value)
+    except PydanticSerializationError:
+        return value
+    if isinstance(plain, str):
+        return plain
+    if isinstance(plain, bool | int | float) and not _plain_enum(value):
+        return json.dumps(plain)
+    return value
+
+
+def _plain_enum(value: Any) -> bool:
+    """Whether ``value`` is a member of an enum that does not also inherit
+    from ``int``. Pydantic does not read such a member back from the text of
+    its number."""
+    return isinstance(value, enum.Enum) and not isinstance(value, int)
 
 
 def _check_integer(bits: int, value: int) -> None:
