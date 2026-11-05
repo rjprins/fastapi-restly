@@ -69,7 +69,7 @@ def test_list_params_schema_has_no_writeonly_params():
         AccountSchema, Account, include_filters=("*", "*.*")
     ).model_fields
 
-    assert {"name", "name__gte", "owner.name", "owner.name__contains"} <= set(fields)
+    assert {"name", "name__in", "owner.name", "owner.name__icontains"} <= set(fields)
     assert _secret_params(fields) == set()
 
 
@@ -102,7 +102,6 @@ def test_writeonly_field_may_use_a_reserved_name():
         "pin__isnull=false",
         "pin__gte=5",
         "pin__lt=5",
-        "pin__contains=23",
         "pin__icontains=23",
         "recoveryCode=r-aaa",
         "recovery_code=r-aaa",
@@ -134,7 +133,7 @@ class TokenSchema(fr.IDSchema):
     token: str = Field("", exclude=True)
 
 
-@pytest.mark.parametrize("query", ["token=a", "token__contains=a", "sort=-token"])
+@pytest.mark.parametrize("query", ["token=a", "token__icontains=a", "sort=-token"])
 def test_a_field_with_exclude_is_not_a_filter_or_sort_key(query):
     fields = derive_list_params_schema(TokenSchema, Token).model_fields
 
@@ -204,7 +203,6 @@ def accounts(make_client: Callable[..., RestlyTestClient]) -> RestlyTestClient:
         "pin__isnull",
         "pin__gte",
         "pin__lt",
-        "pin__contains",
         "pin__icontains",
         "recoveryCode",
         "recovery_code",

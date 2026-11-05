@@ -12,6 +12,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from starlette.datastructures import QueryParams
 
 import fastapi_restly as fr
+from fastapi_restly.exc import RestlyConfigurationError
 from fastapi_restly.query import apply_list_params, derive_list_params_schema
 from fastapi_restly.query._impl import (
     _apply_filtering,
@@ -166,11 +167,15 @@ class TestDeriveSchemaListParams:
         assert "age__lte" in schema.model_fields
         assert "age__gt" in schema.model_fields
         assert "age__lt" in schema.model_fields
-        assert "age__isnull" in schema.model_fields
 
-        # Check that boolean filters exist
-        assert "is_active__isnull" in schema.model_fields
-        isnull_annotation = schema.model_fields["age__isnull"].annotation
+        # Only a column that can be NULL has ``__isnull``, and a related row
+        # can be missing
+        assert "age__isnull" not in schema.model_fields
+        assert "is_active__isnull" not in schema.model_fields
+        nested = derive_list_params_schema(
+            NestedWidgetSchema, NestedWidgetModel, include_filters=("*.*",)
+        )
+        isnull_annotation = nested.model_fields["user.age__isnull"].annotation
         schema_types = {
             item["type"]
             for item in pydantic.TypeAdapter(isnull_annotation).json_schema()["anyOf"]
@@ -198,7 +203,6 @@ class TestDeriveSchemaListParams:
         )
 
         assert "user.name" in schema.model_fields
-        assert "user.email__contains" in schema.model_fields
         assert "user.email__icontains" in schema.model_fields
 
     def test_derive_list_params_schema_rejects_sort_field_collision(self):
@@ -213,31 +217,39 @@ class TestDeriveSchemaListParams:
             id: int
             sort: str
 
-        with pytest.raises(ValueError, match="reserved pagination/sort"):
+        with pytest.raises(
+            RestlyConfigurationError, match="also a page or sort parameter"
+        ):
             derive_list_params_schema(SortFieldSchema, SortedWidget)
         # a field that is no column gives no key, so it collides with nothing
         fields = derive_list_params_schema(SortFieldSchema, WidgetModel).model_fields
         assert "sort__in" not in fields
 
-    def test_derive_list_params_schema_rejects_dunder_in_alias(self):
-        """An alias containing ``__`` would collide with operator suffixes."""
+    @pytest.mark.parametrize("alias", ["na__me", "na.me"])
+    def test_a_name_that_a_key_cannot_hold_gets_no_keys(self, alias):
+        """``__`` splits a field from an operator and ``.`` walks to a related
+        field, so a key cannot hold such a name. The schema still works."""
 
-        class DunderAliasSchema(pydantic.BaseModel):
+        class StrangeAliasSchema(pydantic.BaseModel):
             id: int
-            name: str = pydantic.Field(alias="na__me")
+            name: str = pydantic.Field(alias=alias)
 
-        with pytest.raises(ValueError, match="reserved for operator suffixes"):
-            derive_list_params_schema(DunderAliasSchema, WidgetModel)
+        schema = derive_list_params_schema(StrangeAliasSchema, WidgetModel)
 
-    def test_derive_list_params_schema_rejects_dot_in_alias(self):
-        """An alias containing ``.`` would collide with relation traversal."""
+        assert not [key for key in schema.model_fields if key.startswith("na")]
+        assert "id__in" in schema.model_fields
+        with pytest.raises(pydantic.ValidationError):
+            schema.model_validate({"sort": alias})
 
-        class DotAliasSchema(pydantic.BaseModel):
+    def test_an_entry_that_names_a_field_without_keys_fails(self):
+        class StrangeAliasSchema(pydantic.BaseModel):
             id: int
             name: str = pydantic.Field(alias="na.me")
 
-        with pytest.raises(ValueError, match="reserved for relation traversal"):
-            derive_list_params_schema(DotAliasSchema, WidgetModel)
+        with pytest.raises(RestlyConfigurationError, match="matches no filter key"):
+            derive_list_params_schema(
+                StrangeAliasSchema, WidgetModel, include_filters=("na.me",)
+            )
 
 
 #: The default ``page`` / ``page_size`` pagination.
@@ -649,14 +661,6 @@ class TestFilterClause:
         assert aware_clause.right.value == datetime(2024, 1, 1, tzinfo=timezone.utc)
         assert naive_clause.right.value == datetime(2024, 1, 1)
 
-    def test_filter_clause_contains(self):
-        """contains operator should compile to LIKE with wildcards."""
-        clause = _filter_clause(WidgetModel.name, "contains", "oh", str, "key")
-        sql = _render_sql(sqlalchemy.select(WidgetModel).where(clause))
-        assert "%oh%" in sql or "%%oh%%" in sql
-        assert "LIKE" in sql
-        assert "lower" not in sql.lower()
-
     def test_filter_clause_icontains(self):
         """icontains operator should compile to case-insensitive LIKE."""
         clause = _filter_clause(WidgetModel.name, "icontains", "oh", str, "key")
@@ -821,7 +825,7 @@ def test_filtering_and_sorting_share_relationship_joins():
         sqlalchemy.select(AuditLogModel),
         QueryParams(
             [
-                ("creator.name__contains", "A"),
+                ("creator.name__icontains", "A"),
                 ("creator.name__ne", "Bob"),
                 ("updater.name", "Bob"),
                 ("sort", "creator.name,updater.id"),

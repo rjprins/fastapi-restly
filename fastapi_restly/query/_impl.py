@@ -35,6 +35,7 @@ from sqlalchemy.orm import DeclarativeBase, aliased
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.properties import ColumnProperty
 from sqlalchemy.orm.util import AliasedClass
+from sqlalchemy.types import NullType
 from starlette.datastructures import QueryParams
 
 from .._columns import check_text, column_value
@@ -58,6 +59,7 @@ from ._paged import _pagination_of_list_params, _takes_page_fields
 from ._shared import (
     SortNulls,
     _append_pk_tiebreak,
+    _can_be_null,
     _class_attribute,
     _escape_like_value,
     _sort_term,
@@ -300,13 +302,39 @@ _ORDERABLE_TYPES: tuple[type, ...] = (
     _dt.datetime,
     _dt.time,
     _dt.timedelta,
-    str,
 )
 
 
-def _is_string_field(field: FieldInfo) -> bool:
+def _holds_text(column: Any) -> bool:
+    """Whether ``column`` has a text type, also inside ``TypeDecorator`` layers.
+    An ``Enum`` type is a text type to SQLAlchemy, but it holds labels."""
+    sql_type = getattr(column, "type", None)
+    while isinstance(sql_type, TypeDecorator):
+        sql_type = sql_type.impl_instance
+    return isinstance(sql_type, sqlalchemy.String) and not isinstance(
+        sql_type, sqlalchemy.Enum
+    )
+
+
+def _is_label_field(field: FieldInfo) -> bool:
+    """Whether ``field`` takes one of a set of labels: an enum, a ``Literal`` or
+    a bool."""
     annotation, _ = _unwrap_type(field.annotation)
-    return annotation is str
+    if get_origin(annotation) is Literal or annotation is bool:
+        return True
+    return isinstance(annotation, type) and issubclass(annotation, enum.Enum)
+
+
+def _supports_text_search(field: FieldInfo, column: Any) -> bool:
+    """Whether ``field`` gets ``__icontains``. The column decides, because SQL
+    searches the column: ``url: HttpUrl`` on a text column has it, and ``name:
+    str`` on another column has not. Labels have it on no column. A column that
+    names no type, such as an expression, leaves it to the field."""
+    if _is_label_field(field):
+        return False
+    if isinstance(getattr(column, "type", None), NullType):
+        return _unwrap_type(field.annotation)[0] is str
+    return _holds_text(column)
 
 
 def _is_idref_field(field: FieldInfo) -> bool:
@@ -380,6 +408,11 @@ def _supports_range_operators(field: FieldInfo, column: Any) -> bool:
         # an Enum column holds labels, whatever the type of the field
         return False
     annotation, _ = _unwrap_type(field.annotation)
+    if _holds_text(column):
+        # SQL compares text, so ``?value__gte=9`` on an int misses 10. Only the
+        # text of a date always sorts as the date does. A datetime does not:
+        # ``...05.5Z`` sorts before ``...05Z``.
+        return annotation is _dt.date
     if annotation is bool:
         return False
     if get_origin(annotation) is Literal:
@@ -446,19 +479,26 @@ def derive_list_params_schema(
     ``limit`` and ``offset``), sorting (``sort``), and filters. Each field of ``response_schema`` that maps to a
     column of ``model`` gives filter keys, and its type decides which ones.
     Every such field gives the plain key and the keys with the suffixes
-    ``__in``, ``__ne``, ``__not_in`` and ``__isnull``. A type with an order, such as a
-    number, text, a date or an int enum, also gives ``__gte``, ``__lte``,
-    ``__gt`` and ``__lt``, unless the column has SQLAlchemy's ``Enum`` type,
-    which holds labels. Text also gives ``__contains`` and
-    ``__icontains``. A field
-    that does not map to a column, such as a relationship, gives no keys. A
-    WriteOnly field gives none either, because a filter on it would let a
-    client find out its value. A field whose type is a collection (``dict``/``list``, e.g. a
-    ``JSON`` or ``ARRAY`` column) gives only ``__isnull``: a value from the
-    URL cannot become a collection. A field on a JSON column gives only
-    ``__isnull`` too, also when it holds one value, such as a ``str``: the
-    database compares the JSON text, not the value. A field of a nested
-    schema gives dotted keys, such as ``vendor.name``.
+    ``__in``, ``__ne`` and ``__not_in``. A column that can be NULL also gives
+    ``__isnull``, and so does each dotted key, because a related row can be
+    missing. A type with an order, such as a number, a date or an int enum,
+    also gives ``__gte``, ``__lte``, ``__gt`` and ``__lt``, unless the column
+    has SQLAlchemy's ``Enum`` type, which holds labels. A text column gives
+    ``__icontains``, and range keys only for a field of type ``date``.
+
+    A field that does not map to a column, such as a relationship, gives no
+    keys. A WriteOnly field gives none either, because a filter on it would
+    let a client find out its value. A name with ``.`` or ``__`` gives none,
+    because a key could not be read back. A field whose type is a collection
+    (``dict``/``list``, e.g. a ``JSON`` or ``ARRAY`` column) gives only
+    ``__isnull``: a value from the URL cannot become a collection. A field on
+    a JSON column gives only ``__isnull`` too, also when it holds one value,
+    such as a ``str``: the database compares the JSON text, not the value. A
+    field of a nested schema gives dotted keys, such as ``vendor.name``.
+
+    The model forbids a key that it does not have, so a route of your own
+    answers ``422`` for it. A view passes on only the keys that it knows when
+    its ``unknown_query_params`` is ``"ignore"``.
 
     Each key has the type of the field and its validators, without its bounds,
     such as ``gt``: a filter compares a value, and does not store it. Only
@@ -497,7 +537,8 @@ def derive_list_params_schema(
         none. Each entry must match a key, so ``"*.*"`` needs a nested
         schema.
     :param exclude_filters: The filter keys to remove, after
-        ``include_filters``.
+        ``include_filters``. A name without a suffix removes the whole field:
+        the plain key and each key with a suffix.
     :param include_sort_keys: The keys that ``sort`` accepts. A sort key has
         no suffix, and never goes through a to-many relationship. With
         ``()``, the model has no ``sort``.
@@ -596,7 +637,11 @@ def _derive_list_params(
     for name in ("include_filters", "exclude_filters"):
         if name not in unchecked and patterns[name] != _KEY_SETTING_DEFAULTS[name]:
             _check_filter_entries(
-                _setting_label(owner, name), patterns[name], keys_of_field, schema_name
+                _setting_label(owner, name),
+                patterns[name],
+                keys_of_field,
+                schema_name,
+                whole_fields=name == "exclude_filters",
             )
     for name in ("include_sort_keys", "exclude_sort_keys"):
         if name not in unchecked and patterns[name] != _KEY_SETTING_DEFAULTS[name]:
@@ -620,15 +665,16 @@ def _derive_list_params(
     if sort_keys:
         fields[sort_query_param] = _sort_field(sort_keys, default_sort)
     for key in _pick_keys(
-        list(filter_fields), patterns["include_filters"], patterns["exclude_filters"]
+        list(filter_fields),
+        patterns["include_filters"],
+        _whole_fields(patterns["exclude_filters"]),
     ):
         if key in reserved:
-            raise ValueError(
-                f"List params for {schema_name!r} cannot expose the filter "
-                f"key {key!r}: it collides with a reserved pagination/sort "
-                "parameter. Add a Pydantic alias to the field, rename the "
-                f"page or sort parameter, or leave the key out with "
-                f"exclude_filters = ({key!r},)."
+            raise RestlyConfigurationError(
+                f"{_setting_label(owner, 'list_params_schema')}: the filter key "
+                f"{key!r} of {schema_name} is also a page or sort parameter. Give "
+                "the field a Pydantic alias, rename the page or sort parameter, or "
+                f"leave the field out with exclude_filters = ({key!r},)."
             )
         fields[key] = filter_fields[key]
     for own in own_filters:
@@ -649,6 +695,8 @@ def _derive_list_params(
 
     params_model = pydantic.create_model(  # type: ignore[call-overload]
         _schema_role_name(response_schema, "ListParams"),
+        # also on a route outside a view, which reads the model with Query()
+        __config__=pydantic.ConfigDict(extra="forbid"),
         __validators__=settings._list_params_validators(),
         **fields,
     )
@@ -754,8 +802,8 @@ def _check_own_key(
         )
         if "__" not in key:
             message += (
-                f" Then choose what happens to {key}__in and the other keys "
-                "of the field."
+                f" That also removes {key}__in and the other keys of the field. "
+                "To keep them, list the keys you want in include_filters instead."
             )
         raise RestlyConfigurationError(message)
 
@@ -771,10 +819,11 @@ def _filter_fields(
 
     A key has the type of its field, and takes one value. Only ``__in`` and
     ``__not_in`` take several. A text search takes one piece of text, and
-    ``__isnull`` a bool. A field that holds a collection, such as a ``dict``,
-    or that has a JSON column, gets only ``__isnull``. A value from the URL
-    cannot become a collection, and a JSON column holds JSON text, so a filter
-    on it finds no row on SQLite and fails on PostgreSQL.
+    ``__isnull`` a bool, and only a column that can be NULL has it. A field
+    that holds a collection, such as a ``dict``, or that has a JSON column, has
+    no other key. A value from the URL cannot become a collection, and a JSON
+    column holds JSON text, so a filter on it finds no row on SQLite and fails
+    on PostgreSQL.
 
     :param response_schema: The schema that the key ``name`` starts from.
     :param name: The field as the client names it, such as ``vendor.name``.
@@ -810,18 +859,20 @@ def _filter_fields(
             f"Rows where ``{name}`` is none of these values. Separate the values "
             "with commas, or repeat the key."
         )
-    fields[f"{name}__isnull"] = (
-        Annotated[
-            Optional[bool],
-            Field(
-                description=(
-                    f"``true`` matches rows where ``{name}`` IS NULL; "
-                    f"``false`` matches IS NOT NULL."
-                )
-            ),
-        ],
-        None,
-    )
+    # a related row can be missing, so a dotted key can always be NULL
+    if "." in name or _can_be_null(column):
+        fields[f"{name}__isnull"] = (
+            Annotated[
+                Optional[bool],
+                Field(
+                    description=(
+                        f"``true`` matches rows where ``{name}`` IS NULL; "
+                        f"``false`` matches IS NOT NULL."
+                    )
+                ),
+            ],
+            None,
+        )
 
     if supports_scalar and _supports_range_operators(field, column):
         for suffix, sql in (
@@ -832,14 +883,7 @@ def _filter_fields(
         ):
             fields[f"{name}{suffix}"] = one_value(f"``{name} {sql} value``.")
 
-    # an Enum column holds labels: LIKE would search the stored names, and a
-    # native ENUM on PostgreSQL has no LIKE at all
-    if supports_scalar and _is_string_field(field) and _enum_type(column) is None:
-        fields[f"{name}__contains"] = _key_field(
-            {"type": "string"},
-            _search_value,
-            f"Rows where ``{name}`` holds this text. The case counts.",
-        )
+    if supports_scalar and _supports_text_search(field, column):
         fields[f"{name}__icontains"] = _key_field(
             {"type": "string"},
             _search_value,
@@ -953,23 +997,35 @@ def _search_value(value: Any) -> str | None:
     return text or None
 
 
-#: Why a field has only ``__isnull``, for the messages.
+#: Why a field has no key but ``__isnull``, for the messages.
 _ISNULL_ONLY_HINT = (
     "A field that holds a dict or a list, or that has a JSON column, has only __isnull."
 )
 
 #: Why a field has no key with this suffix, for the messages.
 _SUFFIX_HINTS = {
-    "contains": "Only text fields have __contains and __icontains.",
-    "icontains": "Only text fields have __contains and __icontains.",
+    "icontains": "Only a field on a text column has __icontains.",
+    "isnull": "Only a column that can be NULL has __isnull.",
     **dict.fromkeys(
         ("gte", "lte", "gt", "lt"),
-        "Only fields with an order, such as numbers, text, dates and int "
-        "enums, have __gte, __lte, __gt and __lt. A column of SQLAlchemy's "
-        "Enum type has none.",
+        "Only fields with an order, such as numbers, dates and int enums, have "
+        "__gte, __lte, __gt and __lt. A column of SQLAlchemy's Enum type has none, "
+        "and a text column has them only for a field of type date.",
     ),
     **dict.fromkeys(("", "in", "ne", "not_in"), _ISNULL_ONLY_HINT),
 }
+
+
+def _whole_fields(entries: tuple[str, ...]) -> tuple[str, ...]:
+    """The patterns of ``exclude_filters``: a name without a suffix stands for
+    the whole field, the plain key and each key with a suffix. So a bare name
+    never leaves a client more than you named."""
+    patterns: list[str] = []
+    for entry in entries:
+        patterns.append(entry)
+        if "*" not in entry and "__" not in entry:
+            patterns.append(f"{entry}__*")
+    return tuple(patterns)
 
 
 def _check_filter_entries(
@@ -977,23 +1033,38 @@ def _check_filter_entries(
     entries: tuple[str, ...],
     keys_of_field: dict[str, list[str]],
     schema_name: str,
+    *,
+    whole_fields: bool = False,
 ) -> None:
     """Raise for the first entry that matches no filter key.
 
     The message lists the keys of the field that the entry names, or the
     fields that have filters.
+
+    :param whole_fields: A bare name stands for the whole field, as in
+        ``exclude_filters``; see :func:`_whole_fields`.
     """
     keys = [key for field_keys in keys_of_field.values() for key in field_keys]
     for entry in entries:
-        if any(_pattern_regex(entry).fullmatch(key) for key in keys):
+        patterns = _whole_fields((entry,)) if whole_fields else (entry,)
+        if any(
+            _pattern_regex(pattern).fullmatch(key)
+            for pattern in patterns
+            for key in keys
+        ):
             continue
         message = f"{label}: {entry!r} matches no filter key of {schema_name}."
         field, suffix = _split_key(entry)
         if "*" not in field and field in keys_of_field:
             field_keys = ", ".join(keys_of_field[field])
-            message += f" The filter keys of {field!r} are: {field_keys}."
-            if keys_of_field[field] == [f"{field}__isnull"]:
+            if field_keys:
+                message += f" The filter keys of {field!r} are: {field_keys}."
+            else:
+                message += f" {field!r} has no filter keys."
+            if keys_of_field[field] in ([], [f"{field}__isnull"]):
                 message += f" {_ISNULL_ONLY_HINT}"
+                if not keys_of_field[field]:
+                    message += f" {_SUFFIX_HINTS['isnull']}"
             elif suffix in _SUFFIX_HINTS:
                 message += f" {_SUFFIX_HINTS[suffix]}"
         elif "*" not in entry:
@@ -1134,8 +1205,8 @@ def apply_list_params(
         # Filtering
         name=Bob&status=active&created_at__gte=2024-01-01
 
-        # Contains (string fields)
-        name__contains=John&email__icontains=example
+        # Search in text (text columns)
+        name__icontains=John&email__icontains=example
     """
     if sort_nulls not in ("first", "last", None):
         raise ValueError(
@@ -1289,6 +1360,11 @@ def _apply_sort_and_page(
     return _settings_of(pagination)._apply(stmt, values)
 
 
+def _public_name(name: str, field: FieldInfo) -> str:
+    """The name of a schema field in the URL: the name that a response shows."""
+    return field.serialization_alias or field.alias or name
+
+
 def _query_key(name: str, field: FieldInfo) -> str:
     """The query key of a list params field: its validation alias, its alias, or
     its name, as FastAPI reads a query model."""
@@ -1425,25 +1501,12 @@ def _iter_fields_including_nested(
         # field or a SecretStr, is never a filter or sort key.
         if _hides_value(field):
             continue
-        public_name = field.alias or name
-        # Each segment of the public dotted path becomes part of a key of
-        # the list params. ``__`` is reserved for operator suffixes (``__gte``,
-        # ``__contains``, ...) and ``.`` is reserved for relation traversal,
-        # so a segment containing either character would create an
-        # ambiguous URL key. Reject at schema-generation time so the
-        # collision surfaces during view registration, not at request time.
-        if "__" in public_name:
-            raise ValueError(
-                f"List params for {_written_name(schema_cls)!r} cannot "
-                f"expose field {public_name!r}: ``__`` is reserved for "
-                "operator suffixes. Choose a different Pydantic alias."
-            )
-        if "." in public_name:
-            raise ValueError(
-                f"List params for {_written_name(schema_cls)!r} cannot "
-                f"expose field {public_name!r}: ``.`` is reserved for "
-                "relation traversal. Choose a different Pydantic alias."
-            )
+        public_name = _public_name(name, field)
+        # ``__`` splits a field from an operator, and ``.`` walks to a related
+        # field, so a name that holds either cannot be read from a key. Such a
+        # field gets no keys, and the view still starts.
+        if "__" in public_name or "." in public_name:
+            continue
         full_name = f"{prefix}.{public_name}" if prefix else public_name
         nested = _get_nested_schema(field)
         if nested and not _is_idref_field(field):
@@ -1461,8 +1524,8 @@ def _iter_fields_including_nested(
 def _resolve_field_name(schema_cls: _SchemaClass, public_name: str) -> str | None:
     """Return the Python field name for a public URL field name.
 
-    The public name is the field's alias when one is declared, otherwise the
-    field name itself. Aliased fields are *only* reachable by their alias —
+    The public name is the name that a response shows: see
+    :func:`_public_name`. An aliased field is *only* reachable by that name —
     Python field names are never part of the public URL contract, even when
     the schema has ``populate_by_name=True`` (which only affects how Pydantic
     parses input bodies, not the generated list params).
@@ -1473,13 +1536,9 @@ def _resolve_field_name(schema_cls: _SchemaClass, public_name: str) -> str | Non
     """
     resolved: str | None = None
     for field_name, field in schema_cls.model_fields.items():
-        if field.alias == public_name:
+        if _public_name(field_name, field) == public_name:
             resolved = field_name
             break
-    else:
-        field = schema_cls.model_fields.get(public_name)
-        if field is not None and field.alias is None:
-            resolved = public_name
     if resolved is not None and _hides_value(schema_cls.model_fields[resolved]):
         return None
     return resolved
@@ -1655,7 +1714,7 @@ def _filter_clause(
                 f"Invalid filter value for {key!r}: {value!r}. Use true or false."
             ) from exc
         return column.is_(None) if is_null else column.isnot(None)
-    if op in {"contains", "icontains"}:
+    if op == "icontains":
         # LIKE takes the text as it is, without the field's validation
         try:
             text = _search_value(value)
@@ -1666,10 +1725,7 @@ def _filter_clause(
             ) from exc
         if text is None:
             return None
-        pattern = f"%{_escape_like_value(text)}%"
-        if op == "contains":
-            return column.like(pattern, escape="\\")
-        return column.ilike(pattern, escape="\\")
+        return column.ilike(f"%{_escape_like_value(text)}%", escape="\\")
     if op == "in":
         return column.in_([parse(item) for item in value])
     if op == "not_in":

@@ -526,7 +526,7 @@ def test_a_filter_named_like_a_pagination_param_fails_at_registration(client):
     class ShirtSchema(fr.IDSchema):
         size: str
 
-    with pytest.raises(ValueError, match="cannot expose the filter key 'size'"):
+    with pytest.raises(RestlyConfigurationError, match="filter key 'size' of"):
 
         @fr.include_view(client.app)
         class ShirtView(fr.AsyncRestView):

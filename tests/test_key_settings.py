@@ -9,12 +9,12 @@ the keys of the resource's own fields, and no dotted keys.
 import asyncio
 import datetime
 import inspect
-from typing import Any
+from typing import Annotated, Any
 
 import pydantic
 import pytest
-from fastapi import FastAPI
-from sqlalchemy import ForeignKey, select
+from fastapi import FastAPI, Query
+from sqlalchemy import JSON, ForeignKey, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from starlette.datastructures import QueryParams
 
@@ -101,7 +101,7 @@ EVERY_LEVEL = ("*", "*.*", "*.*.*")
 def test_the_default_is_the_keys_of_the_own_fields():
     keys = filter_keys()
 
-    assert {"name", "name__icontains", "created_at__gte", "active__isnull"} <= keys
+    assert {"name", "name__icontains", "created_at__gte", "active__not_in"} <= keys
     assert not [key for key in keys if "." in key]
     assert sort_keys() == OWN_FIELDS
 
@@ -147,7 +147,6 @@ def test_a_star_stays_within_one_level(pattern, expected):
                 "created_at__in",
                 "created_at__ne",
                 "created_at__not_in",
-                "created_at__isnull",
                 "created_at__gte",
                 "created_at__lte",
                 "created_at__gt",
@@ -169,7 +168,7 @@ def test_exclude_applies_after_include():
         include_filters=("name__*",), exclude_filters=("name__icontains",)
     )
 
-    assert "name__contains" in keys
+    assert "name__in" in keys
     assert "name__icontains" not in keys
     assert "name" not in keys
     assert filter_keys(
@@ -259,20 +258,20 @@ def test_apply_list_params_checks_a_sort_that_skipped_validation():
             {"include_filters": ("active__icontains",)},
             "include_filters: 'active__icontains' matches no filter key of "
             "ItemSchema. The filter keys of 'active' are: active, active__in, "
-            "active__ne, active__not_in, active__isnull. Only text fields have "
-            "__contains and __icontains.",
+            "active__ne, active__not_in. Only a field on a text column has "
+            "__icontains.",
         ),
         (
-            {"exclude_filters": ("id__contains",)},
-            "exclude_filters: 'id__contains' matches no filter key of "
+            {"exclude_filters": ("id__icontains",)},
+            "exclude_filters: 'id__icontains' matches no filter key of "
             "ItemSchema. The filter keys of 'id' are: id, id__in, id__ne, "
-            "id__not_in, id__isnull, id__gte, id__lte, id__gt, id__lt. Only text "
-            "fields have __contains and __icontains.",
+            "id__not_in, id__gte, id__lte, id__gt, id__lt. Only a field on a text "
+            "column has __icontains.",
         ),
         (
             {"include_filters": ("active__gte",)},
-            "Only fields with an order, such as numbers, text, dates and int "
-            "enums, have __gte, __lte, __gt and __lt.",
+            "Only fields with an order, such as numbers, dates and int enums, "
+            "have __gte, __lte, __gt and __lt.",
         ),
         (
             {"include_filters": ("nope",)},
@@ -620,12 +619,15 @@ def test_a_field_with_a_reserved_name_can_be_left_out():
     class BookSchema(fr.IDSchema):
         page: int
 
-    with pytest.raises(ValueError, match=r"exclude_filters = \('page',\)"):
+    with pytest.raises(
+        RestlyConfigurationError, match=r"exclude_filters = \('page',\)"
+    ):
         derive_list_params_schema(BookSchema, Book)
 
     model = derive_list_params_schema(BookSchema, Book, exclude_filters=("page",))
+    # the page parameter, and none of the keys of the field
     assert model.model_fields["page"].annotation is int
-    assert "page__gte" in model.model_fields
+    assert "page__gte" not in model.model_fields
     record = _record_of(model)
     assert record is not None
     assert "page" in record.sort_keys
@@ -821,3 +823,265 @@ def test_a_bad_setting_from_a_mixin_fails_when_the_view_registers(app):
 
     with pytest.raises(RestlyConfigurationError, match=r"\(from KeysMixin\)"):
         fr.include_view(app, view)
+
+
+# ---------------------------------------------------------------------------
+# exclude_filters: a bare name is the whole field
+# ---------------------------------------------------------------------------
+
+
+def test_a_bare_name_in_exclude_filters_removes_the_whole_field():
+    keys = filter_keys(exclude_filters=("name",))
+
+    assert not [key for key in keys if key == "name" or key.startswith("name__")]
+    # a field whose name only starts the same stays
+    assert "username" in keys
+
+
+def test_a_bare_name_in_include_filters_is_one_key():
+    assert filter_keys(include_filters=("name",)) == {"name"}
+
+
+def test_a_key_with_a_suffix_in_exclude_filters_is_one_key():
+    keys = filter_keys(exclude_filters=("name__in",))
+
+    assert "name__in" not in keys
+    assert {"name", "name__ne"} <= keys
+
+
+def test_a_bare_dotted_name_in_exclude_filters_removes_the_whole_field():
+    keys = filter_keys(include_filters=("*", "*.*"), exclude_filters=("vendor.name",))
+
+    assert "vendor.id" in keys
+    assert not [key for key in keys if key.startswith("vendor.name")]
+
+
+def test_only_the_plain_key_can_go_with_include_filters():
+    """``exclude_filters`` has no entry for only the plain key of a field, so
+    ``include_filters`` names the others."""
+    keys = filter_keys(include_filters=("*__*", "id", "username"))
+
+    assert "name" not in keys
+    assert {"name__in", "name__icontains", "id", "username"} <= keys
+
+
+def test_a_bare_name_removes_a_field_that_has_only_isnull():
+    class JsonBase(DeclarativeBase):
+        pass
+
+    class Doc(JsonBase):
+        __tablename__ = "keys_doc"
+        id: Mapped[int] = mapped_column(primary_key=True)
+        meta: Mapped[dict | None] = mapped_column(JSON)
+
+    class DocSchema(fr.IDSchema):
+        meta: dict | None = None
+
+    assert "meta__isnull" in derive_list_params_schema(DocSchema, Doc).model_fields
+    fields = derive_list_params_schema(
+        DocSchema, Doc, exclude_filters=("meta",)
+    ).model_fields
+    assert "meta__isnull" not in fields
+
+
+# ---------------------------------------------------------------------------
+# __isnull: only where NULL can be
+# ---------------------------------------------------------------------------
+
+
+def test_only_a_column_that_can_be_null_has_isnull():
+    class NullBase(DeclarativeBase):
+        pass
+
+    class Maker(NullBase):
+        __tablename__ = "keys_maker"
+        id: Mapped[int] = mapped_column(primary_key=True)
+        name: Mapped[str]
+
+    class Thing(NullBase):
+        __tablename__ = "keys_thing"
+        id: Mapped[int] = mapped_column(primary_key=True)
+        name: Mapped[str]
+        note: Mapped[str | None]
+        maker_id: Mapped[int | None] = mapped_column(ForeignKey(Maker.id))
+        maker: Mapped[Maker | None] = relationship()
+
+    class MakerSchema(fr.IDSchema):
+        name: str
+
+    class ThingSchema(fr.IDSchema):
+        name: str
+        note: str | None = None
+        maker: MakerSchema | None = None
+
+    fields = derive_list_params_schema(
+        ThingSchema, Thing, include_filters=("*", "*.*")
+    ).model_fields
+
+    assert "note__isnull" in fields
+    assert "name__isnull" not in fields
+    assert "id__isnull" not in fields
+    # the column of the related row cannot be NULL, but the row can be missing
+    assert "maker.name__isnull" in fields
+
+
+def test_a_json_column_that_cannot_be_null_has_no_keys():
+    class JsonBase(DeclarativeBase):
+        pass
+
+    class Doc(JsonBase):
+        __tablename__ = "keys_required_doc"
+        id: Mapped[int] = mapped_column(primary_key=True)
+        meta: Mapped[dict] = mapped_column(JSON)
+
+    class DocSchema(fr.IDSchema):
+        meta: dict
+
+    assert not [
+        key
+        for key in derive_list_params_schema(DocSchema, Doc).model_fields
+        if key.startswith("meta")
+    ]
+    with pytest.raises(RestlyConfigurationError, match="'meta' has no filter keys"):
+        derive_list_params_schema(DocSchema, Doc, include_filters=("meta__isnull",))
+
+
+# ---------------------------------------------------------------------------
+# Range keys over text: only for a field of type date
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("annotation", "has_range_keys"),
+    [
+        (datetime.date, True),
+        (datetime.date | None, True),
+        (datetime.datetime, False),
+        (int, False),
+        (float, False),
+        (str, False),
+        (Any, False),
+    ],
+)
+def test_a_text_column_has_range_keys_only_for_a_date(annotation, has_range_keys):
+    class TextBase(DeclarativeBase):
+        pass
+
+    class Event(TextBase):
+        __tablename__ = "keys_event"
+        id: Mapped[int] = mapped_column(primary_key=True)
+        when: Mapped[str]
+
+    class EventSchema(fr.IDSchema):
+        when: annotation
+
+    fields = derive_list_params_schema(EventSchema, Event).model_fields
+
+    assert ("when__gte" in fields) is has_range_keys
+    assert "when__icontains" in fields
+
+
+def test_a_number_column_keeps_its_range_keys_for_a_text_field():
+    class NumberBase(DeclarativeBase):
+        pass
+
+    class Score(NumberBase):
+        __tablename__ = "keys_score"
+        id: Mapped[int] = mapped_column(primary_key=True)
+        points: Mapped[int]
+
+    class ScoreSchema(fr.IDSchema):
+        points: int
+
+    assert "points__gte" in derive_list_params_schema(ScoreSchema, Score).model_fields
+
+
+# ---------------------------------------------------------------------------
+# The name of a key is the name that a response shows
+# ---------------------------------------------------------------------------
+
+
+def test_a_key_has_the_name_that_a_response_shows():
+    class NameBase(DeclarativeBase):
+        pass
+
+    class Person(NameBase):
+        __tablename__ = "keys_person"
+        id: Mapped[int] = mapped_column(primary_key=True)
+        full_name: Mapped[str]
+        nick_name: Mapped[str]
+        age: Mapped[int]
+
+    class PersonSchema(fr.IDSchema):
+        full_name: str = pydantic.Field(serialization_alias="fullName")
+        nick_name: str = pydantic.Field(alias="nickIn", serialization_alias="nickOut")
+        age: int = pydantic.Field(alias="years")
+
+    model = derive_list_params_schema(PersonSchema, Person)
+    fields = model.model_fields
+    record = _record_of(model)
+    assert record is not None
+
+    for name in ("fullName", "nickOut", "years"):
+        assert name in fields
+        assert f"{name}__in" in fields
+        assert name in record.sort_keys
+    for name in ("full_name", "nick_name", "nickIn", "age"):
+        assert name not in fields
+        assert name not in record.sort_keys
+
+
+def test_the_key_of_a_serialization_alias_finds_the_row(app):
+    class NameBase(DeclarativeBase):
+        pass
+
+    class Person(NameBase):
+        __tablename__ = "keys_found_person"
+        id: Mapped[int] = mapped_column(primary_key=True)
+        full_name: Mapped[str]
+
+    class PersonSchema(fr.IDSchema):
+        full_name: str = pydantic.Field(serialization_alias="fullName")
+
+    @fr.include_view(app)
+    class PersonView(fr.AsyncRestView):
+        prefix = "/people"
+        model = Person
+        schema = PersonSchema
+
+    client = RestlyTestClient(app)
+    asyncio.run(fr.db.async_create_all(NameBase))
+    client.post("/people", json={"full_name": "Ann"})
+    client.post("/people", json={"full_name": "Bob"})
+
+    rows = client.get("/people", params={"fullName": "Bob", "sort": "-fullName"})
+    assert [row["fullName"] for row in rows.json()["data"]] == ["Bob"]
+
+
+# ---------------------------------------------------------------------------
+# The generated model forbids a key that it does not have
+# ---------------------------------------------------------------------------
+
+
+def test_the_generated_model_works_on_a_route_of_your_own(app):
+    params_class = params_model()
+
+    @app.get("/own")
+    async def own(params: Annotated[params_class, Query()]) -> dict[str, Any]:
+        return {"names": params.name__in, "name": params.name}
+
+    client = RestlyTestClient(app)
+
+    response = client.get("/own", params={"name": "a", "name__in": "b,c"})
+    assert response.json() == {"names": ["b", "c"], "name": "a"}
+    response = client.get("/own?name__in=b&name__in=c")
+    assert response.json()["names"] == ["b", "c"]
+    client.get("/own", params={"nope": "1"}, assert_status_code=422)
+
+
+def test_a_view_that_ignores_unknown_params_still_ignores_them(app):
+    fr.include_view(app, item_view(unknown_query_params="ignore"))
+    client = RestlyTestClient(app)
+    asyncio.run(fr.db.async_create_all(Base))
+
+    assert client.get("/items", params={"nope": "1"}).status_code == 200

@@ -11,8 +11,8 @@ What they pin in place:
 * B2.3 — OR-comma works on every column type, not just strings, because
   filters are typed as ``Optional[list[str]]`` and split downstream.
 * B2.4 — Repeated query parameters are preserved as multiple AND'd
-  predicates rather than silently collapsed (``name__contains=hi&
-  name__contains=ho``).
+  predicates rather than silently collapsed (``name__icontains=hi&
+  name__icontains=ho``).
 """
 
 from datetime import datetime
@@ -232,8 +232,6 @@ def test_range_operators_not_emitted_for_bool(client, annotation):
     assert sorted(r["name"] for r in _rows(response)) == ["x"]
     response = client.get("/flagged/?active__ne=true")
     assert sorted(r["name"] for r in _rows(response)) == ["y"]
-    response = client.get("/flagged/?active__isnull=false")
-    assert len(_rows(response)) == 2
 
     # ``active__gte`` is not part of the schema for a bool field. The
     # default endpoint rejects unknown query params with 422 rather
@@ -249,7 +247,7 @@ def test_a_text_search_takes_one_phrase(people_client):
     """Spaces around the text go, and an empty value is no filter. A space
     inside is part of the text."""
     assert sorted(
-        r["name"] for r in _rows(people_client.get("/people/?name__contains=c"))
+        r["name"] for r in _rows(people_client.get("/people/?name__icontains=c"))
     ) == ["Alice", "Carol"]
     assert sorted(
         r["name"] for r in _rows(people_client.get("/people/?name__icontains=%20c%20"))
@@ -323,6 +321,6 @@ def test_unsupported_operator_rejected(people_client):
     int column lets the schema reject the unknown key rather than running an
     unintended SQL expression.
     """
-    response = people_client.get("/people/?age__contains=2", assert_status_code=422)
+    response = people_client.get("/people/?age__icontains=2", assert_status_code=422)
     locs = [item.get("loc") for item in response.json().get("detail", [])]
-    assert ["query", "age__contains"] in locs
+    assert ["query", "age__icontains"] in locs

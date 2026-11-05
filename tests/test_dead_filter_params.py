@@ -149,13 +149,12 @@ def test_collection_typed_fields_generate_only_isnull():
             f"{base}__lte",
             f"{base}__gt",
             f"{base}__lt",
-            f"{base}__contains",
             f"{base}__icontains",
         ):
             assert dead not in fields, dead
 
     # The scalar sibling keeps its full operator set -- no over-removal.
-    for alive in ("name", "name__in", "name__ne", "name__isnull", "name__contains"):
+    for alive in ("name", "name__in", "name__ne", "name__icontains"):
         assert alive in fields, alive
 
 
@@ -194,7 +193,7 @@ def test_a_json_typed_field_keeps_its_filters_on_a_column_that_is_not_json():
 
     fields = derive_list_params_schema(RowSchema, JsonColumnRow).model_fields
 
-    for alive in ("name", "name__in", "name__ne", "name__isnull", "jmeta__isnull"):
+    for alive in ("name", "name__in", "name__ne", "jmeta__isnull"):
         assert alive in fields, alive
     for dead in ("jmeta", "jmeta__in", "jmeta__ne"):
         assert dead not in fields, dead
@@ -224,7 +223,7 @@ def test_a_field_on_a_json_column_has_only_isnull(column_type):
     assert [key for key in params.model_fields if key.startswith("tag")] == [
         "tag__isnull"
     ]
-    assert "name__contains" in params.model_fields
+    assert "name__icontains" in params.model_fields
     params.model_validate({"sort": "name"})
     with pytest.raises(pydantic.ValidationError):
         params.model_validate({"sort": "tag"})
@@ -234,10 +233,10 @@ def test_a_field_on_a_json_column_has_only_isnull(column_type):
 
     with pytest.raises(RestlyConfigurationError) as raised:
         derive_list_params_schema(
-            RowSchema, JsonValueRow, exclude_filters=("tag__contains",)
+            RowSchema, JsonValueRow, exclude_filters=("tag__icontains",)
         )
     assert str(raised.value) == (
-        "exclude_filters: 'tag__contains' matches no filter key of RowSchema. "
+        "exclude_filters: 'tag__icontains' matches no filter key of RowSchema. "
         "The filter keys of 'tag' are: tag__isnull. A field that holds a dict "
         "or a list, or that has a JSON column, has only __isnull."
     )
@@ -324,7 +323,7 @@ def test_annotated_inside_optional_gets_the_filters_of_the_plain_type():
     """Pydantic keeps an ``Annotated`` inside ``Optional`` on the field, as in
     ``constr(...) | None``. The filters must not depend on that spelling. A
     bool written this way got range filters that returned 500, a string lost
-    ``__contains`` and ``__icontains``, and a nested schema lost its dotted
+    ``__icontains`` and ``__icontains``, and a nested schema lost its dotted
     filters."""
 
     class SpellingOwnerSchema(fr.BaseSchema):
@@ -367,10 +366,10 @@ def test_annotated_inside_optional_gets_the_filters_of_the_plain_type():
     ):
         assert filters(annotated) == filters(plain), plain
     assert "flag_annotated__gte" not in fields
-    assert "title_annotated__contains" in fields
+    assert "title_annotated__icontains" in fields
     assert "count_annotated__gte" in fields
     assert "owner_annotated_id__in" in fields
-    assert "owner_annotated.name__contains" in fields
+    assert "owner_annotated.name__icontains" in fields
 
 
 def test_labels_get_no_range_filters():
@@ -379,7 +378,7 @@ def test_labels_get_no_range_filters():
     ``__lte``, ``__gt`` or ``__lt``. An int enum, or a ``Literal`` of
     numbers, has the order of its numbers. A column of SQLAlchemy's Enum type
     holds labels, also inside ``TypeDecorator`` layers, so it gets none,
-    whatever the type of the field, and no ``__contains``, which is for text
+    whatever the type of the field, and no ``__icontains``, which is for text
     and would search the stored names."""
 
     class Direction(str, enum.Enum):
@@ -436,9 +435,9 @@ def test_labels_get_no_range_filters():
     def keys(name: str) -> list[str]:
         return [key for key in fields if key == name or key.startswith(f"{name}__")]
 
-    plain = ["", "__in", "__ne", "__not_in", "__isnull"]
+    plain = ["", "__in", "__ne", "__not_in"]
     labels = ("direction", "priority", "wrapped", "direction_value", "color_value")
-    # status_text is text, but its Enum column holds labels: no __contains
+    # status_text is text, but its Enum column holds labels: no __icontains
     for name in (*labels, "size", "status_text"):
         assert keys(name) == [name + suffix for suffix in plain]
     for name in ("priority_value", "priority_number", "rank"):
@@ -471,7 +470,6 @@ def test_a_flag_gets_the_plain_filters_and_no_range_filters():
         "permission__in",
         "permission__ne",
         "permission__not_in",
-        "permission__isnull",
     ]
 
 
@@ -502,8 +500,8 @@ def test_a_field_that_ends_in_an_underscore_has_working_filters(client):
 
     assert types(type___in="ant,bee") == ["ant", "bee"]
     assert types(type___ne="ant") == ["bee", "cat"]
-    assert types(type___gte="bee") == ["bee", "cat"]
-    assert types(type___contains="at") == ["cat"]
+    assert types(type___not_in="ant") == ["bee", "cat"]
+    assert types(type___icontains="at") == ["cat"]
     assert types(type___startswith="b") == ["bee"]
 
 
@@ -526,7 +524,7 @@ def test_a_schema_that_names_itself_gets_one_level_of_dotted_filters():
             schema, SpellingCategory, include_filters=("*", "*.*")
         ).model_fields
         assert "parent.name" in fields, schema
-        assert "parent.name__contains" in fields, schema
+        assert "parent.name__icontains" in fields, schema
         assert not any(key.startswith("parent.parent") for key in fields), schema
         # the walk stops, not the pattern: no key is two levels down
         with pytest.raises(RestlyConfigurationError, match="matches no filter key"):

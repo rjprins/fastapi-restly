@@ -716,7 +716,9 @@ class BaseRestView(
     #: the view registers.
     include_filters: ClassVar[tuple[str, ...]] = ("*",)
     #: The filter keys that the list params leave out, after
-    #: :attr:`include_filters`. The entries are the same as there.
+    #: :attr:`include_filters`. The entries are the same as there, but a name
+    #: without a suffix leaves out the whole field: the plain key and each key
+    #: with a suffix. So ``("name",)`` also removes ``name__in``.
     exclude_filters: ClassVar[tuple[str, ...]] = ()
     #: The keys that ``sort`` accepts: a field as the client writes it in
     #: ``?sort=``, without the ``-``, such as ``"name"`` or

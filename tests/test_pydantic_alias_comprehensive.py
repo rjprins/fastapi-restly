@@ -1,5 +1,7 @@
 """Tests for Pydantic alias functionality in FastAPI-Restly framework."""
 
+from datetime import date
+
 from pydantic import Field
 from sqlalchemy.orm import Mapped
 
@@ -163,12 +165,12 @@ def test_query_modifiers_with_aliases(client):
     class Customer(fr.IDMixin, SharedBase):
         customer_name: Mapped[str]
         customer_email: Mapped[str]
-        registration_date: Mapped[str]
+        registration_date: Mapped[date]
 
     class CustomerSchema(fr.IDSchema):
         customer_name: str = Field(alias="customerName")
         customer_email: str = Field(alias="customerEmail")
-        registration_date: str = Field(alias="registrationDate")
+        registration_date: date = Field(alias="registrationDate")
 
     @fr.include_view(client.app)
     class CustomerView(fr.AsyncRestView):

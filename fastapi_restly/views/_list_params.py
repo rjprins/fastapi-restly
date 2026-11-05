@@ -46,6 +46,7 @@ from ..query._impl import (
     _inline_definitions,
     _OwnFilter,
     _query_key,
+    _record_of,
     _split_key,
 )
 from ._guards import _owner, _route_parameters, _set_by
@@ -543,7 +544,13 @@ def _validate_list_params(
             default = field.get_default()
             if default is not None:
                 data[key] = default
-    others = [key for key in query.keys() if key not in field_keys]
+    # generated list params hold no other key: the view has its own rule for one
+    # (unknown_query_params)
+    others = (
+        []
+        if _record_of(params_model) is not None
+        else [key for key in query.keys() if key not in field_keys]
+    )
     if others and request is not None:
         route_keys = _route_query_keys(request)
         others = [key for key in others if key not in route_keys]

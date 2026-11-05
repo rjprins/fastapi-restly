@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 This release adds `SchemaType`, a type that depends on the view, and a setting
 for the list response. The settings and markers for a view's schemas now have
-names that end with what they are. To upgrade, work through these steps. A
+names that end with what they are. Each filter key now has the type of its field,
+and a field has only the keys that work for it. To upgrade, work through these steps. A
 missed step fails with an error. A step marked "Silent" gives no error when you
 miss it.
 
@@ -136,13 +137,13 @@ miss it.
     gives an error, so search your clients for such URLs. Write `?status__in=a,b`
     and `?status__not_in=a,b`. On another type, such as `?id=1,2`, the request now
     gets `422`.
-20. Silent: `__contains` and `__icontains` take one piece of text. So
+20. Silent: `__icontains` takes one piece of text. So
     `?name__icontains=john%20doe` now looks for `john doe`, where it looked for each
     word. For every word, write a filter of your own; see "Search for text" in the
     guide.
 21. A key that takes one value now gets `422` when it comes twice, also for a text
     search, `sort`, the page parameters, a key of your own and list params of your
-    own. Before, a repeated `__contains` added a condition, and any other key took
+    own. Before, a repeated `__icontains` added a condition, and any other key took
     the last value. Change a client that sends `?name=a&name=b` to `?name__in=a,b`.
     `__in` and `__not_in` read each value of a repeated key. Outside a view,
     `fr.query.apply_list_params` still takes the last value of a `QueryParams`.
@@ -167,6 +168,34 @@ miss it.
     `?vendor.id__isnull=true` finds the rows without a vendor, where it found no
     rows, and `?vendor.name__ne=acme` keeps them. A key that looks for a value, such
     as `?vendor.name=acme`, gives the same rows as before.
+27. `__contains` is gone, so `?name__contains=a` now gets `422`. Use `__icontains`.
+    Its case counted on one database and not on another. For a search where the case
+    counts, write a filter of your own; see "Search for text" in the guide. In list
+    params of your own, a field named `name__contains` now gets `400`.
+28. `__isnull` now exists only on a column that can be NULL, and on each dotted key.
+    So `?id__isnull=false` now gets `422`. On such a column, it gave the same answer
+    for each row.
+29. `__gte`, `__lte`, `__gt` and `__lt` no longer exist on a text column, so
+    `?name__gte=a` now gets `422`. The database sorts such values as text, so `"9"`
+    comes after `"10"`. A field of type `date` on a text column keeps them. For
+    another field, write a filter of your own.
+30. `__icontains` now follows the column, not the type of the field. A `str` field on
+    a column that does not hold text loses it, so such a key now gets `422`. A field
+    of another type on a text column, such as `HttpUrl`, gets it. An enum, a `Literal`
+    and a `bool` do not.
+31. Silent: in `exclude_filters`, a name without a suffix now leaves out the whole
+    field. So `exclude_filters = ("name",)` also removes `name__in`, where it removed
+    only `?name=`. To keep the other keys, list the keys in `include_filters`, such
+    as `("*__*", "id", "email")`, and remove the name from `exclude_filters`.
+32. A field with the name of a page or sort parameter now raises
+    `RestlyConfigurationError`, not `ValueError`. Change an `except ValueError` around
+    `derive_list_params_schema`.
+33. A key now has the name that a response shows. So a field with a
+    `serialization_alias` has its filter and sort keys under that name, and a client
+    that sends the alias or the Python name gets `422`. Change the client.
+34. Generated list params now forbid a key that they do not have. In a route outside
+    a view, with `Annotated[ListParams, Query()]`, an unknown key now gets `422`. A
+    view still follows `unknown_query_params`.
 
 ### Added
 
@@ -217,6 +246,8 @@ miss it.
 - Each filter key in OpenAPI has the type of its field, such as `integer` or a date,
   not text. Each description is written once, not on both the parameter and its
   schema.
+- A field whose public name has `.` or `__` gets no filter and no sort key, and its
+  view starts. Before, this raised `ValueError`.
 - Restly builds a view's schemas when something first reads them, once for each
   view. Registration no longer writes them on the view class.
 - Registration raises `RestlyConfigurationError` for a schema setting that is not

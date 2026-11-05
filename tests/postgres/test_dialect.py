@@ -3,10 +3,8 @@
 Everything here is invisible on SQLite and only runs when the subtree is pointed
 at PostgreSQL (see ``conftest.py``). Ten things are covered:
 
-* ``contains`` (``LIKE``) is case-sensitive and ``icontains`` (``ILIKE``) folds
-  case, for ASCII *and* non-ASCII input. On SQLite ``LIKE`` is
-  ASCII-case-insensitive and ``lower()`` is ASCII-only, so the two operators are
-  indistinguishable and non-ASCII folding never happens.
+* ``icontains`` (``ILIKE``) folds case, for ASCII *and* non-ASCII input. On SQLite
+  ``lower()`` is ASCII-only, so non-ASCII folding never happens.
 * ``NULL`` ordering. By default a sort puts NULLs last in both directions,
   with ``NULLS LAST``. With ``sort_nulls = None`` the placement is the dialect
   default -- ``NULLS LAST`` ascending / ``NULLS FIRST`` descending on
@@ -21,7 +19,7 @@ at PostgreSQL (see ``conftest.py``). Ten things are covered:
 * A native ENUM column. PostgreSQL rejects a filter value that is no label
   with an error, and it has no ``LIKE`` for an enum, so both would be a 500.
   Restly checks the value against the labels, and gives such a column no
-  ``__contains``.
+  ``__icontains``.
 * The psycopg cross-session connection sharing documented for
   ``restly_session`` / ``restly_async_session`` -- the async session runs over
   the sync fixture's pinned connection, so a write through either is visible to
@@ -637,21 +635,8 @@ def test_ne_and_not_in_keep_a_row_with_null(restly_client):
     assert found(**{"parent.name": "acme"}) == ["first"]
 
 
-def test_contains_is_case_sensitive_for_ascii(restly_client):
-    # LIKE is case-sensitive on PostgreSQL, so a lowercase needle misses the
-    # capitalised row -- the exact case where SQLite's LIKE would still match.
-    assert _names(restly_client.get("/words/?name__contains=ali")) == []
-    assert _names(restly_client.get("/words/?name__contains=Ali")) == ["Alice"]
-
-
 def test_icontains_folds_ascii_case(restly_client):
     assert _names(restly_client.get("/words/?name__icontains=ali")) == ["Alice"]
-
-
-def test_contains_is_case_sensitive_for_non_ascii(restly_client):
-    # "Öland" contains "Öl", not "öl": LIKE will not fold the umlaut.
-    response = restly_client.get("/words/", params={"name__contains": "öl"})
-    assert _names(response) == []
 
 
 def test_icontains_folds_non_ascii_case(restly_client):
@@ -670,7 +655,7 @@ def test_a_value_outside_the_labels_of_a_native_enum_is_a_client_error(restly_cl
         "/labelled/", params={"status": "bogus"}, assert_status_code=422
     )
     assert response.json()["detail"][0]["msg"] == "Use one of: draft, published."
-    restly_client.get("/labelled/?status__contains=dr", assert_status_code=422)
+    restly_client.get("/labelled/?status__icontains=dr", assert_status_code=422)
     response = restly_client.get(
         "/admin/labelled/",
         params={"filter": '{"status": "bogus"}'},
@@ -1078,7 +1063,7 @@ async def test_a_value_that_does_not_fit_its_column_is_a_client_error_on_psycopg
             "reference": await client.post("/shelved/", json={"parent_id": 2**40}),
             "nul": await client.get("/words/", params={"name": "a\x00b"}),
             "nul contains": await client.get(
-                "/words/", params={"name__contains": "a\x00b"}
+                "/words/", params={"name__icontains": "a\x00b"}
             ),
             "nul body": await client.post("/words/", json={"name": "a\x00b"}),
             "long body": await client.post(

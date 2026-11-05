@@ -229,7 +229,7 @@ def test_openapi_shows_the_type_of_the_field_without_bounds(api):
         {"type": "string"},
         {"type": "null"},
     ]
-    assert found["name__isnull"]["schema"]["anyOf"][0] == {"type": "boolean"}
+    assert found["vendor_id__isnull"]["schema"]["anyOf"][0] == {"type": "boolean"}
 
     price = str(found["price"]["schema"])
     assert "number" in price

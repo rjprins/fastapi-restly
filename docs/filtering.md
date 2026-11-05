@@ -64,7 +64,6 @@ A suffix on the name chooses another comparison:
 | `__in` | `field IN (...)` | `?status__in=active,pending` |
 | `__ne` | `field != value`, or NULL | `?status__ne=archived` |
 | `__not_in` | `field NOT IN (...)`, or NULL | `?status__not_in=archived,deleted` |
-| `__contains` | `field LIKE '%value%'` | `?email__contains=Example` |
 | `__icontains` | `field ILIKE '%value%'` | `?email__icontains=example` |
 | `__isnull` | `field IS NULL` or `IS NOT NULL` | `?deleted_at__isnull=true` |
 
@@ -84,24 +83,33 @@ the wrong type gets `422`; see
 Not every field gets every suffix:
 
 - The range suffixes (`__gte`, `__lte`, `__gt`, `__lt`) exist only for types
-  that have an order, such as numbers, text and dates. Booleans, UUIDs and
-  labels do not get them: an enum, or a `Literal` of strings. An int enum,
-  such as an `IntEnum`, has the order of its numbers and gets them. A flag,
-  such as an `IntFlag`, gets the other filters, but no range.
+  that have an order, such as numbers and dates. Booleans, UUIDs and labels do
+  not get them: an enum, or a `Literal` of strings. An int enum, such as an
+  `IntEnum`, has the order of its numbers and gets them. A flag, such as an
+  `IntFlag`, gets the other filters, but no range.
+- A text column gets no range suffixes, because the database sorts its values
+  as text. So `"9"` comes after `"10"`, and the order of letters depends on the
+  database. The one exception is a field of type `date` on a text column,
+  because dates in the form `2024-01-31` sort in order of time.
 - A column of SQLAlchemy's `Enum` type gets no range suffixes, whatever the
   type of the field, because it holds labels. `Mapped[Status]`, with an enum
   `Status`, is such a column by default. So an int enum needs a column that
   stores the number, such as `Integer`. On PostgreSQL, a native ENUM orders
   its labels as they were declared. To filter by that order, write the range
   yourself; see [Add a filter of your own](#own-list-filter).
-- `__contains` and `__icontains` exist only for text fields, and not on a
-  column of SQLAlchemy's `Enum` type.
+- `__icontains` exists only for a field on a text column, whatever the type of
+  the field. So an `HttpUrl` field on a text column has it, and a `str` field on
+  a number column does not. Labels do not have it: a column of SQLAlchemy's
+  `Enum` type, an enum, a `Literal` and a `bool`.
+- `__isnull` exists only on a column that can be NULL, and on each dotted key,
+  because a related row can be missing. On another column, it would give the
+  same answer for each row.
 - A field that holds a `dict` or a `list`, such as a `JSON` or `ARRAY`
-  column, gets only `__isnull`. A value from the URL cannot become a
+  column, has no filter but `__isnull`. A value from the URL cannot become a
   collection, so the other filters would fail on every request. Such a field
   is no sort key either: a document or a list has no order that a client
   means, and PostgreSQL's `json` type has none at all.
-- A field on a JSON column gets only `__isnull` too, also when it holds one
+- A field on a JSON column has no filter but `__isnull` too, also when it holds one
   value, such as a `str` in `fr.models.PydanticJSON(str)`. The column holds
   JSON text, such as `"x"` with its quotes, and SQL compares that text, not
   the value. So the other filters would find no row on SQLite and fail on
@@ -183,8 +191,8 @@ A bound stays in two cases, because Pydantic cannot put it on the type itself:
 after a validator of your own, and on a union such as `Decimal | int`. Pydantic
 makes such a bound a function, and Restly cannot tell it from your own check.
 
-`__contains` and `__icontains` use the text as it is. They only refuse a NUL
-character. `__isnull` reads a boolean.
+`__icontains` uses the text as it is. It only refuses a NUL character. `__isnull`
+reads a boolean.
 :::
 
 (match-several-values)=
@@ -219,8 +227,7 @@ The `loc` of an error on `__in` also has the position of the value, such as
 (search-text)=
 ### Search for text
 
-`__icontains` finds one piece of text, in any case. `__contains` does the same,
-and the case counts:
+`__icontains` finds one piece of text, in any case:
 
 ```text
 GET /users?name__icontains=john%20doe
@@ -254,6 +261,11 @@ search finds the text as written; these characters are not wildcards. In a
 filter of your own, pass SQLAlchemy's `autoescape=True` for the same result,
 such as `Item.name.icontains(q, autoescape=True)`. Without it, `?q=%` matches
 every row.
+
+For a search where the case counts, write a filter of your own with
+`Item.name.contains(value, autoescape=True)`. On SQLite, `LIKE` ignores the case
+of ASCII letters, so such a search works the same only on a database such as
+PostgreSQL.
 :::
 
 ### Combine filters on one field
@@ -445,7 +457,7 @@ class UserView(fr.AsyncRestView):
 Clients then send `?p=2&size=50`, `page` and `page_size` become unknown keys,
 and OpenAPI shows the new names. A schema field with the same public name as
 a pagination parameter fails when the view registers: rename the parameter,
-give the field an alias, or leave the field's plain key out with
+give the field an alias, or leave the field out with
 `exclude_filters = ("size",)`; see
 [Choose the keys of a list](#choose-list-keys). A renamed parameter frees its old name, so a
 field called `page` gets its filter back.
@@ -657,8 +669,13 @@ Restly applies them after the include settings:
 ```python
 class ItemView(fr.AsyncRestView):
     ...
-    exclude_filters = ("internal_note", "internal_note__*", "*__icontains")
+    exclude_filters = ("internal_note", "*__icontains")
 ```
+
+In `exclude_filters`, a name without a suffix leaves out the whole field: the
+plain key and each key with a suffix. So `"internal_note"` also removes
+`internal_note__in`, and a client cannot find a value through a key that you
+forgot. A key with a suffix, such as `"name__in"`, leaves out that key only.
 
 :::{admonition} Details
 :class: details
@@ -671,6 +688,12 @@ the fields of `vendor`, but not those on `vendor.country`. For both levels, writ
 
 The pattern `"name*"` also matches a field such as `names`. Write
 `("name", "name__*")` for the keys of `name` only.
+
+In `include_filters`, a name without a suffix is that one key. To remove only
+the plain key of a field, so without `exclude_filters`, list the keys that stay.
+`"*__*"` is every key with a suffix, so
+`include_filters = ("*__*", "id", "email")` has no `?name=`, but it has
+`?name__in=`.
 
 `include_filters = ()` leaves no generated filters, and
 `include_sort_keys = ()` removes the `sort` parameter. The parameters of the
@@ -686,8 +709,8 @@ registers. The message lists the keys of the field:
 ```text
 ItemView.include_filters: 'price__icontains' matches no filter key of
 ItemSchema. The filter keys of 'price' are: price, price__in, price__ne,
-price__isnull, price__gte, price__lte, price__gt, price__lt. Only text fields
-have __contains and __icontains.
+price__not_in, price__gte, price__lte, price__gt, price__lt. Only a field on a
+text column has __icontains.
 ```
 
 A view inherits each setting on its own, as it inherits `pagination`. So a
@@ -712,7 +735,24 @@ levels down.
 
 {func}`derive_list_params_schema() <fastapi_restly.query.derive_list_params_schema>`
 takes the four settings and `sort_query_param` as keywords, so a route
-outside a view can build the same list params.
+outside a view can build the same list params. Declare them with `Query()`:
+
+```python
+from typing import Annotated
+
+from fastapi import Query
+
+ItemListParams = fr.query.derive_list_params_schema(ItemSchema, Item)
+
+
+@app.get("/items")
+async def list_items(list_params: Annotated[ItemListParams, Query()]): ...
+```
+
+Do not use `Depends()` for them. FastAPI then gives the `__in` keys no value and
+lets an unknown key through, without an error. With `Query()`, an unknown key
+gets `422`. A key that takes one value and comes twice takes the last value on
+such a route: only a view refuses it.
 
 A key that clients use is part of your API. Removing it later breaks those
 clients. A key also goes away when you remove its field from the response
@@ -735,7 +775,7 @@ class OrderView(fr.AsyncRestView):
 
 ```text
 GET /orders?user.name=Alice
-GET /orders?user.name__contains=ali
+GET /orders?user.name__icontains=ali
 ```
 
 The relation must be a `relationship` on the SQLAlchemy model and a nested
@@ -823,7 +863,6 @@ its own public name, the same name it has in JSON:
 
 ```text
 GET /comments?post_id=1
-GET /comments?post_id=1,2          # OR, as SQL IN
 GET /comments?post_id__in=1,2
 GET /comments?post_id__ne=1
 GET /comments?post_id__gte=10      # range suffixes work on int ids
@@ -834,9 +873,10 @@ GET /comments?post_id__isnull=true
 :class: details
 
 A `MustExist[pk, ...]` field gets the filters of its `pk` type. An `int` id
-gets equality, `__in`, `__ne`, `__isnull` and the range suffixes. A `UUID` id
-gets no range suffixes, as the [list of suffixes](#filter-a-list) says. Only a
-`str` id gets `__contains` and `__icontains`.
+gets equality, `__in`, `__ne`, `__not_in` and the range suffixes. A `UUID` id
+gets no range suffixes, as the [list of suffixes](#filter-a-list) says. Only an
+id on a text column gets `__icontains`. A foreign key that can be NULL also gets
+`__isnull`.
 
 A relationship reference filters differently (see
 [Choose a reference style](#reference-styles)):
@@ -853,10 +893,11 @@ A relationship reference filters differently (see
 (public-names)=
 ## Use aliases in the URL
 
-The keys of the list params use the **public name** of each field: its
-alias when it has one, and its Python name otherwise. The URL accepts only the
-public name. `populate_by_name` changes how Pydantic reads a request body. It
-does not add the Python names to the URL.
+The keys of the list params use the **public name** of each field: the name
+that a response shows. That is its `serialization_alias` or its alias when it
+has one, and its Python name otherwise. The URL accepts only the public name.
+`populate_by_name` changes how Pydantic reads a request body. It does not add
+the Python names to the URL.
 
 Take a field with an alias:
 
@@ -878,6 +919,15 @@ GET /users?user_name=Alice       # rejected: the Python name is not public
 ```
 
 To use another key in the URL, change the alias.
+
+:::{admonition} Details
+:class: details
+
+A public name with `.` or `__` gets no filter and no sort key, because `__` splits
+a field from an operator, and `.` walks to a related field. The field still goes
+out in a response, and the view starts. A setting that names such a key fails,
+because it matches no key.
+:::
 
 (own-list-filter)=
 ## Add a filter of your own
@@ -959,8 +1009,11 @@ subquery in the condition is enough, and it is faster than loading ids for
 
 The key is always on: `include_filters` and `exclude_filters` choose among
 the generated keys only. A key with the name of a generated key that is on
-fails when the view registers. To replace a generated key, such as `name` or
+fails when the view registers. To replace a key with a suffix, such as
 `name__icontains`, leave it out with `exclude_filters`, and decorate your own.
+To replace the plain key `name`, `exclude_filters = ("name",)` removes the whole
+field. To keep its other keys, [list them](#choose-list-keys) in
+`include_filters` instead.
 
 A key with an operator looks like a generated key, but it works as your
 method does. It has the type of the method's value, so a key of your own that

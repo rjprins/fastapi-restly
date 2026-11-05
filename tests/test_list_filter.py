@@ -306,8 +306,9 @@ def test_a_key_of_a_generated_filter_that_is_on_fails():
 
     assert str(exc_info.value) == (
         "ItemView.filter_name: the key 'name' is also a generated filter key. "
-        "To replace it, leave it out with exclude_filters = ('name',). Then "
-        "choose what happens to name__in and the other keys of the field."
+        "To replace it, leave it out with exclude_filters = ('name',). That "
+        "also removes name__in and the other keys of the field. To keep them, "
+        "list the keys you want in include_filters instead."
     )
 
 

@@ -319,9 +319,9 @@ def test_a_value_that_does_not_fit_is_a_client_error(client):
     # the position tells which value of the list fails
     assert detail(response) == (["query", "count__in", 1], out_of_range)
     response = client.get(
-        "/things", params={"name__contains": "a\x00b"}, assert_status_code=422
+        "/things", params={"name__icontains": "a\x00b"}, assert_status_code=422
     )
-    assert detail(response) == (["query", "name__contains"], nul)
+    assert detail(response) == (["query", "name__icontains"], nul)
     response = client.get(
         "/admin/things",
         params={"filter": json.dumps({"count": 2**40})},

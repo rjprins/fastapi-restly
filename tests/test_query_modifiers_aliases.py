@@ -97,12 +97,12 @@ class TestDeriveSchemaListParamsWithAliases:
         assert "isActive" in schema.model_fields  # Alias
 
         # Check that range filters use aliases
-        assert "userName__gte" in schema.model_fields
-        assert "userName__lte" in schema.model_fields
-        assert "userEmail__isnull" in schema.model_fields
+        assert "userName__in" in schema.model_fields
+        assert "userName__icontains" in schema.model_fields
+        assert "userEmail__ne" in schema.model_fields
         assert "age__gte" in schema.model_fields
         assert "createdAt__gte" in schema.model_fields
-        assert "isActive__isnull" in schema.model_fields
+        assert "isActive__not_in" in schema.model_fields
 
     def test_derive_list_params_schema_without_aliases(self):
         """Test creating a query param schema without aliases."""
@@ -392,7 +392,6 @@ class TestRelationAliases:
             ArticleSchema, _Article, include_filters=("*", "*.*")
         ).model_fields
         assert "writer.authorName" in fields
-        assert "writer.authorName__contains" in fields
         assert "writer.authorName__icontains" in fields
         # Canonical (non-aliased) names must NOT leak into the public surface.
         assert "author.name" not in fields

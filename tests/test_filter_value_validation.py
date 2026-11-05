@@ -416,7 +416,7 @@ def test_a_value_outside_the_labels_of_an_enum_column_is_a_400(client):
     ):
         response = client.get("/labelled-posts", params=params, assert_status_code=422)
         assert response.json()["detail"][0]["msg"] == "Use one of: draft, published."
-    client.get("/labelled-posts?status__contains=dr", assert_status_code=422)
+    client.get("/labelled-posts?status__icontains=dr", assert_status_code=422)
 
 
 def test_a_bug_in_a_validator_is_not_a_bad_filter_value(client):

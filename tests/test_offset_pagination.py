@@ -556,7 +556,9 @@ def test_a_filter_named_like_a_parameter_fails_at_registration(name):
         pagination = fr.OffsetPagination()
 
     view_cls = type("Named", (ThingView,), {"model": model, "schema": schema})
-    with pytest.raises(ValueError, match=f"filter key '{name}': it collides"):
+    with pytest.raises(
+        RestlyConfigurationError, match=f"filter key '{name}' of .* is also a page"
+    ):
         fr.include_view(FastAPI(), view_cls)
 
 

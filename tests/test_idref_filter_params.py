@@ -11,8 +11,9 @@ common filter in any parent-child API. Even forced through, the apply path bound
 the ``IDRef`` object itself as the SQL value and crashed.
 
 An ``IDRef`` FK now filters on its own public name with the opaque-id operator
-set (eq, ``__in``, ``__ne``, ``__isnull``) -- the same operators that make sense
-for an opaque identifier, uniform across int/uuid/str PK types. The range and
+set (eq, ``__in``, ``__ne``, ``__not_in``, and ``__isnull`` when the FK can be
+NULL) -- the same operators that make sense for an opaque identifier, uniform
+across int/uuid/str PK types. The range and
 substring families are deliberately NOT exposed (range on an opaque id is noise;
 choosing ``IDRef`` over ``int`` signals "reference", not "orderable quantity").
 Sync and async share the query layer, so both are exercised here for parity.
@@ -31,13 +32,13 @@ from fastapi_restly.testing import RestlyTestClient
 from ._models import SharedBase
 from .conftest import create_tables
 
-OPAQUE_SET = {"post_id", "post_id__in", "post_id__ne", "post_id__isnull"}
+OPAQUE_SET = {"post_id", "post_id__in", "post_id__ne", "post_id__not_in"}
 NEVER = {
+    "post_id__isnull",  # the FK of these models cannot be NULL
     "post_id__gte",
     "post_id__lte",
     "post_id__gt",
     "post_id__lt",
-    "post_id__contains",
     "post_id__icontains",
     "post_id.id",  # the dead nested path the generator used to emit
 }
@@ -68,7 +69,7 @@ def test_idref_fk_generates_opaque_filter_params():
 
 def test_idref_fk_uuid_pk_yields_the_same_opaque_set():
     # Uniformity: the operator set does not depend on the PK type. A uuid PK
-    # gets exactly the same four operators as an int PK -- no range either way.
+    # gets exactly the same operators as an int PK -- no range either way.
     class UPost(SharedBase):
         __tablename__ = "idref_filter_upost"
         id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default_factory=uuid4)
@@ -86,6 +87,21 @@ def test_idref_fk_uuid_pk_yields_the_same_opaque_set():
 
     assert OPAQUE_SET <= fields
     assert NEVER.isdisjoint(fields)
+
+
+def test_idref_fk_that_can_be_null_has_isnull():
+    class Post(fr.IDMixin, SharedBase):
+        title: Mapped[str] = mapped_column()
+
+    class Comment(fr.IDMixin, SharedBase):
+        post_id: Mapped[int | None] = mapped_column(ForeignKey("post.id"))
+
+    class CommentSchema(fr.IDSchema):
+        post_id: fr.IDRef[Post] | None = None
+
+    fields = set(derive_list_params_schema(CommentSchema, Comment).model_fields)
+
+    assert OPAQUE_SET | {"post_id__isnull"} <= fields
 
 
 def test_idref_targeting_leaves_nested_resource_dotted_traversal_intact():
@@ -182,7 +198,7 @@ def _assert_fk_filtering(client, p1, p2):
     assert post_ids(f"?post_id={p1}") == [p1, p1]
     assert post_ids(f"?post_id__in={p1},{p2}") == [p1, p1, p2]
     assert post_ids(f"?post_id__ne={p1}") == [p2]
-    assert post_ids("?post_id__isnull=false") == [p1, p1, p2]
+    assert post_ids(f"?post_id__not_in={p1}") == [p2]
 
     # A non-coercible id is a clean 422, not a 500 -- the same convention as any
     # other filter value that fails validation.
