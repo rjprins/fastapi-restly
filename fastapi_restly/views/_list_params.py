@@ -44,6 +44,7 @@ from ..query._impl import (
     _check_default_sort,
     _check_key_setting,
     _inline_definitions,
+    _none_in_mapping_message,
     _OwnFilter,
     _query_key,
     _record_of,
@@ -615,7 +616,25 @@ def _validate_raw_list_params(
     unknown = set(raw.keys()) - {key for key, _, _ in fields}
     if unknown:
         raise _unknown_keys_error(raw, unknown)
+    if not isinstance(raw, QueryParams) and (error := _none_values_error(raw)):
+        raise error
     return _validate_list_params(params_model, fields, query)
+
+
+def _none_values_error(raw: Mapping[str, Any]) -> RequestValidationError | None:
+    """The error for each key of a mapping from code whose value is
+    ``None``, or ``None`` when there is no such key."""
+    errors = [
+        {
+            "type": "none_value",
+            "loc": ("query", key),
+            "msg": _none_in_mapping_message(key),
+            "input": None,
+        }
+        for key, value in raw.items()
+        if value is None
+    ]
+    return RequestValidationError(errors) if errors else None
 
 
 def _values_by_key(raw: Mapping[str, Any]) -> dict[str, list[Any]]:
@@ -625,14 +644,14 @@ def _values_by_key(raw: Mapping[str, Any]) -> dict[str, list[Any]]:
     Each value stays a value, and is not made text. A list, a tuple or a set
     holds the values of a repeated key. An empty one stays empty: ``__in``
     then matches no rows, ``__not_in`` every row, and a key that takes one
-    value refuses it. ``None`` leaves the key out, as for list params.
+    value refuses it. :func:`_validate_raw_list_params` refuses ``None``
+    before this.
     """
     return {
         key: list(value)
         if isinstance(value, (list, tuple, set, frozenset))
         else [value]
         for key, value in raw.items()
-        if value is not None
     }
 
 

@@ -1626,6 +1626,17 @@ def _query_key(name: str, field: FieldInfo) -> str:
     return field.alias or name
 
 
+def _none_in_mapping_message(key: str) -> str:
+    """The error for ``None`` as the value of ``key`` in a dict of list
+    params. Leaving the key out would return more rows than the code asked
+    for, such as every row for ``{"id__in": None}``."""
+    name, _ = _split_key(key)
+    return (
+        f"The value of {key!r} is None. Leave the key out for no filter. To "
+        f"find the rows where it is null, use '{name}__isnull': True."
+    )
+
+
 def _list_params_values(
     list_params: Any,
     *,
@@ -1676,6 +1687,9 @@ def _list_params_values(
     if isinstance(list_params, _abc.Mapping) and not isinstance(
         list_params, QueryParams
     ):
+        for key, value in list_params.items():
+            if value is None:
+                raise BadQueryParam(_none_in_mapping_message(key))
         return dict(list_params)
     query = (
         list_params

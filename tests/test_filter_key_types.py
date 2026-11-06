@@ -677,9 +677,22 @@ def test_a_set_or_a_tuple_holds_several_values(crates):
     assert labels(crates, {"label": ["a"]}) == ["a"]
 
 
-def test_none_leaves_the_key_out(crates):
-    # it does not look for the text "None"
-    assert labels(crates, {"note": None}) == ["a", "b", "c"]
+@pytest.mark.parametrize("key", ["note", "id__in"])
+def test_none_in_a_mapping_fails(crates, key):
+    # leaving the key out would return every row, such as for an id list
+    # that the code did not compute
+    with pytest.raises(RequestValidationError) as exc_info:
+        crates.get_many({key: None})
+
+    (error,) = exc_info.value.errors()
+    assert error["loc"] == ("query", key)
+    assert "Leave the key out for no filter" in error["msg"]
+
+
+def test_none_in_a_mapping_fails_outside_a_view(crates):
+    stmt = select(crates.model)
+    with pytest.raises(fr.exc.BadQueryParam, match="'note__isnull': True"):
+        apply_list_params(stmt, {"note": None}, crates.model, crates.schema)
 
 
 def test_a_value_stays_a_value(crates):

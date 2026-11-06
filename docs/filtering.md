@@ -1205,8 +1205,9 @@ params only, so a key that they do not have always gets `422`.
 The values of a dict stay values, so `{"id": 5}` needs no text. A list, a tuple
 or a set holds several values. An empty one matches no rows on `__in`, as
 SQLAlchemy's `in_([])` does, and keeps every row on `__not_in`. So
-`{"id__in": allowed_ids}` reads no rows when `allowed_ids` is empty. `None`
-leaves the key out.
+`{"id__in": allowed_ids}` reads no rows when `allowed_ids` is empty. `None` as
+a value gets an error, so `{"id__in": None}` does not return every row. Leave
+the key out for no filter.
 
 On an async view, `apply_filters` is `async def`, as `apply_list_params` is.
 A view can override it to add a condition to every list, and to every route

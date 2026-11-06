@@ -229,9 +229,10 @@ miss it.
     `view.get_many({"id__in": allowed_ids})`, now keeps its values as values. An
     empty list on `__in` now matches no rows, where it matched every row, and on
     `__not_in` it keeps every row. A set or a tuple now holds several values, where
-    it became one text, such as `{'a', 'b'}`. `{"note": None}` now leaves the key
-    out, where it looked for the text `None`. Check code that builds such a dict
-    from a list that can be empty.
+    it became one text, such as `{'a', 'b'}`. Check code that builds such a dict
+    from a list that can be empty. `None` as a value now gets an error, so
+    `{"note": None}` no longer looks for the text `None`. Leave the key out for no
+    filter.
 38. Silent: a view with `unknown_query_params = "ignore"` ignores a key that it
     does not have. So each key that steps 27, 28, 29, 30 and 33 remove now gives
     `200` with the rows that the other keys find, where it filtered the rows. Search
