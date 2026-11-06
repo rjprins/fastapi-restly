@@ -80,7 +80,6 @@ class ProjectView(TrashView[Project]):
     schema = ProjectSchema
     # No scope declared: reads apply ProjectClauses.default_scope.
     trash_scope = ProjectClauses.is_deleted
-    delete_endpoint = None  # replaced by soft_delete below
 
     class Action(TrashView.Action):
         ARCHIVE = "archive"
@@ -139,11 +138,11 @@ class ProjectView(TrashView[Project]):
             )
 
     @fr.delete("/{id}", status_code=200)
-    async def soft_delete(self, id: int) -> ResponseSchema:
-        """Soft delete: sets deleted_at instead of removing the row.
+    async def delete_endpoint(self, id: int) -> ResponseSchema:
+        """Answer 200 with the soft-deleted project, in place of 204.
 
-        ``SoftDeleteMixin.delete`` performs the mutation. This route
-        replaces the default 204 contract with ``200 + body``.
+        ``SoftDeleteMixin.delete`` sets ``deleted_at`` instead of removing
+        the row.
         """
         project = await self.get_one(id)
 
