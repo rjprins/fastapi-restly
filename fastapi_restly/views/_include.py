@@ -174,7 +174,7 @@ def _init_view_cls_and_add_to_router(
             )
         return
     _prepare_view_class(view_cls)
-    api_router = _init_api_router(view_cls)
+    api_router = _init_api_router(view_cls, tagged=bool(holder.tags))
     # Only an app builds a spec. fr.configure(app) covers views on an APIRouter.
     if isinstance(parent_router, fastapi.FastAPI):
         _ensure_patched(parent_router)
@@ -758,7 +758,9 @@ def _reject_markers_in_fields(where: str, annotations: Iterable[Any]) -> None:
             )
 
 
-def _init_api_router(view_cls: type[View]) -> fastapi.APIRouter:
+def _init_api_router(view_cls: type[View], tagged: bool = False) -> fastapi.APIRouter:
+    """The router of the view. ``tagged`` is true when the router that the
+    view goes on has tags of its own."""
     # Also for a plain View, which _check_renamed_names does not see.
     _check_removed_settings(view_cls)
     # Each level of the class hierarchy adds to these, base first: a subclass
@@ -784,7 +786,7 @@ def _init_api_router(view_cls: type[View]) -> fastapi.APIRouter:
     _reject_markers_in_fields(
         f"The responses of {view_cls.__name__}", _models_in(responses)
     )
-    tags = _get_router_tags(view_cls, prefix)
+    tags = _get_router_tags(view_cls, prefix, tagged)
     # The responses go on each route: a router would add a response back that
     # a route removes.
     api_router = fastapi.APIRouter(prefix=prefix, tags=tags, dependencies=dependencies)
@@ -899,9 +901,17 @@ def _generate_crud_operation_id(
     return re.sub(r"\W+", "_", f"{resource}_{action}").strip("_")
 
 
-def _get_router_tags(view_cls: type[View], prefix: str) -> list[str | Enum]:
+def _get_router_tags(
+    view_cls: type[View], prefix: str, tagged: bool
+) -> list[str | Enum]:
+    """The tags of the view. FastAPI adds the tags of the router that the view
+    goes on in front of them. Restly makes a tag only for a router without
+    tags, so that a route on a tagged router is in one group, as a plain route
+    on that router is."""
     if view_cls.tags is not None:
         return list(view_cls.tags)
+    if tagged:
+        return []
     return [_derive_tag_from_prefix(prefix) or view_cls.__name__]
 
 

@@ -258,8 +258,10 @@ class View:
     prefix: ClassVar[str]
     #: The OpenAPI tags of every route. When it is not set, the tag is the
     #: last part of the prefix in title case, so ``/order-items`` gives
-    #: ``Order Items``. Without a prefix, the tag is the class name. Setting
-    #: it replaces that tag.
+    #: ``Order Items``. Without a prefix, the tag is the class name. On a
+    #: router with tags of its own, Restly makes no tag: the routes get the
+    #: tags of the router, as a plain route on it does. Setting it replaces
+    #: the tag that Restly makes.
     tags: ClassVar[Iterable[str | Enum] | None] = None
     #: FastAPI dependencies run for every route, without injecting a result.
     #: Each class in the hierarchy adds its own, base first, so a subclass

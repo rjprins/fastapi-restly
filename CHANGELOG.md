@@ -263,6 +263,11 @@ miss it.
     leaves out to `None`, such as `delete_endpoint = None`. `fr.ViewRoute` is
     gone. A view that still sets one of these settings raises
     `RestlyConfigurationError` when Python defines the class.
+44. Silent: a view on an `APIRouter` with tags of its own, such as
+    `APIRouter(tags=["shop"])`, no longer gets a tag from its prefix. Its routes
+    get only the tags of the router, as a plain route on that router does. Before,
+    each route was in two groups in the spec, such as `shop` and `Widgets`. To keep
+    the old tag, set `tags = ["Widgets"]` on the view.
 
 ### Added
 
@@ -312,6 +317,8 @@ miss it.
 
 ### Changed
 
+- A view on a router with tags gets no tag from its prefix, so each route is in
+  one group of the spec, as a plain route on that router is.
 - Each filter key in OpenAPI has the type of its field, such as `integer` or a date,
   not text. Each description is written once, not on both the parameter and its
   schema.
