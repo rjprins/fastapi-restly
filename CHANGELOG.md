@@ -237,6 +237,16 @@ miss it.
     does not have. So each key that steps 27, 28, 29, 30 and 33 remove now gives
     `200` with the rows that the other keys find, where it filtered the rows. Search
     the clients of such a view for these keys.
+39. A field whose public name starts with `_`, such as `_id`, is no longer a sort
+    key, so `?sort=_id` now gets `422`. Pydantic takes such a name as a private
+    attribute, so the field had no filter keys either. A key setting that names it
+    now fails when the view registers. Give the field another alias.
+40. Silent: a field of another type over `Mapped[str]` now stores the text that a
+    response shows; see "A text column takes text" below. A row that an earlier
+    version stored can hold other text, such as `1` for `true` on SQLite, or
+    `2024-01-02 10:00:00+00:00` for `2024-01-02T10:00:00Z`. A filter does not find
+    such a row, and its response looks the same. Write the new text into these
+    rows.
 
 ### Added
 
