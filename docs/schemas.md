@@ -423,7 +423,8 @@ fit is an error, and the client gets a 500. For a 422, put the limit on the
 field of the schema. A filter does not check a `Field` limit, so for a 422 in a
 filter too, write the limit in a field validator; see
 [Filter values go through the field's validation](#filter-value-validation).
-A number in a filter is at most `1e50` in any case.
+A number in a filter is at most `1e50` in any case, and a `Decimal` has at most
+50 digits after the point.
 
 | Column | Field of the schema |
 |---|---|

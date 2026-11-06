@@ -2221,7 +2221,8 @@ def _value_reader(
     stays ``None``, for ``IS NULL``. A value that a validator turns into
     ``None``, such as an empty text, fails: a filter needs a value, and the
     client did not ask for NULL. A number must be between ``-1e50`` and
-    ``1e50``; see :func:`_check_number_size`. A ``Literal`` of numbers and an
+    ``1e50``, with at most 50 digits after the point; see
+    :func:`_check_number_size`. A ``Literal`` of numbers and an
     enum whose values are numbers read the number from the text first; see
     :func:`_has_number_labels`. An ``IDRef`` gives its id. A JSON column
     takes only ``None``: it holds JSON text, so SQL cannot compare it with a
@@ -2329,13 +2330,17 @@ def _number_from_text(text: str) -> Any:
 #: reaches the database: PostgreSQL then fails on ``1e400`` for a ``Float``
 #: column, or on a ``Decimal`` with many digits, which is a 500.
 _NUMBER_LIMIT = 1e50
+#: The most digits after the point of a ``Decimal`` in a filter. PostgreSQL
+#: fails with an error, a 500, for a value such as ``1e-100000``.
+_FRACTION_DIGITS_LIMIT = 50
 
 
 def _check_number_size(value: Any) -> None:
-    """Refuse a number above ``1e50`` or below ``-1e50``. NaN stays: a field
-    that allows it has a reason.
+    """Refuse a number above ``1e50`` or below ``-1e50``, and a ``Decimal``
+    with more than 50 digits after the point. NaN stays: a field that allows
+    it has a reason.
 
-    :raises _BadValue: the number is too big, or an infinity.
+    :raises _BadValue: the number is too big, an infinity, or too long.
     """
     if isinstance(value, bool) or not isinstance(value, (int, float, _decimal.Decimal)):
         return
@@ -2345,6 +2350,13 @@ def _check_number_size(value: Any) -> None:
         raise _BadValue(
             "value_error", "A number in a filter must be between -1e50 and 1e50."
         )
+    if isinstance(value, _decimal.Decimal) and value.is_finite():
+        exponent = value.as_tuple().exponent
+        if isinstance(exponent, int) and exponent < -_FRACTION_DIGITS_LIMIT:
+            raise _BadValue(
+                "value_error",
+                "A number in a filter has at most 50 digits after the point.",
+            )
 
 
 def _column_step(column: Any) -> Callable[[Any], Any]:

@@ -203,8 +203,9 @@ the length of text.
 
 A number in a filter must be between `-1e50` and `1e50`, as in django-filter.
 So a huge number, such as `?price=1e999999`, gets `422` and never reaches the
-database. A NaN stays when the field allows it. For a bigger number, write
-[a filter of your own](#own-list-filter).
+database. A `Decimal` has at most 50 digits after the point, so `?price=1e-99999`
+gets `422` too. A NaN stays when the field allows it. For a bigger or longer
+number, write [a filter of your own](#own-list-filter).
 
 A bound stays when Pydantic checks it with a function. This happens after a
 validator of your own, on a union such as `Decimal | int`, and on some types,

@@ -615,6 +615,24 @@ def test_a_number_up_to_1e50_works(key, value):
     gauge_params().model_validate({key: value})
 
 
+@pytest.mark.parametrize(
+    "key, value", [("amount", "1e-100000"), ("reading__gte", "0." + "0" * 60 + "1")]
+)
+def test_a_decimal_with_more_than_50_digits_after_the_point_fails(key, value):
+    with pytest.raises(pydantic.ValidationError) as exc_info:
+        gauge_params().model_validate({key: value})
+
+    (error,) = exc_info.value.errors()
+    assert error["msg"] == "A number in a filter has at most 50 digits after the point."
+
+
+@pytest.mark.parametrize(
+    "key, value", [("amount", "0." + "0" * 49 + "1"), ("ratio", "1e-100000")]
+)
+def test_50_digits_after_the_point_and_a_tiny_float_work(key, value):
+    gauge_params().model_validate({key: value})
+
+
 def test_the_limit_comes_before_the_range_of_an_integer_column():
     with pytest.raises(pydantic.ValidationError) as exc_info:
         gauge_params().model_validate({"count": str(10**60)})
