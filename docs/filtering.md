@@ -211,8 +211,8 @@ A bound stays when Pydantic checks it with a function. This happens after a
 validator of your own, on a union such as `Decimal | int`, and on some types,
 such as `HttpUrl`. Restly cannot tell such a function from your own check.
 
-`__icontains` uses the text as it is. It only refuses a NUL character. `__isnull`
-reads a boolean.
+`__icontains` uses the text without the spaces around it. It only refuses a NUL
+character. `__isnull` reads a boolean.
 :::
 
 (match-several-values)=
