@@ -24,6 +24,7 @@ point.
 
 import datetime as _dt
 import enum
+import ipaddress
 import json
 from typing import Any
 
@@ -110,6 +111,16 @@ def column_value(column_type: Any, value: Any, *, stored: bool = False) -> Any:
     return value
 
 
+_IP_TYPES = (
+    ipaddress.IPv4Address,
+    ipaddress.IPv6Address,
+    ipaddress.IPv4Interface,
+    ipaddress.IPv6Interface,
+    ipaddress.IPv4Network,
+    ipaddress.IPv6Network,
+)
+
+
 def _as_text(value: Any) -> Any:
     """``value`` as the text that a response shows: the text of a URL, a UUID
     or a date, the value of an enum, and ``"7"`` or ``"true"`` for a number or
@@ -119,6 +130,10 @@ def _as_text(value: Any) -> Any:
     """
     if isinstance(value, str):
         return value
+    if isinstance(value, _IP_TYPES):
+        # Before pydantic-core 2.41.5, to_jsonable_python() does not take
+        # these. A response shows their str().
+        return str(value)
     try:
         plain = to_jsonable_python(value)
     except PydanticSerializationError:
