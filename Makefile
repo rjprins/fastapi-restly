@@ -34,7 +34,7 @@ test-typing:
 # check SQLModel tables; without it they skip.
 test-framework:
 	@echo "=== Testing FastAPI-Restly Framework ==="
-	uv run --with sqlmodel pytest tests/ -v
+	uv run --with sqlmodel pytest tests/ -n 4
 
 # Test shop example
 test-shop:
