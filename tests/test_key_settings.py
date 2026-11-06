@@ -1337,3 +1337,21 @@ def test_a_view_that_ignores_unknown_params_still_ignores_them(app):
     asyncio.run(fr.db.async_create_all(Base))
 
     assert client.get("/items", params={"nope": "1"}).status_code == 200
+
+
+class Gadget(AliasBase):
+    __tablename__ = "keys_alias_gadget"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    cost__internal: Mapped[int | None]
+
+
+class GadgetSchema(fr.IDSchema):
+    cost__internal: int | None = pydantic.Field(None, alias="costInternal")
+
+
+def test_a_python_name_with_two_underscores_excludes_the_whole_field():
+    model = derive_list_params_schema(
+        GadgetSchema, Gadget, pagination=None, exclude_filters=("cost__internal",)
+    )
+
+    assert not [key for key in model.model_fields if key.startswith("cost")]

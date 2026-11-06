@@ -726,7 +726,7 @@ def _derive_list_params(
     for key in _pick_keys(
         list(filter_fields),
         patterns["include_filters"],
-        _whole_fields(patterns["exclude_filters"]),
+        _whole_fields(patterns["exclude_filters"], keys_of_field),
     ):
         url_key, filter_field = filter_fields[key]
         if url_key in reserved:
@@ -867,7 +867,7 @@ def _check_url_names(
         ``exclude_filters``; see :func:`_whole_fields`.
     """
     for entry in entries:
-        patterns = _whole_fields((entry,)) if whole_fields else (entry,)
+        patterns = _whole_fields((entry,), url_names) if whole_fields else (entry,)
         regexes = [_pattern_regex(pattern) for pattern in patterns]
         if any(regex.fullmatch(key) for regex in regexes for key in url_keys):
             continue
@@ -1252,14 +1252,20 @@ _SUFFIX_HINTS = {
 }
 
 
-def _whole_fields(entries: tuple[str, ...]) -> tuple[str, ...]:
+def _whole_fields(
+    entries: tuple[str, ...], field_names: _abc.Container[str]
+) -> tuple[str, ...]:
     """The patterns of ``exclude_filters``: a name without a suffix stands for
     the whole field, the plain key and each key with a suffix. So a bare name
-    never leaves a client more than you named."""
+    never leaves a client more than you named.
+
+    :param field_names: The Python name of each field. A field name with
+        ``__``, such as ``cost__internal``, is a whole field too.
+    """
     patterns: list[str] = []
     for entry in entries:
         patterns.append(entry)
-        if "*" not in entry and "__" not in entry:
+        if "*" not in entry and ("__" not in entry or entry in field_names):
             patterns.append(f"{entry}__*")
     return tuple(patterns)
 
@@ -1285,7 +1291,7 @@ def _check_filter_entries(
     """
     keys = [key for field_keys in keys_of_field.values() for key in field_keys]
     for entry in entries:
-        patterns = _whole_fields((entry,)) if whole_fields else (entry,)
+        patterns = _whole_fields((entry,), keys_of_field) if whole_fields else (entry,)
         if any(
             _pattern_regex(pattern).fullmatch(key)
             for pattern in patterns
