@@ -242,8 +242,9 @@ two routes would have the same path and HTTP method. A status code without a
 body, such as 204, also removes the response model of the route. For a delete
 with a body, write the method.
 
-`response_model` raises an error when the view registers, on each route that
-answers with the view's response. Such a route builds its response with
+`fr.modify_route` changes how a route is served, not what it sends. So
+`response_model` and the other `response_model_*` arguments raise an error.
+A route of the view builds its response with
 {meth}`to_single_response <fastapi_restly.views.BaseRestView.to_single_response>`
 or {meth}`to_list_response <fastapi_restly.views.BaseRestView.to_list_response>`.
 Another response model would skip that step, and the fields that it hides would

@@ -407,22 +407,6 @@ def test_modify_route_keeps_a_status_without_a_body_down_the_classes(
     assert "content" not in operation["responses"]["204"]
 
 
-def test_modify_route_refuses_a_response_model_on_a_status_without_a_body(
-    view_base, Gadget
-):
-    class GadgetView(view_base):
-        prefix = "/gadgets"
-        model = Gadget
-        schema = GadgetSchema
-        update_endpoint = fr.modify_route(status_code=204, response_model=GadgetSchema)
-
-    with pytest.raises(
-        RestlyConfigurationError,
-        match="cannot set response_model.*removes the response model by itself",
-    ):
-        fr.include_view(FastAPI(), GadgetView)
-
-
 def test_modify_route_changes_the_method(make_client):
     client = make_client(update_endpoint=fr.modify_route(methods=["PUT"]))
     created = client.post("/gadgets", json={"name": "a"}).json()
@@ -610,78 +594,20 @@ def test_modify_route_keeps_the_list_params(make_client):
     assert "page_size" in {parameter["name"] for parameter in operation["parameters"]}
 
 
-class NameSchema(fr.BaseSchema):
-    name: str
-
-
-@pytest.mark.parametrize("name", ["get_one_endpoint", "create_endpoint"])
-def test_modify_route_refuses_another_response_model_for_the_view_response(
-    view_base, Gadget, name
-):
+@pytest.mark.parametrize(
+    "argument",
+    ["response_model", "response_model_exclude", "response_model_exclude_none"],
+)
+def test_modify_route_refuses_the_response_model_arguments(argument):
     # another response model would skip to_single_response, and the fields
     # that it hides would go out
-    attrs = {"prefix": "/gadgets", "model": Gadget, "schema": GadgetSchema}
-    attrs[name] = fr.modify_route(response_model=NameSchema)
-    GadgetView = type("GadgetView", (view_base,), attrs)
-
     with pytest.raises(
         RestlyConfigurationError,
-        match=rf"GadgetView.{name}: fr.modify_route cannot set response_model "
-        r"on this route.*to_single_response builds it as GadgetResponse.*set response_schema",
+        match=rf"fr.modify_route cannot set {argument}: it changes how a route "
+        r"is served, not what it sends. .*set response_schema or "
+        r"list_response_schema.*write the route method",
     ):
-        fr.include_view(FastAPI(), GadgetView)
-
-
-def test_modify_route_refuses_another_response_model_for_the_list(view_base, Gadget):
-    class GadgetView(view_base):
-        prefix = "/gadgets"
-        model = Gadget
-        schema = GadgetSchema
-        get_many_endpoint = fr.modify_route(response_model=list[NameSchema])
-
-    with pytest.raises(
-        RestlyConfigurationError,
-        match=r"to_list_response builds it as GadgetListResponse.*"
-        r"set list_response_schema",
-    ):
-        fr.include_view(FastAPI(), GadgetView)
-
-
-def test_modify_route_refuses_another_response_model_in_a_subclass(view_base, Gadget):
-    class Options:
-        get_one_endpoint = fr.modify_route(response_model=NameSchema)
-
-    class GadgetView(Options, view_base):
-        prefix = "/gadgets"
-        model = Gadget
-        schema = GadgetSchema
-
-    class SubView(GadgetView):
-        prefix = "/sub"
-        get_one_endpoint = fr.modify_route(summary="One")
-
-    with pytest.raises(RestlyConfigurationError, match="SubView.get_one_endpoint"):
-        fr.include_view(FastAPI(), SubView)
-
-
-def test_modify_route_changes_the_response_model_of_a_route_of_its_own(
-    view_base, Gadget
-):
-    class GadgetView(view_base):
-        prefix = "/gadgets"
-        model = Gadget
-        schema = GadgetSchema
-
-        @fr.get("/{id}/name", response_model=GadgetSchema)
-        def name(self, id: int) -> Any:
-            return {"id": id, "name": "a"}
-
-    class SubView(GadgetView):
-        name = fr.modify_route(response_model=NameSchema)
-
-    app = FastAPI()
-    fr.include_view(app, SubView)
-    assert TestClient(app).get("/gadgets/1/name").json() == {"name": "a"}
+        fr.modify_route(**{argument: None})
 
 
 def test_modify_route_leaves_the_base_and_other_views_alone(Gadget):
@@ -1425,22 +1351,3 @@ def test_modify_route_over_a_written_base_gives_no_misuse_warning(
     finally:
         fr.configure(warn_on_misuse=False)
     assert not [w for w in recwarn if "overrides the endpoint method" in str(w.message)]
-
-
-def test_modify_route_refuses_a_response_model_after_a_status_without_a_body(
-    view_base, Gadget
-):
-    # the 204 of the base drops the response model, and the subclass names
-    # another one: the route still answers with the view's response
-    class GadgetView(view_base):
-        prefix = "/gadgets"
-        model = Gadget
-        schema = GadgetSchema
-        update_endpoint = fr.modify_route(status_code=204)
-
-    class SubView(GadgetView):
-        update_endpoint = fr.modify_route(status_code=200, response_model=NameSchema)
-
-    fr.include_view(FastAPI(), GadgetView)
-    with pytest.raises(RestlyConfigurationError, match="SubView.update_endpoint"):
-        fr.include_view(FastAPI(), SubView)

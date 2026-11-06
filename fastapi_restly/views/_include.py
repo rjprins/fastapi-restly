@@ -30,7 +30,6 @@ import fastapi
 import pydantic
 from fastapi import Response
 from fastapi.datastructures import Default
-from fastapi.utils import is_body_allowed_for_status_code
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.orm.state import InstanceState
 from typing_extensions import TypeVar, is_typeddict
@@ -424,50 +423,6 @@ def _route_label(route: fastapi.routing.APIRoute) -> str:
     return f"{route.path_format} ({' '.join(sorted(route.methods))} {route.name})"
 
 
-def _reject_modified_response_model(view_cls: Any, name: str, endpoint: Any) -> None:
-    """Raise for ``fr.modify_route(response_model=...)`` on a route that
-    answers with the view's response. Such a route builds its response with
-    ``to_single_response`` or ``to_list_response``, and another response
-    model would skip that step, also the fields that it hides."""
-    if not getattr(endpoint, "_names_response_model", False):
-        return
-    kind, _ = _view_response_kind(view_cls, endpoint._first_route)
-    if kind not in ("single", "many", "list"):
-        return
-    if kind == "list":
-        step, schema, setting = (
-            "to_list_response",
-            _bare(view_cls.list_response_schema),
-            "list_response_schema",
-        )
-    else:
-        step, schema, setting = (
-            "to_single_response",
-            view_cls.response_schema,
-            "response_schema",
-        )
-    no_body = ""
-    status_code = endpoint._api_route_args[1].get("status_code")
-    if status_code is not None and not is_body_allowed_for_status_code(status_code):
-        no_body = " A status code without a body removes the response model by itself."
-    raise RestlyConfigurationError(
-        f"{view_cls.__name__}.{name}: fr.modify_route cannot set response_model "
-        f"on this route. The route answers with the view's response: {step} "
-        f"builds it as {_type_label(schema)}. To change the response of the "
-        f"view, set {setting}. To send another response from this route only, "
-        f"write the route method.{no_body}"
-    )
-
-
-def _type_label(value: Any) -> str:
-    """``value`` as Python code shows it, such as ``list[TagResponse]``."""
-    args = get_args(value)
-    if not args:
-        return getattr(value, "__name__", repr(value))
-    origin = get_origin(value)
-    return f"{origin.__name__}[{', '.join(_type_label(arg) for arg in args)}]"
-
-
 def _reject_unread_path_parameter(
     view_cls: Any, name: str, path: str, endpoint: Callable, route: Any
 ) -> None:
@@ -847,7 +802,6 @@ def _init_api_router(view_cls: type[View], tagged: bool = False) -> fastapi.APIR
             route_kwargs.get("responses") or {},
         )
         if is_rest_view:
-            _reject_modified_response_model(view_cls, name, endpoint)
             endpoint, route_kwargs = _with_view_response(
                 view_cls, endpoint, route_kwargs
             )

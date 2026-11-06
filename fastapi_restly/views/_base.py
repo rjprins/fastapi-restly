@@ -400,12 +400,11 @@ def modify_route(path: str | None = None, **api_route_kwargs: Any) -> Any:
     left out. A status code without a body, such as 204, also removes the
     response model of the route.
 
-    ``response_model`` raises
-    :class:`~fastapi_restly.exc.RestlyConfigurationError` when the view
-    registers, on a route that answers with the view's response. Such a route
-    builds its response with ``to_single_response`` or ``to_list_response``,
-    and another response model would skip that step. Set ``response_schema``
-    or ``list_response_schema``, or write the route method.
+    It changes how a route is served, not what it sends. So
+    ``response_model`` and the other ``response_model_*`` arguments raise
+    :class:`~fastapi_restly.exc.RestlyConfigurationError`. To change the
+    response of the view, set ``response_schema`` or ``list_response_schema``.
+    To change the response of one route, write the route method.
 
     This changes the route of this view and its subclasses. The route of the
     base class stays the same.
@@ -414,6 +413,18 @@ def modify_route(path: str | None = None, **api_route_kwargs: Any) -> Any:
     :class:`~fastapi_restly.exc.RestlyConfigurationError` when the class is
     defined.
     """
+    refused = sorted(
+        name
+        for name in api_route_kwargs
+        if name == "response_model" or name.startswith("response_model_")
+    )
+    if refused:
+        raise RestlyConfigurationError(
+            f"fr.modify_route cannot set {refused[0]}: it changes how a route is "
+            "served, not what it sends. To change the response of the view, set "
+            "response_schema or list_response_schema. To change the response of "
+            "one route, write the route method."
+        )
     return _ModifiedRoute(path, api_route_kwargs)
 
 
@@ -481,29 +492,19 @@ def _apply_modified_routes(cls: type) -> None:
                 route_kwargs[key] = value
         # The inherited response model belongs to a status with a body, and
         # FastAPI refuses a response model on a status without one. A subclass
-        # with a status with a body gets the model back, see above. A model
-        # that an option names stays, so FastAPI refuses it.
+        # with a status with a body gets the model back, see above.
         dropped = None
-        if not any("response_model" in option.api_route_kwargs for option in options):
-            if not is_body_allowed_for_status_code(route_kwargs.get("status_code")):
-                dropped = {
-                    key: value
-                    for key, value in route_kwargs.items()
-                    if key == "response_model"
-                }
-                route_kwargs["response_model"] = None
+        if not is_body_allowed_for_status_code(route_kwargs.get("status_code")):
+            dropped = {
+                key: value
+                for key, value in route_kwargs.items()
+                if key == "response_model"
+            }
+            route_kwargs["response_model"] = None
         copied = _copy_route(endpoint, cls, name)
         copied._api_route_args = (path, route_kwargs)  # type: ignore[attr-defined]
         copied._dropped_response_model = dropped  # type: ignore[attr-defined]
         copied._from_modify_route = True  # type: ignore[attr-defined]
-        # Registration refuses a response model that an option names, if the
-        # route that the class first inherits answers with the view's response.
-        copied._first_route = getattr(  # type: ignore[attr-defined]
-            endpoint, "_first_route", endpoint
-        )
-        copied._names_response_model = any(  # type: ignore[attr-defined]
-            "response_model" in option.api_route_kwargs for option in options
-        ) or getattr(endpoint, "_names_response_model", False)
         # Delete first: in the class dict, a name keeps its first place. The routes
         # that the class writes come first, see the copy of the inherited routes.
         if name in vars(cls):

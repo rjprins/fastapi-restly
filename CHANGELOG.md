@@ -281,9 +281,9 @@ miss it.
   the rest. Use it under the name of the route method, as in
   `create_endpoint = fr.modify_route(status_code=200, name="create_tag")`. The route
   needs no method of its own for a name, a status code, a path, dependencies or the
-  documented responses. It cannot change the response model of a route that
-  answers with the view's response, because the route would skip
-  `to_single_response`. See "Change one option of a route" in the guide.
+  documented responses. It changes how a route is served, not what it sends, so
+  `response_model` and the other `response_model_*` arguments raise an error.
+  See "Change one option of a route" in the guide.
 - A status code set to `None` in `responses`, on a view or on a route, is left
   out of the spec. So `responses = {404: None}` removes a 404 that a route of a
   CRUD view documents by itself.
