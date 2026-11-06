@@ -568,8 +568,9 @@ schema gets one that Restly generates from the model. See
 CRUD route. To change what an action does, override the business method,
 such as <code class="docutils literal notranslate"><span class="pre">update</span></code>. A read has a final load, <code class="docutils literal notranslate"><span class="pre">get_one</span></code> or <code class="docutils literal notranslate"><span class="pre">get_many</span></code>, in
 place of a business method: the scope and the loader options decide what
-it reads. To change the HTTP contract, such as the status code, replace
-the endpoint method. A handler is final. See
+it reads. To change one option of a route, such as the status code, use
+<a class="reference internal" href="api/views.html#fastapi_restly.views.modify_route" title="fastapi_restly.views.modify_route"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.modify_route</span></code></a>. For a change that
+needs code, replace the endpoint method. A handler is final. See
 <a class="reference internal" href="lifecycle.html"><span class="std std-doc">Request Lifecycle &amp; Hooks</span></a>.</p></li>
 <li><p><strong>Commit</strong>: a write route commits after the business method.
 <code class="docutils literal notranslate"><span class="pre">before_action_commit</span></code> runs just before the commit, and
@@ -622,16 +623,16 @@ as <code class="docutils literal notranslate"><span class="pre">authorize</span>
 one step. <a class="reference internal" href="view_reference.html"><span class="std std-doc">View Reference</span></a> lists everything that you can
 set, override or call on a view.</p>
 <ul class="simple">
-<li><p><a class="reference internal" href="views.html"><span class="std std-doc">Views</span></a>: the view classes, how to declare routes and register a
-view, routes that are not CRUD, such as login and webhooks, and how views
-share behavior through base classes.</p></li>
+<li><p><a class="reference internal" href="views.html"><span class="std std-doc">Views</span></a>: the view classes, how to declare routes, add a decorator
+and register a view, routes that are not CRUD, such as login and webhooks, and
+how views share behavior through base classes.</p></li>
 <li><p><a class="reference internal" href="crud_routes.html"><span class="std std-doc">CRUD Routes</span></a>: the five default routes, async or sync, how
-to leave some routes out, and how to serve a child resource under its
-parent.</p></li>
+to change one option of a route, how to leave some routes out, and how to
+serve a child resource under its parent.</p></li>
 <li><p><a class="reference internal" href="lifecycle.html"><span class="std std-doc">Request Lifecycle &amp; Hooks</span></a>: the steps of a request, which
 method to override for each change, a value on each row, a lookup by
-another key, custom routes, what commits when, several writes in one
-commit, and the same logic in a script or a worker.</p></li>
+another key, custom routes, what commits when, code that must commit, several
+writes in one commit, and the same logic in a script or a worker.</p></li>
 <li><p><a class="reference internal" href="react_admin.html"><span class="std std-doc">React Admin</span></a>: connect react-admin to a view, the list
 format and the routes that react-admin expects, to-many id arrays, CORS,
 and a list that shows no rows.</p></li>
@@ -664,8 +665,8 @@ order and the pages that a client can use on a list, the keys that a view
 chooses, filters of your own, and list params that you write yourself.</p></li>
 <li><p><a class="reference internal" href="errors.html"><span class="std std-doc">Errors</span></a>: raise a 404 or a 403, see why a duplicate value gives
 a 409, and change the error body.</p></li>
-<li><p><a class="reference internal" href="openapi.html"><span class="std std-doc">OpenAPI</span></a>: the tags, names and operation IDs of the routes,
-and how to document a custom route.</p></li>
+<li><p><a class="reference internal" href="openapi.html"><span class="std std-doc">OpenAPI</span></a>: the tags, names and operation IDs of the routes, and
+how to document a custom route.</p></li>
 </ul>
 </section>
 <section id="access">

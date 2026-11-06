@@ -627,7 +627,7 @@ checks its OpenAPI spec for two classes with the same name (see
 <a class="reference internal" href="exc.html#fastapi_restly.exc.RestlyMisuseWarning" title="fastapi_restly.exc.RestlyMisuseWarning"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyMisuseWarning</span></code></a> when <code class="docutils literal notranslate"><span class="pre">include_view</span></code>
 registers a view with an endpoint method override that calls neither
 its <code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code> handler nor the endpoint method of its base, a
-direct <code class="docutils literal notranslate"><span class="pre">session.commit()</span></code>, a scalar foreign key typed as an
+direct <code class="docutils literal notranslate"><span class="pre">session.commit()</span></code> in a CRUD view, a scalar foreign key typed as an
 <code class="docutils literal notranslate"><span class="pre">IDRef</span></code> / <code class="docutils literal notranslate"><span class="pre">IDSchema</span></code> reference instead of <code class="docutils literal notranslate"><span class="pre">fr.MustExist</span></code>, or a
 writable field on a column that the model sets (<code class="docutils literal notranslate"><span class="pre">init=False</span></code> with a
 default). It also warns when a view is registered twice on the same

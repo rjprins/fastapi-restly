@@ -118,7 +118,18 @@ the converter only to a path parameter annotated
 accept negative integer ids, replace each item endpoint you need with an
 untyped path such as `@fr.get("/{id}")`, and annotate its `id` parameter as
 `int`; see
-[Change the status code or headers of one route](#replace-endpoint-method).
+[Replace the endpoint method of one route](#replace-endpoint-method).
+
+The item routes use the name `id` in the path. An existing API can use another
+name, such as `{user_id}`. The URLs are the same, but OpenAPI and the clients that
+are generated from it show the name. To keep that name, replace each item endpoint,
+and `put` on a React Admin view, with a path such as `@fr.get("/{user_id:int}")` and
+a parameter `user_id: int`. With the converter, a wrong value still answers `404`,
+and `/users/me` still works after the view.
+
+OpenAPI does not allow two paths that differ only in the names of their
+parameters. So `/{id}` next to `/{user_id}` on one view raises an error when you
+register the view. Use the same name in both paths.
 :::
 
 (crud-model-and-schemas)=
@@ -161,15 +172,114 @@ This table maps each need to its setting:
 | Hide rows from every read | Set {attr}`scope <fastapi_restly.views.BaseRestView.scope>`, or `default_scope` on the model ([Scopes](#view-scope)) |
 | No pagination | Set {attr}`pagination <fastapi_restly.views.BaseRestView.pagination>` to `None`, or to a {class}`NoPagination <fastapi_restly.views.NoPagination>` to choose its envelope ([Filtering, Sorting & Pagination](#no-pagination)) |
 | Other page limits, parameter names or list envelope | Set {attr}`pagination <fastapi_restly.views.BaseRestView.pagination>` to a {class}`NumberedPagination <fastapi_restly.views.NumberedPagination>` ([Pagination settings](#pagination-settings)) |
+| A list with `limit` and `offset` | Set {attr}`pagination <fastapi_restly.views.BaseRestView.pagination>` to an {class}`OffsetPagination <fastapi_restly.views.OffsetPagination>` ([Page with limit and offset](#limit-offset-pagination)) |
 | Fewer filter or sort keys on a list | Set {attr}`include_filters <fastapi_restly.views.BaseRestView.include_filters>` or {attr}`include_sort_keys <fastapi_restly.views.BaseRestView.include_sort_keys>` ([Choose the keys of a list](#choose-list-keys)) |
 | A list filter of your own | Decorate a method with {func}`fr.list_filter <fastapi_restly.views.list_filter>` ([Add a filter of your own](#own-list-filter)) |
 | A query key of your own next to the list params, not a filter | Declare it on the endpoint method or in a dependency ([Accept extra query parameters](#extra-query-parameters)) |
 | OpenAPI metadata or dependencies on every route | Set {attr}`tags <fastapi_restly.views.View.tags>`, {attr}`responses <fastapi_restly.views.View.responses>` or {attr}`dependencies <fastapi_restly.views.View.dependencies>` ([Share behavior with base views](#share-behaviour-with-base-views)) |
-| A route name, summary or operation ID | Override the endpoint method with a decorator of your own ([OpenAPI](#crud-route-metadata)) |
+| One option of a route, such as its name, status code or dependencies | Use {func}`fr.modify_route <fastapi_restly.views.modify_route>` under the name of the route method ([Change one option of a route](#modify-route)) |
 | Another session for one view | Override the `session` annotation ([Database & Configuration](#session-dependency-one-view)) |
 
 [View Reference](#view-class-attributes) lists the type and the default of
 each attribute.
+
+(modify-route)=
+### Change one option of a route
+
+To change one option of a route that a view inherits, use
+{func}`fr.modify_route <fastapi_restly.views.modify_route>` under the name of
+the route method. The route keeps its method and its other options:
+
+```python
+class InvoiceView(fr.AsyncRestView):
+    prefix = "/invoices"
+    model = Invoice
+    schema = InvoiceSchema
+
+    get_many_endpoint = fr.modify_route(
+        summary="List invoices", operation_id="billing_list_invoices"
+    )
+    create_endpoint = fr.modify_route(status_code=200)
+    update_endpoint = fr.modify_route(methods=["PUT"])
+```
+
+This changes the route of this view and its subclasses. The route of the base
+class stays the same.
+
+It takes the same arguments as a route decorator. The hooks of the view run as
+before. Restly still fills in what you do not pass: the list params, the name,
+the summary and the operation ID. When you pass `name`, FastAPI makes the
+summary and the operation ID from that name, unless you pass them too. The
+table in [The names and operation IDs of the CRUD routes](#default-route-metadata)
+lists the endpoint methods.
+
+:::{admonition} Details
+:class: details
+
+Each argument replaces the one of the inherited route. `dependencies` and
+`responses` add up, as they do on a view. `dependencies` run base first, so a
+subclass cannot remove a check of its base. `responses` add up per status code,
+and a status code set to `None` is left out:
+
+```python
+    delete_endpoint = fr.modify_route(dependencies=[Depends(require_admin)])
+    get_one_endpoint = fr.modify_route(responses={404: None})
+```
+
+FastAPI adds the 422 response itself, so `{422: None}` does not remove it.
+
+`path` replaces the path of the route, as in `fr.modify_route("/new")`. Restly
+also serves the list route and the create route at `/invoices/`, with a slash at
+the end, hidden from OpenAPI. To leave out these hidden routes, set `path=""` on
+the list route and on the create route. In a new path of an item route, write
+`{id}`. A path such as `/{role_id}` raises an error when the view registers: the
+method reads `id`, so nothing would read `role_id`.
+
+`methods=["PUT"]` changes only the HTTP method. The route still updates only the
+fields that the client sends. A React Admin view already has a `PUT` route,
+`put`. So there, `methods=["PUT"]` on `update_endpoint` raises an error, because
+two routes would have the same path and HTTP method. A status code without a
+body, such as 204, also removes the response model of the route. For the list
+route, set `list_response_schema`, not `response_model`. For a delete with a
+body, write the method.
+
+An option does not change the order of the routes. So a route that the
+class writes, such as `GET /stats`, stays before the item route.
+
+A subclass inherits the options and can change them further. A plain class can
+hold options for several views. Put it before the view class, as in
+`class TagView(QuietRoutes, fr.AsyncRestView)`, as for any other method of a mixin.
+After the view class, the options would do nothing, so Restly raises an error
+when Python defines the class.
+
+A name that is not a route of a base class raises
+{class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`
+when Python defines the class. Use `fr.modify_route` in the class body. An
+argument that FastAPI does not know raises a `TypeError` when the view registers,
+as it does on a route decorator.
+
+A method with a route decorator states the whole route. So options from a base
+class do not apply to it. Write such a method when the change needs code, such as
+a decorator on the route or a response header. It can call the method of the base
+class, so the route works as before:
+
+```python
+    @fr.post("/")
+    async def create_endpoint(
+        self, data: CreateSchema, response: Response
+    ) -> ResponseSchema:
+        obj = await super().create_endpoint(data)
+        path = self.request.url.path.rstrip("/")
+        response.headers["Location"] = f"{path}/{obj.id}"
+        return obj
+```
+
+`ResponseSchema` keeps the view's response as the response model; see
+[Name the view's schemas in a custom route](#name-the-view-schemas). An item
+route that you declare, such as `GET /{id}`, keeps the path that you give it.
+Restly adds the `int` or `uuid` converter only to a path parameter annotated
+`IDType`; see [Item paths and static routes](#item-route-matching).
+:::
 
 (exclude-crud-routes)=
 ## Exclude CRUD routes
@@ -587,12 +697,6 @@ A model can have a flat view and nested views at the same time, such as a
   `project_id` read-only in `TaskSchema`; see [Create a child](#nested-create).
 - Both views appear under the "Tasks" tag in OpenAPI, unless you set
   {attr}`tags <fastapi_restly.views.View.tags>`.
-- OpenAPI marks a field that refers to a task, such as
-  `fr.MustExist[int, Task]`, with `x-resource-ref`. Its value comes from the
-  prefix of the last view of `Task` that you register. Register the flat view
-  after the nested one, so the value is `tasks`. With only a nested view, the
-  value is `projects/{project_id}/tasks`, which a client cannot use as a
-  resource name.
 
 (crud-limits)=
 ## What the default routes do not do

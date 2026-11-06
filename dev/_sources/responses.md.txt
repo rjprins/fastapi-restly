@@ -57,8 +57,9 @@ The list envelope looks like this:
 }
 ```
 
-A view without pagination sends only `data`; see
-[`pagination = None`](#no-pagination). How a client asks for a page, and
+A view with [limit and offset](#limit-offset-pagination) sends `data`,
+`total_count`, `limit` and `offset`. A view without pagination sends only
+`data`; see [`pagination = None`](#no-pagination). How a client asks for a page, and
 the page size limits, are on
 [Filtering, Sorting & Pagination](filtering.md).
 
@@ -66,8 +67,10 @@ The list route's `response_model` is the view's
 {attr}`list_response_schema <fastapi_restly.views.BaseRestView.list_response_schema>`.
 Unless the view sets another class, this is the pagination's envelope, filled
 with the response schema. By default that envelope is a
-{class}`PaginatedEnvelope <fastapi_restly.views.PaginatedEnvelope>`, and a
-plain {class}`Envelope <fastapi_restly.views.Envelope>` for a view without
+{class}`NumberedEnvelope <fastapi_restly.views.NumberedEnvelope>`, an
+{class}`OffsetEnvelope <fastapi_restly.views.OffsetEnvelope>` for a view with
+{class}`fr.OffsetPagination <fastapi_restly.views.OffsetPagination>`, and a plain
+{class}`Envelope <fastapi_restly.views.Envelope>` for a view without
 pagination. OpenAPI names the filled class after the response schema:
 `TagListResponse` for `TagResponse`, which Restly derives from `TagSchema`.
 
@@ -77,8 +80,9 @@ pagination. OpenAPI names the filled class after the response schema:
 The list envelope is a Pydantic model, and you can replace it. Write a
 generic model with one type parameter for the items, and set it as the
 `envelope` of the view's pagination. Restly fills its fields by name from
-`data`, `total_count`, `page`, `page_size` and `total_pages`. The response
-and OpenAPI follow the model.
+`data`, `total_count`, `page`, `page_size` and `total_pages`, or with
+{class}`fr.OffsetPagination <fastapi_restly.views.OffsetPagination>` from `data`,
+`total_count`, `limit` and `offset`. The response and OpenAPI follow the model.
 
 - Leave a field out to drop it from the response.
 - Rename a field in the JSON with `alias`, or rename them all with an
@@ -380,8 +384,11 @@ view that subclasses `ApiView` gets `Data[UserResponse]` in OpenAPI, and another
 view gets `Data[TagResponse]`. For a shape that differs per view, such as a root
 key, as in `{"article": {...}}`, write a function that builds the class; see
 [Make dynamic schemas that depend on the view](#schema-type). To change the
-status code or the headers of one route, replace that endpoint method; see
-[Change the status code or headers of one route](#replace-endpoint-method).
+status code of one route, use
+{func}`fr.modify_route <fastapi_restly.views.modify_route>`; see
+[Change one option of a route](#modify-route). To change the headers, replace
+that endpoint method; see
+[Replace the endpoint method of one route](#replace-endpoint-method).
 
 (to-single-response)=
 ## Change how one object is serialized
@@ -424,7 +431,7 @@ on the view. OpenAPI follows it. The other routes keep the full schema, and
 filtering, sorting and pagination keep working:
 
 ```python
-from fastapi_restly.views import PaginatedEnvelope
+from fastapi_restly.views import NumberedEnvelope
 
 
 class UserSummary(fr.IDSchema):
@@ -435,7 +442,7 @@ class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
     schema = UserSchema
-    list_response_schema = PaginatedEnvelope[UserSummary]
+    list_response_schema = NumberedEnvelope[UserSummary]
 ```
 
 This class changes what the list sends, and nothing else. The filters and sort
@@ -448,10 +455,12 @@ and sort on a field that the items do not show. To hide a field, make it
 :class: details
 
 Restly fills this class as it fills an
-[envelope](#change-list-envelope): by field name, from `data`, `total_count`,
-`page`, `page_size` and `total_pages`. An alias renames a key in the JSON. Any
+[envelope](#change-list-envelope): by field name, from the values of the view's
+pagination, such as `data`, `total_count`, `page`, `page_size` and
+`total_pages`. An alias renames a key in the JSON. Any
 other field keeps its default. Registration raises for a class that `GET /`
-cannot fill: a class with page fields on a view without pagination, or a class
+cannot fill: a class with page fields that the view's pagination does not have,
+or a class
 without a field named `data`.
 
 Restly fills the items from the response schema, so an item can have fewer

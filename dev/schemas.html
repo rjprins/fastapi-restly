@@ -665,6 +665,58 @@ table changes. Set it on the view:</p>
 <p>Restly writes each field of a request body to the model attribute with the
 same Python name. So name a field after its column, and use an
 <a class="reference internal" href="#field-aliases">alias</a> when the JSON needs another name.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>With SQLModel, do not use a table class as the request body of a custom route, or
+in a field of that body. A table class does not validate its input. So your route
+gets a row with any id, any column and values of any type. FastAPI and Restly do
+not check for this. Use a class without <code class="docutils literal notranslate"><span class="pre">table=True</span></code>.</p>
+</div>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p>A SQLModel table class cannot be the
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema" title="fastapi_restly.views.BaseRestView.schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema</span></code></a>, the
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.create_schema" title="fastapi_restly.views.BaseRestView.create_schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">create_schema</span></code></a> or the
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.update_schema" title="fastapi_restly.views.BaseRestView.update_schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">update_schema</span></code></a> of a view.
+A table class does not validate its input, even on a plain FastAPI route. SQLModel
+says not to inherit from it. So the view fails when it registers. Leave the setting
+out, or set a class without <code class="docutils literal notranslate"><span class="pre">table=True</span></code>.</p>
+<p>The table class itself can be the
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.response_schema" title="fastapi_restly.views.BaseRestView.response_schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">response_schema</span></code></a>. A
+subclass of it cannot, because OpenAPI would show no required fields.</p>
+<p>A subclass of a table class also fails inside a schema of the view, such as in a
+read-only field or in an envelope of your own. Restly does not check the classes of
+a custom route, and there a subclass shows no required fields. So do not inherit
+from a table class.</p>
+<p>A table class in a field that a client can write, such as <code class="docutils literal notranslate"><span class="pre">team:</span> <span class="pre">Team</span></code>, also
+fails when the view registers. A client could write a row through that field, with
+any id and any column. To let a client choose a row, send its id: see
+<a class="reference internal" href="relationships.html#embedded-objects-read-only"><span class="std std-ref">Embedded objects are read-only</span></a>. To show the row in
+responses, mark the field <code class="docutils literal notranslate"><span class="pre">fr.ReadOnly</span></code>.</p>
+<p>The schema that Restly generates takes its fields from the columns. It does not
+take the limits in <code class="docutils literal notranslate"><span class="pre">Field(...)</span></code> or the validators of the table class. To keep
+them, put them on a data model, and let the table and the schema inherit from
+it, as SQLModel recommends:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">HeroBase</span><span class="p">(</span><span class="n">SQLModel</span><span class="p">):</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Hero</span><span class="p">(</span><span class="n">HeroBase</span><span class="p">,</span> <span class="n">table</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">primary_key</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">HeroSchema</span><span class="p">(</span><span class="n">HeroBase</span><span class="p">):</span>
+    <span class="nb">id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">ReadOnly</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
+
+
+<span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">HeroView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">RestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">"/heroes"</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Hero</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">HeroSchema</span>
+</pre></div>
+</div>
+</div>
 </section>
 <section id="choose-a-base-class">
 <span id="schema-base-classes"></span><h2>Choose a base class<a class="headerlink" href="#choose-a-base-class" title="Link to this heading">#</a></h2>
@@ -811,8 +863,8 @@ create or update schema that you write. Otherwise a client can set it.</p>
 <td><p>422</p></td>
 </tr>
 <tr class="row-odd"><td><p>A value that its column can hold, such as a number in the range of <code class="docutils literal notranslate"><span class="pre">Integer</span></code></p></td>
-<td><p>Nothing for the generic types of SQLAlchemy, a <code class="docutils literal notranslate"><span class="pre">Field</span></code> constraint for other types; see <a class="reference internal" href="#column-validation">Column validation</a></p></td>
-<td><p>422, or 400 in a filter</p></td>
+<td><p>Nothing for the generic integer and text types of SQLAlchemy, a <code class="docutils literal notranslate"><span class="pre">Field</span></code> constraint for other types; see <a class="reference internal" href="#column-validation">Column validation</a></p></td>
+<td><p>422</p></td>
 </tr>
 <tr class="row-even"><td><p>A referenced row must exist</p></td>
 <td><p><a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.MustExist</span></code></a> or a reference field; see <a class="reference internal" href="relationships.html#reference-exists"><span class="std std-ref">Relationships</span></a></p></td>
@@ -899,9 +951,12 @@ for <code class="docutils literal notranslate"><span class="pre">Integer</span><
 <li><p>Text must not hold a NUL character (<code class="docutils literal notranslate"><span class="pre">\x00</span></code>).</p></li>
 <li><p>Text in a request body must fit the length of a <code class="docutils literal notranslate"><span class="pre">String(n)</span></code> column.</p></li>
 </ul>
-<p>A value that does not fit gets 422 in a request body or in the path, and
-400 in a filter. A reference id that does not fit gets 404, as for a row
-that does not exist.</p>
+<p>A text column takes text. A field of another type over such a column, such as
+<code class="docutils literal notranslate"><span class="pre">url:</span> <span class="pre">HttpUrl</span></code> over <code class="docutils literal notranslate"><span class="pre">Mapped[str]</span></code>, stores the text that a response shows, here
+<code class="docutils literal notranslate"><span class="pre">https://a.example/</span></code>. A filter compares the same text, so a value from a
+response finds its row.</p>
+<p>A value that does not fit gets 422. A reference id that does not fit gets 404,
+as for a row that does not exist.</p>
 <div class="details admonition">
 <p class="admonition-title">Details</p>
 <p>The type of the column is the rule on every database. PostgreSQL refuses
@@ -912,6 +967,9 @@ that holds bigger numbers needs <code class="docutils literal notranslate"><span
 time in milliseconds. A filter only compares a value with the column, and
 PostgreSQL compares text of any length, so the length counts only in a
 request body. A <code class="docutils literal notranslate"><span class="pre">CHAR</span></code> without a length holds one character, as in SQL.</p>
+<p>A value that has no text in a response, such as a dict, stays as it is, and so
+does a member of an enum with number values that does not inherit from <code class="docutils literal notranslate"><span class="pre">int</span></code>.
+The database driver then refuses it, because the field does not fit the column.</p>
 <p>Restly checks these types by their exact class: <code class="docutils literal notranslate"><span class="pre">Integer</span></code>, <code class="docutils literal notranslate"><span class="pre">SmallInteger</span></code>,
 <code class="docutils literal notranslate"><span class="pre">BigInteger</span></code>, <code class="docutils literal notranslate"><span class="pre">String</span></code>, <code class="docutils literal notranslate"><span class="pre">Text</span></code>, <code class="docutils literal notranslate"><span class="pre">Unicode</span></code> and <code class="docutils literal notranslate"><span class="pre">UnicodeText</span></code>, and the same
 types by their SQL names: <code class="docutils literal notranslate"><span class="pre">INTEGER</span></code>, <code class="docutils literal notranslate"><span class="pre">SMALLINT</span></code>, <code class="docutils literal notranslate"><span class="pre">BIGINT</span></code>, <code class="docutils literal notranslate"><span class="pre">VARCHAR</span></code>,
@@ -926,8 +984,11 @@ is, as in SQLAlchemy:</p>
 </ul>
 <p>The database then checks the value. On PostgreSQL, a value that does not
 fit is an error, and the client gets a 500. For a 422, put the limit on the
-field of the schema. Its validation runs on filter values too; see
-<a class="reference internal" href="filtering.html#filter-value-validation"><span class="std std-ref">Filter values go through the field’s validation</span></a>.</p>
+field of the schema. A filter does not check a <code class="docutils literal notranslate"><span class="pre">Field</span></code> limit, so for a 422 in a
+filter too, write the limit in a field validator; see
+<a class="reference internal" href="filtering.html#filter-value-validation"><span class="std std-ref">Filter values go through the field’s validation</span></a>.
+A number in a filter is at most <code class="docutils literal notranslate"><span class="pre">1e50</span></code> in any case, and a <code class="docutils literal notranslate"><span class="pre">Decimal</span></code> has at most
+50 digits after the point.</p>
 <div class="pst-scrollable-table-container"><table class="table">
 <thead>
 <tr class="row-odd"><th class="head"><p>Column</p></th>
@@ -1113,7 +1174,7 @@ the type stores a time zone. SQLAlchemy’s recipe stores none, and it refuses
 a time without an offset, so give its column a field of type
 <code class="docutils literal notranslate"><span class="pre">fr.UTCDatetime</span></code>, which gives every time the offset of UTC.</p>
 <p>A time that is not between the years 1 and 9999 in UTC, such as
-<code class="docutils literal notranslate"><span class="pre">9999-12-31T23:30:00-01:00</span></code>, gets 422 in a request body and 400 in a filter.</p>
+<code class="docutils literal notranslate"><span class="pre">9999-12-31T23:30:00-01:00</span></code>, gets 422.</p>
 <p>A <code class="docutils literal notranslate"><span class="pre">date</span></code>, and a time of day of type <code class="docutils literal notranslate"><span class="pre">time</span></code>, have no rule. A time of day has
 no date, so summer time can change its time in UTC. A <code class="docutils literal notranslate"><span class="pre">time</span></code> column without
 a time zone keeps the clock time of a value and drops its offset:
@@ -1362,12 +1423,18 @@ the order in which the views are registered. These names can change, and a
 generated client then breaks.</p>
 <p>When the app builds its OpenAPI spec, Restly checks for this and warns with a
 <a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyDuplicateSchemaNameWarning" title="fastapi_restly.exc.RestlyDuplicateSchemaNameWarning"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyDuplicateSchemaNameWarning</span></code></a>
-that names the classes and the views. Restly checks an app that you pass to
+that names the classes and the CRUD views. Restly checks an app that you pass to
 <a class="reference internal" href="api/db.html#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.configure(app,</span> <span class="pre">...)</span></code></a> or
 <a class="reference internal" href="api/testing.html#fastapi_restly.testing.configure_tests" title="fastapi_restly.testing.configure_tests"><code class="xref py py-func docutils literal notranslate"><span class="pre">configure_tests(app=...)</span></code></a>, or
 that you include a view on. Two classes with the same name are not a problem
 when their JSON schemas are the same, docstrings and defaults included:
 OpenAPI then shows them as one.</p>
+<p>Restly runs this check in the app’s <code class="docutils literal notranslate"><span class="pre">app.openapi()</span></code>. FastAPI’s function
+<code class="docutils literal notranslate"><span class="pre">get_openapi()</span></code> does not run it. So to write the spec to a file, call
+<code class="docutils literal notranslate"><span class="pre">app.openapi()</span></code>. Restly wraps <code class="docutils literal notranslate"><span class="pre">app.openapi</span></code> when the first view is included on
+the app, or when you pass the app to <code class="docutils literal notranslate"><span class="pre">fr.configure</span></code>. An <code class="docutils literal notranslate"><span class="pre">app.openapi</span></code> of your
+own that you set after that replaces Restly’s. Set it before, and Restly wraps
+it.</p>
 </div>
 </section>
 <section id="name-the-view-s-schemas-in-a-custom-route">
@@ -1478,7 +1545,7 @@ There are then two classes named <code class="docutils literal notranslate"><spa
 type checkers do not accept them in an annotation, as in
 <code class="docutils literal notranslate"><span class="pre">data:</span> <span class="pre">UserResponse</span></code>. At runtime they are normal classes, so add
 <code class="docutils literal notranslate"><span class="pre">#</span> <span class="pre">type:</span> <span class="pre">ignore[valid-type]</span></code> on such a line.</p>
-<p>A custom route that names <code class="docutils literal notranslate"><span class="pre">UserSchema</span></code> or <code class="docutils literal notranslate"><span class="pre">PaginatedEnvelope[UserSchema]</span></code>
+<p>A custom route that names <code class="docutils literal notranslate"><span class="pre">UserSchema</span></code> or <code class="docutils literal notranslate"><span class="pre">NumberedEnvelope[UserSchema]</span></code>
 shows a type of its own in OpenAPI. Restly does not fill such a class from a
 <code class="docutils literal notranslate"><span class="pre">ListResult</span></code>. So the route calls <code class="docutils literal notranslate"><span class="pre">to_list_response</span></code> itself.</p>
 <p>A marker works in the annotation of a route, also inside a generic class, as in

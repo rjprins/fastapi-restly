@@ -645,6 +645,7 @@ the sync session loads the relationship with one more query. On an async view,
 the same missing load raises `MissingGreenlet`.
 :::
 
+(embedded-objects-read-only)=
 ### Embedded objects are read-only
 
 A nested schema shows a related object in responses. It cannot take one in a

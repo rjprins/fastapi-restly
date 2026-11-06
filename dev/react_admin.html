@@ -886,7 +886,9 @@ of 50 for other views. To choose another value, set it in the view’s
 <code class="docutils literal notranslate"><span class="pre">422</span></code>. The view pages with <code class="docutils literal notranslate"><span class="pre">range</span></code> and reports the total in the
 <code class="docutils literal notranslate"><span class="pre">Content-Range</span></code> header, so other settings, such as parameter names or an
 envelope, raise an error when Python defines the view class. So does
-<code class="docutils literal notranslate"><span class="pre">pagination</span> <span class="pre">=</span> <span class="pre">None</span></code>, because the header needs the total count.</p>
+<code class="docutils literal notranslate"><span class="pre">pagination</span> <span class="pre">=</span> <span class="pre">None</span></code>, because the header needs the total count, and
+<a class="reference internal" href="api/views.html#fastapi_restly.views.OffsetPagination" title="fastapi_restly.views.OffsetPagination"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.OffsetPagination</span></code></a>, because
+<code class="docutils literal notranslate"><span class="pre">range</span></code> already gives the rows.</p>
 </section>
 <section id="change-the-content-range-unit">
 <h3>Change the Content-Range unit<a class="headerlink" href="#change-the-content-range-unit" title="Link to this heading">#</a></h3>

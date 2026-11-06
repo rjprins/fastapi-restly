@@ -90,6 +90,65 @@ Restly writes each field of a request body to the model attribute with the
 same Python name. So name a field after its column, and use an
 [alias](#field-aliases) when the JSON needs another name.
 
+:::{warning}
+With SQLModel, do not use a table class as the request body of a custom route, or
+in a field of that body. A table class does not validate its input. So your route
+gets a row with any id, any column and values of any type. FastAPI and Restly do
+not check for this. Use a class without `table=True`.
+:::
+
+:::{admonition} Details
+:class: details
+
+A SQLModel table class cannot be the
+{attr}`schema <fastapi_restly.views.BaseRestView.schema>`, the
+{attr}`create_schema <fastapi_restly.views.BaseRestView.create_schema>` or the
+{attr}`update_schema <fastapi_restly.views.BaseRestView.update_schema>` of a view.
+A table class does not validate its input, even on a plain FastAPI route. SQLModel
+says not to inherit from it. So the view fails when it registers. Leave the setting
+out, or set a class without `table=True`.
+
+The table class itself can be the
+{attr}`response_schema <fastapi_restly.views.BaseRestView.response_schema>`. A
+subclass of it cannot, because OpenAPI would show no required fields.
+
+A subclass of a table class also fails inside a schema of the view, such as in a
+read-only field or in an envelope of your own. Restly does not check the classes of
+a custom route, and there a subclass shows no required fields. So do not inherit
+from a table class.
+
+A table class in a field that a client can write, such as `team: Team`, also
+fails when the view registers. A client could write a row through that field, with
+any id and any column. To let a client choose a row, send its id: see
+[Embedded objects are read-only](#embedded-objects-read-only). To show the row in
+responses, mark the field `fr.ReadOnly`.
+
+The schema that Restly generates takes its fields from the columns. It does not
+take the limits in `Field(...)` or the validators of the table class. To keep
+them, put them on a data model, and let the table and the schema inherit from
+it, as SQLModel recommends:
+
+```python
+class HeroBase(SQLModel):
+    name: str = Field(max_length=50)
+
+
+class Hero(HeroBase, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+
+
+class HeroSchema(HeroBase):
+    id: fr.ReadOnly[int]
+
+
+@fr.include_view(app)
+class HeroView(fr.RestView):
+    prefix = "/heroes"
+    model = Hero
+    schema = HeroSchema
+```
+:::
+
 (schema-base-classes)=
 ## Choose a base class
 
@@ -240,7 +299,7 @@ Each kind of rule has one place:
 | The format or the range of one value | A Pydantic validator or a `Field` constraint on the schema | 422 |
 | A field that a client cannot set | [`ReadOnly`](#readonly-and-writeonly), or [your own create and update schemas](#explicit-write-schemas) | The value is ignored |
 | The shape of a JSON document | A Pydantic model as the type of the column; see [Store a Pydantic model in a JSON column](#json-document-columns) | 422 |
-| A value that its column can hold, such as a number in the range of `Integer` | Nothing for the generic types of SQLAlchemy, a `Field` constraint for other types; see [Column validation](#column-validation) | 422, or 400 in a filter |
+| A value that its column can hold, such as a number in the range of `Integer` | Nothing for the generic integer and text types of SQLAlchemy, a `Field` constraint for other types; see [Column validation](#column-validation) | 422 |
 | A referenced row must exist | {class}`fr.MustExist <fastapi_restly.schemas.MustExist>` or a reference field; see [Relationships](#reference-exists) | 404 |
 | A value must be unique | A unique constraint on the column; see [Errors](#default-exception-handling) | 409 |
 | A rule that needs the database, the stored row or the caller | The `create` or `update` business method; see [Request Lifecycle & Hooks](#business-methods) | The error that you raise |
@@ -323,9 +382,13 @@ types of SQLAlchemy, so you do not write a validator for them:
 - Text must not hold a NUL character (`\x00`).
 - Text in a request body must fit the length of a `String(n)` column.
 
-A value that does not fit gets 422 in a request body or in the path, and
-400 in a filter. A reference id that does not fit gets 404, as for a row
-that does not exist.
+A text column takes text. A field of another type over such a column, such as
+`url: HttpUrl` over `Mapped[str]`, stores the text that a response shows, here
+`https://a.example/`. A filter compares the same text, so a value from a
+response finds its row.
+
+A value that does not fit gets 422. A reference id that does not fit gets 404,
+as for a row that does not exist.
 
 :::{admonition} Details
 :class: details
@@ -338,6 +401,10 @@ that holds bigger numbers needs `BigInteger`, such as a column with a Unix
 time in milliseconds. A filter only compares a value with the column, and
 PostgreSQL compares text of any length, so the length counts only in a
 request body. A `CHAR` without a length holds one character, as in SQL.
+
+A value that has no text in a response, such as a dict, stays as it is, and so
+does a member of an enum with number values that does not inherit from `int`.
+The database driver then refuses it, because the field does not fit the column.
 
 Restly checks these types by their exact class: `Integer`, `SmallInteger`,
 `BigInteger`, `String`, `Text`, `Unicode` and `UnicodeText`, and the same
@@ -353,8 +420,11 @@ is, as in SQLAlchemy:
 
 The database then checks the value. On PostgreSQL, a value that does not
 fit is an error, and the client gets a 500. For a 422, put the limit on the
-field of the schema. Its validation runs on filter values too; see
+field of the schema. A filter does not check a `Field` limit, so for a 422 in a
+filter too, write the limit in a field validator; see
 [Filter values go through the field's validation](#filter-value-validation).
+A number in a filter is at most `1e50` in any case, and a `Decimal` has at most
+50 digits after the point.
 
 | Column | Field of the schema |
 |---|---|
@@ -524,7 +594,7 @@ a time without an offset, so give its column a field of type
 `fr.UTCDatetime`, which gives every time the offset of UTC.
 
 A time that is not between the years 1 and 9999 in UTC, such as
-`9999-12-31T23:30:00-01:00`, gets 422 in a request body and 400 in a filter.
+`9999-12-31T23:30:00-01:00`, gets 422.
 
 A `date`, and a time of day of type `time`, have no rule. A time of day has
 no date, so summer time can change its time in UTC. A `time` column without
@@ -785,12 +855,19 @@ generated client then breaks.
 
 When the app builds its OpenAPI spec, Restly checks for this and warns with a
 {class}`RestlyDuplicateSchemaNameWarning <fastapi_restly.exc.RestlyDuplicateSchemaNameWarning>`
-that names the classes and the views. Restly checks an app that you pass to
+that names the classes and the CRUD views. Restly checks an app that you pass to
 {func}`fr.configure(app, ...) <fastapi_restly.db.configure>` or
 {func}`configure_tests(app=...) <fastapi_restly.testing.configure_tests>`, or
 that you include a view on. Two classes with the same name are not a problem
 when their JSON schemas are the same, docstrings and defaults included:
 OpenAPI then shows them as one.
+
+Restly runs this check in the app's `app.openapi()`. FastAPI's function
+`get_openapi()` does not run it. So to write the spec to a file, call
+`app.openapi()`. Restly wraps `app.openapi` when the first view is included on
+the app, or when you pass the app to `fr.configure`. An `app.openapi` of your
+own that you set after that replaces Restly's. Set it before, and Restly wraps
+it.
 :::
 
 (name-the-view-schemas)=
@@ -889,7 +966,7 @@ type checkers do not accept them in an annotation, as in
 `data: UserResponse`. At runtime they are normal classes, so add
 `# type: ignore[valid-type]` on such a line.
 
-A custom route that names `UserSchema` or `PaginatedEnvelope[UserSchema]`
+A custom route that names `UserSchema` or `NumberedEnvelope[UserSchema]`
 shows a type of its own in OpenAPI. Restly does not fill such a class from a
 `ListResult`. So the route calls `to_list_response` itself.
 

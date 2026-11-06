@@ -675,7 +675,16 @@ the converter only to a path parameter annotated
 accept negative integer ids, replace each item endpoint you need with an
 untyped path such as <code class="docutils literal notranslate"><span class="pre">&#64;fr.get(&quot;/{id}&quot;)</span></code>, and annotate its <code class="docutils literal notranslate"><span class="pre">id</span></code> parameter as
 <code class="docutils literal notranslate"><span class="pre">int</span></code>; see
-<a class="reference internal" href="lifecycle.html#replace-endpoint-method"><span class="std std-ref">Change the status code or headers of one route</span></a>.</p>
+<a class="reference internal" href="lifecycle.html#replace-endpoint-method"><span class="std std-ref">Replace the endpoint method of one route</span></a>.</p>
+<p>The item routes use the name <code class="docutils literal notranslate"><span class="pre">id</span></code> in the path. An existing API can use another
+name, such as <code class="docutils literal notranslate"><span class="pre">{user_id}</span></code>. The URLs are the same, but OpenAPI and the clients that
+are generated from it show the name. To keep that name, replace each item endpoint,
+and <code class="docutils literal notranslate"><span class="pre">put</span></code> on a React Admin view, with a path such as <code class="docutils literal notranslate"><span class="pre">&#64;fr.get(&quot;/{user_id:int}&quot;)</span></code> and
+a parameter <code class="docutils literal notranslate"><span class="pre">user_id:</span> <span class="pre">int</span></code>. With the converter, a wrong value still answers <code class="docutils literal notranslate"><span class="pre">404</span></code>,
+and <code class="docutils literal notranslate"><span class="pre">/users/me</span></code> still works after the view.</p>
+<p>OpenAPI does not allow two paths that differ only in the names of their
+parameters. So <code class="docutils literal notranslate"><span class="pre">/{id}</span></code> next to <code class="docutils literal notranslate"><span class="pre">/{user_id}</span></code> on one view raises an error when you
+register the view. Use the same name in both paths.</p>
 </div>
 </section>
 </section>
@@ -733,22 +742,25 @@ shows which fields each schema takes.</p>
 <tr class="row-even"><td><p>Other page limits, parameter names or list envelope</p></td>
 <td><p>Set <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.pagination" title="fastapi_restly.views.BaseRestView.pagination"><code class="xref py py-attr docutils literal notranslate"><span class="pre">pagination</span></code></a> to a <a class="reference internal" href="api/views.html#fastapi_restly.views.NumberedPagination" title="fastapi_restly.views.NumberedPagination"><code class="xref py py-class docutils literal notranslate"><span class="pre">NumberedPagination</span></code></a> (<a class="reference internal" href="view_reference.html#pagination-settings"><span class="std std-ref">Pagination settings</span></a>)</p></td>
 </tr>
-<tr class="row-odd"><td><p>Fewer filter or sort keys on a list</p></td>
+<tr class="row-odd"><td><p>A list with <code class="docutils literal notranslate"><span class="pre">limit</span></code> and <code class="docutils literal notranslate"><span class="pre">offset</span></code></p></td>
+<td><p>Set <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.pagination" title="fastapi_restly.views.BaseRestView.pagination"><code class="xref py py-attr docutils literal notranslate"><span class="pre">pagination</span></code></a> to an <a class="reference internal" href="api/views.html#fastapi_restly.views.OffsetPagination" title="fastapi_restly.views.OffsetPagination"><code class="xref py py-class docutils literal notranslate"><span class="pre">OffsetPagination</span></code></a> (<a class="reference internal" href="filtering.html#limit-offset-pagination"><span class="std std-ref">Page with limit and offset</span></a>)</p></td>
+</tr>
+<tr class="row-even"><td><p>Fewer filter or sort keys on a list</p></td>
 <td><p>Set <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.include_filters" title="fastapi_restly.views.BaseRestView.include_filters"><code class="xref py py-attr docutils literal notranslate"><span class="pre">include_filters</span></code></a> or <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.include_sort_keys" title="fastapi_restly.views.BaseRestView.include_sort_keys"><code class="xref py py-attr docutils literal notranslate"><span class="pre">include_sort_keys</span></code></a> (<a class="reference internal" href="filtering.html#choose-list-keys"><span class="std std-ref">Choose the keys of a list</span></a>)</p></td>
 </tr>
-<tr class="row-even"><td><p>A list filter of your own</p></td>
+<tr class="row-odd"><td><p>A list filter of your own</p></td>
 <td><p>Decorate a method with <a class="reference internal" href="api/views.html#fastapi_restly.views.list_filter" title="fastapi_restly.views.list_filter"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.list_filter</span></code></a> (<a class="reference internal" href="filtering.html#own-list-filter"><span class="std std-ref">Add a filter of your own</span></a>)</p></td>
 </tr>
-<tr class="row-odd"><td><p>A query key of your own next to the list params, not a filter</p></td>
+<tr class="row-even"><td><p>A query key of your own next to the list params, not a filter</p></td>
 <td><p>Declare it on the endpoint method or in a dependency (<a class="reference internal" href="filtering.html#extra-query-parameters"><span class="std std-ref">Accept extra query parameters</span></a>)</p></td>
 </tr>
-<tr class="row-even"><td><p>OpenAPI metadata or dependencies on every route</p></td>
+<tr class="row-odd"><td><p>OpenAPI metadata or dependencies on every route</p></td>
 <td><p>Set <a class="reference internal" href="api/views.html#fastapi_restly.views.View.tags" title="fastapi_restly.views.View.tags"><code class="xref py py-attr docutils literal notranslate"><span class="pre">tags</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.View.responses" title="fastapi_restly.views.View.responses"><code class="xref py py-attr docutils literal notranslate"><span class="pre">responses</span></code></a> or <a class="reference internal" href="api/views.html#fastapi_restly.views.View.dependencies" title="fastapi_restly.views.View.dependencies"><code class="xref py py-attr docutils literal notranslate"><span class="pre">dependencies</span></code></a> (<a class="reference internal" href="views.html#share-behaviour-with-base-views"><span class="std std-ref">Share behavior with base views</span></a>)</p></td>
 </tr>
-<tr class="row-odd"><td><p>A route name, summary or operation ID</p></td>
-<td><p>Override the endpoint method with a decorator of your own (<a class="reference internal" href="openapi.html#crud-route-metadata"><span class="std std-ref">OpenAPI</span></a>)</p></td>
+<tr class="row-even"><td><p>One option of a route, such as its name, status code or dependencies</p></td>
+<td><p>Use <a class="reference internal" href="api/views.html#fastapi_restly.views.modify_route" title="fastapi_restly.views.modify_route"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.modify_route</span></code></a> under the name of the route method (<a class="reference internal" href="#modify-route">Change one option of a route</a>)</p></td>
 </tr>
-<tr class="row-even"><td><p>Another session for one view</p></td>
+<tr class="row-odd"><td><p>Another session for one view</p></td>
 <td><p>Override the <code class="docutils literal notranslate"><span class="pre">session</span></code> annotation (<a class="reference internal" href="database.html#session-dependency-one-view"><span class="std std-ref">Database &amp; Configuration</span></a>)</p></td>
 </tr>
 </tbody>
@@ -756,6 +768,88 @@ shows which fields each schema takes.</p>
 </div>
 <p><a class="reference internal" href="view_reference.html#view-class-attributes"><span class="std std-ref">View Reference</span></a> lists the type and the default of
 each attribute.</p>
+<section id="change-one-option-of-a-route">
+<span id="modify-route"></span><h3>Change one option of a route<a class="headerlink" href="#change-one-option-of-a-route" title="Link to this heading">#</a></h3>
+<p>To change one option of a route that a view inherits, use
+<a class="reference internal" href="api/views.html#fastapi_restly.views.modify_route" title="fastapi_restly.views.modify_route"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.modify_route</span></code></a> under the name of
+the route method. The route keeps its method and its other options:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">InvoiceView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">"/invoices"</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Invoice</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">InvoiceSchema</span>
+
+    <span class="n">get_many_endpoint</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">modify_route</span><span class="p">(</span>
+        <span class="n">summary</span><span class="o">=</span><span class="s2">"List invoices"</span><span class="p">,</span> <span class="n">operation_id</span><span class="o">=</span><span class="s2">"billing_list_invoices"</span>
+    <span class="p">)</span>
+    <span class="n">create_endpoint</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">modify_route</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+    <span class="n">update_endpoint</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">modify_route</span><span class="p">(</span><span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">"PUT"</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>This changes the route of this view and its subclasses. The route of the base
+class stays the same.</p>
+<p>It takes the same arguments as a route decorator. The hooks of the view run as
+before. Restly still fills in what you do not pass: the list params, the name,
+the summary and the operation ID. When you pass <code class="docutils literal notranslate"><span class="pre">name</span></code>, FastAPI makes the
+summary and the operation ID from that name, unless you pass them too. The
+table in <a class="reference internal" href="openapi.html#default-route-metadata"><span class="std std-ref">The names and operation IDs of the CRUD routes</span></a>
+lists the endpoint methods.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p>Each argument replaces the one of the inherited route. <code class="docutils literal notranslate"><span class="pre">dependencies</span></code> and
+<code class="docutils literal notranslate"><span class="pre">responses</span></code> add up, as they do on a view. <code class="docutils literal notranslate"><span class="pre">dependencies</span></code> run base first, so a
+subclass cannot remove a check of its base. <code class="docutils literal notranslate"><span class="pre">responses</span></code> add up per status code,
+and a status code set to <code class="docutils literal notranslate"><span class="pre">None</span></code> is left out:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="n">delete_endpoint</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">modify_route</span><span class="p">(</span><span class="n">dependencies</span><span class="o">=</span><span class="p">[</span><span class="n">Depends</span><span class="p">(</span><span class="n">require_admin</span><span class="p">)])</span>
+    <span class="n">get_one_endpoint</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">modify_route</span><span class="p">(</span><span class="n">responses</span><span class="o">=</span><span class="p">{</span><span class="mi">404</span><span class="p">:</span> <span class="kc">None</span><span class="p">})</span>
+</pre></div>
+</div>
+<p>FastAPI adds the 422 response itself, so <code class="docutils literal notranslate"><span class="pre">{422:</span> <span class="pre">None}</span></code> does not remove it.</p>
+<p><code class="docutils literal notranslate"><span class="pre">path</span></code> replaces the path of the route, as in <code class="docutils literal notranslate"><span class="pre">fr.modify_route(&quot;/new&quot;)</span></code>. Restly
+also serves the list route and the create route at <code class="docutils literal notranslate"><span class="pre">/invoices/</span></code>, with a slash at
+the end, hidden from OpenAPI. To leave out these hidden routes, set <code class="docutils literal notranslate"><span class="pre">path=&quot;&quot;</span></code> on
+the list route and on the create route. In a new path of an item route, write
+<code class="docutils literal notranslate"><span class="pre">{id}</span></code>. A path such as <code class="docutils literal notranslate"><span class="pre">/{role_id}</span></code> raises an error when the view registers: the
+method reads <code class="docutils literal notranslate"><span class="pre">id</span></code>, so nothing would read <code class="docutils literal notranslate"><span class="pre">role_id</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">methods=[&quot;PUT&quot;]</span></code> changes only the HTTP method. The route still updates only the
+fields that the client sends. A React Admin view already has a <code class="docutils literal notranslate"><span class="pre">PUT</span></code> route,
+<code class="docutils literal notranslate"><span class="pre">put</span></code>. So there, <code class="docutils literal notranslate"><span class="pre">methods=[&quot;PUT&quot;]</span></code> on <code class="docutils literal notranslate"><span class="pre">update_endpoint</span></code> raises an error, because
+two routes would have the same path and HTTP method. A status code without a
+body, such as 204, also removes the response model of the route. For the list
+route, set <code class="docutils literal notranslate"><span class="pre">list_response_schema</span></code>, not <code class="docutils literal notranslate"><span class="pre">response_model</span></code>. For a delete with a
+body, write the method.</p>
+<p>An option does not change the order of the routes. So a route that the
+class writes, such as <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/stats</span></code>, stays before the item route.</p>
+<p>A subclass inherits the options and can change them further. A plain class can
+hold options for several views. Put it before the view class, as in
+<code class="docutils literal notranslate"><span class="pre">class</span> <span class="pre">TagView(QuietRoutes,</span> <span class="pre">fr.AsyncRestView)</span></code>, as for any other method of a mixin.
+After the view class, the options would do nothing, so Restly raises an error
+when Python defines the class.</p>
+<p>A name that is not a route of a base class raises
+<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyConfigurationError" title="fastapi_restly.exc.RestlyConfigurationError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code></a>
+when Python defines the class. Use <code class="docutils literal notranslate"><span class="pre">fr.modify_route</span></code> in the class body. An
+argument that FastAPI does not know raises a <code class="docutils literal notranslate"><span class="pre">TypeError</span></code> when the view registers,
+as it does on a route decorator.</p>
+<p>A method with a route decorator states the whole route. So options from a base
+class do not apply to it. Write such a method when the change needs code, such as
+a decorator on the route or a response header. It can call the method of the base
+class, so the route works as before:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">"/"</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_endpoint</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">CreateSchema</span><span class="p">,</span> <span class="n">response</span><span class="p">:</span> <span class="n">Response</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ResponseSchema</span><span class="p">:</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">create_endpoint</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">url</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">"/"</span><span class="p">)</span>
+        <span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">"Location"</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">obj</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">"</span>
+        <span class="k">return</span> <span class="n">obj</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">ResponseSchema</span></code> keeps the view’s response as the response model; see
+<a class="reference internal" href="schemas.html#name-the-view-schemas"><span class="std std-ref">Name the view’s schemas in a custom route</span></a>. An item
+route that you declare, such as <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/{id}</span></code>, keeps the path that you give it.
+Restly adds the <code class="docutils literal notranslate"><span class="pre">int</span></code> or <code class="docutils literal notranslate"><span class="pre">uuid</span></code> converter only to a path parameter annotated
+<code class="docutils literal notranslate"><span class="pre">IDType</span></code>; see <a class="reference internal" href="#item-route-matching">Item paths and static routes</a>.</p>
+</div>
+</section>
 </section>
 <section id="exclude-crud-routes">
 <span id="id3"></span><h2>Exclude CRUD routes<a class="headerlink" href="#exclude-crud-routes" title="Link to this heading">#</a></h2>
@@ -1131,12 +1225,6 @@ read-only there. Give <code class="docutils literal notranslate"><span class="pr
 <code class="docutils literal notranslate"><span class="pre">project_id</span></code> read-only in <code class="docutils literal notranslate"><span class="pre">TaskSchema</span></code>; see <a class="reference internal" href="#nested-create">Create a child</a>.</p></li>
 <li><p>Both views appear under the “Tasks” tag in OpenAPI, unless you set
 <a class="reference internal" href="api/views.html#fastapi_restly.views.View.tags" title="fastapi_restly.views.View.tags"><code class="xref py py-attr docutils literal notranslate"><span class="pre">tags</span></code></a>.</p></li>
-<li><p>OpenAPI marks a field that refers to a task, such as
-<code class="docutils literal notranslate"><span class="pre">fr.MustExist[int,</span> <span class="pre">Task]</span></code>, with <code class="docutils literal notranslate"><span class="pre">x-resource-ref</span></code>. Its value comes from the
-prefix of the last view of <code class="docutils literal notranslate"><span class="pre">Task</span></code> that you register. Register the flat view
-after the nested one, so the value is <code class="docutils literal notranslate"><span class="pre">tasks</span></code>. With only a nested view, the
-value is <code class="docutils literal notranslate"><span class="pre">projects/{project_id}/tasks</span></code>, which a client cannot use as a
-resource name.</p></li>
 </ul>
 </section>
 </section>
@@ -1228,7 +1316,10 @@ views.</p></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#set-the-model-and-the-schemas">Set the model and the schemas</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#configure-a-crud-view">Configure a CRUD view</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#configure-a-crud-view">Configure a CRUD view</a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#change-one-option-of-a-route">Change one option of a route</a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#exclude-crud-routes">Exclude CRUD routes</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#nest-a-resource-under-its-parent">Nest a resource under its parent</a><ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nest-one-level">Nest one level</a></li>

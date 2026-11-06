@@ -568,8 +568,8 @@
 <td><p>A list of FastAPI dependencies, such as <code class="docutils literal notranslate"><span class="pre">[Depends(require_login)]</span></code>, run for every route in the view. Each class in the hierarchy adds its own, base first.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.View.responses" title="fastapi_restly.views.View.responses"><code class="xref py py-attr docutils literal notranslate"><span class="pre">responses</span></code></a></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">ClassVar[dict[int</span> <span class="pre">|</span> <span class="pre">str,</span> <span class="pre">dict[str,</span> <span class="pre">Any]]]</span></code></p></td>
-<td><p>OpenAPI response overrides. <code class="docutils literal notranslate"><span class="pre">View</span></code> defaults to <code class="docutils literal notranslate"><span class="pre">{}</span></code>; <code class="docutils literal notranslate"><span class="pre">BaseRestView</span></code> defaults to <code class="docutils literal notranslate"><span class="pre">{404:</span> <span class="pre">{&quot;description&quot;:</span> <span class="pre">&quot;Not</span> <span class="pre">found&quot;}}</span></code>. Each class in the hierarchy adds its own, and a subclass’s entry for a status code wins.</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ClassVar[dict[int</span> <span class="pre">|</span> <span class="pre">str,</span> <span class="pre">dict[str,</span> <span class="pre">Any]</span> <span class="pre">|</span> <span class="pre">None]]</span></code></p></td>
+<td><p>OpenAPI responses on every route. The default is <code class="docutils literal notranslate"><span class="pre">{}</span></code>. Each class in the hierarchy adds its own, and a subclass’s entry for a status code wins. A status code set to <code class="docutils literal notranslate"><span class="pre">None</span></code> is left out. A route of a CRUD view also documents <code class="docutils literal notranslate"><span class="pre">404</span></code> when it can answer it; see <a class="reference internal" href="openapi.html#view-openapi-metadata"><span class="std std-ref">Set tags and responses for a whole view</span></a>.</p></td>
 </tr>
 </tbody>
 </table>
@@ -627,15 +627,15 @@ class also takes a <a class="reference internal" href="api/views.html#fastapi_re
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.include_filters" title="fastapi_restly.views.BaseRestView.include_filters"><code class="xref py py-attr docutils literal notranslate"><span class="pre">include_filters</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">ClassVar[tuple[str,</span> <span class="pre">...]]</span></code></p></td>
-<td><p>The filter keys to keep, as keys or patterns. <code class="docutils literal notranslate"><span class="pre">*</span></code> matches any characters except <code class="docutils literal notranslate"><span class="pre">.</span></code>. <code class="docutils literal notranslate"><span class="pre">(&quot;*&quot;,)</span></code> by default: the keys of the resource’s own fields, and no dotted keys. See <a class="reference internal" href="filtering.html#choose-list-keys"><span class="std std-ref">Choose the keys of a list</span></a>.</p></td>
+<td><p>The filter keys to keep, as keys with the Python names of the fields, or patterns. <code class="docutils literal notranslate"><span class="pre">*</span></code> matches any characters except <code class="docutils literal notranslate"><span class="pre">.</span></code>. <code class="docutils literal notranslate"><span class="pre">(&quot;*&quot;,)</span></code> by default: the keys of the resource’s own fields, and no dotted keys. See <a class="reference internal" href="filtering.html#choose-list-keys"><span class="std std-ref">Choose the keys of a list</span></a>.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.exclude_filters" title="fastapi_restly.views.BaseRestView.exclude_filters"><code class="xref py py-attr docutils literal notranslate"><span class="pre">exclude_filters</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">ClassVar[tuple[str,</span> <span class="pre">...]]</span></code></p></td>
-<td><p>The filter keys to leave out, after <code class="docutils literal notranslate"><span class="pre">include_filters</span></code>. <code class="docutils literal notranslate"><span class="pre">()</span></code> by default.</p></td>
+<td><p>The filter keys to leave out, after <code class="docutils literal notranslate"><span class="pre">include_filters</span></code>. A name without a suffix leaves out the whole field. <code class="docutils literal notranslate"><span class="pre">()</span></code> by default.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.include_sort_keys" title="fastapi_restly.views.BaseRestView.include_sort_keys"><code class="xref py py-attr docutils literal notranslate"><span class="pre">include_sort_keys</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">ClassVar[tuple[str,</span> <span class="pre">...]]</span></code></p></td>
-<td><p>The keys that <code class="docutils literal notranslate"><span class="pre">sort</span></code> accepts, as keys or patterns. <code class="docutils literal notranslate"><span class="pre">(&quot;*&quot;,)</span></code> by default: the resource’s own fields. <code class="docutils literal notranslate"><span class="pre">()</span></code> removes the <code class="docutils literal notranslate"><span class="pre">sort</span></code> parameter.</p></td>
+<td><p>The keys that <code class="docutils literal notranslate"><span class="pre">sort</span></code> accepts, as the Python names of the fields, or patterns. <code class="docutils literal notranslate"><span class="pre">(&quot;*&quot;,)</span></code> by default: the resource’s own fields. <code class="docutils literal notranslate"><span class="pre">()</span></code> removes the <code class="docutils literal notranslate"><span class="pre">sort</span></code> parameter.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.exclude_sort_keys" title="fastapi_restly.views.BaseRestView.exclude_sort_keys"><code class="xref py py-attr docutils literal notranslate"><span class="pre">exclude_sort_keys</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">ClassVar[tuple[str,</span> <span class="pre">...]]</span></code></p></td>
@@ -647,15 +647,15 @@ class also takes a <a class="reference internal" href="api/views.html#fastapi_re
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.default_sort" title="fastapi_restly.views.BaseRestView.default_sort"><code class="xref py py-attr docutils literal notranslate"><span class="pre">default_sort</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">ClassVar[str</span> <span class="pre">|</span> <span class="pre">None]</span></code></p></td>
-<td><p>The sort when the request has none, written as the client writes <code class="docutils literal notranslate"><span class="pre">sort</span></code>, such as <code class="docutils literal notranslate"><span class="pre">&quot;-created_at&quot;</span></code>. <code class="docutils literal notranslate"><span class="pre">None</span></code> by default: the primary key order. See <a class="reference internal" href="filtering.html#sort-a-list"><span class="std std-ref">Sort a list</span></a>.</p></td>
+<td><p>The sort when the request has none, written as <code class="docutils literal notranslate"><span class="pre">sort</span></code> with the Python names of the fields, such as <code class="docutils literal notranslate"><span class="pre">&quot;-created_at&quot;</span></code>. <code class="docutils literal notranslate"><span class="pre">None</span></code> by default: the primary key order. See <a class="reference internal" href="filtering.html#sort-a-list"><span class="std std-ref">Sort a list</span></a>.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.sort_nulls" title="fastapi_restly.views.BaseRestView.sort_nulls"><code class="xref py py-attr docutils literal notranslate"><span class="pre">sort_nulls</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">ClassVar[Literal[&quot;first&quot;,</span> <span class="pre">&quot;last&quot;]</span> <span class="pre">|</span> <span class="pre">None]</span></code></p></td>
 <td><p>Where a sort puts NULLs. <code class="docutils literal notranslate"><span class="pre">&quot;last&quot;</span></code> by default: last in both directions, on every database. <code class="docutils literal notranslate"><span class="pre">None</span></code> leaves them where the database puts them. See <a class="reference internal" href="filtering.html#sort-nulls"><span class="std std-ref">Where NULLs go</span></a>.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.pagination" title="fastapi_restly.views.BaseRestView.pagination"><code class="xref py py-attr docutils literal notranslate"><span class="pre">pagination</span></code></a></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">ClassVar[NumberedPagination</span> <span class="pre">|</span> <span class="pre">NoPagination</span> <span class="pre">|</span> <span class="pre">None]</span></code></p></td>
-<td><p>How list endpoints paginate, <code class="docutils literal notranslate"><span class="pre">NumberedPagination()</span></code> by default. A <code class="docutils literal notranslate"><span class="pre">NoPagination</span></code> returns every row and runs no count query; <code class="docutils literal notranslate"><span class="pre">None</span></code> is short for <code class="docutils literal notranslate"><span class="pre">NoPagination()</span></code>, a plain <code class="docutils literal notranslate"><span class="pre">Envelope</span></code> (<code class="docutils literal notranslate"><span class="pre">data</span></code> only). Views inherit it, so a project base view sets it once. See <a class="reference internal" href="#pagination-settings">Pagination settings</a>.</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ClassVar[Pagination</span> <span class="pre">|</span> <span class="pre">None]</span></code></p></td>
+<td><p>How list endpoints paginate, <code class="docutils literal notranslate"><span class="pre">NumberedPagination()</span></code> by default. An <code class="docutils literal notranslate"><span class="pre">OffsetPagination</span></code> pages with <code class="docutils literal notranslate"><span class="pre">limit</span></code> and <code class="docutils literal notranslate"><span class="pre">offset</span></code>. A <code class="docutils literal notranslate"><span class="pre">NoPagination</span></code> returns every row and runs no count query; <code class="docutils literal notranslate"><span class="pre">None</span></code> is short for <code class="docutils literal notranslate"><span class="pre">NoPagination()</span></code>, a plain <code class="docutils literal notranslate"><span class="pre">Envelope</span></code> (<code class="docutils literal notranslate"><span class="pre">data</span></code> only). Views inherit it, so a project base view sets it once. See <a class="reference internal" href="#pagination-settings">Pagination settings</a>.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.scope" title="fastapi_restly.views.BaseRestView.scope"><code class="xref py py-attr docutils literal notranslate"><span class="pre">scope</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">ClassVar[WhereClause</span> <span class="pre">|</span> <span class="pre">None]</span></code></p></td>
@@ -665,7 +665,11 @@ class also takes a <a class="reference internal" href="api/views.html#fastapi_re
 <td><p><code class="docutils literal notranslate"><span class="pre">ClassVar[Literal[&quot;forbid&quot;,</span> <span class="pre">&quot;ignore&quot;]]</span></code></p></td>
 <td><p>What a list route does with a query key that it does not read. <code class="docutils literal notranslate"><span class="pre">&quot;forbid&quot;</span></code> (the default) answers <code class="docutils literal notranslate"><span class="pre">422</span></code>. <code class="docutils literal notranslate"><span class="pre">&quot;ignore&quot;</span></code> leaves the key out, as FastAPI does. See <a class="reference internal" href="filtering.html#extra-query-parameters"><span class="std std-ref">Accept extra query parameters</span></a>.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Action</span></code></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.atomic_write_actions" title="fastapi_restly.views.BaseRestView.atomic_write_actions"><code class="xref py py-attr docutils literal notranslate"><span class="pre">atomic_write_actions</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ClassVar[bool]</span></code></p></td>
+<td><p>Whether each write action is one transaction. <code class="docutils literal notranslate"><span class="pre">True</span></code> (the default) refuses a <code class="docutils literal notranslate"><span class="pre">session.commit()</span></code> in the action. <code class="docutils literal notranslate"><span class="pre">False</span></code> allows it, for code that must commit, and opens no savepoint. See <a class="reference internal" href="lifecycle.html#atomic-write-actions"><span class="std std-ref">Code that must commit in a write action</span></a>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Action</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">type[fr.Action]</span></code></p></td>
 <td><p>The view’s actions: the values that <code class="docutils literal notranslate"><span class="pre">authorize</span></code> and the transaction hooks get. <a class="reference internal" href="api/views.html#fastapi_restly.views.Action" title="fastapi_restly.views.Action"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.Action</span></code></a> (the five CRUD actions) by default. A view with actions of its own declares a subclass with the same name, and inherits from the <code class="docutils literal notranslate"><span class="pre">Action</span></code> class of each base that has one. An action is an UPPER_CASE name with that name in lower case as its value. <code class="docutils literal notranslate"><span class="pre">write_action</span></code> takes only a declared action. See <a class="reference internal" href="authorization.html#action-names"><span class="std std-ref">Action names</span></a>.</p></td>
 </tr>
@@ -706,8 +710,45 @@ checked copy:</p>
 <td><p>Query parameter for the page size.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">envelope</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">PaginatedEnvelope</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">NumberedEnvelope</span></code></p></td>
 <td><p>The list response model: a generic model filled by field name from <code class="docutils literal notranslate"><span class="pre">data</span></code>, <code class="docutils literal notranslate"><span class="pre">total_count</span></code>, <code class="docutils literal notranslate"><span class="pre">page</span></code>, <code class="docutils literal notranslate"><span class="pre">page_size</span></code> and <code class="docutils literal notranslate"><span class="pre">total_pages</span></code>.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><a class="reference internal" href="api/views.html#fastapi_restly.views.OffsetPagination" title="fastapi_restly.views.OffsetPagination"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.OffsetPagination</span></code></a> holds the
+settings of a list with <code class="docutils literal notranslate"><span class="pre">limit</span></code> and <code class="docutils literal notranslate"><span class="pre">offset</span></code>, in the same way:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Setting</p></th>
+<th class="head"><p>Default</p></th>
+<th class="head"><p>Purpose</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.OffsetPagination.default_limit" title="fastapi_restly.views.OffsetPagination.default_limit"><code class="xref py py-attr docutils literal notranslate"><span class="pre">default_limit</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">50</span></code></p></td>
+<td><p>Limit when the client sends none.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.OffsetPagination.max_limit" title="fastapi_restly.views.OffsetPagination.max_limit"><code class="xref py py-attr docutils literal notranslate"><span class="pre">max_limit</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">1000</span></code></p></td>
+<td><p>Largest limit a client may ask for; a larger one is rejected with <code class="docutils literal notranslate"><span class="pre">422</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.OffsetPagination.max_offset" title="fastapi_restly.views.OffsetPagination.max_offset"><code class="xref py py-attr docutils literal notranslate"><span class="pre">max_offset</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p>Largest offset a client may ask for; a larger one is rejected with <code class="docutils literal notranslate"><span class="pre">422</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.OffsetPagination.limit_query_param" title="fastapi_restly.views.OffsetPagination.limit_query_param"><code class="xref py py-attr docutils literal notranslate"><span class="pre">limit_query_param</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&quot;limit&quot;</span></code></p></td>
+<td><p>Query parameter for the limit.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.OffsetPagination.offset_query_param" title="fastapi_restly.views.OffsetPagination.offset_query_param"><code class="xref py py-attr docutils literal notranslate"><span class="pre">offset_query_param</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&quot;offset&quot;</span></code></p></td>
+<td><p>Query parameter for the offset.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">envelope</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">OffsetEnvelope</span></code></p></td>
+<td><p>The list response model: a generic model filled by field name from <code class="docutils literal notranslate"><span class="pre">data</span></code>, <code class="docutils literal notranslate"><span class="pre">total_count</span></code>, <code class="docutils literal notranslate"><span class="pre">limit</span></code> and <code class="docutils literal notranslate"><span class="pre">offset</span></code>.</p></td>
 </tr>
 </tbody>
 </table>
@@ -715,6 +756,8 @@ checked copy:</p>
 <p><a class="reference internal" href="api/views.html#fastapi_restly.views.NoPagination" title="fastapi_restly.views.NoPagination"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.NoPagination</span></code></a> has one setting,
 <code class="docutils literal notranslate"><span class="pre">envelope</span></code>, <code class="docutils literal notranslate"><span class="pre">Envelope</span></code> by
 default, filled from <code class="docutils literal notranslate"><span class="pre">data</span></code> and <code class="docutils literal notranslate"><span class="pre">total_count</span></code>, the number of rows.</p>
+<p><a class="reference internal" href="api/views.html#fastapi_restly.views.Pagination" title="fastapi_restly.views.Pagination"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.Pagination</span></code></a> is the base class of the
+three. Use it to annotate the setting on a base view.</p>
 <p>The envelope’s shape and custom alternatives are covered in
 <a class="reference internal" href="responses.html"><span class="std std-doc">Responses</span></a>.</p>
 </section>
@@ -758,6 +801,11 @@ default, filled from <code class="docutils literal notranslate"><span class="pre
 </table>
 </div>
 <p>The shorthand decorators explicitly set the default status code shown. Pass <code class="docutils literal notranslate"><span class="pre">status_code=</span></code> to override it.</p>
+<p>To change the options of a route that a class inherits, use
+<a class="reference internal" href="api/views.html#fastapi_restly.views.modify_route" title="fastapi_restly.views.modify_route"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.modify_route</span></code></a> under the name of
+the route method; see <a class="reference internal" href="crud_routes.html#modify-route"><span class="std std-ref">Change one option of a route</span></a>.</p>
+<p>To add a decorator from another library, such as a rate limit, see
+<a class="reference internal" href="views.html#decorators-on-view-methods"><span class="std std-ref">Add a decorator of your own</span></a>.</p>
 <p>Other keyword arguments pass through to FastAPI route registration: <code class="docutils literal notranslate"><span class="pre">response_model=</span></code>, <code class="docutils literal notranslate"><span class="pre">dependencies=</span></code>, <code class="docutils literal notranslate"><span class="pre">responses=</span></code>, <code class="docutils literal notranslate"><span class="pre">tags=</span></code>, and other <code class="docutils literal notranslate"><span class="pre">APIRouter.add_api_route()</span></code> options.</p>
 <p><code class="docutils literal notranslate"><span class="pre">&#64;fr.put(...)</span></code> is available for custom endpoints, but the default update route
 uses <code class="docutils literal notranslate"><span class="pre">PATCH</span></code>.</p>
@@ -819,8 +867,8 @@ names are identical between variants.</p>
 <tr class="row-even"><td><p>Endpoint method</p></td>
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.delete_endpoint" title="fastapi_restly.views.RestView.delete_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">delete_endpoint</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">(id)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">fastapi.Response</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">DELETE</span> <span class="pre">/{id}</span></code>; returns <code class="docutils literal notranslate"><span class="pre">204</span></code> by default.</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">DELETE</span> <span class="pre">/{id}</span></code>; answers <code class="docutils literal notranslate"><span class="pre">204</span></code> by default.</p></td>
 </tr>
 <tr class="row-odd"><td><p>Handler</p></td>
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_get_many" title="fastapi_restly.views.RestView.handle_get_many"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_get_many</span></code></a></p></td>
@@ -946,7 +994,7 @@ names are identical between variants.</p>
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.before_action_commit" title="fastapi_restly.views.RestView.before_action_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">before_action_commit</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">(action,</span> <span class="pre">new,</span> <span class="pre">old=None)</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>In-transaction side effect (outbox/audit rows), atomic with the write. <code class="docutils literal notranslate"><span class="pre">old</span></code> is the pre-mutation snapshot dict.</p></td>
+<td><p>In-transaction side effect (outbox/audit rows), atomic with the write, unless the view sets <code class="docutils literal notranslate"><span class="pre">atomic_write_actions</span> <span class="pre">=</span> <span class="pre">False</span></code>. <code class="docutils literal notranslate"><span class="pre">old</span></code> is the pre-mutation snapshot dict.</p></td>
 </tr>
 <tr class="row-even"><td><p>Override point</p></td>
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.after_action_commit" title="fastapi_restly.views.RestView.after_action_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">after_action_commit</span></code></a></p></td>

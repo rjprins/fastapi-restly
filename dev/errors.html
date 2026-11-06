@@ -564,7 +564,7 @@ a <code class="docutils literal notranslate"><span class="pre">fastapi.HTTPExcep
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="api/exc.html#fastapi_restly.exc.BadQueryParam" title="fastapi_restly.exc.BadQueryParam"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.exc.BadQueryParam</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">400</span></code></p></td>
-<td><p>Restly cannot apply a value of the list params, such as a filter value that fails the validation of its field.</p></td>
+<td><p>Restly cannot apply a value that the list params did not validate, such as a key inside the <code class="docutils literal notranslate"><span class="pre">filter</span></code> of a react-admin view.</p></td>
 </tr>
 </tbody>
 </table>
@@ -606,40 +606,34 @@ are there too.</p>
 </section>
 <section id="why-a-bad-list-request-returns-422-or-400">
 <span id="list-request-errors"></span><h2>Why a bad list request returns 422 or 400<a class="headerlink" href="#why-a-bad-list-request-returns-422-or-400" title="Link to this heading">#</a></h2>
-<p>Two steps check the query string of a list endpoint, and each has its own
-status code:</p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">422</span></code>: the query string does not match the
-<a class="reference internal" href="filtering.html"><span class="std std-doc">list params</span></a>. This covers an unknown key,
-such as <code class="docutils literal notranslate"><span class="pre">?nope=1</span></code>, a sort key that the list does not have, such as
-<code class="docutils literal notranslate"><span class="pre">?sort=nope</span></code>, and a value of the wrong type for a typed parameter, such as
-<code class="docutils literal notranslate"><span class="pre">?page_size=oops</span></code>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">400</span></code>: the key is known, but Restly cannot apply the value. Restly raises
-<a class="reference internal" href="api/exc.html#fastapi_restly.exc.BadQueryParam" title="fastapi_restly.exc.BadQueryParam"><code class="xref py py-class docutils literal notranslate"><span class="pre">BadQueryParam</span></code></a> for a filter
-value that fails the field’s <a class="reference internal" href="filtering.html#filter-value-validation"><span class="std std-ref">validation</span></a>, such
-as <code class="docutils literal notranslate"><span class="pre">?age=old</span></code> on an <code class="docutils literal notranslate"><span class="pre">int</span></code> field.</p></li>
-</ul>
-<p>The <code class="docutils literal notranslate"><span class="pre">detail</span></code> of a <code class="docutils literal notranslate"><span class="pre">400</span></code> names the parameter and says what is wrong:</p>
+<p>A bad list request gets <code class="docutils literal notranslate"><span class="pre">422</span></code> in the form that FastAPI uses, with <code class="docutils literal notranslate"><span class="pre">loc</span></code> naming
+the key. This covers an unknown key, such as <code class="docutils literal notranslate"><span class="pre">?nope=1</span></code>, a sort key that the list
+does not have, such as <code class="docutils literal notranslate"><span class="pre">?sort=nope</span></code>, a value that fails the
+<a class="reference internal" href="filtering.html#filter-value-validation"><span class="std std-ref">validation</span></a> of its field, such as <code class="docutils literal notranslate"><span class="pre">?age=old</span></code> on an
+<code class="docutils literal notranslate"><span class="pre">int</span></code> field, and a key that takes one value and
+<a class="reference internal" href="filtering.html#match-several-values"><span class="std std-ref">comes twice</span></a>.</p>
+<p>A list param that holds keys of its own is one value to FastAPI, so <code class="docutils literal notranslate"><span class="pre">loc</span></code> cannot
+name a key inside it. A bad key or value in there gets <code class="docutils literal notranslate"><span class="pre">400</span></code>, such as in the
+<code class="docutils literal notranslate"><span class="pre">filter</span></code> of a react-admin view. Restly raises
+<a class="reference internal" href="api/exc.html#fastapi_restly.exc.BadQueryParam" title="fastapi_restly.exc.BadQueryParam"><code class="xref py py-class docutils literal notranslate"><span class="pre">BadQueryParam</span></code></a>, and its <code class="docutils literal notranslate"><span class="pre">detail</span></code> names
+the key and says what is wrong:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Invalid filter value for 'age': 'old'. Input should be a valid integer, unable to parse string as an integer
 </pre></div>
 </div>
 <div class="details admonition">
 <p class="admonition-title">Details</p>
-<p>The text after the value is Pydantic’s reason. For a field validator of
-your own, it is Pydantic’s text for your error, such as
-<code class="docutils literal notranslate"><span class="pre">Value</span> <span class="pre">error,</span> <span class="pre">value</span> <span class="pre">is</span> <span class="pre">too</span> <span class="pre">long</span></code>. An exception that is not a validation
+<p>The reason is Pydantic’s text. For a field validator of your own, it is
+Pydantic’s text for your error, such as <code class="docutils literal notranslate"><span class="pre">Value</span> <span class="pre">error,</span> <span class="pre">value</span> <span class="pre">is</span> <span class="pre">too</span> <span class="pre">long</span></code>. An exception that is not a validation
 error, such as an <code class="docutils literal notranslate"><span class="pre">AttributeError</span></code> in your validator, is a bug and returns
 <code class="docutils literal notranslate"><span class="pre">500</span></code>, as it does for a request body.</p>
-<p>A react-admin view follows the same two steps. JSON in <code class="docutils literal notranslate"><span class="pre">sort</span></code>, <code class="docutils literal notranslate"><span class="pre">range</span></code> or
-<code class="docutils literal notranslate"><span class="pre">filter</span></code> that does not have their shape gets a <code class="docutils literal notranslate"><span class="pre">422</span></code>. A sort key or a filter
-that the view cannot apply raises <code class="docutils literal notranslate"><span class="pre">BadQueryParam</span></code>. It checks a filter value
-against the type of the column, with Pydantic, so <code class="docutils literal notranslate"><span class="pre">&quot;2020-01-01&quot;</span></code> filters a
-date column and <code class="docutils literal notranslate"><span class="pre">&quot;false&quot;</span></code> a boolean column. A handler for
-<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyHTTPError" title="fastapi_restly.exc.RestlyHTTPError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyHTTPError</span></code></a> shapes all
-these <code class="docutils literal notranslate"><span class="pre">400</span></code> answers; see <a class="reference internal" href="#error-envelope">Change the error body</a>.</p>
-<p>A filter value passes the first step as text. Restly checks it against the
-field only when it builds the query, so a bad filter value returns <code class="docutils literal notranslate"><span class="pre">400</span></code>, not
-<code class="docutils literal notranslate"><span class="pre">422</span></code>.</p>
+<p>On a react-admin view, JSON in <code class="docutils literal notranslate"><span class="pre">sort</span></code>, <code class="docutils literal notranslate"><span class="pre">range</span></code> or <code class="docutils literal notranslate"><span class="pre">filter</span></code> that does not have
+their shape gets <code class="docutils literal notranslate"><span class="pre">422</span></code>. A sort key or a filter inside them that the view cannot
+apply gets <code class="docutils literal notranslate"><span class="pre">400</span></code>, from <code class="docutils literal notranslate"><span class="pre">BadQueryParam</span></code>. Restly checks a value in <code class="docutils literal notranslate"><span class="pre">filter</span></code>
+against the type of its field, with Pydantic, so <code class="docutils literal notranslate"><span class="pre">&quot;2020-01-01&quot;</span></code> filters a
+<code class="docutils literal notranslate"><span class="pre">date</span></code> field and <code class="docutils literal notranslate"><span class="pre">&quot;false&quot;</span></code> a <code class="docutils literal notranslate"><span class="pre">bool</span></code> field.</p>
+<p>A handler for <a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyHTTPError" title="fastapi_restly.exc.RestlyHTTPError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyHTTPError</span></code></a>
+shapes the <code class="docutils literal notranslate"><span class="pre">400</span></code> answers, and not the <code class="docutils literal notranslate"><span class="pre">422</span></code> answers; see
+<a class="reference internal" href="#error-envelope">Change the error body</a>.</p>
 </div>
 </section>
 <section id="unique-values-and-other-database-conflicts-409">
@@ -734,7 +728,8 @@ list routes get the same body, also on a react-admin view.</p>
 <p>Some errors are not a <code class="docutils literal notranslate"><span class="pre">RestlyHTTPError</span></code>, so this handler does not change them:</p>
 <ul class="simple">
 <li><p>A <code class="docutils literal notranslate"><span class="pre">422</span></code> for a request body or a parameter that fails validation, such as
-<code class="docutils literal notranslate"><span class="pre">?page_size=oops</span></code>, and for an unknown key of the list params. This is a
+<code class="docutils literal notranslate"><span class="pre">?page_size=oops</span></code> or a bad filter value, and for an unknown key of the list
+params. This is a
 <code class="docutils literal notranslate"><span class="pre">fastapi.exceptions.RequestValidationError</span></code>. Register a handler for it.</p></li>
 <li><p>A plain <code class="docutils literal notranslate"><span class="pre">fastapi.HTTPException</span></code>. Restly raises one for a foreign key and
 its relationship field that name different rows (<code class="docutils literal notranslate"><span class="pre">422</span></code>). Register a

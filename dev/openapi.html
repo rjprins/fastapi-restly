@@ -535,13 +535,13 @@ segment of the prefix, so <code class="docutils literal notranslate"><span class
 <li><p>the request and response types of the CRUD routes: the schemas that Restly
 builds from the view’s main schema, named as in
 <a class="reference internal" href="schemas.html#generated-schema-names"><span class="std std-ref">The names of the generated schemas</span></a>;</p></li>
-<li><p>the filter, sort and page parameters of each list route;</p></li>
-<li><p>an <code class="docutils literal notranslate"><span class="pre">x-resource-ref</span></code> on each field that points to another resource.</p></li>
+<li><p>the filter, sort and page parameters of each list route.</p></li>
 </ul>
 <p>When the app builds its spec, Restly also warns when two classes have the same
 name; see <a class="reference internal" href="schemas.html#name-your-schemas"><span class="std std-ref">Name your schemas</span></a>.</p>
-<p>To change a default, set a view attribute, or override the endpoint method
-with a decorator of your own. To document a custom route, pass keyword
+<p>To change a default, set a view attribute. For one route, use
+<a class="reference internal" href="api/views.html#fastapi_restly.views.modify_route" title="fastapi_restly.views.modify_route"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.modify_route</span></code></a>; see
+<a class="reference internal" href="crud_routes.html#modify-route"><span class="std std-ref">Change one option of a route</span></a>. To document a custom route, pass keyword
 arguments to its decorator, as in FastAPI.</p>
 <section id="set-tags-and-responses-for-a-whole-view">
 <span id="view-openapi-metadata"></span><h2>Set tags and responses for a whole view<a class="headerlink" href="#set-tags-and-responses-for-a-whole-view" title="Link to this heading">#</a></h2>
@@ -560,8 +560,13 @@ of the view, the CRUD routes and the custom routes:</p>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">tags</span></code> replaces the tag that Restly makes from the prefix. A subclass
 inherits it. <code class="docutils literal notranslate"><span class="pre">responses</span></code> adds to the responses of the base classes, and an
-entry for the same status code in a subclass wins. A CRUD view starts with
-<code class="docutils literal notranslate"><span class="pre">{404:</span> <span class="pre">{&quot;description&quot;:</span> <span class="pre">&quot;Not</span> <span class="pre">found&quot;}}</span></code>.</p>
+entry for the same status code in a subclass wins.</p>
+<p>A route of a CRUD view documents <code class="docutils literal notranslate"><span class="pre">404</span></code> by itself when it can answer 404. That is
+when its path has a parameter, or when its request body holds a reference to a
+row. In both cases, the row can be missing. A custom route that answers 404 for
+another reason documents it with <code class="docutils literal notranslate"><span class="pre">responses</span></code> on its decorator.</p>
+<p>To leave a response out, set its status code to <code class="docutils literal notranslate"><span class="pre">None</span></code>. This works on a view,
+such as <code class="docutils literal notranslate"><span class="pre">responses</span> <span class="pre">=</span> <span class="pre">{404:</span> <span class="pre">None}</span></code>, and on the decorator of one route.</p>
 <p>The view’s <a class="reference internal" href="api/views.html#fastapi_restly.views.View.dependencies" title="fastapi_restly.views.View.dependencies"><code class="xref py py-attr docutils literal notranslate"><span class="pre">dependencies</span></code></a> also
 run on every route. A security dependency, such as an OAuth2 scheme, shows in
 the spec as it does in FastAPI. <a class="reference internal" href="views.html#share-behaviour-with-base-views"><span class="std std-ref">Views</span></a>
@@ -613,7 +618,7 @@ covers how a base view shares them.</p>
 </table>
 </div>
 <p>An operation ID joins the full path of the resource and the action. It leaves
-out the final <code class="docutils literal notranslate"><span class="pre">{id}</span></code> parameter and the HTTP method. So a view mounted under
+out the final path parameter and the HTTP method. So a view mounted under
 <code class="docutils literal notranslate"><span class="pre">/v1</span></code> gets <code class="docutils literal notranslate"><span class="pre">v1_items_list</span></code> instead of <code class="docutils literal notranslate"><span class="pre">items_list</span></code>, and the same view mounted
 under <code class="docutils literal notranslate"><span class="pre">/v1</span></code> and <code class="docutils literal notranslate"><span class="pre">/v2</span></code> gets different IDs. The class name and the tags of the
 view do not change the IDs.</p>
@@ -626,9 +631,14 @@ view do not change the IDs.</p>
 resource: <code class="docutils literal notranslate"><span class="pre">/people</span></code> gives <code class="docutils literal notranslate"><span class="pre">people_get</span></code>, not a singular form. Two paths that
 give the same name, such as <code class="docutils literal notranslate"><span class="pre">/order-items</span></code> and <code class="docutils literal notranslate"><span class="pre">/order_items</span></code>, need explicit
 operation IDs when they are in one spec.</p>
-<p>The route name is the action part of the ID. So <code class="docutils literal notranslate"><span class="pre">name=&quot;search&quot;</span></code> on the list
-route gives <code class="docutils literal notranslate"><span class="pre">items_search</span></code>. Custom routes, and the routes of a plain
-<a class="reference internal" href="api/views.html#fastapi_restly.views.View" title="fastapi_restly.views.View"><code class="xref py py-class docutils literal notranslate"><span class="pre">View</span></code></a>, get FastAPI’s normal operation IDs.</p>
+<p>The route name is the action part of the ID. A route that chooses its own
+<code class="docutils literal notranslate"><span class="pre">name</span></code> does not get Restly’s ID and summary. FastAPI makes them from the name,
+as on any route. So <code class="docutils literal notranslate"><span class="pre">name=&quot;search&quot;</span></code> on the list route gives the ID
+<code class="docutils literal notranslate"><span class="pre">search_items_get</span></code> and the summary <code class="docutils literal notranslate"><span class="pre">Search</span></code>.</p>
+<p>Custom routes, and the routes of a plain
+<a class="reference internal" href="api/views.html#fastapi_restly.views.View" title="fastapi_restly.views.View"><code class="xref py py-class docutils literal notranslate"><span class="pre">View</span></code></a>, also get FastAPI’s normal IDs and
+summaries, from the name of the method. So a method <code class="docutils literal notranslate"><span class="pre">stats</span></code> at <code class="docutils literal notranslate"><span class="pre">/items/stats</span></code>
+gets the ID <code class="docutils literal notranslate"><span class="pre">stats_items_stats_get</span></code> and the summary <code class="docutils literal notranslate"><span class="pre">Stats</span></code>.</p>
 <p>An explicit <code class="docutils literal notranslate"><span class="pre">operation_id</span></code> always wins. You can also give FastAPI a
 <a class="reference external" href="https://fastapi.tiangolo.com/advanced/generate-clients/#custom-generate-unique-id-function"><code class="docutils literal notranslate"><span class="pre">generate_unique_id_function</span></code></a>
 on a route, a router, an <code class="docutils literal notranslate"><span class="pre">include_router()</span></code> call or the app. It replaces
@@ -636,50 +646,11 @@ Restly’s IDs, with FastAPI’s normal order of precedence. It receives the rou
 names above, so a function based on the tag and the name can give IDs such as
 <code class="docutils literal notranslate"><span class="pre">items-get_many</span></code>.</p>
 <p>If you generate clients from the spec, generate them again when you move to
-Restly’s IDs. To keep an existing operation ID, pass <code class="docutils literal notranslate"><span class="pre">operation_id</span></code> to the
-decorator of the endpoint method; see the next section.</p>
-</div>
-</section>
-<section id="change-the-name-summary-or-operation-id-of-a-crud-route">
-<span id="crud-route-metadata"></span><h2>Change the name, summary or operation ID of a CRUD route<a class="headerlink" href="#change-the-name-summary-or-operation-id-of-a-crud-route" title="Link to this heading">#</a></h2>
-<p>Override the endpoint method, and pass the keyword arguments to its
-decorator, as in FastAPI. The method calls the method of the base class, so
-the route works as before:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi_restly.views</span><span class="w"> </span><span class="kn">import</span> <span class="n">ListResponseSchema</span>
-
-
-<span class="k">class</span><span class="w"> </span><span class="nc">InvoiceView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
-    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">"/invoices"</span>
-    <span class="n">model</span> <span class="o">=</span> <span class="n">Invoice</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">InvoiceSchema</span>
-
-    <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/"</span><span class="p">,</span> <span class="n">summary</span><span class="o">=</span><span class="s2">"List invoices"</span><span class="p">,</span> <span class="n">operation_id</span><span class="o">=</span><span class="s2">"billing_list_invoices"</span><span class="p">)</span>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_many_endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">list_params</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ListResponseSchema</span><span class="p">:</span>
-        <span class="k">return</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">get_many_endpoint</span><span class="p">(</span><span class="n">list_params</span><span class="p">)</span>
-</pre></div>
-</div>
-<p><code class="docutils literal notranslate"><span class="pre">ListResponseSchema</span></code> keeps the view’s list response as the response model; see
-<a class="reference internal" href="schemas.html#name-the-view-schemas"><span class="std std-ref">Name the view’s schemas in a custom route</span></a>.
-Restly still fills in the rest of the route: the list params, and the name
-and the summary that you do not pass. A keyword argument
-that you pass wins over Restly’s default. The table in
-<a class="reference internal" href="#default-route-metadata">The names and operation IDs of the CRUD routes</a>
-lists the endpoint methods.</p>
-<div class="details admonition">
-<p class="admonition-title">Details</p>
-<p>The decorator passes its keyword arguments to FastAPI, so every option of a
-FastAPI route works. For example, <code class="docutils literal notranslate"><span class="pre">dependencies</span></code> adds a check to one route:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">"/"</span><span class="p">,</span> <span class="n">dependencies</span><span class="o">=</span><span class="p">[</span><span class="n">Depends</span><span class="p">(</span><span class="n">require_admin</span><span class="p">)])</span>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">CreateSchema</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ResponseSchema</span><span class="p">:</span>
-        <span class="k">return</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">create_endpoint</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>An item route that you declare, such as <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/{id}</span></code>, keeps the path that you
-give it. Restly adds the <code class="docutils literal notranslate"><span class="pre">int</span></code> or <code class="docutils literal notranslate"><span class="pre">uuid</span></code> converter only to a path parameter
-annotated <code class="docutils literal notranslate"><span class="pre">IDType</span></code>; see <a class="reference internal" href="crud_routes.html#item-route-matching"><span class="std std-ref">Item paths and static routes</span></a>.</p>
-<p>A subclass inherits the method and its decorator, so it also inherits an
-explicit <code class="docutils literal notranslate"><span class="pre">operation_id</span></code>. Each <code class="docutils literal notranslate"><span class="pre">operation_id</span></code> must be unique in the app’s
-spec.</p>
+Restly’s IDs. To keep an existing operation ID, set <code class="docutils literal notranslate"><span class="pre">operation_id</span></code> with
+<a class="reference internal" href="api/views.html#fastapi_restly.views.modify_route" title="fastapi_restly.views.modify_route"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.modify_route</span></code></a>; see
+<a class="reference internal" href="crud_routes.html#modify-route"><span class="std std-ref">Change one option of a route</span></a>.</p>
+<p>A subclass inherits an explicit <code class="docutils literal notranslate"><span class="pre">operation_id</span></code> too. Each <code class="docutils literal notranslate"><span class="pre">operation_id</span></code> must be
+unique in the app’s spec.</p>
 <p>The route names repeat across views. If you use <code class="docutils literal notranslate"><span class="pre">app.url_path_for()</span></code> to build
 the URLs of routes in several views, give them names of their own.</p>
 </div>
@@ -717,43 +688,6 @@ decorator and <code class="docutils literal notranslate"><span class="pre">respo
 <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.include_routes" title="fastapi_restly.views.BaseRestView.include_routes"><code class="xref py py-attr docutils literal notranslate"><span class="pre">include_routes</span></code></a> or
 <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.exclude_routes" title="fastapi_restly.views.BaseRestView.exclude_routes"><code class="xref py py-attr docutils literal notranslate"><span class="pre">exclude_routes</span></code></a> is
 not in the spec at all; see <a class="reference internal" href="crud_routes.html#exclude-crud-routes"><span class="std std-ref">Exclude CRUD routes</span></a>.</p>
-</section>
-<section id="see-which-resource-an-id-points-to">
-<span id="x-resource-ref"></span><h2>See which resource an id points to<a class="headerlink" href="#see-which-resource-an-id-points-to" title="Link to this heading">#</a></h2>
-<p>Restly adds the vendor extension <code class="docutils literal notranslate"><span class="pre">x-resource-ref</span></code> to each field that points to
-another resource. A client or a code generator can read it. Its value is the
-prefix of the view that serves the target model, without the leading slash:</p>
-<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
-<span class="w">  </span><span class="nt">"author_id"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"integer"</span><span class="p">,</span><span class="w"> </span><span class="nt">"title"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Author Id"</span><span class="p">,</span><span class="w"> </span><span class="nt">"x-resource-ref"</span><span class="p">:</span><span class="w"> </span><span class="s2">"authors"</span><span class="p">}</span>
-<span class="p">}</span>
-</pre></div>
-</div>
-<p>Two kinds of fields get it:</p>
-<ul class="simple">
-<li><p>a field named after a foreign key column, whatever its type, such as
-<code class="docutils literal notranslate"><span class="pre">author_id:</span> <span class="pre">fr.MustExist[int,</span> <span class="pre">Author]</span></code> or <code class="docutils literal notranslate"><span class="pre">author_id:</span> <span class="pre">int</span></code>;</p></li>
-<li><p>a field named after a relationship, with the type
-<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDRef[Model]</span></code></a> or
-<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDSchema" title="fastapi_restly.schemas.IDSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDSchema[Model]</span></code></a>, or a list of
-them.</p></li>
-</ul>
-<div class="details admonition">
-<p class="admonition-title">Details</p>
-<p>A field gets it only when a view for the target model is included on the same
-app. A nested object, such as <code class="docutils literal notranslate"><span class="pre">author:</span> <span class="pre">AuthorSchema</span></code>, gets none. The
-reference types themselves are on
-<a class="reference internal" href="relationships.html"><span class="std std-doc">Relationships</span></a>.</p>
-<p>There is a known limit: views that you include on an <code class="docutils literal notranslate"><span class="pre">APIRouter</span></code>, not on the
-app, do not get these annotations. The check for two classes with the same
-name still covers them when you pass the app to
-<a class="reference internal" href="api/db.html#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.configure(app,</span> <span class="pre">...)</span></code></a>.</p>
-<p>Restly adds the annotations in the app’s <code class="docutils literal notranslate"><span class="pre">app.openapi()</span></code>, and checks the
-class names there too. FastAPI’s function <code class="docutils literal notranslate"><span class="pre">get_openapi()</span></code> does neither. So to
-write the spec to a file, call <code class="docutils literal notranslate"><span class="pre">app.openapi()</span></code>. Restly wraps <code class="docutils literal notranslate"><span class="pre">app.openapi</span></code>
-when the first view is included on the app, or when you pass the app to
-<code class="docutils literal notranslate"><span class="pre">fr.configure</span></code>. An <code class="docutils literal notranslate"><span class="pre">app.openapi</span></code> of your own that you set after that replaces
-Restly’s. Set it before, and Restly wraps it.</p>
-</div>
 </section>
 <section id="see-also">
 <h2>See also<a class="headerlink" href="#see-also" title="Link to this heading">#</a></h2>
@@ -816,10 +750,8 @@ shows, and their names.</p></li>
     <ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#set-tags-and-responses-for-a-whole-view">Set tags and responses for a whole view</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#the-names-and-operation-ids-of-the-crud-routes">The names and operation IDs of the CRUD routes</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#change-the-name-summary-or-operation-id-of-a-crud-route">Change the name, summary or operation ID of a CRUD route</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#document-a-custom-route">Document a custom route</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#document-another-response-for-a-crud-route">Document another response for a CRUD route</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#see-which-resource-an-id-points-to">See which resource an id points to</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#see-also">See also</a></li>
 </ul>
   </nav></div>

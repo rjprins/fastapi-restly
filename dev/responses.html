@@ -602,16 +602,19 @@ replaced endpoint method; see <a class="reference internal" href="#one-route-sha
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>A view without pagination sends only <code class="docutils literal notranslate"><span class="pre">data</span></code>; see
-<a class="reference internal" href="filtering.html#no-pagination"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">pagination</span> <span class="pre">=</span> <span class="pre">None</span></code></span></a>. How a client asks for a page, and
+<p>A view with <a class="reference internal" href="filtering.html#limit-offset-pagination"><span class="std std-ref">limit and offset</span></a> sends <code class="docutils literal notranslate"><span class="pre">data</span></code>,
+<code class="docutils literal notranslate"><span class="pre">total_count</span></code>, <code class="docutils literal notranslate"><span class="pre">limit</span></code> and <code class="docutils literal notranslate"><span class="pre">offset</span></code>. A view without pagination sends only
+<code class="docutils literal notranslate"><span class="pre">data</span></code>; see <a class="reference internal" href="filtering.html#no-pagination"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">pagination</span> <span class="pre">=</span> <span class="pre">None</span></code></span></a>. How a client asks for a page, and
 the page size limits, are on
 <a class="reference internal" href="filtering.html"><span class="std std-doc">Filtering, Sorting &amp; Pagination</span></a>.</p>
 <p>The list route’s <code class="docutils literal notranslate"><span class="pre">response_model</span></code> is the view’s
 <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.list_response_schema" title="fastapi_restly.views.BaseRestView.list_response_schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">list_response_schema</span></code></a>.
 Unless the view sets another class, this is the pagination’s envelope, filled
 with the response schema. By default that envelope is a
-<a class="reference internal" href="api/views.html#fastapi_restly.views.PaginatedEnvelope" title="fastapi_restly.views.PaginatedEnvelope"><code class="xref py py-class docutils literal notranslate"><span class="pre">PaginatedEnvelope</span></code></a>, and a
-plain <a class="reference internal" href="api/views.html#fastapi_restly.views.Envelope" title="fastapi_restly.views.Envelope"><code class="xref py py-class docutils literal notranslate"><span class="pre">Envelope</span></code></a> for a view without
+<a class="reference internal" href="api/views.html#fastapi_restly.views.NumberedEnvelope" title="fastapi_restly.views.NumberedEnvelope"><code class="xref py py-class docutils literal notranslate"><span class="pre">NumberedEnvelope</span></code></a>, an
+<a class="reference internal" href="api/views.html#fastapi_restly.views.OffsetEnvelope" title="fastapi_restly.views.OffsetEnvelope"><code class="xref py py-class docutils literal notranslate"><span class="pre">OffsetEnvelope</span></code></a> for a view with
+<a class="reference internal" href="api/views.html#fastapi_restly.views.OffsetPagination" title="fastapi_restly.views.OffsetPagination"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.OffsetPagination</span></code></a>, and a plain
+<a class="reference internal" href="api/views.html#fastapi_restly.views.Envelope" title="fastapi_restly.views.Envelope"><code class="xref py py-class docutils literal notranslate"><span class="pre">Envelope</span></code></a> for a view without
 pagination. OpenAPI names the filled class after the response schema:
 <code class="docutils literal notranslate"><span class="pre">TagListResponse</span></code> for <code class="docutils literal notranslate"><span class="pre">TagResponse</span></code>, which Restly derives from <code class="docutils literal notranslate"><span class="pre">TagSchema</span></code>.</p>
 </section>
@@ -620,8 +623,9 @@ pagination. OpenAPI names the filled class after the response schema:
 <p>The list envelope is a Pydantic model, and you can replace it. Write a
 generic model with one type parameter for the items, and set it as the
 <code class="docutils literal notranslate"><span class="pre">envelope</span></code> of the view’s pagination. Restly fills its fields by name from
-<code class="docutils literal notranslate"><span class="pre">data</span></code>, <code class="docutils literal notranslate"><span class="pre">total_count</span></code>, <code class="docutils literal notranslate"><span class="pre">page</span></code>, <code class="docutils literal notranslate"><span class="pre">page_size</span></code> and <code class="docutils literal notranslate"><span class="pre">total_pages</span></code>. The response
-and OpenAPI follow the model.</p>
+<code class="docutils literal notranslate"><span class="pre">data</span></code>, <code class="docutils literal notranslate"><span class="pre">total_count</span></code>, <code class="docutils literal notranslate"><span class="pre">page</span></code>, <code class="docutils literal notranslate"><span class="pre">page_size</span></code> and <code class="docutils literal notranslate"><span class="pre">total_pages</span></code>, or with
+<a class="reference internal" href="api/views.html#fastapi_restly.views.OffsetPagination" title="fastapi_restly.views.OffsetPagination"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.OffsetPagination</span></code></a> from <code class="docutils literal notranslate"><span class="pre">data</span></code>,
+<code class="docutils literal notranslate"><span class="pre">total_count</span></code>, <code class="docutils literal notranslate"><span class="pre">limit</span></code> and <code class="docutils literal notranslate"><span class="pre">offset</span></code>. The response and OpenAPI follow the model.</p>
 <ul class="simple">
 <li><p>Leave a field out to drop it from the response.</p></li>
 <li><p>Rename a field in the JSON with <code class="docutils literal notranslate"><span class="pre">alias</span></code>, or rename them all with an
@@ -919,8 +923,11 @@ view that subclasses <code class="docutils literal notranslate"><span class="pre
 view gets <code class="docutils literal notranslate"><span class="pre">Data[TagResponse]</span></code>. For a shape that differs per view, such as a root
 key, as in <code class="docutils literal notranslate"><span class="pre">{&quot;article&quot;:</span> <span class="pre">{...}}</span></code>, write a function that builds the class; see
 <a class="reference internal" href="schemas.html#schema-type"><span class="std std-ref">Make dynamic schemas that depend on the view</span></a>. To change the
-status code or the headers of one route, replace that endpoint method; see
-<a class="reference internal" href="lifecycle.html#replace-endpoint-method"><span class="std std-ref">Change the status code or headers of one route</span></a>.</p>
+status code of one route, use
+<a class="reference internal" href="api/views.html#fastapi_restly.views.modify_route" title="fastapi_restly.views.modify_route"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.modify_route</span></code></a>; see
+<a class="reference internal" href="crud_routes.html#modify-route"><span class="std std-ref">Change one option of a route</span></a>. To change the headers, replace
+that endpoint method; see
+<a class="reference internal" href="lifecycle.html#replace-endpoint-method"><span class="std std-ref">Replace the endpoint method of one route</span></a>.</p>
 </section>
 <section id="change-how-one-object-is-serialized">
 <span id="to-single-response"></span><h2>Change how one object is serialized<a class="headerlink" href="#change-how-one-object-is-serialized" title="Link to this heading">#</a></h2>
@@ -954,7 +961,7 @@ schema. Only the fields of the response schema go out; see
 <p>Set <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.list_response_schema" title="fastapi_restly.views.BaseRestView.list_response_schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">list_response_schema</span></code></a>
 on the view. OpenAPI follows it. The other routes keep the full schema, and
 filtering, sorting and pagination keep working:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi_restly.views</span><span class="w"> </span><span class="kn">import</span> <span class="n">PaginatedEnvelope</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi_restly.views</span><span class="w"> </span><span class="kn">import</span> <span class="n">NumberedEnvelope</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">UserSummary</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
@@ -965,7 +972,7 @@ filtering, sorting and pagination keep working:</p>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">"/users"</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
     <span class="n">schema</span> <span class="o">=</span> <span class="n">UserSchema</span>
-    <span class="n">list_response_schema</span> <span class="o">=</span> <span class="n">PaginatedEnvelope</span><span class="p">[</span><span class="n">UserSummary</span><span class="p">]</span>
+    <span class="n">list_response_schema</span> <span class="o">=</span> <span class="n">NumberedEnvelope</span><span class="p">[</span><span class="n">UserSummary</span><span class="p">]</span>
 </pre></div>
 </div>
 <p>This class changes what the list sends, and nothing else. The filters and sort
@@ -976,10 +983,12 @@ and sort on a field that the items do not show. To hide a field, make it
 <div class="details admonition">
 <p class="admonition-title">Details</p>
 <p>Restly fills this class as it fills an
-<a class="reference internal" href="#change-list-envelope">envelope</a>: by field name, from <code class="docutils literal notranslate"><span class="pre">data</span></code>, <code class="docutils literal notranslate"><span class="pre">total_count</span></code>,
-<code class="docutils literal notranslate"><span class="pre">page</span></code>, <code class="docutils literal notranslate"><span class="pre">page_size</span></code> and <code class="docutils literal notranslate"><span class="pre">total_pages</span></code>. An alias renames a key in the JSON. Any
+<a class="reference internal" href="#change-list-envelope">envelope</a>: by field name, from the values of the view’s
+pagination, such as <code class="docutils literal notranslate"><span class="pre">data</span></code>, <code class="docutils literal notranslate"><span class="pre">total_count</span></code>, <code class="docutils literal notranslate"><span class="pre">page</span></code>, <code class="docutils literal notranslate"><span class="pre">page_size</span></code> and
+<code class="docutils literal notranslate"><span class="pre">total_pages</span></code>. An alias renames a key in the JSON. Any
 other field keeps its default. Registration raises for a class that <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code>
-cannot fill: a class with page fields on a view without pagination, or a class
+cannot fill: a class with page fields that the view’s pagination does not have,
+or a class
 without a field named <code class="docutils literal notranslate"><span class="pre">data</span></code>.</p>
 <p>Restly fills the items from the response schema, so an item can have fewer
 fields than the response schema. An item must be a Pydantic class, and
