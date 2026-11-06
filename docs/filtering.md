@@ -191,13 +191,13 @@ gives its id.
 A field of type `Any`, such as the `id` of
 {class}`fr.IDSchema <fastapi_restly.schemas.IDSchema>`, gives the value the
 Python type of its column, such as a `UUID` from its text. On a column of
-SQLAlchemy's `Enum` type, the value must also be one of its labels. A
-`Literal` of numbers, such as `Literal[1, 2]`, and an enum whose values are
-numbers read the number from the text, as an `IntEnum` does. So `?level=1`
-works. A number
-must fit its integer column, such as the range of `Integer`, and text must hold
-no NUL character; see [Column validation](#column-validation). A filter does
-not check the length of text.
+SQLAlchemy's `Enum` type, the value must also be one of its labels, or the
+value of a member of its enum, as a response shows it. A `Literal` of numbers,
+such as `Literal[1, 2]`, and an enum whose values are numbers read the number
+from the text, as an `IntEnum` does. So `?level=1` works. A number must fit its
+integer column, such as the range of `Integer`, and text must hold no NUL
+character; see [Column validation](#column-validation). A filter does not check
+the length of text.
 
 A number in a filter must be between `-1e50` and `1e50`, as in django-filter.
 So a huge number, such as `?price=1e999999`, gets `422` and never reaches the

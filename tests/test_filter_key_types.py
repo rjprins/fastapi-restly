@@ -881,3 +881,39 @@ def test_list_params_of_your_own_give_their_json_form(shelves):
     # the date goes to the text field as the text of its JSON form
     assert labels_of(OwnParams(stocked=date(2024, 1, 31))) == ["a"]
     assert labels_of(OwnParams(label__icontains=("a",))) == ["a"]
+
+
+class Shade(enum.Enum):
+    red = "R"
+    blue = "B"
+
+
+def test_a_field_of_type_any_on_an_enum_column_takes_the_value_it_shows(sync_db):
+    engine, _ = sync_db
+
+    class Paint(fr.IDMixin, SharedBase):
+        shade: Mapped[Shade]
+
+    class PaintSchema(fr.IDSchema):
+        shade: Any
+
+    app = FastAPI()
+
+    @fr.include_view(app)
+    class PaintView(fr.RestView):
+        prefix = "/paints"
+        model = Paint
+        schema = PaintSchema
+
+    SharedBase.metadata.create_all(engine)
+    client = RestlyTestClient(app)
+    client.post("/paints/", json={"shade": "red"})
+    client.post("/paints/", json={"shade": "blue"})
+
+    shown = client.get("/paints/").json()["data"][0]["shade"]
+    assert shown == "R"
+    found = client.get("/paints/", params={"shade": shown}).json()["data"]
+    assert [paint["shade"] for paint in found] == ["R"]
+    params = client.get("/openapi.json").json()["paths"]["/paints"]["get"]["parameters"]
+    (shade,) = [param for param in params if param["name"] == "shade"]
+    assert "R" in str(shade["schema"])

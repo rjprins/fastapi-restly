@@ -2072,17 +2072,19 @@ def _enum_value(enum_type: sqlalchemy.Enum, value: Any) -> Any:
     a member of its enum class.
 
     A value that equals a member, such as ``1`` for a member of an
-    ``IntEnum``, becomes that member: SQLAlchemy binds a plain number as a
-    number, and the column holds labels. SQLAlchemy passes any other string
-    on, and a native ENUM on PostgreSQL rejects it with an error, which would
-    be a 500 for the client.
+    ``IntEnum``, or the value of a member, becomes that member: SQLAlchemy
+    binds a plain number as a number, and the column holds labels. A field
+    of type ``Any`` shows the value of a member in a response and in
+    OpenAPI, such as ``"R"`` for ``red = "R"``, so a client sends that.
+    SQLAlchemy passes any other string on, and a native ENUM on PostgreSQL
+    rejects it with an error, which would be a 500 for the client.
 
     :raises _BadValue: the value is no label of the column.
     """
     if value in enum_type.enums:
         return value
     for member in enum_type.enum_class or ():
-        if value == member:
+        if value == member or value == member.value:
             return member
     raise _BadValue("enum", f"Use one of: {', '.join(enum_type.enums)}.")
 
