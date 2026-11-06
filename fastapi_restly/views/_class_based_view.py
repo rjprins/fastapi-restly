@@ -24,7 +24,7 @@ from fastapi.params import Depends as _DependsMarker
 from fastapi.params import Param as _ParamMarker
 
 from ..exc import RestlyConfigurationError
-from ._base import View, _copy_route
+from ._base import View, _copy_route, _ModifiedRoute
 
 
 def _copy_all_parent_class_endpoints_into_this_subclass(view_cls: type[View]):
@@ -77,17 +77,34 @@ def _get_all_parent_endpoints(view_cls: type[View]) -> dict[str, Callable]:
     """
     endpoints: dict[str, Callable] = {}
     seen: set[str] = set()
+    # A route from fr.modify_route takes the place of the route that it changes.
+    # Only a registered class has put it in that place already.
+    modified: dict[str, Callable] = {}
     for cls in view_cls.mro():
         if cls is view_cls:
             continue
+        placed = cls.__dict__.get("_fr_initialised", False)
         for name, value in cls.__dict__.items():
             if name in seen:
                 # A more-derived class already defined this name; it shadows the
                 # base regardless of whether that override is itself a route.
                 continue
+            if isinstance(value, _ModifiedRoute):
+                # A view class turns its options into a route when Python
+                # defines it, so an option here came later. A plain mixin keeps
+                # its options: the view class that uses them holds the route.
+                if issubclass(cls, View):
+                    raise RestlyConfigurationError(
+                        f"{cls.__name__}.{name} got fr.modify_route after the "
+                        f"class was defined. Use it in the class body."
+                    )
+                continue
+            if getattr(value, "_from_modify_route", False) and not placed:
+                modified.setdefault(name, value)
+                continue
             seen.add(name)
             if hasattr(value, "_api_route_args"):
-                endpoints[name] = value
+                endpoints[name] = modified.pop(name, value)
     return endpoints
 
 

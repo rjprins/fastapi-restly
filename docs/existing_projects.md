@@ -206,7 +206,10 @@ contracts:
    contract out of the change. For example, a `PUT` update that replaces the whole
    row can stay hand-written: leave it out with
    {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>`
-   until you change its contract.
+   until you change its contract. A route that stays outside the view must name
+   its path parameter `id` too, as in `PUT /products/{id}`. OpenAPI does not
+   allow `/products/{product_id}` next to `/products/{id}`, and Restly cannot
+   check a route outside the view.
 3. Write tests before you change anything. Test the responses of the old
    router with [`RestlyTestClient`](#test-clients). Then replace the router
    with the view and run the same tests again. A changed payload or status

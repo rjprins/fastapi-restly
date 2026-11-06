@@ -384,19 +384,36 @@ def _view_route_args(endpoint: Callable, view_cls: Any) -> tuple[str, dict[str, 
     return path, route_kwargs
 
 
-def _reject_paths_that_differ_only_in_names(
-    view_cls: Any, api_router: fastapi.APIRouter
-) -> None:
-    """OpenAPI says: "Templated paths with the same hierarchy but different templated
-    names MUST NOT exist as they are identical." The spec shows both paths, and
-    with one HTTP method the server never reaches the second. A route that the spec
-    leaves out does not count."""
+def _reject_routes_that_clash(view_cls: Any, api_router: fastapi.APIRouter) -> None:
+    """Refuse two routes of a CRUD view that the spec cannot tell apart.
+
+    Two routes with the same path and the same HTTP method: the server runs only
+    the first, so the second never answers. When both are in the spec, the spec
+    shows the second. This happens when a method of your own,
+    such as ``@fr.get("/{id}") read_tag``, sits next to ``get_one_endpoint``.
+
+    OpenAPI also says: "Templated paths with the same hierarchy but different
+    templated names MUST NOT exist as they are identical." The spec shows both
+    paths, and with one HTTP method the server never reaches the second. For this
+    rule, a route that the spec leaves out does not count."""
+    routes = [
+        route
+        for route in api_router.routes
+        if isinstance(route, fastapi.routing.APIRoute)
+    ]
+    for index, route in enumerate(routes):
+        for first in routes[:index]:
+            if first.path_format == route.path_format and first.methods & route.methods:
+                raise RestlyConfigurationError(
+                    f"{view_cls.__name__}: the routes {_route_label(first)} and "
+                    f"{_route_label(route)} have the same path and HTTP method. "
+                    f"The server runs only the first, so the second never "
+                    f"answers, and the spec can show the wrong one. Leave one of "
+                    f"them out, for example with exclude_routes."
+                )
     seen: dict[str, fastapi.routing.APIRoute] = {}
-    for route in api_router.routes:
-        if (
-            not isinstance(route, fastapi.routing.APIRoute)
-            or not route.include_in_schema
-        ):
+    for route in routes:
+        if not route.include_in_schema:
             continue
         first = seen.setdefault(re.sub(r"\{[^}]*\}", "{}", route.path_format), route)
         if first.path_format == route.path_format:
@@ -822,7 +839,7 @@ def _init_api_router(view_cls: type[View]) -> fastapi.APIRouter:
                 ),
             )
     if is_rest_view:
-        _reject_paths_that_differ_only_in_names(view_cls, api_router)
+        _reject_routes_that_clash(view_cls, api_router)
 
     return api_router
 

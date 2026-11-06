@@ -118,7 +118,7 @@ the converter only to a path parameter annotated
 accept negative integer ids, replace each item endpoint you need with an
 untyped path such as `@fr.get("/{id}")`, and annotate its `id` parameter as
 `int`; see
-[Change the status code or headers of one route](#replace-endpoint-method).
+[Replace the endpoint method of one route](#replace-endpoint-method).
 
 The item routes use the name `id` in the path. An existing API can use another
 name, such as `{user_id}`. The URLs are the same, but OpenAPI and the clients that
@@ -207,10 +207,10 @@ This changes the route of this view and its subclasses. The route of the base
 class stays the same.
 
 It takes the same arguments as a route decorator. The hooks of the view run as
-before. Restly still fills in what you do not pass: the list params, and the name
-and the summary. When you pass `name`, FastAPI makes the summary and the operation
-ID from that name, unless you pass them too. The table in
-[The names and operation IDs of the CRUD routes](#default-route-metadata)
+before. Restly still fills in what you do not pass: the list params, the name,
+the summary and the operation ID. When you pass `name`, FastAPI makes the
+summary and the operation ID from that name, unless you pass them too. The
+table in [The names and operation IDs of the CRUD routes](#default-route-metadata)
 lists the endpoint methods.
 
 :::{admonition} Details
@@ -228,17 +228,20 @@ and a status code set to `None` is left out:
 
 FastAPI adds the 422 response itself, so `{422: None}` does not remove it.
 
-`path` replaces the path of the route, as in `fr.modify_route("/new")`. For a
-list without a hidden route with a slash at the end, set `path=""` on the list
-route and on the create route. In a new path of an item route, write `{id}`. A
-path such as `/{role_id}` raises an error when the view registers: the method
-reads `id`, so nothing would read `role_id`.
+`path` replaces the path of the route, as in `fr.modify_route("/new")`. Restly
+also serves the list route and the create route at `/invoices/`, with a slash at
+the end, hidden from OpenAPI. To leave out these hidden routes, set `path=""` on
+the list route and on the create route. In a new path of an item route, write
+`{id}`. A path such as `/{role_id}` raises an error when the view registers: the
+method reads `id`, so nothing would read `role_id`.
 
 `methods=["PUT"]` changes only the HTTP method. The route still updates only the
-fields that the client sends. A status code without a body, such as 204, also
-removes the response model of the route. For the list route, set
-`list_response_schema`, not `response_model`. For a delete with a body, write the
-method.
+fields that the client sends. A React Admin view already has a `PUT` route,
+`put`. So there, `methods=["PUT"]` on `update_endpoint` raises an error, because
+two routes would have the same path and HTTP method. A status code without a
+body, such as 204, also removes the response model of the route. For the list
+route, set `list_response_schema`, not `response_model`. For a delete with a
+body, write the method.
 
 An option does not change the order of the routes. So a route that the
 class writes, such as `GET /stats`, stays before the item route.
@@ -246,7 +249,8 @@ class writes, such as `GET /stats`, stays before the item route.
 A subclass inherits the options and can change them further. A plain class can
 hold options for several views. Put it before the view class, as in
 `class TagView(QuietRoutes, fr.AsyncRestView)`, as for any other method of a mixin.
-After the view class, the options do nothing.
+After the view class, the options would do nothing, so Restly raises an error
+when Python defines the class.
 
 A name that is not a route of a base class raises
 {class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`
@@ -265,7 +269,8 @@ class, so the route works as before:
         self, data: CreateSchema, response: Response
     ) -> ResponseSchema:
         obj = await super().create_endpoint(data)
-        response.headers["Location"] = f"{self.prefix}/{obj.id}"
+        path = self.request.url.path.rstrip("/")
+        response.headers["Location"] = f"{path}/{obj.id}"
         return obj
 ```
 

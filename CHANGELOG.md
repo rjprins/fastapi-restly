@@ -254,6 +254,11 @@ miss it.
     field of that type has. So on a `Uuid` or a `Boolean` column, `?id__gte=...`
     now gets `422`. On a `Boolean` column, each request with them gave `500`. On a
     view that ignores unknown keys, see step 38.
+42. A CRUD view with two routes on the same path and HTTP method now raises
+    `RestlyConfigurationError` when it registers. The server ran the first route,
+    but the spec showed the second. This happens, for example, with a method of
+    your own at `@fr.get("/{id}")` next to `get_one_endpoint`. Replace
+    `get_one_endpoint` instead, or leave it out with `exclude_routes`.
 
 ### Added
 

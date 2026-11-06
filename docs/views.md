@@ -168,7 +168,7 @@ fails when Python creates it too, because the loads are final. Give the
 route another name; its path stays the same. To change one option of a CRUD
 route, see [Change one option of a route](#modify-route). To replace a CRUD route,
 override its endpoint method, such as `create_endpoint`; see
-[Change the status code or headers of one route](#replace-endpoint-method).
+[Replace the endpoint method of one route](#replace-endpoint-method).
 :::
 
 (decorators-on-view-methods)=

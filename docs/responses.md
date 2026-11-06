@@ -384,8 +384,11 @@ view that subclasses `ApiView` gets `Data[UserResponse]` in OpenAPI, and another
 view gets `Data[TagResponse]`. For a shape that differs per view, such as a root
 key, as in `{"article": {...}}`, write a function that builds the class; see
 [Make dynamic schemas that depend on the view](#schema-type). To change the
-status code or the headers of one route, replace that endpoint method; see
-[Change the status code or headers of one route](#replace-endpoint-method).
+status code of one route, use
+{func}`fr.modify_route <fastapi_restly.views.modify_route>`; see
+[Change one option of a route](#modify-route). To change the headers, replace
+that endpoint method; see
+[Replace the endpoint method of one route](#replace-endpoint-method).
 
 (to-single-response)=
 ## Change how one object is serialized

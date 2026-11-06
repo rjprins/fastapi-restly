@@ -411,10 +411,11 @@ def modify_route(path: str | None = None, **api_route_kwargs: Any) -> Any:
     to FastAPI's ``APIRouter.add_api_route()``. ``path`` replaces the path of
     the route.
 
-    Each argument replaces the one of the inherited route. Two add up, as they
-    do on a view. ``dependencies`` run base first. ``responses`` add up per
-    status code, and a status code set to ``None`` is left out. A status code
-    without a body, such as 204, also removes the response model of the route.
+    Each argument replaces the one of the inherited route. ``dependencies`` and
+    ``responses`` add up, as they do on a view. ``dependencies`` run base first.
+    ``responses`` add up per status code, and a status code set to ``None`` is
+    left out. A status code without a body, such as 204, also removes the
+    response model of the route.
 
     This changes the route of this view and its subclasses. The route of the
     base class stays the same.
@@ -442,10 +443,23 @@ def _apply_modified_routes(cls: type) -> None:
         if isinstance(value, _ModifiedRoute)
     }
     for name in sorted(names):
-        values = [vars(klass)[name] for klass in cls.__mro__ if name in vars(klass)]
+        owners = [klass for klass in cls.__mro__ if name in vars(klass)]
+        values = [vars(klass)[name] for klass in owners]
         options = list(
             itertools.takewhile(lambda v: isinstance(v, _ModifiedRoute), values)
         )
+        for index in range(len(options), len(values)):
+            later = values[index + 1 :]
+            if isinstance(values[index], _ModifiedRoute) and not any(
+                hasattr(value, "_api_route_args") for value in later
+            ):
+                raise RestlyConfigurationError(
+                    f"{cls.__name__}.{name}: the fr.modify_route of "
+                    f"{owners[index].__name__} changes nothing, because "
+                    f"{owners[index].__name__} comes after the class with the "
+                    f"route. Put {owners[index].__name__} before the view "
+                    f"class in the bases of {cls.__name__}."
+                )
         if not options:
             continue
         endpoint = values[len(options)] if len(values) > len(options) else None

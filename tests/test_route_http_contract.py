@@ -762,6 +762,48 @@ def test_modify_route_set_after_the_class_body_raises(Gadget):
         fr.include_view(FastAPI(), GadgetView)
 
 
+def test_modify_route_set_on_a_base_after_its_class_body_raises(Gadget):
+    class Base(fr.RestView):
+        prefix = "/gadgets"
+        model = Gadget
+        schema = GadgetSchema
+
+    class GadgetView(Base):
+        pass
+
+    Base.create_endpoint = fr.modify_route(status_code=200)
+
+    with pytest.raises(
+        RestlyConfigurationError, match="Base.create_endpoint got fr.modify_route after"
+    ):
+        fr.include_view(FastAPI(), GadgetView)
+
+
+def test_modify_route_on_a_mixin_after_the_view_class_raises():
+    class Quiet:
+        create_endpoint = fr.modify_route(status_code=200)
+
+    with pytest.raises(
+        RestlyConfigurationError,
+        match="the fr.modify_route of Quiet changes nothing, because Quiet comes after",
+    ):
+
+        class GadgetView(fr.RestView, Quiet):
+            pass
+
+
+def test_a_written_route_in_front_of_a_mixin_with_options_is_allowed(view_base):
+    class Quiet:
+        create_endpoint = fr.modify_route(status_code=200)
+
+    class GadgetView(Quiet, view_base):
+        @fr.post("/")
+        def create_endpoint(self) -> dict[str, Any]:
+            return {}
+
+    assert GadgetView.create_endpoint._api_route_args[0] == "/"
+
+
 def _route_paths_of(client: RestlyTestClient) -> set[str]:
     return {route.path for route in iter_routes(client.app.routes)}
 
@@ -837,6 +879,35 @@ def test_a_written_name_next_to_the_generated_id_is_refused(make_client):
     assert "differ only in the names of their parameters" in message
     assert "/gadgets/{gadget_id} (GET get_one)" in message
     assert "/gadgets/{id} (PATCH update)" in message
+
+
+@pytest.mark.parametrize("include_in_schema", [True, False])
+def test_a_method_of_your_own_on_the_path_and_method_of_a_crud_route_is_refused(
+    make_client, include_in_schema
+):
+    class Routes:
+        @fr.get("/{id}", include_in_schema=include_in_schema)
+        def read_gadget(self, id: IDType) -> dict[str, Any]:
+            return {"id": id}
+
+    with pytest.raises(RestlyConfigurationError) as caught:
+        make_client(Routes)
+
+    message = str(caught.value)
+    assert "have the same path and HTTP method" in message
+    assert "/gadgets/{id} (GET read_gadget)" in message
+    assert "/gadgets/{id} (GET get_one)" in message
+
+
+def test_put_on_update_of_a_react_admin_view_is_refused(Gadget):
+    class GadgetView(fr.ReactAdminView):
+        prefix = "/gadgets"
+        model = Gadget
+        schema = GadgetSchema
+        update_endpoint = fr.modify_route(methods=["PUT"])
+
+    with pytest.raises(RestlyConfigurationError, match=r"\(PUT put\) and"):
+        fr.include_view(FastAPI(), GadgetView)
 
 
 def test_two_written_names_are_refused_as_openapi_says(make_client):
@@ -1173,6 +1244,56 @@ def test_an_option_keeps_the_order_of_the_routes(view_base, Gadget):
             return {"n": 1}
 
     assert _order_of(WithOption) == _order_of(Plain)
+
+
+def _stats_base(view_base: type, Gadget: type) -> type:
+    class StatsBase(view_base):
+        prefix = "/gadgets"
+        model = Gadget
+        schema = GadgetSchema
+        id_type = str
+
+        @fr.get("/stats")
+        def stats(self) -> dict[str, int]:
+            return {"n": 1}
+
+    return StatsBase
+
+
+def test_an_option_from_a_mixin_keeps_the_order_of_the_routes(view_base, Gadget):
+    StatsBase = _stats_base(view_base, Gadget)
+
+    class Quiet:
+        get_one_endpoint = fr.modify_route(summary="One")
+
+    class Plain(StatsBase):
+        pass
+
+    class WithOption(Quiet, StatsBase):
+        pass
+
+    assert _order_of(WithOption) == _order_of(Plain)
+
+
+@pytest.mark.parametrize("registered_middle", [False, True])
+def test_an_option_in_a_middle_class_keeps_the_order_of_the_routes(
+    view_base, Gadget, registered_middle
+):
+    StatsBase = _stats_base(view_base, Gadget)
+
+    class Middle(StatsBase):
+        get_one_endpoint = fr.modify_route(summary="One")
+
+    if registered_middle:
+        fr.include_view(FastAPI(), Middle)
+
+    class Plain(StatsBase):
+        pass
+
+    class Leaf(Middle):
+        pass
+
+    assert _order_of(Leaf) == _order_of(Plain)
 
 
 def test_a_status_without_a_body_also_drops_the_model_of_a_decorator(view_base, Gadget):

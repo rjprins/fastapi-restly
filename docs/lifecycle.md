@@ -51,7 +51,7 @@ all five actions: `update_endpoint` calls `handle_update`, which calls
   To change one option of the route, such as the status code, use
   {func}`fr.modify_route <fastapi_restly.views.modify_route>`. Replace the method
   only when the change needs code. See
-  [Change the status code or headers of one route](#replace-endpoint-method).
+  [Replace the endpoint method of one route](#replace-endpoint-method).
 - The **handler**, `handle_<verb>`, runs the steps. It calls
   {meth}`authorize <fastapi_restly.views.RestView.authorize>`, checks the
   [references](#reference-exists) in the data, and then calls the business
@@ -901,7 +901,7 @@ FastAPI's `BackgroundTasks` does not replace an outbox: a crash loses the
 task, and nothing tries it again.
 
 (replace-endpoint-method)=
-## Change the status code or headers of one route
+## Replace the endpoint method of one route
 
 Business methods and hooks keep the HTTP contract of the CRUD route. To change
 only an option of the route, such as its status code, use
