@@ -407,7 +407,7 @@ def test_modify_route_keeps_a_status_without_a_body_down_the_classes(
     assert "content" not in operation["responses"]["204"]
 
 
-def test_modify_route_keeps_a_response_model_that_it_names_on_a_status_without_a_body(
+def test_modify_route_refuses_a_response_model_on_a_status_without_a_body(
     view_base, Gadget
 ):
     class GadgetView(view_base):
@@ -416,7 +416,7 @@ def test_modify_route_keeps_a_response_model_that_it_names_on_a_status_without_a
         schema = GadgetSchema
         update_endpoint = fr.modify_route(status_code=204, response_model=GadgetSchema)
 
-    with pytest.raises(AssertionError, match="must not have a response body"):
+    with pytest.raises(RestlyConfigurationError, match="cannot change the response"):
         fr.include_view(FastAPI(), GadgetView)
 
 
@@ -607,14 +607,78 @@ def test_modify_route_keeps_the_list_params(make_client):
     assert "page_size" in {parameter["name"] for parameter in operation["parameters"]}
 
 
-def test_modify_route_changes_the_response_model(make_client):
-    class Name(fr.BaseSchema):
-        name: str
+class NameSchema(fr.BaseSchema):
+    name: str
 
-    client = make_client(get_one_endpoint=fr.modify_route(response_model=Name))
-    created = client.post("/gadgets", json={"name": "a"}).json()
 
-    assert client.get(f"/gadgets/{created['id']}").json() == {"name": "a"}
+@pytest.mark.parametrize("name", ["get_one_endpoint", "create_endpoint"])
+def test_modify_route_refuses_another_response_model_for_the_view_response(
+    view_base, Gadget, name
+):
+    # another response model would skip to_single_response, and the fields
+    # that it hides would go out
+    attrs = {"prefix": "/gadgets", "model": Gadget, "schema": GadgetSchema}
+    attrs[name] = fr.modify_route(response_model=NameSchema)
+    GadgetView = type("GadgetView", (view_base,), attrs)
+
+    with pytest.raises(
+        RestlyConfigurationError,
+        match=rf"GadgetView.{name}: fr.modify_route cannot change the response "
+        r"model.*to_single_response builds it as GadgetResponse.*set response_schema",
+    ):
+        fr.include_view(FastAPI(), GadgetView)
+
+
+def test_modify_route_refuses_another_response_model_for_the_list(view_base, Gadget):
+    class GadgetView(view_base):
+        prefix = "/gadgets"
+        model = Gadget
+        schema = GadgetSchema
+        get_many_endpoint = fr.modify_route(response_model=list[NameSchema])
+
+    with pytest.raises(
+        RestlyConfigurationError,
+        match=r"to_list_response builds it as GadgetListResponse.*"
+        r"set list_response_schema",
+    ):
+        fr.include_view(FastAPI(), GadgetView)
+
+
+def test_modify_route_refuses_another_response_model_in_a_subclass(view_base, Gadget):
+    class Options:
+        get_one_endpoint = fr.modify_route(response_model=NameSchema)
+
+    class GadgetView(Options, view_base):
+        prefix = "/gadgets"
+        model = Gadget
+        schema = GadgetSchema
+
+    class SubView(GadgetView):
+        prefix = "/sub"
+        get_one_endpoint = fr.modify_route(summary="One")
+
+    with pytest.raises(RestlyConfigurationError, match="SubView.get_one_endpoint"):
+        fr.include_view(FastAPI(), SubView)
+
+
+def test_modify_route_changes_the_response_model_of_a_route_of_its_own(
+    view_base, Gadget
+):
+    class GadgetView(view_base):
+        prefix = "/gadgets"
+        model = Gadget
+        schema = GadgetSchema
+
+        @fr.get("/{id}/name", response_model=GadgetSchema)
+        def name(self, id: int) -> Any:
+            return {"id": id, "name": "a"}
+
+    class SubView(GadgetView):
+        name = fr.modify_route(response_model=NameSchema)
+
+    app = FastAPI()
+    fr.include_view(app, SubView)
+    assert TestClient(app).get("/gadgets/1/name").json() == {"name": "a"}
 
 
 def test_modify_route_leaves_the_base_and_other_views_alone(Gadget):

@@ -430,6 +430,38 @@ def _route_label(route: fastapi.routing.APIRoute) -> str:
     return f"{route.path_format} ({' '.join(sorted(route.methods))} {route.name})"
 
 
+def _reject_modified_response_model(view_cls: Any, name: str, endpoint: Any) -> None:
+    """Raise for ``fr.modify_route(response_model=...)`` on a route that
+    answers with the view's response. Such a route builds its response with
+    ``to_single_response`` or ``to_list_response``, and another response
+    model would skip that step, also the fields that it hides."""
+    inherited = getattr(endpoint, "_response_model_of", None)
+    if inherited is None:
+        return
+    kind, _ = _view_response_kind(view_cls, inherited)
+    if kind not in ("single", "many", "list"):
+        return
+    if kind == "list":
+        step, schema, setting = (
+            "to_list_response",
+            _bare(view_cls.list_response_schema),
+            "list_response_schema",
+        )
+    else:
+        step, schema, setting = (
+            "to_single_response",
+            view_cls.response_schema,
+            "response_schema",
+        )
+    raise RestlyConfigurationError(
+        f"{view_cls.__name__}.{name}: fr.modify_route cannot change the response "
+        f"model of this route. The route answers with the view's response: "
+        f"{step} builds it as {getattr(schema, '__name__', schema)}. To change "
+        f"the response of the view, set {setting}. To send another response "
+        f"from this route only, write the route method."
+    )
+
+
 def _reject_unread_path_parameter(
     view_cls: Any, name: str, path: str, endpoint: Callable, route: Any
 ) -> None:
@@ -810,6 +842,7 @@ def _init_api_router(view_cls: type[View]) -> fastapi.APIRouter:
             route_kwargs.get("responses") or {},
         )
         if is_rest_view:
+            _reject_modified_response_model(view_cls, name, endpoint)
             endpoint, route_kwargs = _with_view_response(
                 view_cls, endpoint, route_kwargs
             )

@@ -417,6 +417,13 @@ def modify_route(path: str | None = None, **api_route_kwargs: Any) -> Any:
     left out. A status code without a body, such as 204, also removes the
     response model of the route.
 
+    ``response_model`` raises
+    :class:`~fastapi_restly.exc.RestlyConfigurationError` when the view
+    registers, on a route that answers with the view's response. Such a route
+    builds its response with ``to_single_response`` or ``to_list_response``,
+    and another response model would skip that step. Set ``response_schema``
+    or ``list_response_schema``, or write the route method.
+
     This changes the route of this view and its subclasses. The route of the
     base class stays the same.
 
@@ -500,6 +507,11 @@ def _apply_modified_routes(cls: type) -> None:
         copied._api_route_args = (path, route_kwargs)  # type: ignore[attr-defined]
         copied._dropped_response_model = dropped  # type: ignore[attr-defined]
         copied._from_modify_route = True  # type: ignore[attr-defined]
+        if any("response_model" in option.api_route_kwargs for option in options):
+            # registration refuses it if this route answers with the view's response
+            copied._response_model_of = getattr(  # type: ignore[attr-defined]
+                endpoint, "_response_model_of", endpoint
+            )
         # Delete first: in the class dict, a name keeps its first place. The routes
         # that the class writes come first, see the copy of the inherited routes.
         if name in vars(cls):

@@ -239,9 +239,26 @@ method reads `id`, so nothing would read `role_id`.
 fields that the client sends. A React Admin view already has a `PUT` route,
 `put`. So there, `methods=["PUT"]` on `update_endpoint` raises an error, because
 two routes would have the same path and HTTP method. A status code without a
-body, such as 204, also removes the response model of the route. For the list
-route, set `list_response_schema`, not `response_model`. For a delete with a
-body, write the method.
+body, such as 204, also removes the response model of the route. For a delete
+with a body, write the method.
+
+`response_model` raises an error when the view registers, on each route that
+answers with the view's response. Such a route builds its response with
+{meth}`to_single_response <fastapi_restly.views.BaseRestView.to_single_response>`
+or {meth}`to_list_response <fastapi_restly.views.BaseRestView.to_list_response>`.
+Another response model would skip that step, and the fields that it hides would
+go out. To change the response of the view, set `response_schema` or
+`list_response_schema`. To send another schema from one route, write the method,
+for example a detail schema on `GET /{id}`:
+
+```python
+    @fr.get("/{id}")
+    async def get_one_endpoint(self, id: IDType) -> GiftDetailResponse:
+        obj = await self.handle_get_one(id)
+        return GiftDetailResponse.model_validate(obj)
+```
+
+Then the route decides what it sends, as a plain FastAPI route does.
 
 An option does not change the order of the routes. So a route that the
 class writes, such as `GET /stats`, stays before the item route.
