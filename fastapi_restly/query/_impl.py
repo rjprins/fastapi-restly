@@ -437,7 +437,14 @@ def _supports_range_operators(field: FieldInfo, column: Any) -> bool:
             for value in get_args(annotation)
         )
     # ``Any`` is a class from Python 3.11 on; it is still an unknown type.
-    if annotation is Any or not isinstance(annotation, type):
+    if annotation is Any:
+        # the column decides, such as a Boolean or a Uuid column of the id
+        # of fr.IDSchema
+        try:
+            annotation = column.type.python_type
+        except (AttributeError, NotImplementedError):
+            return True
+    if not isinstance(annotation, type):
         return True
     if issubclass(annotation, bool):
         return False

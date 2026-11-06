@@ -8,6 +8,7 @@ does not store it. Only ``__in`` and ``__not_in`` take several values.
 import asyncio
 import dataclasses
 import enum
+import uuid
 from datetime import date
 from decimal import Decimal
 from typing import Annotated, Any, Literal
@@ -952,3 +953,23 @@ def test_a_filter_value_that_becomes_a_list_or_a_dict_fails(sync_db):
     key = fr.query.FilterKey(Sticker, StickerSchema, "tags")
     with pytest.raises(fr.exc.BadQueryParam, match="not a list or an object"):
         key.parse('["x"]')
+
+
+def test_a_field_of_type_any_gets_range_keys_by_its_column():
+    class Token(fr.IDMixin, SharedBase):
+        uid: Mapped[uuid.UUID]
+        flag: Mapped[bool]
+        count: Mapped[int]
+
+    class TokenSchema(fr.IDSchema):
+        uid: Any
+        flag: Any
+        count: Any
+
+    fields = derive_list_params_schema(TokenSchema, Token).model_fields
+
+    assert "count__gte" in fields
+    for key in ("uid__gte", "flag__gte", "flag__lt"):
+        assert key not in fields, key
+    assert "uid" in fields
+    assert "flag" in fields

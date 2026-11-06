@@ -86,7 +86,8 @@ Not every field gets every suffix:
   that have an order, such as numbers and dates. Booleans, UUIDs and labels do
   not get them: an enum, or a `Literal` of strings. An int enum, such as an
   `IntEnum`, has the order of its numbers and gets them. A flag, such as an
-  `IntFlag`, gets the other filters, but no range.
+  `IntFlag`, gets the other filters, but no range. For a field of type `Any`,
+  such as the `id` of `fr.IDSchema`, the type of the column decides.
 - A text column gets no range suffixes, because the database sorts its values
   as text. So `"9"` comes after `"10"`, and the order of letters depends on the
   database. The one exception is a field of type `date` on a text column,

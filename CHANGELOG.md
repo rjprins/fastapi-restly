@@ -234,9 +234,9 @@ miss it.
     `{"note": None}` no longer looks for the text `None`. Leave the key out for no
     filter.
 38. Silent: a view with `unknown_query_params = "ignore"` ignores a key that it
-    does not have. So each key that steps 27, 28, 29, 30 and 33 remove now gives
-    `200` with the rows that the other keys find, where it filtered the rows. Search
-    the clients of such a view for these keys.
+    does not have. So each key that steps 27, 28, 29, 30, 33 and 41 remove now
+    gives `200` with the rows that the other keys find, where it filtered the rows.
+    Search the clients of such a view for these keys.
 39. A field whose public name starts with `_`, such as `_id`, is no longer a sort
     key, so `?sort=_id` now gets `422`. Pydantic takes such a name as a private
     attribute, so the field had no filter keys either. A key setting that names it
@@ -247,6 +247,11 @@ miss it.
     `2024-01-02 10:00:00+00:00` for `2024-01-02T10:00:00Z`. A filter does not find
     such a row, and its response looks the same. Write the new text into these
     rows.
+41. A field of type `Any`, such as the `id` of `fr.IDSchema`, now has `__gte`,
+    `__lte`, `__gt` and `__lt` only when the type of its column has them, as a
+    field of that type has. So on a `Uuid` or a `Boolean` column, `?id__gte=...`
+    now gets `422`. On a `Boolean` column, each request with them gave `500`. On a
+    view that ignores unknown keys, see step 38.
 
 ### Added
 
