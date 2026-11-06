@@ -1342,10 +1342,12 @@ def test_a_view_that_ignores_unknown_params_still_ignores_them(app):
 class Gadget(AliasBase):
     __tablename__ = "keys_alias_gadget"
     id: Mapped[int] = mapped_column(primary_key=True)
+    cost: Mapped[int | None]
     cost__internal: Mapped[int | None]
 
 
 class GadgetSchema(fr.IDSchema):
+    cost: int | None = None
     cost__internal: int | None = pydantic.Field(None, alias="costInternal")
 
 
@@ -1354,4 +1356,15 @@ def test_a_python_name_with_two_underscores_excludes_the_whole_field():
         GadgetSchema, Gadget, pagination=None, exclude_filters=("cost__internal",)
     )
 
-    assert not [key for key in model.model_fields if key.startswith("cost")]
+    assert not [key for key in model.model_fields if key.startswith("costInternal")]
+    assert "cost__in" in model.model_fields
+
+
+def test_a_field_name_excludes_no_key_of_a_longer_name():
+    model = derive_list_params_schema(
+        GadgetSchema, Gadget, pagination=None, exclude_filters=("cost",)
+    )
+
+    assert not [key for key in model.model_fields if key.startswith("cost_")]
+    assert "cost" not in model.model_fields
+    assert "costInternal__in" in model.model_fields

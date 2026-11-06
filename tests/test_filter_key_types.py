@@ -696,8 +696,11 @@ def test_a_set_or_a_tuple_holds_several_values(crates):
     assert labels(crates, {"label": ["a"]}) == ["a"]
 
 
-@pytest.mark.parametrize("key", ["note", "id__in"])
-def test_none_in_a_mapping_fails(crates, key):
+@pytest.mark.parametrize(
+    "key, isnull_key",
+    [("note", "note__isnull"), ("id__in", None), ("label", None), ("sort", None)],
+)
+def test_none_in_a_mapping_fails(crates, key, isnull_key):
     # leaving the key out would return every row, such as for an id list
     # that the code did not compute
     with pytest.raises(RequestValidationError) as exc_info:
@@ -706,11 +709,15 @@ def test_none_in_a_mapping_fails(crates, key):
     (error,) = exc_info.value.errors()
     assert error["loc"] == ("query", key)
     assert "Leave the key out for no filter" in error["msg"]
+    # only a column that can be NULL has an __isnull key
+    assert ("__isnull" in error["msg"]) == (isnull_key is not None)
+    if isnull_key:
+        assert f"use {isnull_key!r}: True" in error["msg"]
 
 
 def test_none_in_a_mapping_fails_outside_a_view(crates):
     stmt = select(crates.model)
-    with pytest.raises(fr.exc.BadQueryParam, match="'note__isnull': True"):
+    with pytest.raises(fr.exc.BadQueryParam, match="Leave the key out for no filter"):
         apply_list_params(stmt, {"note": None}, crates.model, crates.schema)
 
 
@@ -907,11 +914,28 @@ class Shade(enum.Enum):
     blue = "B"
 
 
-def test_a_field_of_type_any_on_an_enum_column_takes_the_value_it_shows(sync_db):
+class Level(enum.Enum):
+    low = 1
+    high = 2
+
+
+class Swapped(enum.Enum):
+    # each value is the name of the other member
+    red = "blue"
+    blue = "red"
+
+
+@pytest.mark.parametrize(
+    "enum_class, member",
+    [(Shade, Shade.red), (Level, Level.low), (Swapped, Swapped.red)],
+)
+def test_a_field_of_type_any_on_an_enum_column_takes_the_value_it_shows(
+    sync_db, enum_class, member
+):
     engine, _ = sync_db
 
     class Paint(fr.IDMixin, SharedBase):
-        shade: Mapped[Shade]
+        shade: Mapped[enum_class]  # type: ignore[valid-type]
 
     class PaintSchema(fr.IDSchema):
         shade: Any
@@ -926,16 +950,17 @@ def test_a_field_of_type_any_on_an_enum_column_takes_the_value_it_shows(sync_db)
 
     SharedBase.metadata.create_all(engine)
     client = RestlyTestClient(app)
-    client.post("/paints/", json={"shade": "red"})
-    client.post("/paints/", json={"shade": "blue"})
+    for each in enum_class:
+        client.post("/paints/", json={"shade": each.name})
 
-    shown = client.get("/paints/").json()["data"][0]["shade"]
-    assert shown == "R"
-    found = client.get("/paints/", params={"shade": shown}).json()["data"]
-    assert [paint["shade"] for paint in found] == ["R"]
+    shown = member.value
+    for params in ({"shade": str(shown)}, {"shade__in": str(shown)}):
+        found = client.get("/paints/", params=params).json()["data"]
+        assert [paint["shade"] for paint in found] == [shown], params
     params = client.get("/openapi.json").json()["paths"]["/paints"]["get"]["parameters"]
     (shade,) = [param for param in params if param["name"] == "shade"]
-    assert "R" in str(shade["schema"])
+    (shown_values, _) = shade["schema"]["anyOf"]
+    assert shown in shown_values["enum"]
 
 
 def test_a_filter_value_that_becomes_a_list_or_a_dict_fails(sync_db):

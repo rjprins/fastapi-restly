@@ -616,24 +616,33 @@ def _validate_raw_list_params(
     unknown = set(raw.keys()) - {key for key, _, _ in fields}
     if unknown:
         raise _unknown_keys_error(raw, unknown)
-    if not isinstance(raw, QueryParams) and (error := _none_values_error(raw)):
+    if not isinstance(raw, QueryParams) and (
+        error := _none_values_error(raw, {key for key, _, _ in fields})
+    ):
         raise error
     return _validate_list_params(params_model, fields, query)
 
 
-def _none_values_error(raw: Mapping[str, Any]) -> RequestValidationError | None:
+def _none_values_error(
+    raw: Mapping[str, Any], field_keys: Set[str]
+) -> RequestValidationError | None:
     """The error for each key of a mapping from code whose value is
-    ``None``, or ``None`` when there is no such key."""
-    errors = [
-        {
-            "type": "none_value",
-            "loc": ("query", key),
-            "msg": _none_in_mapping_message(key),
-            "input": None,
-        }
-        for key, value in raw.items()
-        if value is None
-    ]
+    ``None``, or ``None`` when there is no such key.
+
+    :param field_keys: The keys of the list params, to name the ``__isnull``
+        key of a field only when it has one.
+    """
+    errors = []
+    for key, value in raw.items():
+        if value is not None:
+            continue
+        isnull_key = f"{_split_key(key)[0]}__isnull"
+        message = _none_in_mapping_message(
+            key, isnull_key if isnull_key in field_keys else None
+        )
+        errors.append(
+            {"type": "none_value", "loc": ("query", key), "msg": message, "input": None}
+        )
     return RequestValidationError(errors) if errors else None
 
 

@@ -225,7 +225,8 @@ miss it.
     client that wants these rows sends `?note__isnull=true`. A list of values for
     `__in` or `__not_in` cannot hold `None` either, so `?note__not_in=x,` gets
     `422` too. `FilterKey.parse()` refuses such a value with `400`. A `None` that
-    your code puts in the list params is still no filter.
+    your code puts in a list params model is still no filter. In a dict, see
+    step 37.
 37. Silent: a dict that you pass as list params, such as
     `view.get_many({"id__in": allowed_ids})`, now keeps its values as values. An
     empty list on `__in` now matches no rows, where it matched every row, and on

@@ -733,7 +733,7 @@ def _derive_list_params(
     for key in _pick_keys(
         list(filter_fields),
         patterns["include_filters"],
-        _whole_fields(patterns["exclude_filters"], keys_of_field),
+        _whole_fields(patterns["exclude_filters"], keys_of_field, keys_of_field),
     ):
         url_key, filter_field = filter_fields[key]
         if url_key in reserved:
@@ -1260,7 +1260,9 @@ _SUFFIX_HINTS = {
 
 
 def _whole_fields(
-    entries: tuple[str, ...], field_names: _abc.Container[str]
+    entries: tuple[str, ...],
+    field_names: _abc.Container[str],
+    keys_of_field: _abc.Mapping[str, _abc.Sequence[str]] | None = None,
 ) -> tuple[str, ...]:
     """The patterns of ``exclude_filters``: a name without a suffix stands for
     the whole field, the plain key and each key with a suffix. So a bare name
@@ -1268,11 +1270,16 @@ def _whole_fields(
 
     :param field_names: The Python name of each field. A field name with
         ``__``, such as ``cost__internal``, is a whole field too.
+    :param keys_of_field: The filter keys of each field. For a field name,
+        the patterns are then these keys, so ``cost`` leaves out no key of a
+        field ``cost__internal``.
     """
     patterns: list[str] = []
     for entry in entries:
         patterns.append(entry)
-        if "*" not in entry and ("__" not in entry or entry in field_names):
+        if keys_of_field is not None and entry in keys_of_field:
+            patterns.extend(keys_of_field[entry])
+        elif "*" not in entry and ("__" not in entry or entry in field_names):
             patterns.append(f"{entry}__*")
     return tuple(patterns)
 
@@ -1298,7 +1305,11 @@ def _check_filter_entries(
     """
     keys = [key for field_keys in keys_of_field.values() for key in field_keys]
     for entry in entries:
-        patterns = _whole_fields((entry,), keys_of_field) if whole_fields else (entry,)
+        patterns = (
+            _whole_fields((entry,), keys_of_field, keys_of_field)
+            if whole_fields
+            else (entry,)
+        )
         if any(
             _pattern_regex(pattern).fullmatch(key)
             for pattern in patterns
@@ -1639,15 +1650,17 @@ def _query_key(name: str, field: FieldInfo) -> str:
     return field.alias or name
 
 
-def _none_in_mapping_message(key: str) -> str:
+def _none_in_mapping_message(key: str, isnull_key: str | None = None) -> str:
     """The error for ``None`` as the value of ``key`` in a dict of list
     params. Leaving the key out would return more rows than the code asked
-    for, such as every row for ``{"id__in": None}``."""
-    name, _ = _split_key(key)
-    return (
-        f"The value of {key!r} is None. Leave the key out for no filter. To "
-        f"find the rows where it is null, use '{name}__isnull': True."
-    )
+    for, such as every row for ``{"id__in": None}``.
+
+    :param isnull_key: The ``__isnull`` key of the field, when it has one.
+    """
+    message = f"The value of {key!r} is None. Leave the key out for no filter."
+    if isnull_key is not None:
+        message += f" To find the rows where it is null, use {isnull_key!r}: True."
+    return message
 
 
 def _list_params_values(
@@ -2079,19 +2092,17 @@ def _enum_value(enum_type: sqlalchemy.Enum, value: Any) -> Any:
     a member of its enum class.
 
     A value that equals a member, such as ``1`` for a member of an
-    ``IntEnum``, or the value of a member, becomes that member: SQLAlchemy
-    binds a plain number as a number, and the column holds labels. A field
-    of type ``Any`` shows the value of a member in a response and in
-    OpenAPI, such as ``"R"`` for ``red = "R"``, so a client sends that.
-    SQLAlchemy passes any other string on, and a native ENUM on PostgreSQL
-    rejects it with an error, which would be a 500 for the client.
+    ``IntEnum``, becomes that member: SQLAlchemy binds a plain number as a
+    number, and the column holds labels. SQLAlchemy passes any other string
+    on, and a native ENUM on PostgreSQL rejects it with an error, which would
+    be a 500 for the client.
 
     :raises _BadValue: the value is no label of the column.
     """
     if value in enum_type.enums:
         return value
     for member in enum_type.enum_class or ():
-        if value == member or value == member.value:
+        if value == member:
             return member
     raise _BadValue("enum", f"Use one of: {', '.join(enum_type.enums)}.")
 
@@ -2252,9 +2263,10 @@ def _value_reader(
     untyped = annotation is Any
     number_labels = _has_number_labels(annotation)
     # a column of SQLAlchemy's Enum type takes its labels; see _column_step
-    to_python_type = (
-        None if _enum_type(column) is not None else _python_type_parser(column_type)
-    )
+    enum_type = _enum_type(column)
+    to_python_type = None if enum_type is not None else _python_type_parser(column_type)
+    # a field of type Any shows the value of a member; see _member_of_value
+    value_enum = enum_type.enum_class if untyped and enum_type is not None else None
 
     def read(value: Any) -> Any:
         if json_column and value is not None:
@@ -2284,6 +2296,8 @@ def _value_reader(
                 )
             if (untyped or reference) and to_python_type is not None:
                 result = to_python_type(result)
+            if value_enum is not None:
+                result = _member_of_value(value_enum, result)
             _check_number_size(result)
             return result
         except pydantic.ValidationError as exc:
@@ -2291,6 +2305,27 @@ def _value_reader(
             raise _BadValue(error["type"], error["msg"]) from exc
 
     return read
+
+
+def _member_of_value(enum_class: type[enum.Enum], value: Any) -> Any:
+    """The member of ``enum_class`` whose value is ``value``, or ``value``
+    when no member has it. A text from a URL matches a number value too.
+
+    A field of type ``Any`` shows the value of a member in a response and in
+    OpenAPI, such as ``"R"`` for ``red = "R"``, so a client sends that. The
+    value comes before the label: for ``red = "blue"``, ``blue`` is the row
+    that shows ``blue``.
+    """
+    number = _number_from_text(value) if isinstance(value, str) else value
+    for member in enum_class:
+        member_value = member.value
+        if value == member_value or (
+            isinstance(member_value, (int, float))
+            and not isinstance(member_value, bool)
+            and number == member_value
+        ):
+            return member
+    return value
 
 
 def _has_number_labels(annotation: Any) -> bool:
