@@ -494,7 +494,7 @@ def test_an_excluded_list_route_can_use_any_class(Item):
         model = Item
         schema = ItemSchema
         list_response_schema = Rows
-        exclude_routes = ("get_many_endpoint",)
+        get_many_endpoint = None
 
     fr.include_view(FastAPI(), ItemView)
 

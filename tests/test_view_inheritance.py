@@ -4,7 +4,7 @@ Tests for class-based view inheritance in FastAPI-Restly.
 Views are real Python classes — not decorators or function wrappers — so the
 full Python inheritance model applies:
 
-  - Class variables (model, schema, exclude_routes, pagination,
+  - Class variables (model, schema, routes set to None, pagination,
     id_type) are inherited and can be overridden per-subclass. Class-level
     ``dependencies`` and ``responses`` add up instead; see
     test_view_router_inheritance.py.
@@ -166,12 +166,12 @@ def test_super_chain_in_handler_override(sync_db):
 
 
 # ---------------------------------------------------------------------------
-# 4. Inherited class-variable: exclude_routes
+# 4. Inherited: a route set to None
 # ---------------------------------------------------------------------------
 
 
-def test_inherit_exclude_routes(sync_db):
-    """exclude_routes set on a base view is inherited; excluded endpoints are absent."""
+def test_a_subclass_inherits_a_route_set_to_none(sync_db):
+    """A route that a base view sets to None stays out of a subclass."""
     engine, _ = sync_db
 
     class Entry(fr.IDMixin, SharedBase):
@@ -183,7 +183,9 @@ def test_inherit_exclude_routes(sync_db):
     class ReadOnlyBase(fr.RestView):
         model = Entry
         schema = EntrySchema
-        exclude_routes = ("create_endpoint", "update_endpoint", "delete_endpoint")
+        create_endpoint = None
+        update_endpoint = None
+        delete_endpoint = None
 
     app = FastAPI()
 
@@ -206,35 +208,10 @@ def test_inherit_exclude_routes(sync_db):
     assert resp.status_code in (404, 405)
 
 
-def test_exclude_routes_accepts_view_route_enum(sync_db):
-    engine, _ = sync_db
-
-    class Event(fr.IDMixin, SharedBase):
-        title: Mapped[str]
-
-    class EventSchema(fr.IDSchema):
-        title: str
-
-    class EventView(fr.RestView):
-        prefix = "/events"
-        model = Event
-        schema = EventSchema
-        exclude_routes = (fr.ViewRoute.DELETE,)
-
-    app = FastAPI()
-    fr.include_view(app, EventView)
-
-    SharedBase.metadata.create_all(engine)
-
-    client = TestClient(app)
-    assert client.get("/events/").status_code == 200
-    assert client.delete("/events/1").status_code in (404, 405)
-
-
 def test_a_read_only_subclass_keeps_the_custom_routes_of_its_base():
-    """exclude_routes leaves out only the routes that it names. A read-only
-    subclass still serves a custom write route of its base, until it names
-    the method, as docs/crud_routes.md warns."""
+    """A read-only subclass leaves out only the routes that it sets to None.
+    It still serves a custom write route of its base, until it sets that
+    method to None too, as docs/crud_routes.md warns."""
 
     class Badge(fr.IDMixin, SharedBase):
         name: Mapped[str]
@@ -247,15 +224,15 @@ def test_a_read_only_subclass_keeps_the_custom_routes_of_its_base():
         def merge(self) -> dict:
             return {}
 
-    writes = (fr.ViewRoute.CREATE, fr.ViewRoute.UPDATE, fr.ViewRoute.DELETE)
-
     class PublicBadgeView(BadgeView):
         prefix = "/public"
-        exclude_routes = writes
+        create_endpoint = None
+        update_endpoint = None
+        delete_endpoint = None
 
-    class ClosedBadgeView(BadgeView):
+    class ClosedBadgeView(PublicBadgeView):
         prefix = "/closed"
-        exclude_routes = (*writes, "merge")
+        merge = None
 
     app = FastAPI()
     fr.include_view(app, PublicBadgeView)

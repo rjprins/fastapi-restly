@@ -692,10 +692,9 @@ class UserView(FieldsRouteView):
 ```
 
 `GET /users/fields` now exists next to the CRUD routes of `UserView`. A
-subclass also inherits
-{attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>`,
-so a base view can leave out the same CRUD routes in every subclass; see
-[Exclude CRUD routes](#exclude-crud-routes).
+subclass also inherits a route that its base sets to `None`, so a base view
+can leave out the same CRUD routes in every subclass; see
+[Leave out a route](#leave-out-routes).
 
 To change one option of a route that a subclass inherits, use
 {func}`fr.modify_route <fastapi_restly.views.modify_route>` under the name of the

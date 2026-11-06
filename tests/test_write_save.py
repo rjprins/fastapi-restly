@@ -476,11 +476,9 @@ async def test_the_reload_of_rows_with_a_composite_key(env):
                     "model": Shelf,
                     "schema": ShelfSchema,
                     "Action": _Action,
-                    "exclude_routes": (
-                        fr.ViewRoute.GET_ONE,
-                        fr.ViewRoute.UPDATE,
-                        fr.ViewRoute.DELETE,
-                    ),
+                    "get_one_endpoint": None,
+                    "update_endpoint": None,
+                    "delete_endpoint": None,
                 },
             )
         )(request=None, session=session)

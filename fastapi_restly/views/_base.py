@@ -20,7 +20,7 @@ import inspect
 import itertools
 import types
 import warnings
-from collections.abc import Collection, Iterable, Mapping
+from collections.abc import Iterable, Mapping
 from enum import Enum
 from typing import (
     TYPE_CHECKING,
@@ -177,25 +177,6 @@ class ListResult(Generic[ModelT]):
     #: values of the page from them, and without them it reports the first
     #: page on every page.
     list_params: Any = None
-
-
-class ViewRoute(str, Enum):
-    """Default CRUD route names that can be referenced by view options.
-
-    Values are the endpoint method names, so ``include_routes`` and
-    ``exclude_routes`` can name them.
-    """
-
-    #: ``GET /``: the list.
-    GET_MANY = "get_many_endpoint"
-    #: ``GET /{id}``: one row.
-    GET_ONE = "get_one_endpoint"
-    #: ``POST /``: create a row.
-    CREATE = "create_endpoint"
-    #: ``PATCH /{id}``: update a row.
-    UPDATE = "update_endpoint"
-    #: ``DELETE /{id}``: delete a row.
-    DELETE = "delete_endpoint"
 
 
 class Action:
@@ -547,7 +528,7 @@ def _check_composite_key(cls: Any) -> None:
                 f"item routes ({', '.join(routes)}) need it. Set "
                 "id_type = str, and override where_id(id): split the id, and "
                 "return sqlalchemy.and_(Model.a == a, Model.b == b). Or leave "
-                "the item routes out with include_routes or exclude_routes."
+                "the item routes out, such as get_one_endpoint = None."
             )
 
 
@@ -693,21 +674,6 @@ class BaseRestView(
     #: types. Integer paths accept non-negative digits. An unmatched value
     #: falls through to another route or returns 404, instead of 422.
     id_type: ClassVar[type[Any] | None] = None
-    #: The routes that the view serves, such as
-    #: ``(fr.ViewRoute.GET_MANY, fr.ViewRoute.GET_ONE)``: :class:`ViewRoute`
-    #: values for the CRUD routes, or the names of route methods, also of a
-    #: custom route. The view leaves out every other route, also a route that
-    #: a base view gets later. The default, ``("*",)``, is every route. A
-    #: subclass that sets its own value replaces the list of its base. A name
-    #: that is not a route raises ``AttributeError`` when the view is
-    #: registered.
-    include_routes: ClassVar[Collection[str | ViewRoute]] = ("*",)
-    #: The routes to leave out of the view, after :attr:`include_routes`,
-    #: such as ``(fr.ViewRoute.DELETE,)``: :class:`ViewRoute` values for the
-    #: CRUD routes, or the names of endpoint methods. A subclass that sets its
-    #: own value replaces the list of its base. A name that is not a route
-    #: raises ``AttributeError`` when the view is registered.
-    exclude_routes: ClassVar[Collection[str | ViewRoute]] = ()
     #: What a list route does with a query key that it does not read.
     #: ``"forbid"`` (the default) rejects the request with 422, so a typo in
     #: a filter key does not return more rows than the client asked for.
@@ -1438,7 +1404,6 @@ class BaseRestView(
                 route = _guard_list_params(route)
                 setattr(cls, name, route)
             _fill_schema_types(route, cls, list_params)
-        _check_route_settings(cls)
         _check_composite_key(cls)
 
 
@@ -1738,31 +1703,6 @@ def _guard_list_params(route: Callable) -> Callable:
     return guarded
 
 
-def _route_names(view_cls: type, setting: str) -> frozenset[str]:
-    """The endpoint method names that the view's ``include_routes`` or
-    ``exclude_routes`` names.
-
-    :raises RestlyConfigurationError: the setting is one string, such as
-        ``(fr.ViewRoute.GET_MANY)`` without the comma of a tuple. A string is
-        a collection of its characters, so it would name the routes ``"g"``,
-        ``"e"`` and so on.
-    """
-    value = getattr(view_cls, setting)
-    if isinstance(value, str):
-        if isinstance(value, ViewRoute):
-            shown = got = f"fr.ViewRoute.{value.name}"
-        else:
-            shown, got = repr(value), f"the string {value!r}"
-        raise RestlyConfigurationError(
-            f"{view_cls.__name__}.{setting}{_set_by(view_cls, setting)} must be "
-            f"a tuple of routes, got {got}. For one entry, write "
-            f"{setting} = ({shown},) with a comma."
-        )
-    return frozenset(
-        route.value if isinstance(route, ViewRoute) else route for route in value
-    )
-
-
 def _is_pydantic_class(value: Any) -> bool:
     return isinstance(value, type) and issubclass(value, pydantic.BaseModel)
 
@@ -1833,51 +1773,15 @@ def _fields_the_items_lack(
 #: Each write schema of a CRUD view, and the routes that take it. The PUT route
 #: of a react-admin view takes the update schema too.
 _WRITE_SCHEMA_ROUTES = (
-    ("create_schema", (ViewRoute.CREATE.value,)),
-    ("update_schema", (ViewRoute.UPDATE.value, "put")),
+    ("create_schema", ("create_endpoint",)),
+    ("update_schema", ("update_endpoint", "put")),
 )
 
 
 def _serves_route(view_cls: type, method_name: str) -> bool:
-    """True if the CRUD view serves the route method ``method_name``: it has a
-    route method of that name, its ``include_routes`` has it, and its
-    ``exclude_routes`` does not."""
-    if not hasattr(getattr(view_cls, method_name, None), "_api_route_args"):
-        return False
-    included = _route_names(view_cls, "include_routes")
-    return ("*" in included or method_name in included) and (
-        method_name not in _route_names(view_cls, "exclude_routes")
-    )
-
-
-def _check_route_settings(cls: type[BaseRestView[Any, Any, Any, Any, Any]]):
-    """Raise for a name in ``include_routes`` or ``exclude_routes`` that is no
-    route at all: a typo, or the business method name instead of the
-    ``*_endpoint`` route name. ``"*"`` in ``include_routes`` is every route.
-
-    The routes that the view leaves out stay routes on the class. The router
-    leaves them out. So a subclass with its own settings gets them back, also
-    when the base registered first and copied them into its own namespace.
-    """
-    for setting in ("include_routes", "exclude_routes"):
-        for method_name in sorted(_route_names(cls, setting)):
-            if setting == "include_routes" and method_name == "*":
-                continue
-            if not _is_route_name_in_lineage(cls, method_name):
-                raise AttributeError(
-                    f"{method_name!r} in {setting} is not a route on {cls.__name__}"
-                )
-
-
-def _is_route_name_in_lineage(
-    cls: type[BaseRestView[Any, Any, Any, Any, Any]], method_name: str
-) -> bool:
-    """True if any class in ``cls``'s MRO defines a routable endpoint of this
-    name."""
-    return any(
-        hasattr(klass.__dict__.get(method_name), "_api_route_args")
-        for klass in cls.mro()
-    )
+    """True if the view has a route method ``method_name``. A view leaves out
+    an inherited route with ``method_name = None``."""
+    return hasattr(getattr(view_cls, method_name, None), "_api_route_args")
 
 
 def _copy_route(endpoint: Callable, view_cls: type, name: str) -> Callable:

@@ -224,7 +224,7 @@ def test_sync_view_dependency_with_authenticated_user_passes(sync_db):
 
 
 def test_async_excluded_route_does_not_trigger_dependency(client):
-    """When a route is excluded via exclude_routes, the dependency on the
+    """When a route is left out with delete_endpoint = None, the dependency on the
     view should NOT fire for it (the route does not exist, so 404)."""
 
     call_log: list[str] = []
@@ -245,7 +245,7 @@ def test_async_excluded_route_does_not_trigger_dependency(client):
         model = Tag
         schema = TagSchema
         dependencies = [Depends(require_auth)]
-        exclude_routes = ("delete_endpoint",)
+        delete_endpoint = None
 
     create_tables()
 

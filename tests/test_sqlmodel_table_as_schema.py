@@ -358,7 +358,9 @@ def test_a_view_that_takes_no_body_can_hold_a_table_class_in_a_field():
         prefix = "/players"
         model = PlayerRow
         schema = ReadOnlyPlayerSchema
-        include_routes = (fr.views.ViewRoute.GET_ONE, fr.views.ViewRoute.GET_MANY)
+        create_endpoint = None
+        update_endpoint = None
+        delete_endpoint = None
 
     fr.include_view(fastapi.FastAPI(), ReadOnlyPlayerView)
 

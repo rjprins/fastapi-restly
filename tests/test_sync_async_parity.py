@@ -74,7 +74,7 @@ def sync_client(sync_db) -> Iterator[TestClient]:
         prefix = "/custom-collection"
         model = CustomCollection
         schema = CustomCollectionSchema
-        exclude_routes = [fr.ViewRoute.CREATE]
+        create_endpoint = None
 
         @fr.post("/", response_model=CustomCollectionSchema)
         def create_with_custom_contract(
@@ -122,7 +122,7 @@ def async_client() -> Iterator[TestClient]:
         prefix = "/custom-collection"
         model = CustomCollectionA
         schema = CustomCollectionASchema
-        exclude_routes = [fr.ViewRoute.CREATE]
+        create_endpoint = None
 
         @fr.post("/", response_model=CustomCollectionASchema)
         async def create_with_custom_contract(

@@ -418,7 +418,13 @@ _RENAMED_METHOD_HINTS = {
     ),
 }
 # Removed before 1.0, with what to use instead.
+_LEAVE_OUT_A_ROUTE = (
+    "To leave out a route, set it to None in the class body, such as "
+    "delete_endpoint = None."
+)
 _REMOVED_SETTINGS = {
+    "include_routes": _LEAVE_OUT_A_ROUTE,
+    "exclude_routes": _LEAVE_OUT_A_ROUTE,
     "route_options": (
         "Use fr.modify_route under the name of the route method, such as "
         "create_endpoint = fr.modify_route(status_code=200)."

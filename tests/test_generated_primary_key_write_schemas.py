@@ -127,7 +127,9 @@ def test_composite_key_stays_in_the_derived_create_schema(base):
         base,
         Membership,
         MembershipSchema,
-        exclude_routes=(fr.ViewRoute.GET_ONE, fr.ViewRoute.UPDATE, fr.ViewRoute.DELETE),
+        get_one_endpoint=None,
+        update_endpoint=None,
+        delete_endpoint=None,
     )
 
     assert set(view.create_schema.model_fields) == {"user_id", "group_id", "role"}

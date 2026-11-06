@@ -37,14 +37,7 @@ from typing_extensions import TypeVar, is_typeddict
 from ..db._config import _fr_config
 from ..exc import RestlyConfigurationError, RestlyMisuseWarning
 from ..schemas._base import IDSchema, RefExists, _alias_value, _reject_buried_markers
-from ._base import (
-    BaseRestView,
-    ListResult,
-    View,
-    _added_dependencies,
-    _ModifiedRoute,
-    _serves_route,
-)
+from ._base import BaseRestView, ListResult, View, _added_dependencies, _ModifiedRoute
 from ._class_based_view import (
     _copy_all_parent_class_endpoints_into_this_subclass,
     _init_all_endpoints,
@@ -409,7 +402,7 @@ def _reject_routes_that_clash(view_cls: Any, api_router: fastapi.APIRouter) -> N
                     f"{_route_label(route)} have the same path and HTTP method. "
                     f"The server runs only the first, so the second never "
                     f"answers, and the spec can show the wrong one. Leave one of "
-                    f"them out, for example with exclude_routes."
+                    f"them out: set its route method to None in the view."
                 )
     seen: dict[str, fastapi.routing.APIRoute] = {}
     for route in routes:
@@ -805,9 +798,6 @@ def _init_api_router(view_cls: type[View]) -> fastapi.APIRouter:
                 f"class was defined. Use it in the class body."
             )
         if not hasattr(attr, "_api_route_args"):
-            continue
-        # include_routes and exclude_routes are settings of the CRUD views only
-        if is_rest_view and not _serves_route(view_cls, name):
             continue
         endpoint = attr
         if is_rest_view:

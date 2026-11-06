@@ -25,7 +25,6 @@ fastapi_restly:
   - TimestampsSchemaMixin
   - UTCDatetime
   - View
-  - ViewRoute
   - WhereClause
   - WriteOnly
   - all_of
@@ -177,7 +176,6 @@ fastapi_restly.views:
   - SchemaType
   - UpdateSchema
   - View
-  - ViewRoute
   - delete
   - get
   - include_view

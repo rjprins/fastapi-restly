@@ -620,11 +620,9 @@ def test_composite_key_count_and_list(flavor):
         model = Seat
         schema = SeatSchema
         # an id from the path cannot name one seat
-        exclude_routes = (
-            fr.ViewRoute.GET_ONE,
-            fr.ViewRoute.UPDATE,
-            fr.ViewRoute.DELETE,
-        )
+        get_one_endpoint = None
+        update_endpoint = None
+        delete_endpoint = None
 
     flavor.create_tables()
     for row in (1, 2):

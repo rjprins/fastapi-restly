@@ -27,7 +27,7 @@ class TicketBase(fr.AsyncRestView):
     model = Ticket
     schema = TicketSchema
     pagination = None
-    exclude_routes = [fr.ViewRoute.DELETE]
+    delete_endpoint = None
     dependencies: ClassVar[list[Any]] = [Depends(lambda: None)]
 
 
@@ -75,12 +75,6 @@ def read_the_fields(search: TicketSearch) -> int:
 @fr.include_view(app)
 class PublicTicketView(TicketBase):
     prefix = "/public-tickets"
-    include_routes = (fr.ViewRoute.GET_MANY, fr.ViewRoute.GET_ONE)
-
-
-class MappedTicketView(PagedTicketView):
-    # Restly reads include_routes and exclude_routes more than once, and a
-    # map() can be read only once. mypy's warn_unused_ignores fails here if
-    # the type starts to accept it.
-    include_routes = map(fr.ViewRoute, ("get_many_endpoint",))  # type: ignore[assignment]
-    exclude_routes = map(fr.ViewRoute, ("delete_endpoint",))  # type: ignore[assignment]
+    create_endpoint = None
+    update_endpoint = None
+    delete_endpoint = None

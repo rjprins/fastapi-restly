@@ -152,14 +152,14 @@ and what was committed stays saved. See
 ## Write one CRUD route by hand
 
 To write one of the default CRUD routes yourself, leave it out of the view
-with [`exclude_routes`](#exclude-crud-routes) and add your own FastAPI route:
+with [`delete_endpoint = None`](#leave-out-routes) and add your own FastAPI route:
 
 ```python
 class UserView(fr.AsyncRestView):
     prefix = "/users"
     model = User
     schema = UserSchema
-    exclude_routes = (fr.ViewRoute.DELETE,)
+    delete_endpoint = None
 
 
 fr.include_view(api, UserView)
@@ -204,9 +204,8 @@ contracts:
    {func}`fr.modify_route <fastapi_restly.views.modify_route>`; see
    [Change one option of a route](#modify-route). Keep routes with another
    contract out of the change. For example, a `PUT` update that replaces the whole
-   row can stay hand-written: leave it out with
-   {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>`
-   until you change its contract. A route that stays outside the view must name
+   row can stay hand-written: leave it out with `update_endpoint = None` until
+   you change its contract. A route that stays outside the view must name
    its path parameter `id` too, as in `PUT /products/{id}`. OpenAPI does not
    allow `/products/{product_id}` next to `/products/{id}`, and Restly cannot
    check a route outside the view.
@@ -222,7 +221,7 @@ class ProductView(fr.AsyncRestView):
     prefix = "/products"
     model = Product
     schema = ProductSchema          # match your old response shape exactly
-    exclude_routes = (fr.ViewRoute.DELETE,)  # the old DELETE returns the object
+    delete_endpoint = None          # the old DELETE returns the object
 
 
 fr.include_view(api, ProductView)

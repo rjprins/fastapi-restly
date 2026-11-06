@@ -27,7 +27,7 @@ class OrganizationView(fr.AsyncRestView[Organization]):
 
     Also demonstrates a custom POST route that returns ``201 Created`` with a
     ``Location`` header pointing at the new resource. The default create route
-    returns only the body. ``exclude_routes`` removes it so the custom route
+    returns only the body. ``create_endpoint = None`` removes it so the custom route
     owns ``POST /``.
     """
 
@@ -36,7 +36,7 @@ class OrganizationView(fr.AsyncRestView[Organization]):
     schema = OrganizationSchema
     create_schema = OrganizationCreate
     update_schema = OrganizationUpdate
-    exclude_routes = [fr.ViewRoute.CREATE]
+    create_endpoint = None
 
     @fr.post("/", response_model=OrganizationResponse, status_code=201)
     async def create_with_location(

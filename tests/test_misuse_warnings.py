@@ -550,7 +550,8 @@ def test_only_the_write_routes_of_the_view_are_linted():
         prefix = "/read-only-stamps"
         model = StampedNote
         schema = RouteStampSchema
-        exclude_routes = (fr.ViewRoute.CREATE, fr.ViewRoute.UPDATE)
+        create_endpoint = None
+        update_endpoint = None
 
     assert _register(ReadOnlyStampView) == []
 
@@ -558,29 +559,7 @@ def test_only_the_write_routes_of_the_view_are_linted():
         prefix = "/update-only-stamps"
         model = StampedNote
         schema = RouteStampSchema
-        exclude_routes = (fr.ViewRoute.CREATE,)
-
-    assert len(_register(UpdateOnlyStampView)) == 1
-
-
-def test_the_write_routes_that_include_routes_leaves_out_are_not_linted():
-    class IncludedStampSchema(fr.IDSchema):
-        body: str
-        tenant_id: int | None = None
-
-    class ReadOnlyStampView(fr.AsyncRestView):
-        prefix = "/included-read-stamps"
-        model = StampedNote
-        schema = IncludedStampSchema
-        include_routes = (fr.ViewRoute.GET_MANY, fr.ViewRoute.GET_ONE)
-
-    assert _register(ReadOnlyStampView) == []
-
-    class UpdateOnlyStampView(fr.AsyncRestView):
-        prefix = "/included-update-stamps"
-        model = StampedNote
-        schema = IncludedStampSchema
-        include_routes = (fr.ViewRoute.GET_ONE, fr.ViewRoute.UPDATE)
+        create_endpoint = None
 
     assert len(_register(UpdateOnlyStampView)) == 1
 
@@ -597,7 +576,8 @@ def test_the_put_route_of_a_react_admin_view_lints_the_update_class():
         prefix = "/put-stamps"
         model = StampedNote
         schema = PutStampSchema
-        include_routes = (fr.ViewRoute.GET_ONE, "put")
+        create_endpoint = None
+        update_endpoint = None
 
     messages = _register(PutStampView)
     assert len(messages) == 1
@@ -607,7 +587,9 @@ def test_the_put_route_of_a_react_admin_view_lints_the_update_class():
         prefix = "/read-put-stamps"
         model = StampedNote
         schema = PutStampSchema
-        include_routes = (fr.ViewRoute.GET_ONE,)
+        create_endpoint = None
+        update_endpoint = None
+        put = None
 
     assert _register(ReadStampView) == []
 

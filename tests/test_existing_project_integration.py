@@ -77,7 +77,7 @@ def test_excluded_restly_route_can_be_replaced_by_plain_fastapi_route():
         prefix = "/users"
         model = User
         schema = UserSchema
-        exclude_routes = (fr.ViewRoute.DELETE,)
+        delete_endpoint = None
 
     fr.include_view(api, UserView)
 

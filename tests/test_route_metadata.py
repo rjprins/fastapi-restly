@@ -392,20 +392,6 @@ def test_plain_view_keeps_fastapi_metadata():
     )
 
 
-def test_excluded_route_stays_out_when_the_view_overrides_it(base):
-    class ItemView(base):
-        prefix = "/items"
-        exclude_routes = (fr.ViewRoute.DELETE,)
-
-        @fr.delete("/{id}", summary="Remove an item")
-        def delete_endpoint(self, id: int):
-            return None
-
-    app = FastAPI()
-    fr.include_view(app, ItemView)
-    assert ("/items/{id}", "delete") not in _operations(app)
-
-
 @pytest.mark.parametrize(
     "base",
     [fr.ReactAdminView, fr.AsyncReactAdminView],

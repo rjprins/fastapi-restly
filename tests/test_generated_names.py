@@ -466,7 +466,7 @@ def test_only_the_routes_in_the_app_name_a_view():
         prefix = "/tag-lookup"
         model = Tag
         schema = TagSchema
-        exclude_routes = ("get_many_endpoint",)
+        get_many_endpoint = None
 
     @fr.include_view(app)
     class TagAdminView(fr.AsyncReactAdminView):

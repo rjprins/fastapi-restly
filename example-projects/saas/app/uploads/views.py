@@ -39,7 +39,7 @@ class UploadView(AuthenticatedView[Upload]):
     prefix = "/uploads"
     model = Upload
     schema = UploadSchema
-    exclude_routes = [fr.ViewRoute.CREATE]
+    create_endpoint = None
 
     @fr.post("/", response_model=UploadResponse, status_code=201)
     async def upload_csv(

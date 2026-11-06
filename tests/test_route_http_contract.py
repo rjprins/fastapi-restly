@@ -995,7 +995,8 @@ def test_two_written_names_are_refused_as_openapi_says(make_client):
         lambda: {"get_one_endpoint": _get_one_on_id()},
         lambda: {
             "get_one_endpoint": _get_one_on_gadget_id(),
-            "exclude_routes": (fr.ViewRoute.UPDATE, fr.ViewRoute.DELETE),
+            "update_endpoint": None,
+            "delete_endpoint": None,
         },
     ],
     ids=["id-type", "id-as-written", "no-other-route"],

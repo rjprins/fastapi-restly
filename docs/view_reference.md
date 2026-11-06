@@ -44,8 +44,6 @@ class also takes a {class}`SchemaType <fastapi_restly.views.SchemaType>`; see
 | {attr}`update_schema <fastapi_restly.views.BaseRestView.update_schema>` | `ClassVar[type[pydantic.BaseModel]]` | The body of `PATCH`. Derived by making all writable fields optional, and named such as `UserUpdate`. |
 | {attr}`model <fastapi_restly.views.BaseRestView.model>` | `ClassVar[type[Any]]` | The SQLAlchemy mapped class. A class without a mapper raises at class definition. |
 | {attr}`id_type <fastapi_restly.views.BaseRestView.id_type>` | `ClassVar[type \| None]` | Type of the `{id}` path parameter on the default routes. `None` (the default) takes the model's primary key type; a composite key gets `int`. |
-| {attr}`include_routes <fastapi_restly.views.BaseRestView.include_routes>` | `ClassVar[Collection[str \| ViewRoute]]` | The routes to serve: `fr.ViewRoute` values or route method names, also of a custom route, such as `"merge"`. The view leaves out every other route, also one that a base view gets later. `("*",)` by default: every route. See [Exclude CRUD routes](#exclude-crud-routes). |
-| {attr}`exclude_routes <fastapi_restly.views.BaseRestView.exclude_routes>` | `ClassVar[Collection[str \| ViewRoute]]` | Routes to leave out, after `include_routes`: `fr.ViewRoute` values (`GET_MANY`, `GET_ONE`, `CREATE`, `UPDATE`, `DELETE`) or route method names such as `"delete_endpoint"`. `()` by default. See [Exclude CRUD routes](#exclude-crud-routes). |
 | {attr}`list_params_schema <fastapi_restly.views.BaseRestView.list_params_schema>` | `ClassVar[type[pydantic.BaseModel]]` | The list params (filter, sort, page) as a Pydantic model, generated from `response_schema` by `fr.query.derive_list_params_schema`. Any route method that declares a `list_params` parameter is annotated with it, so a custom list route takes the same parameters as `GET /`. |
 | {attr}`include_filters <fastapi_restly.views.BaseRestView.include_filters>` | `ClassVar[tuple[str, ...]]` | The filter keys to keep, as keys with the Python names of the fields, or patterns. `*` matches any characters except `.`. `("*",)` by default: the keys of the resource's own fields, and no dotted keys. See [Choose the keys of a list](#choose-list-keys). |
 | {attr}`exclude_filters <fastapi_restly.views.BaseRestView.exclude_filters>` | `ClassVar[tuple[str, ...]]` | The filter keys to leave out, after `include_filters`. A name without a suffix leaves out the whole field. `()` by default. |
@@ -116,7 +114,9 @@ The shorthand decorators explicitly set the default status code shown. Pass `sta
 
 To change the options of a route that a class inherits, use
 {func}`fr.modify_route <fastapi_restly.views.modify_route>` under the name of
-the route method; see [Change one option of a route](#modify-route).
+the route method; see [Change one option of a route](#modify-route). To leave
+it out, set it to `None`, such as `delete_endpoint = None`; see
+[Leave out a route](#leave-out-routes).
 
 To add a decorator from another library, such as a rate limit, see
 [Add a decorator of your own](#decorators-on-view-methods).

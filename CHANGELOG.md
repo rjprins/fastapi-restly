@@ -258,7 +258,11 @@ miss it.
     `RestlyConfigurationError` when it registers. The server ran the first route,
     but the spec showed the second. This happens, for example, with a method of
     your own at `@fr.get("/{id}")` next to `get_one_endpoint`. Replace
-    `get_one_endpoint` instead, or leave it out with `exclude_routes`.
+    `get_one_endpoint` instead, or leave it out with `get_one_endpoint = None`.
+43. Replace `include_routes` and `exclude_routes`: set each route that the view
+    leaves out to `None`, such as `delete_endpoint = None`. `fr.ViewRoute` is
+    gone. A view that still sets one of these settings raises
+    `RestlyConfigurationError` when Python defines the class.
 
 ### Added
 
@@ -351,6 +355,9 @@ miss it.
 
 ### Removed
 
+- `include_routes`, `exclude_routes` and `fr.ViewRoute`. A view leaves out a route
+  with `delete_endpoint = None`. `include_routes` also left out the custom routes
+  that it did not name, with no error.
 - The `x-resource-ref` extension in OpenAPI. No part of Restly read it, and it could
   name the wrong view when several views served one model.
 

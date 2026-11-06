@@ -27,6 +27,7 @@ from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
 from fastapi_restly._routes import iter_routes
+from fastapi_restly.exc import RestlyConfigurationError
 
 from ._models import SharedBase
 
@@ -182,9 +183,9 @@ def test_class_attributes_are_not_corrupted_by_second_registration():
         )
 
 
-def test_exclude_routes_does_not_crash_on_second_registration(sync_db):
-    """A view with ``exclude_routes`` registers on two apps, and both leave
-    the route out. An older version removed the route mark from the method,
+def test_a_route_set_to_none_stays_out_on_a_second_registration(sync_db):
+    """A view with ``delete_endpoint = None`` registers on two apps, and both
+    leave the route out. An older version removed the route mark from the method,
     so the second registration raised AttributeError."""
     engine, _ = sync_db
 
@@ -198,7 +199,7 @@ def test_exclude_routes_does_not_crash_on_second_registration(sync_db):
         prefix = "/tokens"
         model = Token
         schema = TokenSchema
-        exclude_routes = ("delete_endpoint",)
+        delete_endpoint = None
 
     app_a = FastAPI()
     app_b = FastAPI()
@@ -400,12 +401,12 @@ def test_subclass_route_override_wins_on_same_app(sync_db):
     assert client.get("/levers/sub/health").json() == {"src": "sub"}
 
 
-def test_parent_exclude_routes_with_coregistered_subclass_does_not_crash(sync_db):
-    """Regression for the exclude-routes interaction surfaced while fixing the
+def test_a_parent_route_set_to_none_with_a_coregistered_subclass(sync_db):
+    """Regression for the interaction surfaced while fixing the
     base-plus-subclass duplication above.
 
-    A parent that excludes a route, co-registered with a subclass that inherits
-    ``exclude_routes``, must register cleanly. The subclass inherits the
+    A parent that leaves out a route, co-registered with a subclass that
+    inherits the ``None``, must register cleanly. The subclass inherits the
     exclusion, so both end up without the route; nothing is duplicated.
     """
     engine, _ = sync_db
@@ -420,7 +421,7 @@ def test_parent_exclude_routes_with_coregistered_subclass_does_not_crash(sync_db
         prefix = "/relays"
         model = Relay
         schema = RelaySchema
-        exclude_routes = ("delete_endpoint",)
+        delete_endpoint = None
 
     class SubRelayView(RelayBase):
         prefix = "/sub"
@@ -660,20 +661,22 @@ def test_failed_registration_is_not_recorded_as_mounted(sync_db):
         prefix = "/winches"
         model = Winch
         schema = WinchSchema
-        exclude_routes = ("delete",)  # business name, not the route name
 
         @fr.get("/stats")
         def stats(self) -> dict:
             return {}
 
+    # a removed setting, assigned after the class: registration refuses it
+    WinchView.exclude_routes = ("delete_endpoint",)  # type: ignore[attr-defined]
     app = FastAPI()
     for _ in range(2):
-        with pytest.raises(AttributeError, match="not a route"):
+        with pytest.raises(RestlyConfigurationError, match="was removed"):
             fr.include_view(app, WinchView)
 
     # Fix the mistake and retry on the SAME app: the failed attempt must not
     # have been recorded, so this call really mounts.
-    WinchView.exclude_routes = ("delete_endpoint",)
+    del WinchView.exclude_routes  # type: ignore[attr-defined]
+    WinchView.delete_endpoint = None
     fr.include_view(app, WinchView)
 
     assert _duplicate_routes(app) == {}
@@ -693,31 +696,6 @@ def test_failed_registration_is_not_recorded_as_mounted(sync_db):
     assert client.delete("/winches/1").status_code in (404, 405)
 
 
-def test_exclude_routes_unknown_name_still_raises():
-    """``exclude_routes`` with a name that is no route anywhere in the
-    lineage (e.g. the business-verb name ``get_one`` instead of the route name
-    ``get_one_endpoint``) is a genuine mistake and still raises."""
-
-    class Sprocket(fr.IDMixin, SharedBase):
-        label: Mapped[str]
-
-    class SprocketSchema(fr.IDSchema):
-        label: str
-
-    class SprocketView(fr.RestView):
-        prefix = "/sprockets"
-        model = Sprocket
-        schema = SprocketSchema
-        exclude_routes = ("get_one",)  # business method, not the route name
-
-    app = FastAPI()
-    with pytest.raises(
-        AttributeError,
-        match="'get_one' in exclude_routes is not a route on SprocketView",
-    ):
-        fr.include_view(app, SprocketView)
-
-
 def _item_methods(app: FastAPI, prefix: str) -> set[str]:
     return {
         method
@@ -729,9 +707,9 @@ def _item_methods(app: FastAPI, prefix: str) -> set[str]:
 
 @pytest.mark.parametrize("view_base", [fr.RestView, fr.AsyncRestView])
 @pytest.mark.parametrize("base_first", [False, True], ids=["alone", "base-first"])
-def test_a_subclass_exclude_routes_replaces_the_list_of_its_base(view_base, base_first):
-    """The base's exclusion must not reach a subclass with its own
-    ``exclude_routes``, also when the base registered first."""
+def test_a_subclass_leaves_out_more_routes_than_its_base(view_base, base_first):
+    """A subclass that sets another route to None leaves out both routes, and
+    the base keeps its own, also when the base registered first."""
 
     class Crank(fr.IDMixin, SharedBase):
         label: Mapped[str]
@@ -739,35 +717,40 @@ def test_a_subclass_exclude_routes_replaces_the_list_of_its_base(view_base, base
     class CrankBase(view_base):
         prefix = "/cranks"
         model = Crank
-        exclude_routes = (fr.ViewRoute.DELETE,)
+        delete_endpoint = None
 
     class SubCrankView(CrankBase):
         prefix = "/sub"
-        exclude_routes = (fr.ViewRoute.GET_ONE,)
+        get_one_endpoint = None
 
     app = FastAPI()
     if base_first:
         fr.include_view(app, CrankBase)
     fr.include_view(app, SubCrankView)
 
-    assert _item_methods(app, "/cranks/sub") == {"PATCH", "DELETE"}
+    assert _item_methods(app, "/cranks/sub") == {"PATCH"}
     if base_first:
         assert _item_methods(app, "/cranks") == {"GET", "PATCH"}
 
 
-def test_a_plain_view_keeps_its_routes_despite_exclude_routes():
-    """``exclude_routes`` is a setting of the CRUD views. On a plain View, the
-    attribute is not a setting, so it removes nothing and checks nothing."""
-
-    class PlainView(fr.View):
+def test_a_plain_view_leaves_out_a_route_set_to_none():
+    class PlainBase(fr.View):
         prefix = "/plain"
-        exclude_routes = ("hello", "typo")
 
         @fr.get("/hello")
         def hello(self) -> dict:
             return {}
 
+        @fr.get("/bye")
+        def bye(self) -> dict:
+            return {}
+
+    class PlainView(PlainBase):
+        hello = None
+
     app = FastAPI()
     fr.include_view(app, PlainView)
 
-    assert "/plain/hello" in {route.path for route in iter_routes(app.routes)}
+    paths = {route.path for route in iter_routes(app.routes)}
+    assert "/plain/bye" in paths
+    assert "/plain/hello" not in paths

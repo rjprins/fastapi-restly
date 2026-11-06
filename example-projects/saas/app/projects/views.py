@@ -80,7 +80,7 @@ class ProjectView(TrashView[Project]):
     schema = ProjectSchema
     # No scope declared: reads apply ProjectClauses.default_scope.
     trash_scope = ProjectClauses.is_deleted
-    exclude_routes = [fr.ViewRoute.DELETE]  # replaced by soft_delete below
+    delete_endpoint = None  # replaced by soft_delete below
 
     class Action(TrashView.Action):
         ARCHIVE = "archive"
