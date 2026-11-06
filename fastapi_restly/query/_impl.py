@@ -2218,9 +2218,11 @@ def _value_reader(
     enum whose values are numbers read the number from the text first; see
     :func:`_has_number_labels`. An ``IDRef`` gives its id. A JSON column
     takes only ``None``: it holds JSON text, so SQL cannot compare it with a
-    value. A field of type ``Any``, such as the ``id`` of ``fr.IDSchema``, and
-    the id of a reference get the Python type of the column, such as a
-    ``UUID`` from its text.
+    value. A value that becomes a list, a dict or a set, as a
+    ``pydantic.Json`` field can give, fails: a column holds one value. A field
+    of type ``Any``, such as the ``id`` of ``fr.IDSchema``, and the id of a
+    reference get the Python type of the column, such as a ``UUID`` from its
+    text.
 
     The function raises :class:`_BadValue` for a value that fails. Only a
     validation error is the client's fault. Another exception from a validator
@@ -2266,6 +2268,12 @@ def _value_reader(
             reference = isinstance(result, IDSchema)
             if reference:
                 result = result.id
+            if isinstance(result, (list, tuple, set, frozenset, dict)):
+                # such as from a pydantic.Json field: a column holds one value
+                raise _BadValue(
+                    "value_error",
+                    "A filter value is one value, not a list or an object.",
+                )
             if (untyped or reference) and to_python_type is not None:
                 result = to_python_type(result)
             _check_number_size(result)

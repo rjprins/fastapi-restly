@@ -348,7 +348,10 @@ miss it.
   `String(n)` is now `422`.
 - A `pydantic.Json[list]` or `pydantic.Json[dict]` field has only `__isnull`, as a
   `list` or `dict` field has. Before, it had the filters for one value on a text
-  column, and each request with them gave `400`, `500`, or no rows.
+  column, and each request with them gave `400`, `500`, or no rows. A filter value
+  that becomes a list or a dict, as in a field of type `pydantic.Json`, now gets
+  `422`. Before, it gave `500`, and in `Json[str | list[str]]` a list became one
+  condition for each item.
 - The error for list params of your own without page fields now fits a list with
   its own `limit` and `offset`. Its advice was `PagedListParams`, which gives page
   numbers, or `pagination = None`. With `pagination = None`, an envelope with a

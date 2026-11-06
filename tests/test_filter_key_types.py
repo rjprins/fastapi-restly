@@ -917,3 +917,38 @@ def test_a_field_of_type_any_on_an_enum_column_takes_the_value_it_shows(sync_db)
     params = client.get("/openapi.json").json()["paths"]["/paints"]["get"]["parameters"]
     (shade,) = [param for param in params if param["name"] == "shade"]
     assert "R" in str(shade["schema"])
+
+
+def test_a_filter_value_that_becomes_a_list_or_a_dict_fails(sync_db):
+    engine, make_session = sync_db
+
+    class Sticker(fr.IDMixin, SharedBase):
+        tags: Mapped[str]
+        meta: Mapped[str | None] = mapped_column(default=None)
+
+    class StickerSchema(fr.IDSchema):
+        tags: pydantic.Json[str | list[str]]
+        meta: pydantic.Json | None = None
+
+    SharedBase.metadata.create_all(engine)
+    with make_session() as session:
+        session.add(Sticker(tags="x"))
+        session.commit()
+    params_model = derive_list_params_schema(StickerSchema, Sticker)
+
+    stmt = apply_list_params(
+        select(Sticker), params_model(tags='"x"'), Sticker, StickerSchema
+    )
+    with make_session() as session:
+        assert [row.tags for row in session.scalars(stmt)] == ["x"]
+    for key, value in [
+        ("tags", '["x", "y"]'),
+        ("tags__in", '["x"]'),
+        ("tags__not_in", '["x"]'),
+        ("meta", '{"a": 1}'),
+    ]:
+        with pytest.raises(pydantic.ValidationError, match="not a list or an object"):
+            params_model.model_validate({key: value})
+    key = fr.query.FilterKey(Sticker, StickerSchema, "tags")
+    with pytest.raises(fr.exc.BadQueryParam, match="not a list or an object"):
+        key.parse('["x"]')

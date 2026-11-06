@@ -109,9 +109,10 @@ Not every field gets every suffix:
 - A field that holds a `dict` or a `list` has no filter but `__isnull`. This
   covers a `JSON` or `ARRAY` column, and a `pydantic.Json[list]` or
   `pydantic.Json[dict]` field on any column. The other filters would fail or
-  find no row on every request. Such a field
-  is no sort key either: a document or a list has no order that a client
-  means, and PostgreSQL's `json` type has none at all.
+  find no row on every request. Such a field is no sort key either: a document
+  or a list has no order that a client means, and PostgreSQL's `json` type has
+  none at all. In another `pydantic.Json` field, such as `Json[str | list[str]]`,
+  a filter value that becomes a list or a dict gets `422`.
 - A field on a JSON column has no filter but `__isnull` too, also when it holds one
   value, such as a `str` in `fr.models.PydanticJSON(str)`. The column holds
   JSON text, such as `"x"` with its quotes, and SQL compares that text, not
