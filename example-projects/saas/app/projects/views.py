@@ -145,9 +145,7 @@ class ProjectView(TrashView[Project]):
         the row.
         """
         project = await self.get_one(id)
-
-        async with self.write_action(self.Action.DELETE, obj=project):
-            await self.delete(project)
+        await self.handle_delete(id)
         return project
 
     @fr.post("/{id}/archive")

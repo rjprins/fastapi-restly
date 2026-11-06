@@ -30,6 +30,7 @@ import fastapi
 import pydantic
 from fastapi import Response
 from fastapi.datastructures import Default
+from fastapi.utils import is_body_allowed_for_status_code
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.orm.state import InstanceState
 from typing_extensions import TypeVar, is_typeddict
@@ -428,10 +429,9 @@ def _reject_modified_response_model(view_cls: Any, name: str, endpoint: Any) -> 
     answers with the view's response. Such a route builds its response with
     ``to_single_response`` or ``to_list_response``, and another response
     model would skip that step, also the fields that it hides."""
-    inherited = getattr(endpoint, "_response_model_of", None)
-    if inherited is None:
+    if not getattr(endpoint, "_names_response_model", False):
         return
-    kind, _ = _view_response_kind(view_cls, inherited)
+    kind, _ = _view_response_kind(view_cls, endpoint._first_route)
     if kind not in ("single", "many", "list"):
         return
     if kind == "list":
@@ -446,13 +446,26 @@ def _reject_modified_response_model(view_cls: Any, name: str, endpoint: Any) -> 
             view_cls.response_schema,
             "response_schema",
         )
+    no_body = ""
+    status_code = endpoint._api_route_args[1].get("status_code")
+    if status_code is not None and not is_body_allowed_for_status_code(status_code):
+        no_body = " A status code without a body removes the response model by itself."
     raise RestlyConfigurationError(
-        f"{view_cls.__name__}.{name}: fr.modify_route cannot change the response "
-        f"model of this route. The route answers with the view's response: "
-        f"{step} builds it as {getattr(schema, '__name__', schema)}. To change "
-        f"the response of the view, set {setting}. To send another response "
-        f"from this route only, write the route method."
+        f"{view_cls.__name__}.{name}: fr.modify_route cannot set response_model "
+        f"on this route. The route answers with the view's response: {step} "
+        f"builds it as {_type_label(schema)}. To change the response of the "
+        f"view, set {setting}. To send another response from this route only, "
+        f"write the route method.{no_body}"
     )
+
+
+def _type_label(value: Any) -> str:
+    """``value`` as Python code shows it, such as ``list[TagResponse]``."""
+    args = get_args(value)
+    if not args:
+        return getattr(value, "__name__", repr(value))
+    origin = get_origin(value)
+    return f"{origin.__name__}[{', '.join(_type_label(arg) for arg in args)}]"
 
 
 def _reject_unread_path_parameter(

@@ -231,7 +231,8 @@ def _check_list_response(cls: Any) -> None:
     :meth:`to_list_response` can send anything else."""
     if cls.to_list_response is not _ReactAdminMixin.to_list_response:
         return
-    if not cls.get_many_endpoint.__module__.startswith("fastapi_restly."):
+    endpoint = cls.get_many_endpoint
+    if endpoint is None or not endpoint.__module__.startswith("fastapi_restly."):
         return
     list_response = cls.list_response_schema
     if get_origin(list_response) is not list:

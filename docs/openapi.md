@@ -39,7 +39,8 @@ class InvoiceView(fr.AsyncRestView):
 ```
 
 `tags` replaces the tag that Restly makes from the prefix. A subclass
-inherits it.
+inherits it. `responses` adds to the responses of the base classes, and an
+entry for the same status code in a subclass wins.
 
 On an `APIRouter` with tags of its own, such as `APIRouter(tags=["billing"])`,
 Restly makes no tag. The routes of the view then get only the tags of the
@@ -47,8 +48,7 @@ router, as a plain route on that router does. FastAPI adds the tags of each
 router to the tags of the routes on it, so a tag from the prefix would put each
 route in a second group. Restly sees only the router that `fr.include_view`
 gets. Tags that you pass later, as in `app.include_router(router, tags=[...])`,
-still come in addition to the tag from the prefix. `responses` adds to the responses of the base classes, and an
-entry for the same status code in a subclass wins.
+still come in addition to the tag from the prefix.
 
 A route of a CRUD view documents `404` by itself when it can answer 404. That is
 when its path has a parameter, or when its request body holds a reference to a

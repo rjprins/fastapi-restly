@@ -162,6 +162,12 @@ else:
 
         if name in _REMOVED_BASES:
             raise AttributeError(_REMOVED_BASES[name])
+        if name == "ViewRoute":
+            raise AttributeError(
+                "fr.ViewRoute was removed, with include_routes and "
+                "exclude_routes. To leave out a route, set it to None in the "
+                "class body, such as delete_endpoint = None."
+            )
         if name == "utils":
             raise AttributeError(
                 "fr.utils was removed, with CurrentSettingsMixin. Use a plain "

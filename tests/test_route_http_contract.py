@@ -416,7 +416,10 @@ def test_modify_route_refuses_a_response_model_on_a_status_without_a_body(
         schema = GadgetSchema
         update_endpoint = fr.modify_route(status_code=204, response_model=GadgetSchema)
 
-    with pytest.raises(RestlyConfigurationError, match="cannot change the response"):
+    with pytest.raises(
+        RestlyConfigurationError,
+        match="cannot set response_model.*removes the response model by itself",
+    ):
         fr.include_view(FastAPI(), GadgetView)
 
 
@@ -623,8 +626,8 @@ def test_modify_route_refuses_another_response_model_for_the_view_response(
 
     with pytest.raises(
         RestlyConfigurationError,
-        match=rf"GadgetView.{name}: fr.modify_route cannot change the response "
-        r"model.*to_single_response builds it as GadgetResponse.*set response_schema",
+        match=rf"GadgetView.{name}: fr.modify_route cannot set response_model "
+        r"on this route.*to_single_response builds it as GadgetResponse.*set response_schema",
     ):
         fr.include_view(FastAPI(), GadgetView)
 
@@ -797,7 +800,10 @@ def test_modify_route_over_a_route_that_a_base_removed_raises():
     class NoCreate(fr.RestView):
         create_endpoint = None
 
-    with pytest.raises(RestlyConfigurationError, match="inherits no route method"):
+    with pytest.raises(
+        RestlyConfigurationError,
+        match="NoCreate sets create_endpoint to None, so there is no route to change",
+    ):
 
         class BadView(NoCreate):
             create_endpoint = fr.modify_route(status_code=200)
@@ -1419,3 +1425,22 @@ def test_modify_route_over_a_written_base_gives_no_misuse_warning(
     finally:
         fr.configure(warn_on_misuse=False)
     assert not [w for w in recwarn if "overrides the endpoint method" in str(w.message)]
+
+
+def test_modify_route_refuses_a_response_model_after_a_status_without_a_body(
+    view_base, Gadget
+):
+    # the 204 of the base drops the response model, and the subclass names
+    # another one: the route still answers with the view's response
+    class GadgetView(view_base):
+        prefix = "/gadgets"
+        model = Gadget
+        schema = GadgetSchema
+        update_endpoint = fr.modify_route(status_code=204)
+
+    class SubView(GadgetView):
+        update_endpoint = fr.modify_route(status_code=200, response_model=NameSchema)
+
+    fr.include_view(FastAPI(), GadgetView)
+    with pytest.raises(RestlyConfigurationError, match="SubView.update_endpoint"):
+        fr.include_view(FastAPI(), SubView)

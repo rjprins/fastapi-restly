@@ -261,8 +261,8 @@ miss it.
     `get_one_endpoint` instead, or leave it out with `get_one_endpoint = None`.
 43. Replace `include_routes` and `exclude_routes`: set each route that the view
     leaves out to `None`, such as `delete_endpoint = None`. `fr.ViewRoute` is
-    gone. A view that still sets one of these settings raises
-    `RestlyConfigurationError` when Python defines the class.
+    gone. A view that still sets one of these settings, and `fr.ViewRoute`, raise
+    an error that names the fix.
 44. Silent: a view on an `APIRouter` with tags of its own, such as
     `APIRouter(tags=["shop"])`, no longer gets a tag from its prefix. Its routes
     get only the tags of the router, as a plain route on that router does. Before,

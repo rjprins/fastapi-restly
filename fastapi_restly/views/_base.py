@@ -453,6 +453,12 @@ def _apply_modified_routes(cls: type) -> None:
         if not options:
             continue
         endpoint = values[len(options)] if len(values) > len(options) else None
+        if endpoint is None and len(values) > len(options):
+            raise RestlyConfigurationError(
+                f"{cls.__name__}.{name} uses fr.modify_route, but "
+                f"{owners[len(options)].__name__} sets {name} to None, so there "
+                f"is no route to change."
+            )
         if not hasattr(endpoint, "_api_route_args"):
             raise RestlyConfigurationError(
                 f"{cls.__name__}.{name} uses fr.modify_route, but the class "
@@ -490,11 +496,14 @@ def _apply_modified_routes(cls: type) -> None:
         copied._api_route_args = (path, route_kwargs)  # type: ignore[attr-defined]
         copied._dropped_response_model = dropped  # type: ignore[attr-defined]
         copied._from_modify_route = True  # type: ignore[attr-defined]
-        if any("response_model" in option.api_route_kwargs for option in options):
-            # registration refuses it if this route answers with the view's response
-            copied._response_model_of = getattr(  # type: ignore[attr-defined]
-                endpoint, "_response_model_of", endpoint
-            )
+        # Registration refuses a response model that an option names, if the
+        # route that the class first inherits answers with the view's response.
+        copied._first_route = getattr(  # type: ignore[attr-defined]
+            endpoint, "_first_route", endpoint
+        )
+        copied._names_response_model = any(  # type: ignore[attr-defined]
+            "response_model" in option.api_route_kwargs for option in options
+        ) or getattr(endpoint, "_names_response_model", False)
         # Delete first: in the class dict, a name keeps its first place. The routes
         # that the class writes come first, see the copy of the inherited routes.
         if name in vars(cls):

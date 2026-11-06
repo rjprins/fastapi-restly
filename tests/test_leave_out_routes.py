@@ -102,16 +102,6 @@ def test_the_base_keeps_a_route_that_a_subclass_leaves_out(tag_view, base_first)
     assert "DELETE /tags/{id:int}" not in _served(NoDeleteTagView)
 
 
-def test_modify_route_on_a_route_that_the_base_leaves_out_raises(tag_view):
-    class NoDeleteTagView(tag_view):
-        delete_endpoint = None
-
-    with pytest.raises(RestlyConfigurationError, match="inherits no route method"):
-
-        class SubView(NoDeleteTagView):
-            delete_endpoint = fr.modify_route(status_code=200)
-
-
 @pytest.mark.parametrize("setting", ["include_routes", "exclude_routes"])
 def test_the_removed_settings_raise_and_name_the_fix(view_base, setting):
     class Tag(fr.IDMixin, SharedBase):
@@ -144,3 +134,21 @@ def test_a_composite_key_needs_no_item_routes_that_the_view_leaves_out(view_base
         delete_endpoint = None
 
     assert _served(SeatView) == {"GET /seats", "POST /seats"}
+
+
+@pytest.mark.parametrize("base", [fr.ReactAdminView, fr.AsyncReactAdminView])
+def test_a_react_admin_view_leaves_out_its_list_route(base):
+    class Tag(fr.IDMixin, SharedBase):
+        name: Mapped[str]
+
+    class TagView(base):
+        prefix = "/tags"
+        model = Tag
+        get_many_endpoint = None
+
+    assert "GET /tags" not in _served(TagView)
+
+
+def test_fr_view_route_names_the_fix():
+    with pytest.raises(AttributeError, match="such as delete_endpoint = None"):
+        fr.ViewRoute  # noqa: B018
