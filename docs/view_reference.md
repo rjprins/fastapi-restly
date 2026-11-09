@@ -1,8 +1,9 @@
 # View Reference
 
 This page lists everything you can set, override, or call on a view.
-[CRUD Routes](crud_routes.md) explains the default HTTP contract, and
-[Request Lifecycle & Hooks](lifecycle.md) explains which method to override.
+[CRUD Routes](crud_routes.md) explains the default routes, and the page of
+each route, such as [Update](crud_update.md), explains which method to
+override.
 [Modules](api/index.rst) documents the complete signatures.
 
 ## View classes
@@ -132,8 +133,8 @@ uses `PATCH`.
 Each CRUD route on `RestView` / `AsyncRestView` runs an endpoint method
 (`<verb>_endpoint`), a final handler (`handle_<verb>`), and a business method
 (`create`, `update`, `delete`) or a final load (`get_one`, `get_many`).
-[Request Lifecycle & Hooks](#view-request-steps) shows the steps, and which
-method to override for each change.
+[How a CRUD route runs](#view-request-steps) shows the steps, and the page of
+each route shows which method to override for each change.
 
 Alongside these are the declared read [scope](scopes.md) (the `scope` class
 attribute) and cross-cutting **override points** (`where_id`, `not_found`,
@@ -158,14 +159,14 @@ names are identical between variants.
 | Endpoint method | {meth}`update_endpoint <fastapi_restly.views.RestView.update_endpoint>` | `(id, data)` | `Model` | `PATCH /{id}`. Restly then builds the response with `to_single_response`. |
 | Endpoint method | {meth}`delete_endpoint <fastapi_restly.views.RestView.delete_endpoint>` | `(id)` | `None` | `DELETE /{id}`; answers `204` by default. |
 | Handler | {meth}`handle_get_many <fastapi_restly.views.RestView.handle_get_many>` | `(list_params, *, scope=None, where=None)` | `ListResult[Model]` | Run `authorize("get_many")`, then `get_many`, forwarding `scope=`. A route names its own scope here (a trash list); `fr.clauses.UNSCOPED` reads past the view scope. `where=` takes an expression or a clause and [narrows inside the scope](#per-read-where); the handler passes it on to `get_many`. Final. |
-| Handler | {meth}`handle_get_one <fastapi_restly.views.RestView.handle_get_one>` | `(id, *, scope=None)` | `Model` | Load through `get_one` (scoped, 404), forwarding `scope=`, then `authorize("get_one", obj=...)`. Reusable from a custom read route as "scoped load + 404 + read-auth"; a write action loads with `get_one` and gates its own action. `id` takes a predicate the way `get_one` does, so a [natural-key route](#natural-key-route) is this handler with `Item.slug == slug`. Final. |
+| Handler | {meth}`handle_get_one <fastapi_restly.views.RestView.handle_get_one>` | `(id, *, scope=None)` | `Model` | Load through `get_one` (scoped, 404), forwarding `scope=`, then `authorize("get_one", obj=...)`. Reusable from a custom read route as "scoped load + 404 + read-auth"; a write action loads with `get_one` and gates its own action. `id` takes a predicate the way `get_one` does, so a [natural-key route](#custom-route-other-key) is this handler with `Item.slug == slug`. Final. |
 | Handler | {meth}`handle_create <fastapi_restly.views.RestView.handle_create>` | `(data)` | `Model` | Authorize, check the references, run `create`, then save what it returns and run the commit bracket. Inside `shared_write_action_commit`, return after the save but before the commit and the after-hook. Final. |
 | Handler | {meth}`handle_update <fastapi_restly.views.RestView.handle_update>` | `(id, data)` | `Model` | Load, authorize, check the references, snapshot, run `update`, then save what it returns and run the commit bracket. `id` also takes a predicate, so an update by natural key runs the same bracket. Inside `shared_write_action_commit`, return after the save but before the commit and the after-hook. Final. |
 | Handler | {meth}`handle_delete <fastapi_restly.views.RestView.handle_delete>` | `(id)` | `None` | Load, authorize, snapshot, run `delete`, then flush and run the commit bracket. `id` also takes a predicate. Inside `shared_write_action_commit`, return after the flush but before the commit and the after-hook. Final. |
 | Custom-action bracket | {meth}`write_action <fastapi_restly.views.RestView.write_action>` | `(action, *, obj, data=None)` | context manager | Entered as `async with self.write_action(self.Action.PUBLISH, obj=post):`, it runs the full bracket around your change: authorize, the reference check of `data` and the snapshot on enter; the save, `before_action_commit`, the commit and `after_action_commit` on exit. `obj` is required: a row from the database, a new object that the action creates (Restly adds it), or `None` for a write with no single row. Use it for a custom write *action* that is not a plain create, update or delete. `action` is a name that the view's `Action` declares; another name raises `ValueError`. The block gets nothing from `as`. |
 | Commit bracket | {meth}`shared_write_action_commit <fastapi_restly.views.RestView.shared_write_action_commit>` | `()` | context manager | Share one commit across write actions on the session. The outermost block commits, then runs their after-hooks. See [Commit several writes together](#shared-write-action-commit). |
 | Load | {meth}`get_many <fastapi_restly.views.RestView.get_many>` | `(list_params, *, scope=None, where=None)` | `ListResult[Model]` | `select()`, then `apply_list_params`. Paginated views return one page plus a total count; unpaginated views return every matching row with `total_count=None` and skip `count`. Auth-free. Final. |
-| Load | {meth}`get_one <fastapi_restly.views.RestView.get_one>` | `(id, *, scope=None)` | `Model` | `select()` with `where_id(id)`, or raise the exception of `not_found(id)`. Visibility comes from the scope, so a hidden row is a clean 404 for every caller. Auth-free. A SQLAlchemy boolean expression can take the place of the id (`get_one(Item.slug == slug)`). It narrows inside the scope, and more than one match raises `MultipleResultsFound`. See [Look a row up by another key](#natural-key-route). Final. |
+| Load | {meth}`get_one <fastapi_restly.views.RestView.get_one>` | `(id, *, scope=None)` | `Model` | `select()` with `where_id(id)`, or raise the exception of `not_found(id)`. Visibility comes from the scope, so a hidden row is a clean 404 for every caller. Auth-free. A SQLAlchemy boolean expression can take the place of the id (`get_one(Item.slug == slug)`). It narrows inside the scope, and more than one match raises `MultipleResultsFound`. See [Read a row by another key](#custom-route-other-key). Final. |
 | Load | {meth}`select <fastapi_restly.views.BaseRestView.select>` | `(*, scope=None)` | `sqlalchemy.Select` | `select(model)` with the scope and `get_loader_options()`. Both loads start here, and so does a custom route that builds its own read. Final. |
 | Override point | {meth}`where_id <fastapi_restly.views.BaseRestView.where_id>` | `(id)` | `ColumnElement[bool]` | The WHERE for an id from the path. The primary key by default. Override to find the row by another key, such as a slug; a model with a composite primary key needs an override for its item routes. It must compare columns of the view's model. Plain `def`, also on an async view. |
 | Override point | {meth}`not_found <fastapi_restly.views.BaseRestView.not_found>` | `(id)` | `Exception` | The exception that `get_one` raises for an id that names no row: `fr.exc.NotFound` by default. `id` is `None` when a route loaded by an expression. May be `async def` on an async view. |
@@ -196,7 +197,7 @@ and `fr.clauses.UNSCOPED` reads unscoped.
 
 Internal methods prefixed with `_`, such as `_reject_unknown_query_params`, are implementation details even though they are visible on instances.
 
-See [Views](#the-view-hierarchy) for the class hierarchy, [Request Lifecycle & Hooks](lifecycle.md) for examples of choosing which method to override, and [Type Annotations](typing.md) for the typed signatures of these methods.
+See [Views](#the-view-hierarchy) for the class hierarchy, [CRUD Routes](crud_routes.md) for examples of choosing which method to override, and [Type Annotations](typing.md) for the typed signatures of these methods.
 
 (advanced-object-helpers)=
 ### The same operations outside a view

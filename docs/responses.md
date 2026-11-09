@@ -388,7 +388,7 @@ status code of one route, use
 {func}`fr.modify_route <fastapi_restly.views.modify_route>`; see
 [Change one option of a route](#modify-route). To change the headers, replace
 that endpoint method; see
-[Replace the endpoint method of one route](#replace-endpoint-method).
+[Replace an endpoint method](#replace-endpoint-method).
 
 (to-single-response)=
 ## Change how one object is serialized
@@ -421,6 +421,89 @@ response schema as it is, and converts an instance of any other class first.
 An override may return an instance of another model, such as the main
 schema. Only the fields of the response schema go out; see
 [Internals](#response-conversion) for how Restly converts it.
+:::
+
+(value-on-each-row)=
+## Add a value to each row
+
+A value that needs no query, such as whether the caller may edit the row,
+goes in
+{meth}`to_single_response <fastapi_restly.views.BaseRestView.to_single_response>`.
+Every response of the view passes there: one row, each row of a list, the
+row after a write, and a custom route that returns the row:
+
+```python
+    def to_single_response(self, obj):
+        response = super().to_single_response(obj)
+        return response.model_copy(update={"can_edit": obj.owner_id == Current.user_id()})
+```
+
+`Current.user_id()` is the id of the caller
+([Request Context](context.md)). The view's main schema declares the
+field:
+
+```python
+    can_edit: fr.ReadOnly[bool | None] = None
+```
+
+It is not a column, so `ReadOnly` keeps it out of the create and update
+bodies.
+
+A value that needs a query, such as the number of tasks of a project, is SQL
+on the model. A `column_property` loads with the row, in the same SELECT. So
+a list of 50 projects still runs one query for the page:
+
+```python
+from sqlalchemy import func, select
+from sqlalchemy.orm import column_property
+
+Project.task_count = column_property(
+    select(func.count(Task.id))
+    .where(Task.project_id == Project.id)
+    .correlate_except(Task)
+    .scalar_subquery()
+)
+```
+
+Declare `task_count: fr.ReadOnly[int] = 0` in the main schema, as for
+`can_edit`. The save after a write loads the value again, so the create and
+update responses show it too. The list gets filters and a sort key for it,
+such as `?sort=-task_count`; see [Filter a list](#filter-a-list). The SaaS
+example sets two task counts on its
+projects this way
+([`app/tasks/models.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/tasks/models.py)),
+and `can_edit` in `ProjectView.to_single_response`
+([`app/projects/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/projects/views.py)).
+
+Other changes to a list have their own place. A [scope](#view-scope) hides
+rows.
+{meth}`apply_list_params <fastapi_restly.views.RestView.apply_list_params>`
+changes how the list params filter, sort and page
+([Filtering, Sorting & Pagination](filtering.md)).
+{meth}`get_loader_options <fastapi_restly.views.BaseRestView.get_loader_options>`
+loads more for each row ([Relationships](#eager-load-extra-relationships)).
+
+:::{admonition} Details
+:class: details
+
+The `column_property` is set after both classes, because the expression names
+`Task`. Place it in the module of `Task` when that module imports `Project`.
+For type checkers, declare it on the class under `if TYPE_CHECKING:`, as
+`task_count: Mapped[int] = mapped_column(init=False)`. Every SELECT of the
+model computes a `column_property`, also `session.get()`. The list count does
+not: it counts the primary keys.
+
+A value that only one view shows can be a `query_expression()` on the model
+instead. The view fills it with `with_expression(...)` in
+{meth}`get_loader_options <fastapi_restly.views.BaseRestView.get_loader_options>`.
+Every read of the view applies the loader options, and so does the save after
+a write. So the value is there in every response of the view, also after
+`POST`. Another view of the model, or `session.get()`, leaves it unloaded.
+
+A custom route that names another class in `response_model=` skips
+`to_single_response`: FastAPI builds the response from the object, so the
+value is missing. Declare the view's response instead, as
+[The response of a custom route](#custom-route-response) explains.
 :::
 
 (list-schema)=
@@ -526,8 +609,8 @@ In each case only the fields of the response schema go out.
 
 - [Schemas & Validation](schemas.md): which fields the response
   schema has.
-- [Request Lifecycle & Hooks](#replace-endpoint-method): how to replace an
-  endpoint method.
+- [Replace an endpoint method](#replace-endpoint-method): how to replace the
+  endpoint method of a CRUD route.
 - [Filtering, Sorting & Pagination](filtering.md): the page parameters
   that clients send.
 - [Errors](errors.md): the error shape, which does not pass through the

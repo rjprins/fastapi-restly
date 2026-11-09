@@ -21,8 +21,10 @@ configuration and the model around such a view, in one file that runs.
 
 Each route runs a fixed list of steps, such as loading the row, `authorize`
 and the commit. [How a CRUD route runs](#view-request-steps) explains these
-steps. Each route also has a page of its own, such as [Update](crud_update.md).
-It shows the steps of that route in order, and a table of what you can change.
+steps. Each route also has a page of its own: [List](crud_list.md),
+[Get One](crud_get_one.md), [Create](crud_create.md), [Update](crud_update.md)
+and [Delete](crud_delete.md). It shows the steps of that route in order, and a
+table of what you can change.
 
 (choose-async-or-sync)=
 ## Choose async or sync
@@ -53,11 +55,11 @@ For `prefix = "/users"`, `include_view` registers these routes:
 
 | Request | Endpoint method | Input | Response | Status |
 |---|---|---|---|---|
-| `GET /users` | {meth}`get_many_endpoint <fastapi_restly.views.AsyncRestView.get_many_endpoint>` | Filter, sort and page parameters | A page of objects in a `data` envelope | `200` |
-| `POST /users` | {meth}`create_endpoint <fastapi_restly.views.AsyncRestView.create_endpoint>` | `create_schema` | `response_schema` | `201` |
-| `GET /users/{id}` | {meth}`get_one_endpoint <fastapi_restly.views.AsyncRestView.get_one_endpoint>` | The id in the path | `response_schema` | `200` |
+| [`GET /users`](crud_list.md) | {meth}`get_many_endpoint <fastapi_restly.views.AsyncRestView.get_many_endpoint>` | Filter, sort and page parameters | A page of objects in a `data` envelope | `200` |
+| [`POST /users`](crud_create.md) | {meth}`create_endpoint <fastapi_restly.views.AsyncRestView.create_endpoint>` | `create_schema` | `response_schema` | `201` |
+| [`GET /users/{id}`](crud_get_one.md) | {meth}`get_one_endpoint <fastapi_restly.views.AsyncRestView.get_one_endpoint>` | The id in the path | `response_schema` | `200` |
 | [`PATCH /users/{id}`](crud_update.md) | {meth}`update_endpoint <fastapi_restly.views.AsyncRestView.update_endpoint>` | `update_schema` | `response_schema` | `200` |
-| `DELETE /users/{id}` | {meth}`delete_endpoint <fastapi_restly.views.AsyncRestView.delete_endpoint>` | The id in the path | Empty body | `204` |
+| [`DELETE /users/{id}`](crud_delete.md) | {meth}`delete_endpoint <fastapi_restly.views.AsyncRestView.delete_endpoint>` | The id in the path | Empty body | `204` |
 
 The main path of the list is `/users`, without a slash at the end. Restly
 also accepts `/users/`, as a route that OpenAPI does not show.
@@ -117,7 +119,7 @@ the converter only to a path parameter annotated
 accept negative integer ids, replace each item endpoint you need with an
 untyped path such as `@fr.get("/{id}")`, and annotate its `id` parameter as
 `int`; see
-[Replace the endpoint method of one route](#replace-endpoint-method).
+[Replace an endpoint method](#replace-endpoint-method).
 
 The item routes use the name `id` in the path. An existing API can use another
 name, such as `{user_id}`. The URLs are the same, but OpenAPI and the clients that
@@ -138,28 +140,22 @@ Take `POST /`, the create route. FastAPI calls
 {meth}`create_endpoint <fastapi_restly.views.RestView.create_endpoint>`, the
 **endpoint method**. It calls
 {meth}`handle_create <fastapi_restly.views.RestView.handle_create>`, the
-**handler**. The handler runs the steps in this order:
+**handler**. The handler runs the steps, and calls
+{meth}`create <fastapi_restly.views.RestView.create>`, the **business
+method**:
 
 ```{code-block} text
-:emphasize-lines: 2,4,6,7,9,11,12
-
 POST /
-  └─ create_endpoint(data)                # endpoint method: the HTTP contract
-       ├─ handle_create(data)             # handler: runs the steps (final)
-       │    ├─ authorize("create", data=data)
-       │    ├─ check the references in data   # an id that does not exist: 404
-       │    ├─ create(data)               # business method: builds the object;
-       │    │                             #   nothing is written yet
-       │    ├─ save: flush, refresh obj, load it with the loader options
-       │    ├─ before_action_commit("create", new=obj, old=None)
-       │    ├─ commit
-       │    └─ after_action_commit("create", new=obj, old=None)
-       └─ to_single_response(obj)
+  └─ create_endpoint(data)          # endpoint method: the HTTP side
+       ├─ handle_create(data)       # handler: runs the steps (final)
+       │    ├─ authorize, check the references in data
+       │    ├─ create(data)         # business method: builds the object
+       │    └─ save, before_action_commit, commit, after_action_commit
+       └─ to_single_response(obj)   # the response
 ```
 
-The highlighted lines are the methods that you can override in your view.
-The page of each route, such as [Update](crud_update.md), shows the steps of
-that route.
+The page of each route, such as [Create](crud_create.md), shows all the steps
+of that route, and marks the methods that you can override.
 
 Every CRUD route has these three methods. The names follow one pattern for
 all five actions: `update_endpoint` calls `handle_update`, which calls
@@ -172,7 +168,7 @@ all five actions: `update_endpoint` calls `handle_update`, which calls
   To change one option of the route, such as the status code, use
   {func}`fr.modify_route <fastapi_restly.views.modify_route>`. Replace the method
   only when the change needs code. See
-  [Replace the endpoint method of one route](#replace-endpoint-method).
+  [Replace an endpoint method](#replace-endpoint-method).
 - The **handler**, `handle_<verb>`, runs the steps. It calls
   {meth}`authorize <fastapi_restly.views.RestView.authorize>`, checks the
   [references](#reference-exists) in the data, and then calls the business
@@ -197,7 +193,8 @@ all five actions: `update_endpoint` calls `handle_update`, which calls
   {meth}`get_one <fastapi_restly.views.RestView.get_one>` or
   {meth}`get_many <fastapi_restly.views.RestView.get_many>`. A load is
   final, as a handler is. You change it through the scope, the list params,
-  the loader options and two small hooks. See [A read](#read-request-steps).
+  the loader options and two small hooks. See
+  [Visibility, then policy](#read-request-steps).
 
 :::{admonition} Details
 :class: details
@@ -230,69 +227,15 @@ The business method runs under SQLAlchemy's
 So a query inside it does not write a half-built object, also on a
 {class}`RestView <fastapi_restly.views.RestView>`, whose session flushes
 before each query everywhere else.
-:::
 
-(read-request-steps)=
-### A read: visibility, then policy
-
-A read has no commit bracket and no business method. Its load is final. Each
-step of the load comes from a declaration or from a small hook:
-
-```{code-block} text
-:emphasize-lines: 2,7,8,9,10,13,15,18,19,20,21
-
-GET /{id}
-  └─ get_one_endpoint(id)                     # endpoint method
-       ├─ handle_get_one(id)                  # handler
-       │    ├─ get_one(id)                    # the load (final)
-       │    │    ├─ select()                  # select(model), the scope, the loader options
-       │    │    │                            #   VISIBILITY: a hidden row is a 404 for every caller
-       │    │    ├─ .where(where_id(id))      # hook: the primary key by default
-       │    │    └─ no row: raise not_found(id)   # hook: a 404 by default
-       │    └─ authorize("get_one", obj=obj)  # POLICY: checks the loaded row
-       └─ to_single_response(obj)             # the response of the row
-
-GET /
-  └─ get_many_endpoint(list_params)
-       ├─ handle_get_many(list_params)
-       │    ├─ authorize("get_many")          # POLICY: no row yet
-       │    └─ get_many(list_params)          # the load (final)
-       │         ├─ select()                  # the same start as get_one
-       │         ├─ apply_list_params(stmt, list_params)   # filters, sort, page
-       │         └─ count(stmt)               # on a paginated view
-       └─ to_list_response(result)
-            └─ to_single_response(row)        # for each row
-```
-
-The highlighted lines are the methods that you can override in your view.
-
-- **Visibility.** The load starts from
-  {meth}`select() <fastapi_restly.views.BaseRestView.select>`: the model with
-  the view's scope. A row outside the scope is a 404 for every caller, as if
-  the row did not exist. See [Scopes](scopes.md).
-- **Policy.** The handler calls `authorize`. For one row, it gets the loaded
-  row, and a refusal is a 403. See [Authorization](authorization.md).
-
-`PATCH /{id}`, `DELETE /{id}` and your action routes load their row with the
-same `get_one`. So the scope,
-{meth}`where_id <fastapi_restly.views.BaseRestView.where_id>` and
-{meth}`not_found <fastapi_restly.views.BaseRestView.not_found>` apply to them
-too.
-
-:::{admonition} Details
-:class: details
-
-The loads are final: a view class that defines `get_one`, `get_many` or
-`select` fails when Python creates the class. The message names the place
-for each change. An override of a load could leave out the scope, or the
-`scope=` that a route asked for, and nothing would tell you. With final
-loads, the scope always applies.
-
-`select()` also adds the options of
-{meth}`get_loader_options <fastapi_restly.views.BaseRestView.get_loader_options>`,
-so the rows are ready for the response. A custom read starts from it too, as
-in `self.select().where(Item.price > 10)`. In a count, a subquery or a select
-of some columns, SQLAlchemy leaves the loader options out.
+The save writes every change in the session. It refreshes the object that the
+business method returns, and every other row of the view's model that the
+action wrote. A row of another model that the method changes, such as a line
+of an order, is written but not refreshed. When the change set a foreign key
+column of such a row, such as `line.product_id`, the save unloads that
+relationship. So a response that nests the line loads the new product, not
+the old one. A business method that you call yourself, outside a handler or a
+`write_action` block, writes nothing: the handler does the save.
 :::
 
 (crud-model-and-schemas)=
@@ -324,24 +267,26 @@ shows which fields each schema takes.
 (configure-a-crud-view)=
 ## Configure a CRUD view
 
-This table maps each need to its setting:
+Most changes to a CRUD view are a class attribute. The page of each route
+lists the changes for that route; this table lists the settings for the
+whole view:
 
-| You need | Configuration |
+| Your change | Setting |
 |---|---|
-| Stable response fields | Declare {attr}`schema <fastapi_restly.views.BaseRestView.schema>` |
-| Other fields or validation on create or update | Declare {attr}`create_schema <fastapi_restly.views.BaseRestView.create_schema>` or {attr}`update_schema <fastapi_restly.views.BaseRestView.update_schema>` ([Explicit write schemas](#explicit-write-schemas)) |
-| Another type for the `{id}` path parameter | Set {attr}`id_type <fastapi_restly.views.BaseRestView.id_type>` ([Item paths](#item-route-matching)) |
-| Fewer routes, such as a read-only view | Set the route method to `None`, such as `delete_endpoint = None` ([Leave out a route](#leave-out-routes)) |
-| Hide rows from every read | Set {attr}`scope <fastapi_restly.views.BaseRestView.scope>`, or `default_scope` on the model ([Scopes](#view-scope)) |
-| No pagination | Set {attr}`pagination <fastapi_restly.views.BaseRestView.pagination>` to `None`, or to a {class}`NoPagination <fastapi_restly.views.NoPagination>` to choose its envelope ([Filtering, Sorting & Pagination](#no-pagination)) |
-| Other page limits, parameter names or list envelope | Set {attr}`pagination <fastapi_restly.views.BaseRestView.pagination>` to a {class}`NumberedPagination <fastapi_restly.views.NumberedPagination>` ([Pagination settings](#pagination-settings)) |
-| A list with `limit` and `offset` | Set {attr}`pagination <fastapi_restly.views.BaseRestView.pagination>` to an {class}`OffsetPagination <fastapi_restly.views.OffsetPagination>` ([Page with limit and offset](#limit-offset-pagination)) |
-| Fewer filter or sort keys on a list | Set {attr}`include_filters <fastapi_restly.views.BaseRestView.include_filters>` or {attr}`include_sort_keys <fastapi_restly.views.BaseRestView.include_sort_keys>` ([Choose the keys of a list](#choose-list-keys)) |
-| A list filter of your own | Decorate a method with {func}`fr.list_filter <fastapi_restly.views.list_filter>` ([Add a filter of your own](#own-list-filter)) |
-| A query key of your own next to the list params, not a filter | Declare it on the endpoint method or in a dependency ([Accept extra query parameters](#extra-query-parameters)) |
-| OpenAPI metadata or dependencies on every route | Set {attr}`tags <fastapi_restly.views.View.tags>`, {attr}`responses <fastapi_restly.views.View.responses>` or {attr}`dependencies <fastapi_restly.views.View.dependencies>` ([Share behavior with base views](#share-behaviour-with-base-views)) |
-| One option of a route, such as its name, status code or dependencies | Use {func}`fr.modify_route <fastapi_restly.views.modify_route>` under the name of the route method ([Change one option of a route](#modify-route)) |
-| Another session for one view | Override the `session` annotation ([Database & Configuration](#session-dependency-one-view)) |
+| Fixed fields in the responses | [`schema`](#write-or-generate) |
+| Other fields on create or update | [`create_schema`, `update_schema`](#explicit-write-schemas) |
+| The type of `{id}` in the path | [`id_type`](#item-route-matching) |
+| Fewer routes | [`delete_endpoint = None`](#leave-out-routes) |
+| Hide rows from every read | [`scope`](#view-scope) |
+| Pages of the list | [`pagination`](#list-pagination) |
+| No pages | [`pagination = None`](#no-pagination) |
+| Pages with `limit` and `offset` | [`fr.OffsetPagination`](#limit-offset-pagination) |
+| Fewer filter or sort keys | [`include_filters`](#choose-list-keys) |
+| A filter of your own | [`fr.list_filter`](#own-list-filter) |
+| A query key that is not a filter | [A parameter](#extra-query-parameters) |
+| Tags or dependencies on every route | [`tags`, `dependencies`](#share-behaviour-with-base-views) |
+| One option of one route | [`fr.modify_route`](#modify-route) |
+| Another session for one view | [`session`](#session-dependency-one-view) |
 
 [View Reference](#view-class-attributes) lists the type and the default of
 each attribute.
@@ -536,6 +481,126 @@ name, so a typo such as `delte_endpoint = None` leaves out nothing.
 because there is no route to change.
 :::
 
+(business-methods)=
+## Change what a write does
+
+Each write has a business method:
+{meth}`create <fastapi_restly.views.RestView.create>`,
+{meth}`update <fastapi_restly.views.RestView.update>` or
+{meth}`delete <fastapi_restly.views.RestView.delete>`. Override only the
+one you need. The handler still checks permissions and commits around it.
+The page of each write shows its business method in full:
+[Create](#create-method), [Update](#update-method) and
+[Delete](#delete-method).
+
+Before you set a value in `create` or `update`, ask which write paths must set
+it, as [Set a value on every write path](#write-path-values) explains:
+
+- A value that every write path must set belongs on the model, as a column
+  default or a mapper event.
+- A value that only the HTTP routes set belongs in `create` or `update`.
+
+The common cases:
+
+- **Hash a password:** in `create`. The plain password arrives in the request
+  body, and only the route has it. A script that also gets plain passwords
+  calls the same function: see
+  [Run the same logic in a script or a worker](#logic-outside-a-view).
+- **Make a slug from the title:** on the model. Every new row needs a slug,
+  whichever path writes it.
+- **Keep a total on a parent row up to date**, such as the story points of a
+  project: on the model. The total is wrong as soon as one write path skips it.
+- **Send an event about a change:** in a
+  [commit hook](#transaction-hooks), for an event about an action of the
+  view. An event that every write path must send needs a SQLAlchemy session
+  event instead.
+
+(replace-endpoint-method)=
+## Replace an endpoint method
+
+Business methods and hooks keep the HTTP side of a route: its path, its
+parameters and its response. To change only an option of the route, such as
+its status code, use
+{func}`fr.modify_route <fastapi_restly.views.modify_route>`; see
+[Change one option of a route](#modify-route). Replace the endpoint method
+when the change needs code: the headers, the parameters or what the route
+returns.
+
+Define a method with the same name, such as `delete_endpoint`, and give it a
+route decorator. Keep the call to the handler, so the steps of the route
+still run. The page of each route has an example:
+[List](#replace-get-many-endpoint), [Get One](#replace-get-one-endpoint),
+[Create](#replace-create-endpoint), [Update](#replace-update-endpoint) and
+[Delete](#replace-delete-endpoint). To change the shape of the response body,
+such as an envelope around one object, see
+[Change the shape of one route](#one-route-shape).
+
+When several views need the same replacement, put it in a mixin. List the
+mixin before the view class, so Python finds its method first:
+
+```python
+from fastapi_restly.views import IDType, ResponseSchema
+
+
+class DeleteReturnsObjectMixin:
+    @fr.delete("/{id}", status_code=200)
+    async def delete_endpoint(self, id: IDType) -> ResponseSchema:
+        obj = await self.get_one(id)
+        response = self.to_single_response(obj)
+        await self.handle_delete(id)
+        return response
+
+
+@fr.include_view(app)
+class ProductView(DeleteReturnsObjectMixin, fr.AsyncRestView):
+    prefix = "/products"
+    model = Product
+```
+
+`IDType` and `ResponseSchema` give each view that uses the mixin its own id
+type and response schema. The [React Admin](react_admin.md) views use this
+pattern. They replace
+{meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>`
+for the `ra-data-simple-rest` contract, and keep the handlers, the loads and
+the business methods.
+
+:::{admonition} Details
+:class: details
+
+When Restly registers the view, an endpoint method that the class defines
+replaces the inherited method with the same name. The other inherited
+endpoint methods stay. A method with no route decorator is not a route, so the
+view then has no such route. With `fr.configure(warn_on_misuse=True)`, Restly
+warns about it.
+
+The built-in endpoint methods get the view's types from markers, such as
+`get_one_endpoint(self, id: IDType) -> ResponseSchema`. A replacement gets the
+view's types only where it uses the markers too; see
+[Name the view's schemas in a custom route](#name-the-view-schemas). A
+parameter or a return without an annotation gets no type. Restly keeps an
+annotation that you write, so `data: ProductReplace` validates the
+request body against `ProductReplace`. `list_params` is the exception: it
+always gets the view's
+{attr}`list_params_schema <fastapi_restly.views.BaseRestView.list_params_schema>`.
+:::
+
+(view-self-attributes)=
+## What is available on `self`
+
+Inside every method and custom route, you can use these attributes:
+
+| Attribute | Type | Description |
+|---|---|---|
+| {attr}`self.session <fastapi_restly.views.RestView.session>` | `AsyncSession`, or `Session` on `RestView` | The database session of the request |
+| {attr}`self.request <fastapi_restly.views.BaseRestView.request>` | `fastapi.Request` | The HTTP request |
+| {attr}`self.model <fastapi_restly.views.BaseRestView.model>` | the model class | The SQLAlchemy model of the view |
+| {attr}`self.schema <fastapi_restly.views.BaseRestView.schema>` | `type[pydantic.BaseModel]` | The main schema |
+
+A class attribute that you declare with `Annotated[..., Depends(...)]`, such
+as the current user, is also set on `self` for each request. See
+[Declare dependencies as class attributes](#dependency-injection-on-class-attributes).
+
+
 (crud-limits)=
 ## What the default routes do not do
 
@@ -546,7 +611,7 @@ The default CRUD routes have these limits:
   configuration. Reference fields such as `fr.MustExist[UUID, Model]` accept
   these keys too. For a composite key, set `id_type = str` and override
   `where_id` to read the parts of the key from the path; see
-  [Look a row up by another key](#natural-key-route). Without `where_id`, a
+  [Find the row by another key](#natural-key-route). Without `where_id`, a
   view of such a model fails when it registers, unless it leaves out the
   item routes.
 - Responses can contain nested objects, and lists can filter on
@@ -560,10 +625,9 @@ The default CRUD routes have these limits:
 ## See also
 
 - [Build a Blog API](tutorial.md): build and run a first resource.
-- [Update](crud_update.md): the steps of `PATCH /{id}` and what you can
-  change.
-- [Request Lifecycle & Hooks](lifecycle.md): the business methods, the
-  commit and its hooks, and custom routes.
+- [Custom Routes](custom_routes.md): routes of your own on a CRUD view.
+- [Commits & Hooks](commits.md): what commits, and code before or after the
+  commit.
 - [Nested Routes](nested_routes.md): serve a child resource under its
   parent.
 - [Schemas & Validation](schemas.md): the fields that the routes

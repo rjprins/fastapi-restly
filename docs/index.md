@@ -115,7 +115,7 @@ to `UserView`, so that it keeps the row and marks the user as inactive:
 `DELETE /users/{id}` still runs
 {meth}`authorize <fastapi_restly.views.RestView.authorize>`, commits and
 returns 204. The other four routes do not change. See
-[Request Lifecycle & Hooks](lifecycle.md).
+[Delete](crud_delete.md).
 
 ### A hidden row is a 404, a refused action is a 403
 

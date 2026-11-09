@@ -40,7 +40,7 @@ Each route of a `RestView` has two layers that you can change:
 - **The business layer**: business methods, such as `create`, `update` and
   `delete`. They make the change to the data. Override one to change what a
   route does, for example to hash a password or to set a field. See
-  [Change what an action does](#business-methods).
+  [Change what a write does](#business-methods).
 
 Between the two layers, Restly runs a fixed set of steps, such as loading a
 row from the database, checking access and committing.
@@ -106,14 +106,26 @@ order, and what you can change, from a rule on the schema to a route of your
 own.
 
 - [Overview](crud_routes.md): the five default routes, how a route runs,
-  async or sync, how to change one option of a route, and how to leave some
-  routes out.
+  async or sync, how to change one option of a route, leave some routes out,
+  where a business method fits, and how to replace an endpoint method.
+- [List](crud_list.md): the steps of `GET /`, what you can change, a header
+  with the total, and a list of a subset.
+- [Get One](crud_get_one.md): the steps of `GET /{id}`, visibility and
+  policy, a row found by a slug or a composite key, and the error for a
+  missing row.
+- [Create](crud_create.md): the steps of `POST /`, the `create` method, a
+  password hash, the id of a new row, and a `Location` header.
 - [Update](crud_update.md): the steps of `PATCH /{id}`, what you can change,
   the `update` method, a `PUT` route, and an update from a custom route.
-- [Request Lifecycle & Hooks](lifecycle.md): which method to override for
-  each change, a value on each row, a lookup by another key, custom routes,
-  what commits when, code that must commit, several writes in one commit, and
-  the same logic in a script or a worker.
+- [Delete](crud_delete.md): the steps of `DELETE /{id}`, the `delete`
+  method, a soft delete, and a response with the deleted row.
+- [Custom Routes](custom_routes.md): routes of your own on a CRUD view, a
+  lookup by another key, actions such as publish, and several rows in one
+  action.
+- [Commits & Hooks](commits.md): what commits and when, code before or after
+  the commit, work after the response, errors in a write, several writes in
+  one commit, code that must commit, and the same logic in a script or a
+  worker.
 - [Nested Routes](nested_routes.md): serve a child resource under its
   parent, create a child, limit the parents that a client can reach, and nest
   more than one level.
@@ -224,8 +236,13 @@ typing
 :hidden:
 
 Overview <crud_routes>
+crud_list
+crud_get_one
+crud_create
 crud_update
-lifecycle
+crud_delete
+custom_routes
+commits
 nested_routes
 ```
 

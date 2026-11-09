@@ -168,7 +168,7 @@ fails when Python creates it too, because the loads are final. Give the
 route another name; its path stays the same. To change one option of a CRUD
 route, see [Change one option of a route](#modify-route). To replace a CRUD route,
 override its endpoint method, such as `create_endpoint`; see
-[Replace the endpoint method of one route](#replace-endpoint-method).
+[Replace an endpoint method](#replace-endpoint-method).
 :::
 
 (decorators-on-view-methods)=
@@ -444,7 +444,7 @@ subclass inherits what the base declares: dependency attributes,
 Register only the subclasses.
 
 A base view overrides the same methods as a single view.
-[How a view handles a request](#view-request-steps) explains which method to
+[How a CRUD route runs](#view-request-steps) explains which method to
 override for each change. Two shared concerns have their own sections:
 [values that every write path must set](#write-path-values), such as an
 owner id, on Models, and [soft delete](#soft-delete-mixin) on Scopes.
@@ -881,9 +881,7 @@ the route methods before registration. On a CRUD view, call `super()` in it.
 
 ## See also
 
-- [CRUD Routes](crud_routes.md): the default CRUD routes and their
-  configuration.
-- [Request Lifecycle & Hooks](lifecycle.md): how a view handles a request,
+- [CRUD Routes](crud_routes.md): the default CRUD routes, how a route runs,
   and which method to override.
 - [View Reference](view_reference.md): every class attribute and method of
   {class}`View <fastapi_restly.views.View>`,

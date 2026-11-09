@@ -128,7 +128,8 @@ becomes `NULL`. A field that the client leaves out keeps its value.
 
 The generated update schema takes every field that the main schema does not
 mark `ReadOnly`, also a `WriteOnly` field such as a password. To hash a new
-password in `update`, see [Hash a password in `create`](#password-hash-example).
+password in `update`, see the Details of
+[Change what the create does](#password-hash-example).
 
 `update` must return the row. When it returns `None`, Restly raises
 `TypeError`.
@@ -178,7 +179,7 @@ as `replace`. It is then a custom route next to the default one; see
 
 A method named `update_endpoint` without a route decorator is not a route,
 so the view then has no update route.
-[Replace the endpoint method of one route](#replace-endpoint-method) has the
+[Replace an endpoint method](#replace-endpoint-method) has the
 rules for all five routes.
 :::
 

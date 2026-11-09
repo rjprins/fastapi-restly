@@ -506,8 +506,8 @@ These pages cover the topics of this tutorial in more detail:
 - [Request Context](context.md): bind values in scripts, jobs, and
   tests
 - [Scopes](scopes.md): the model scope, view scopes, and a scope for one route
-- [Request Lifecycle & Hooks](lifecycle.md): every method you can override, and
-  when to override one
+- [CRUD Routes](crud_routes.md): the steps of each route, every method you can
+  override, and when to override one
 - [Share behavior with base views](#share-behaviour-with-base-views): the full
   inheritance guide
 - [Testing](testing.md): the test fixtures, and test databases

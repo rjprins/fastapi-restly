@@ -485,5 +485,5 @@ class Task(AuditStamped, fr.TimestampsMixin, fr.IDMixin, Base):
   filters every read.
 - [Scopes](scopes.md): hide rows from every read, and
   [soft-delete rows](#soft-delete-mixin).
-- [Request Lifecycle & Hooks](#business-methods): values that only the HTTP
+- [Change what a write does](#business-methods): values that only the HTTP
   API sets, in `create` and `update`.

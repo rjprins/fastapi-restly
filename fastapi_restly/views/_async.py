@@ -56,8 +56,8 @@ class AsyncRestView(
             schema = FooSchema
             model = Foo
 
-    Each CRUD route runs through three methods (see "Request Lifecycle & Hooks"
-    in the docs):
+    Each CRUD route runs through three methods (see "CRUD Routes" in the
+    docs):
 
     * ``<verb>_endpoint``: the endpoint method. Owns the HTTP signature,
       and ``response_model``. Override it to change the HTTP contract.

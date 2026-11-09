@@ -145,7 +145,7 @@ class UserView(fr.AsyncRestView):
 
 `DELETE /users/{id}` still runs `authorize`, commits and returns 204. The
 other four routes do not change. See
-[Request Lifecycle & Hooks](https://www.fastapi-restly.org/lifecycle.html).
+[Delete](https://www.fastapi-restly.org/crud_delete.html).
 
 ### A hidden row is a 404, a refused action is a 403
 
@@ -294,8 +294,7 @@ for the details.
 - [Guide](https://www.fastapi-restly.org/guide.html): one page for each part
   of Restly, how it works and how to use it. Start with
   [Views](https://www.fastapi-restly.org/views.html),
-  [CRUD Routes](https://www.fastapi-restly.org/crud_routes.html) and
-  [Request Lifecycle & Hooks](https://www.fastapi-restly.org/lifecycle.html).
+  and [CRUD Routes](https://www.fastapi-restly.org/crud_routes.html).
 - [API Reference](https://www.fastapi-restly.org/api_reference.html): exact
   signatures and defaults.
 

@@ -174,8 +174,8 @@ async def delete_user(id: int):
 serves DELETE. When the HTTP contract stays the same and only the logic
 changes, override a business method instead, such as
 {meth}`delete <fastapi_restly.views.RestView.delete>`. For a different status
-code, response shape or query interface, see
-[Request Lifecycle & Hooks](#which-method-to-override).
+code, response shape or query interface, see the page of the route, such as
+[Delete](crud_delete.md).
 
 (move-back-to-fastapi)=
 
