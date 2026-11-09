@@ -46,6 +46,34 @@
     }
 }
 
+/* Page width: a left sidebar of at most 22rem, the article and a right sidebar
+   of 21rem (the theme gives 17rem, too narrow for the page headings). At
+   103rem the article gets the theme's full 60em. The sidebar collapse button
+   still works: it sets the same property with a stronger selector. */
+html {
+    --pst-sidebar-secondary: 21rem;
+}
+
+@media (min-width: 62rem) {
+    .bd-page-width {
+        max-width: 103rem;
+    }
+
+    .bd-sidebar-primary {
+        --pst-sidebar-primary-width: min(25%, 22rem);
+    }
+}
+
+/* Text stays in a column of 45rem in the center of the article, so that lines
+   are easy to read. Tables can use the full width of the article; the theme
+   already centers them. The column uses margins, not max-width, so that a
+   narrower block such as the newsletter form keeps its own max-width and
+   starts at the left edge of the text. */
+.bd-article section > :not(section, .pst-scrollable-table-container) {
+    margin-left: max(0px, (100% - 45rem) / 2);
+    margin-right: max(0px, (100% - 45rem) / 2);
+}
+
 .bd-header .nav-link.nav-external[href="https://www.fastapi-restly.org/blog/"]::after,
 .bd-header .nav-link.nav-external[href="https://www.fastapi-restly.org/"]::after {
     content: none;
@@ -171,7 +199,8 @@ html[data-theme="dark"] .bd-article h1 > img[src$="fr-wordmark.svg"] {
     border-left: 2px solid var(--pst-color-border);
     border-radius: 0;
     box-shadow: none !important;
-    margin: 1.25em 0;
+    /* Only the block margins: the side margins put it in the text column. */
+    margin-block: 1.25em;
     padding: 0 0 0 1rem;
     font-size: 0.92em;
 }
