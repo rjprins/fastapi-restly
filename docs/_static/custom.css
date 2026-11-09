@@ -46,21 +46,27 @@
     }
 }
 
-/* Page width: a left sidebar of at most 22rem, the article and a right sidebar
+/* Page width: a left sidebar of at most 19rem, the article and a right sidebar
    of 21rem (the theme gives 17rem, too narrow for the page headings). At
-   103rem the article gets the theme's full 60em. The sidebar collapse button
-   still works: it sets the same property with a stronger selector. */
+   100rem the article gets the theme's full 60em. The sidebar collapse button
+   still works: it sets the same property with a stronger selector. The left
+   sidebar gets more space on its left, but not when it is collapsed, because
+   then the button needs that space. */
 html {
     --pst-sidebar-secondary: 21rem;
 }
 
 @media (min-width: 62rem) {
     .bd-page-width {
-        max-width: 103rem;
+        max-width: 100rem;
     }
 
     .bd-sidebar-primary {
-        --pst-sidebar-primary-width: min(25%, 22rem);
+        --pst-sidebar-primary-width: min(25%, 19rem);
+    }
+
+    .bd-sidebar-primary:not(.pst-squeeze) {
+        padding-left: 2rem;
     }
 }
 
