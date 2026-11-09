@@ -257,15 +257,12 @@ class NumberedPagination(Pagination):
 
     def __post_init__(self) -> None:
         _check_count("NumberedPagination", "max_page_size", self.max_page_size)
-        if not _is_int(self.default_page_size) or not (
-            1 <= self.default_page_size <= self.max_page_size
-        ):
-            raise RestlyConfigurationError(
-                "NumberedPagination.default_page_size must be an int in "
-                f"[1, {self.max_page_size}], got {self.default_page_size!r}. "
-                "To return every matching row without pagination, set "
-                "'pagination = None' on the view."
-            )
+        _check_default(
+            "NumberedPagination",
+            "default_page_size",
+            self.default_page_size,
+            self.max_page_size,
+        )
         if self.max_page is not None:
             _check_count("NumberedPagination", "max_page", self.max_page)
         _check_query_params(
@@ -377,15 +374,9 @@ class OffsetPagination(Pagination):
 
     def __post_init__(self) -> None:
         _check_count("OffsetPagination", "max_limit", self.max_limit)
-        if not _is_int(self.default_limit) or not (
-            1 <= self.default_limit <= self.max_limit
-        ):
-            raise RestlyConfigurationError(
-                "OffsetPagination.default_limit must be an int in "
-                f"[1, {self.max_limit}], got {self.default_limit!r}. "
-                "To return every matching row without pagination, set "
-                "'pagination = None' on the view."
-            )
+        _check_default(
+            "OffsetPagination", "default_limit", self.default_limit, self.max_limit
+        )
         if self.max_offset is not None:
             _check_count("OffsetPagination", "max_offset", self.max_offset, least=0)
         _check_query_params(
@@ -560,6 +551,15 @@ def _check_count(owner: str, name: str, value: Any, *, least: int = 1) -> None:
         )
 
 
+def _check_default(owner: str, name: str, value: Any, largest: int) -> None:
+    if not _is_int(value) or not 1 <= value <= largest:
+        raise RestlyConfigurationError(
+            f"{owner}.{name} must be an int in [1, {largest}], got {value!r}. "
+            "To return every matching row without pagination, set "
+            "'pagination = None' on the view."
+        )
+
+
 def _check_query_param(label: str, name: Any) -> None:
     """Reject a name that cannot be a query parameter of the list params.
 
@@ -609,15 +609,6 @@ def _check_envelope(owner: str, envelope: Any, page_info: dict[str, Any]) -> Non
     _check_fillable(f"{owner}.envelope", envelope, page_info)
 
 
-def _reads_the_page_info(envelope: type[pydantic.BaseModel]) -> bool:
-    """Whether ``envelope`` takes the items from the page info itself: with a root,
-    or with a validator that runs before the fields."""
-    return issubclass(envelope, pydantic.RootModel) or any(
-        validator.info.mode == "before"
-        for validator in envelope.__pydantic_decorators__.model_validators.values()
-    )
-
-
 def _check_fillable(
     label: str,
     envelope: type[pydantic.BaseModel],
@@ -631,7 +622,13 @@ def _check_fillable(
     :param other_shape: The last sentence of the message, about what to do for
         a class of another shape.
     """
-    if "data" not in envelope.model_fields and not _reads_the_page_info(envelope):
+    # a root, or a validator that runs before the fields, takes the items from
+    # the page info itself
+    reads_the_page_info = issubclass(envelope, pydantic.RootModel) or any(
+        validator.info.mode == "before"
+        for validator in envelope.__pydantic_decorators__.model_validators.values()
+    )
+    if "data" not in envelope.model_fields and not reads_the_page_info:
         raise RestlyConfigurationError(
             f"{label} {envelope.__name__} has no field named data, so it would not "
             f"have the items. Its fields are: {', '.join(envelope.model_fields)}. "
