@@ -60,6 +60,7 @@ extensions = [
     "sphinx_design",
     "sphinx_reredirects",
     "sphinx.ext.intersphinx",
+    "call_tree",
 ]
 
 # A cross-reference role whose target does not exist renders as plain text, so
@@ -139,6 +140,7 @@ myst_enable_extensions = ["colon_fence", "substitution"]
 myst_substitutions = {"release": f"`{release}`"}
 
 sys.path.insert(0, os.path.abspath(".."))
+sys.path.insert(0, os.path.abspath("_ext"))
 autosummary_generate = True
 autodoc_default_options = {
     "members": True,

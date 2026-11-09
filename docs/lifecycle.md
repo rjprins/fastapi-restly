@@ -21,24 +21,36 @@ Take `POST /`, the create route. FastAPI calls
 {meth}`handle_create <fastapi_restly.views.RestView.handle_create>`, the
 **handler**. The handler runs the steps in this order:
 
-```{code-block} text
-:emphasize-lines: 2,4,6,7,9,11,12
+:::{call-tree}
+- `POST /`
+  - {override}`create_endpoint(data) <fastapi_restly.views.RestView.create_endpoint>`
+    The endpoint method: the HTTP contract.
+    - {meth}`handle_create(data) <fastapi_restly.views.RestView.handle_create>`
+      The handler: it runs the steps. It is final.
+      - {override}`authorize("create", data=data) <fastapi_restly.views.RestView.authorize>`
+      - Check the [references](#reference-exists) in the data. An id that does
+        not exist is a 404.
+      - {override}`create(data) <fastapi_restly.views.RestView.create>`
+        The business method: it builds the object. Nothing is written yet.
+      - Save: flush, refresh the object, and load it with the loader options.
 
-POST /
-  └─ create_endpoint(data)                # endpoint method: the HTTP contract
-       ├─ handle_create(data)             # handler: runs the steps (final)
-       │    ├─ authorize("create", data=data)
-       │    ├─ check the references in data   # an id that does not exist: 404
-       │    ├─ create(data)               # business method: builds the object;
-       │    │                             #   nothing is written yet
-       │    ├─ save: flush, refresh obj, load it with the loader options
-       │    ├─ before_action_commit("create", new=obj, old=None)
-       │    ├─ commit
-       │    └─ after_action_commit("create", new=obj, old=None)
-       └─ to_single_response(obj)
-```
+        The save does what `session.flush()` and `session.refresh()` do in
+        plain SQLAlchemy. It flushes the session. Then it refreshes the object,
+        and every other row of the view's model that the action wrote. It loads
+        them with the view's
+        [loader options](#eager-load-extra-relationships), as a read does: the
+        relationships that the response shows, and any value that you add
+        there. So the hooks and the response see the saved rows. Rows of other
+        models are written, but not refreshed.
+      - {override}`before_action_commit("create", new=obj, old=None) <fastapi_restly.views.RestView.before_action_commit>`
+      - Commit.
+      - {override}`after_action_commit("create", new=obj, old=None) <fastapi_restly.views.RestView.after_action_commit>`
+    - {override}`to_single_response(obj) <fastapi_restly.views.BaseRestView.to_single_response>`
+      The response of the object.
+:::
 
-The highlighted lines are the methods that you can override in your view.
+A method marked *override* is a method that you can override in your view.
+A step with an arrow opens and closes when you click it.
 
 Every CRUD route has these three methods. The names follow one pattern for
 all five actions: `update_endpoint` calls `handle_update`, which calls
@@ -94,15 +106,6 @@ or `update` returns, or the row that `delete` gets. `old` is the subject
 before the action, and `new` is the subject after it. So the hooks can see
 what changed. After a delete, the row is gone and `new` is `None`. A soft
 delete keeps the row, so `new` is the row.
-
-The save is the step that `session.flush()` and `session.refresh()` do in
-plain SQLAlchemy. It flushes the session. Then it refreshes the subject, and
-every other row of the view's model that the action wrote. It loads them
-with the view's
-[loader options](#eager-load-extra-relationships), as a read does: the
-relationships that the response shows, and any value that you add there. So
-the hooks and the response see the saved rows. Rows of other models are
-written, but not refreshed.
 
 The business method runs under SQLAlchemy's
 {attr}`session.no_autoflush <sqlalchemy.orm.Session.no_autoflush>`.
