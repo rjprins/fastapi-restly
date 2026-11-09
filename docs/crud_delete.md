@@ -116,7 +116,7 @@ Keep the call to `handle_delete`, so the load, `authorize`, your `delete`
 and the commit still run. This view answers `200` with the deleted row:
 
 ```python
-from fastapi_restly.views import IDType, ResponseSchema
+from fastapi_restly.views import IDType, ViewResponse
 
 
 @fr.include_view(app)
@@ -125,7 +125,7 @@ class ProductView(fr.AsyncRestView):
     model = Product
 
     @fr.delete("/{id}", status_code=200)
-    async def delete_endpoint(self, id: IDType) -> ResponseSchema:
+    async def delete_endpoint(self, id: IDType) -> ViewResponse:
         obj = await self.get_one(id)               # load through the scope, or 404
         response = self.to_single_response(obj)    # the row as GET /{id} sends it
         await self.handle_delete(id)               # authorize, delete, commit
@@ -134,7 +134,7 @@ class ProductView(fr.AsyncRestView):
 
 React Admin's `ra-data-simple-rest` expects this response
 ([React Admin](react_admin.md)). The route builds the response before the
-row is gone. `ResponseSchema` makes the response schema the `response_model`,
+row is gone. `ViewResponse` makes the response schema the `response_model`,
 so only its fields go out, as from `GET /{id}`, and OpenAPI shows them.
 [Replace an endpoint method](#replace-endpoint-method) has the rules for all
 five routes.

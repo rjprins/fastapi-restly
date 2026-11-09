@@ -21,11 +21,11 @@ import fastapi_restly as fr
 from fastapi_restly.exc import RestlyConfigurationError
 from fastapi_restly.testing._client import RestlyTestClient
 from fastapi_restly.views import (
-    ListResponseSchema,
     ListResult,
     NumberedEnvelope,
-    ResponseSchema,
     SchemaType,
+    ViewListResponse,
+    ViewResponse,
 )
 
 from ._models import SharedBase
@@ -97,7 +97,7 @@ def test_the_default_is_the_class_of_the_pagination(client, Item):
         schema = ItemSchema
 
         @fr.get("/archived")
-        async def archived(self, list_params) -> ListResponseSchema:
+        async def archived(self, list_params) -> ViewListResponse:
             return await self.handle_get_many(list_params)
 
     before = ItemView.list_response_schema
@@ -183,7 +183,7 @@ def test_a_custom_route_with_the_marker_fills_the_class_too(client, Item):
         list_response_schema = ArticleList
 
         @fr.get("/archived")
-        async def archived(self, list_params) -> ListResponseSchema:
+        async def archived(self, list_params) -> ViewListResponse:
             return await self.handle_get_many(list_params)
 
     fr.include_view(client.app, ItemView)
@@ -436,7 +436,7 @@ def test_a_replaced_endpoint_can_use_any_class(client, Item):
         list_response_schema = Rows
 
         @fr.get("/")
-        async def get_many_endpoint(self, list_params) -> ListResponseSchema:
+        async def get_many_endpoint(self, list_params) -> ViewListResponse:
             result = await self.handle_get_many(list_params)
             return Rows(rows=[self.to_single_response(row) for row in result.objects])
 
@@ -455,7 +455,7 @@ def test_a_replaced_endpoint_can_use_a_bare_list(client, Item):
         list_response_schema = list[ItemSummary]
 
         @fr.get("/")
-        async def get_many_endpoint(self, list_params) -> ListResponseSchema:
+        async def get_many_endpoint(self, list_params) -> ViewListResponse:
             result = await self.handle_get_many(list_params)
             return [
                 ItemSummary.model_validate(row, from_attributes=True)
@@ -627,7 +627,7 @@ def react_admin(request):
 
 def _async_archived():
     @fr.get("/archived")
-    async def archived(self, list_params) -> ListResponseSchema:
+    async def archived(self, list_params) -> ViewListResponse:
         return await self.handle_get_many(list_params)
 
     return archived
@@ -635,7 +635,7 @@ def _async_archived():
 
 def _sync_archived():
     @fr.get("/archived")
-    def archived(self, list_params) -> ListResponseSchema:
+    def archived(self, list_params) -> ViewListResponse:
         return self.handle_get_many(list_params)
 
     return archived
@@ -732,7 +732,7 @@ def test_a_replaced_react_admin_endpoint_can_use_any_class(client, Item):
         list_response_schema = NumberedEnvelope[ItemSummary]
 
         @fr.get("/")
-        async def get_many_endpoint(self, list_params) -> ListResponseSchema:
+        async def get_many_endpoint(self, list_params) -> ViewListResponse:
             result = await self.handle_get_many(list_params)
             return NumberedEnvelope[ItemSummary](
                 data=[],
@@ -770,7 +770,7 @@ def test_a_single_response_marker_still_works_next_to_the_list(client, Item):
         schema = ItemSchema
 
         @fr.get("/first")
-        async def first(self) -> ResponseSchema:
+        async def first(self) -> ViewResponse:
             return await self.handle_get_one(1)
 
     fr.include_view(client.app, ItemView)
@@ -801,7 +801,7 @@ def test_none_raises_also_with_a_replaced_endpoint(client, Item):
         list_response_schema = None
 
         @fr.get("/")
-        async def get_many_endpoint(self, list_params) -> ListResponseSchema:
+        async def get_many_endpoint(self, list_params) -> ViewListResponse:
             return []
 
     with pytest.raises(RestlyConfigurationError, match="list_response_schema is None"):
@@ -849,7 +849,7 @@ def test_a_list_type_with_a_replaced_endpoint_that_returns_a_list_result(client,
         list_response_schema = list[ItemSummary]
 
         @fr.get("/")
-        async def get_many_endpoint(self, list_params) -> ListResponseSchema:
+        async def get_many_endpoint(self, list_params) -> ViewListResponse:
             return await self.handle_get_many(list_params)
 
     fr.include_view(client.app, ItemView)
@@ -952,7 +952,7 @@ def test_the_recipe_with_a_map_and_a_replaced_endpoint(client, Item):
         list_response_schema = dict[int, str]
 
         @fr.get("/")
-        async def get_many_endpoint(self, list_params) -> ListResponseSchema:
+        async def get_many_endpoint(self, list_params) -> ViewListResponse:
             result = await self.handle_get_many(list_params)
             return {item.id: item.name for item in result.objects}
 
@@ -1009,7 +1009,7 @@ def test_items_that_restly_cannot_fill_work_with_a_replaced_endpoint(client, Ite
         list_response_schema = list[int]
 
         @fr.get("/")
-        async def get_many_endpoint(self, list_params) -> ListResponseSchema:
+        async def get_many_endpoint(self, list_params) -> ViewListResponse:
             result = await self.handle_get_many(list_params)
             return [item.id for item in result.objects]
 

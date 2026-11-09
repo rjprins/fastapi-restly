@@ -80,7 +80,7 @@ def test_an_item_route_that_calls_super(client, User):
             return await super().get_one_endpoint(id)
 
         @fr.post("/")
-        async def create_endpoint(self, data: fr.views.CreateSchema):
+        async def create_endpoint(self, data: fr.views.ViewCreate):
             return await super().create_endpoint(data)
 
     fr.include_view(client.app, View)

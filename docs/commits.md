@@ -177,7 +177,7 @@ on:
     from fastapi import HTTPException
 
     @fr.post("/bulk", status_code=201)
-    async def bulk_create(self, items: list[OrderCreate]) -> list[ResponseSchema]:
+    async def bulk_create(self, items: list[OrderCreate]) -> list[ViewResponse]:
         orders = []
         for item in items:
             try:
@@ -251,7 +251,7 @@ hooks run:
 
 ```python
     @fr.post("/bulk", status_code=201)
-    async def bulk_create(self, items: list[OrderCreate]) -> list[ResponseSchema]:
+    async def bulk_create(self, items: list[OrderCreate]) -> list[ViewResponse]:
         async with self.shared_write_action_commit():
             orders = [await self.handle_create(item) for item in items]
         return orders

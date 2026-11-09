@@ -59,7 +59,7 @@ class SchemaType:
     reads the type. It can read any setting of the view, in any order. A setting
     must get a Pydantic class, and ``list_response_schema`` also takes a list type.
     A route can get any type that FastAPI accepts. The function can use a marker
-    in what it returns, as in ``Data[ResponseSchema]``.
+    in what it returns, as in ``Data[ViewResponse]``.
 
     :param fn: The function. It gets the view class and returns the type.
     """
@@ -204,26 +204,26 @@ IDType: TypeAlias = Annotated[Any, _marker("IDType", _view_id_type)]
 
 #: The view's response schema,
 #: :attr:`~fastapi_restly.views.BaseRestView.response_schema`.
-ResponseSchema: TypeAlias = Annotated[
-    Any, _marker("ResponseSchema", lambda view: view.response_schema)
+ViewResponse: TypeAlias = Annotated[
+    Any, _marker("ViewResponse", lambda view: view.response_schema)
 ]
 
 #: The view's list response,
 #: :attr:`~fastapi_restly.views.BaseRestView.list_response_schema`.
-ListResponseSchema: TypeAlias = Annotated[
-    Any, _marker("ListResponseSchema", lambda view: view.list_response_schema)
+ViewListResponse: TypeAlias = Annotated[
+    Any, _marker("ViewListResponse", lambda view: view.list_response_schema)
 ]
 
 #: The view's create schema,
 #: :attr:`~fastapi_restly.views.BaseRestView.create_schema`.
-CreateSchema: TypeAlias = Annotated[
-    Any, _marker("CreateSchema", lambda view: view.create_schema)
+ViewCreate: TypeAlias = Annotated[
+    Any, _marker("ViewCreate", lambda view: view.create_schema)
 ]
 
 #: The view's update schema,
 #: :attr:`~fastapi_restly.views.BaseRestView.update_schema`.
-UpdateSchema: TypeAlias = Annotated[
-    Any, _marker("UpdateSchema", lambda view: view.update_schema)
+ViewUpdate: TypeAlias = Annotated[
+    Any, _marker("ViewUpdate", lambda view: view.update_schema)
 ]
 
 
@@ -295,7 +295,7 @@ def _bare(annotation: Any) -> Any:
 
 def _without_none(annotation: Any) -> tuple[Any, bool]:
     """``annotation`` without ``None``, and whether it allowed ``None``:
-    ``ResponseSchema | None`` gives ``(ResponseSchema, True)``."""
+    ``ViewResponse | None`` gives ``(ViewResponse, True)``."""
     if get_origin(annotation) in (Union, types.UnionType):
         args = get_args(annotation)
         rest = [arg for arg in args if arg is not type(None)]
@@ -305,8 +305,8 @@ def _without_none(annotation: Any) -> tuple[Any, bool]:
 
 
 def _pydantic_generic_args(annotation: Any) -> tuple[Any, ...]:
-    """The arguments of a filled Pydantic generic class: ``(ResponseSchema,)`` for
-    ``Data[ResponseSchema]``. It is a class, so ``typing.get_args`` finds nothing."""
+    """The arguments of a filled Pydantic generic class: ``(ViewResponse,)`` for
+    ``Data[ViewResponse]``. It is a class, so ``typing.get_args`` finds nothing."""
     metadata = getattr(annotation, "__pydantic_generic_metadata__", None)
     return metadata["args"] if metadata is not None and metadata["origin"] else ()
 
@@ -329,7 +329,7 @@ def _schema_type_in(annotation: Any, seen: set[Any] | None = None) -> SchemaType
 
 def _replace_schema_types(annotation: Any, view_cls: type) -> Any:
     """Replace each marker in ``annotation``, also inside a type such as
-    ``list[ResponseSchema]`` or ``Data[ResponseSchema]``, or in a type alias.
+    ``list[ViewResponse]`` or ``Data[ViewResponse]``, or in a type alias.
     Returns ``annotation`` itself when it holds no marker.
 
     A type alias that names itself ends where it comes back. A marker that it

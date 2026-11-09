@@ -639,7 +639,7 @@ class BaseRestView(
         "response_schema"
     ]
     #: The class of the list response: what ``GET /`` and a route that
-    #: declares :data:`~fastapi_restly.views.ListResponseSchema` send. When a
+    #: declares :data:`~fastapi_restly.views.ViewListResponse` send. When a
     #: view sets none, Restly builds it with
     #: :func:`~fastapi_restly.schemas.derive_list_response_schema`: the
     #: envelope of the view's :attr:`pagination`, with the response schema as

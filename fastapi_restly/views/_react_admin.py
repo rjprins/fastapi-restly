@@ -27,14 +27,14 @@ from fastapi_restly.views import (
     AsyncRestView,
     BaseRestView,
     IDType,
-    ListResponseSchema,
     ListResult,
     NumberedPagination,
     Pagination,
-    ResponseSchema,
     RestView,
     SchemaType,
-    UpdateSchema,
+    ViewListResponse,
+    ViewResponse,
+    ViewUpdate,
     get,
     put,
 )
@@ -469,7 +469,7 @@ class AsyncReactAdminView(_ReactAdminMixin, AsyncRestView):
 
     # A class's own routes come first, so this keeps GET / first in OpenAPI.
     @get("/")
-    async def get_many_endpoint(self, list_params: Any) -> ListResponseSchema:
+    async def get_many_endpoint(self, list_params: Any) -> ViewListResponse:
         return await self.handle_get_many(list_params)
 
     async def apply_list_params(
@@ -488,7 +488,7 @@ class AsyncReactAdminView(_ReactAdminMixin, AsyncRestView):
         return self._react_admin_filters(stmt, list_params)
 
     @put("/{id}")
-    async def put(self, id: IDType, data: UpdateSchema) -> ResponseSchema:
+    async def put(self, id: IDType, data: ViewUpdate) -> ViewResponse:
         """``PUT /{id}`` endpoint method, for react-admin's ``update``. It
         runs the same steps as ``PATCH``:
         :meth:`~fastapi_restly.views.AsyncRestView.handle_update`, with the
@@ -508,7 +508,7 @@ class ReactAdminView(_ReactAdminMixin, RestView):
 
     # A class's own routes come first, so this keeps GET / first in OpenAPI.
     @get("/")
-    def get_many_endpoint(self, list_params: Any) -> ListResponseSchema:
+    def get_many_endpoint(self, list_params: Any) -> ViewListResponse:
         return self.handle_get_many(list_params)
 
     def apply_list_params(
@@ -527,7 +527,7 @@ class ReactAdminView(_ReactAdminMixin, RestView):
         return self._react_admin_filters(stmt, list_params)
 
     @put("/{id}")
-    def put(self, id: IDType, data: UpdateSchema) -> ResponseSchema:
+    def put(self, id: IDType, data: ViewUpdate) -> ViewResponse:
         """``PUT /{id}`` endpoint method, for react-admin's ``update``. It
         runs the same steps as ``PATCH``:
         :meth:`~fastapi_restly.views.RestView.handle_update`, with the view's

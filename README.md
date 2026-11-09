@@ -158,7 +158,7 @@ after the `delete` above:
         ACTIVATE = "activate"
 
     @fr.post("/{id}/activate", status_code=200)
-    async def activate(self, id: IDType) -> ResponseSchema:
+    async def activate(self, id: IDType) -> ViewResponse:
         user = await self.get_one(id)
         async with self.write_action(self.Action.ACTIVATE, obj=user):
             user.active = True
@@ -167,7 +167,7 @@ after the `delete` above:
 
 `write_action` runs the same steps as a CRUD write: it calls `authorize` with
 the action `"activate"`, saves the change and commits. `IDType` and
-`ResponseSchema`, from `fastapi_restly.views`, stand for the id type and the
+`ViewResponse`, from `fastapi_restly.views`, stand for the id type and the
 response schema of the view. So OpenAPI shows `UserResponse` for this route
 too. See [Custom Routes](https://www.fastapi-restly.org/custom_routes.html).
 

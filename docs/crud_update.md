@@ -152,7 +152,7 @@ the commit still run. This view takes `PUT` with all fields, in place of
 `PATCH`:
 
 ```python
-from fastapi_restly.views import IDType, ResponseSchema
+from fastapi_restly.views import IDType, ViewResponse
 
 
 class ProductReplace(fr.BaseSchema):
@@ -166,12 +166,12 @@ class ProductView(fr.AsyncRestView):
     model = Product
 
     @fr.put("/{id}")
-    async def update_endpoint(self, id: IDType, data: ProductReplace) -> ResponseSchema:
+    async def update_endpoint(self, id: IDType, data: ProductReplace) -> ViewResponse:
         return await self.handle_update(id, data)
 ```
 
 The view now has a `PUT /products/{id}` route, and no `PATCH` route. A body
-without `name` or `price` returns 422. `IDType` and `ResponseSchema` stand
+without `name` or `price` returns 422. `IDType` and `ViewResponse` stand
 for the id type and the response schema of the view, so the path and the
 response are the same as on the default route; see
 [Name the view's schemas in a custom route](#name-the-view-schemas).
@@ -198,7 +198,7 @@ under another path. It takes the id of the row, or a SQLAlchemy expression
 that picks the row:
 
 ```python
-from fastapi_restly.views import ResponseSchema
+from fastapi_restly.views import ViewResponse
 
 
 class UpdateMeRequest(fr.BaseSchema):
@@ -212,11 +212,11 @@ class UserView(fr.AsyncRestView):
     model = User
 
     @fr.patch("/me")
-    async def update_me(self, data: UpdateMeRequest) -> ResponseSchema:
+    async def update_me(self, data: UpdateMeRequest) -> ViewResponse:
         return await self.handle_update(Current.user_id(), data)
 
     @fr.patch("/by-email/{email}")
-    async def update_by_email(self, email: str, data: UpdateMeRequest) -> ResponseSchema:
+    async def update_by_email(self, email: str, data: UpdateMeRequest) -> ViewResponse:
         return await self.handle_update(User.email == email, data)
 ```
 

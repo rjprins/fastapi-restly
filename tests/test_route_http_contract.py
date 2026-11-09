@@ -14,7 +14,7 @@ import fastapi_restly as fr
 from fastapi_restly._routes import iter_routes
 from fastapi_restly.exc import RestlyConfigurationError
 from fastapi_restly.testing import RestlyTestClient
-from fastapi_restly.views import CreateSchema, IDType, ResponseSchema
+from fastapi_restly.views import IDType, ViewCreate, ViewResponse
 
 from ._models import SharedBase
 from .conftest import create_tables
@@ -291,7 +291,7 @@ def test_a_route_response_can_hold_a_marker_next_to_a_removed_status(Gadget):
         prefix = "/gadgets"
         model = Gadget
         schema = GadgetSchema
-        responses = {409: {"model": ResponseSchema}, 404: None}
+        responses = {409: {"model": ViewResponse}, 404: None}
 
     app = FastAPI()
     fr.include_view(app, GadgetView)
@@ -678,13 +678,13 @@ def test_a_written_route_replaces_modify_route_and_reaches_it_with_super(
         if issubclass(view_base, fr.AsyncRestView):
 
             @fr.post("/")
-            async def create_endpoint(self, data: CreateSchema) -> ResponseSchema:
+            async def create_endpoint(self, data: ViewCreate) -> ViewResponse:
                 return await super().create_endpoint(data)
 
         else:
 
             @fr.post("/")
-            def create_endpoint(self, data: CreateSchema) -> ResponseSchema:
+            def create_endpoint(self, data: ViewCreate) -> ViewResponse:
                 return super().create_endpoint(data)
 
     client = make_client(Written)
@@ -1339,7 +1339,7 @@ def test_modify_route_over_a_written_base_gives_no_misuse_warning(
         schema = GadgetSchema
 
         @fr.post("/")
-        def create_endpoint(self, data: CreateSchema) -> ResponseSchema: ...
+        def create_endpoint(self, data: ViewCreate) -> ViewResponse: ...
 
     class Child(Base):
         prefix = "/child"

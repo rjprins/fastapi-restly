@@ -60,12 +60,12 @@ from ._base import (
 from ._include import include_view
 from ._list_params import list_filter
 from ._schema_types import (
-    CreateSchema,
     IDType,
-    ListResponseSchema,
-    ResponseSchema,
     SchemaType,
-    UpdateSchema,
+    ViewCreate,
+    ViewListResponse,
+    ViewResponse,
+    ViewUpdate,
 )
 from ._sync import RestView
 
@@ -100,10 +100,10 @@ __all__ = [
     "View",
     "SchemaType",
     "IDType",
-    "ResponseSchema",
-    "ListResponseSchema",
-    "CreateSchema",
-    "UpdateSchema",
+    "ViewResponse",
+    "ViewListResponse",
+    "ViewCreate",
+    "ViewUpdate",
     "resolve_scope",
     "delete",
     "get",

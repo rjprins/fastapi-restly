@@ -78,7 +78,7 @@ header:
 
 ```python
 from fastapi import Response
-from fastapi_restly.views import ResponseSchema
+from fastapi_restly.views import ViewResponse
 
 
 @fr.include_view(app)
@@ -87,14 +87,14 @@ class ProductView(fr.AsyncRestView):
     model = Product
 
     @fr.get("/")
-    async def get_many_endpoint(self, list_params, response: Response) -> list[ResponseSchema]:
+    async def get_many_endpoint(self, list_params, response: Response) -> list[ViewResponse]:
         result = await self.handle_get_many(list_params)
         response.headers["X-Total-Count"] = str(result.total_count)
         return result.objects
 ```
 
 The `list_params` parameter keeps Restly's filter, sort and page parameters.
-The route declares a list of `ResponseSchema`, the view's response schema,
+The route declares a list of `ViewResponse`, the view's response schema,
 so Restly passes each row through `to_single_response`, and OpenAPI shows
 the list; see [The response of a custom route](#custom-route-response).
 `response: Response` is FastAPI's way to set a header on the response; see
@@ -113,11 +113,11 @@ the page with one call. The replacement calls the handler, gets the values
 for the whole page, and builds the response:
 
 ```python
-from fastapi_restly.views import ListResponseSchema
+from fastapi_restly.views import ViewListResponse
 
 
 @fr.get("/")
-async def get_many_endpoint(self, list_params) -> ListResponseSchema:
+async def get_many_endpoint(self, list_params) -> ViewListResponse:
     result = await self.handle_get_many(list_params)
     ratings = await rating_service.for_ids([p.id for p in result.objects])
     for project in result.objects:
@@ -134,7 +134,7 @@ all the steps of `GET /`. Call it from a route of your own to list rows
 under another path. `where=` narrows the list inside the scope:
 
 ```python
-from fastapi_restly.views import ListResponseSchema
+from fastapi_restly.views import ViewListResponse
 
 
 @fr.include_view(app)
@@ -143,7 +143,7 @@ class TaskView(fr.AsyncRestView):
     model = Task
 
     @fr.get("/mine")
-    async def mine(self, list_params) -> ListResponseSchema:
+    async def mine(self, list_params) -> ViewListResponse:
         return await self.handle_get_many(
             list_params, where=Task.owner_id == Current.user_id()
         )

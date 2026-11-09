@@ -42,7 +42,7 @@ from typing import Any, ClassVar, TypeVar
 import fastapi
 
 import fastapi_restly as fr
-from fastapi_restly.views import IDType, ListResponseSchema, ResponseSchema
+from fastapi_restly.views import IDType, ViewListResponse, ViewResponse
 
 from .current import SetCurrentContextDep
 from .models import SoftDeletable
@@ -150,7 +150,7 @@ class TrashView(SoftDeleteMixin, AuthenticatedView[SoftDeletableT]):
     Both routes read through ``trash_scope``, a clause that the view sets,
     such as ``ProjectClauses.is_deleted``. The view's own scope hides the
     deleted rows, so the trash is the only surface for them, and a live row
-    is a 404 on restore. ``IDType``, ``ResponseSchema`` and ``ListResponseSchema``
+    is a 404 on restore. ``IDType``, ``ViewResponse`` and ``ViewListResponse``
     give each view its own id type and response schemas when it registers.
     """
 
@@ -160,12 +160,12 @@ class TrashView(SoftDeleteMixin, AuthenticatedView[SoftDeletableT]):
         RESTORE = "restore"
 
     @fr.get("/trash")
-    async def trash(self, list_params: Any) -> ListResponseSchema:
+    async def trash(self, list_params: Any) -> ViewListResponse:
         """The trash: the deleted rows the caller may see, with the list params."""
         return await self.handle_get_many(list_params, scope=self.trash_scope)
 
     @fr.post("/{id}/restore")
-    async def restore(self, id: IDType) -> ResponseSchema:
+    async def restore(self, id: IDType) -> ViewResponse:
         """Restore a soft-deleted row, loaded through the trash."""
         obj = await self.get_one(id, scope=self.trash_scope)
         async with self.write_action(self.Action.RESTORE, obj=obj):

@@ -22,7 +22,7 @@ from sqlalchemy import ForeignKey, orm
 import fastapi_restly as fr
 from fastapi_restly.db._config import RestlyContext
 from fastapi_restly.exc import RestlyMisuseWarning
-from fastapi_restly.views import CreateSchema
+from fastapi_restly.views import ViewCreate
 
 from ._models import SharedBase
 
@@ -94,7 +94,7 @@ def test_an_override_that_keeps_the_steps_does_not_warn():
             return self.to_list_response(result)
 
         @fr.post("/", status_code=201)
-        async def create_endpoint(self, data: CreateSchema) -> Any:
+        async def create_endpoint(self, data: ViewCreate) -> Any:
             return await super().create_endpoint(data)
 
     assert _register(KeptArticleView) == []

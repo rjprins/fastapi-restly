@@ -164,14 +164,14 @@ def _thing_views(view_base, decorator):
             @decorator
             async def get_many_endpoint(
                 self, request: Request, list_params: Any
-            ) -> fr.views.ListResponseSchema:
+            ) -> fr.views.ViewListResponse:
                 return await self.handle_get_many(list_params)
 
             @fr.post("/")
             @decorator
             async def create_endpoint(
-                self, request: Request, data: fr.views.CreateSchema
-            ) -> fr.views.ResponseSchema:
+                self, request: Request, data: fr.views.ViewCreate
+            ) -> fr.views.ViewResponse:
                 return await self.handle_create(data)
 
         base: Any = AsyncThingBase
@@ -184,14 +184,14 @@ def _thing_views(view_base, decorator):
             @decorator
             def get_many_endpoint(
                 self, request: Request, list_params: Any
-            ) -> fr.views.ListResponseSchema:
+            ) -> fr.views.ViewListResponse:
                 return self.handle_get_many(list_params)
 
             @fr.post("/")
             @decorator
             def create_endpoint(
-                self, request: Request, data: fr.views.CreateSchema
-            ) -> fr.views.ResponseSchema:
+                self, request: Request, data: fr.views.ViewCreate
+            ) -> fr.views.ViewResponse:
                 return self.handle_create(data)
 
         base = SyncThingBase
@@ -367,7 +367,7 @@ def test_a_list_route_with_another_first_parameter_name_async(client):
         @fr.get("/")
         async def get_many_endpoint(
             this, list_params: Any
-        ) -> fr.views.ListResponseSchema:
+        ) -> fr.views.ViewListResponse:
             return await this.handle_get_many(list_params)
 
     fr.include_view(client.app, AsyncNamedListView)
@@ -388,7 +388,7 @@ def test_a_list_route_with_another_first_parameter_name_sync(sync_db):
         model = SyncNamedRow
 
         @fr.get("/")
-        def get_many_endpoint(this, list_params: Any) -> fr.views.ListResponseSchema:
+        def get_many_endpoint(this, list_params: Any) -> fr.views.ViewListResponse:
             return this.handle_get_many(list_params)
 
     app = fastapi.FastAPI()

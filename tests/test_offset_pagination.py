@@ -18,7 +18,7 @@ from fastapi_restly.exc import RestlyConfigurationError
 from fastapi_restly.query import apply_list_params, derive_list_params_schema
 from fastapi_restly.query._paged import _completed_list_params
 from fastapi_restly.testing import RestlyTestClient
-from fastapi_restly.views import ListResponseSchema
+from fastapi_restly.views import ViewListResponse
 
 from ._models import SharedBase
 from .conftest import create_tables
@@ -260,14 +260,14 @@ def test_a_custom_route_uses_the_same_pages(lists):
 
         class Routes(lists.view_base):
             @fr.get("/first")
-            async def first(self, list_params) -> ListResponseSchema:
+            async def first(self, list_params) -> ViewListResponse:
                 return await self.get_many(list_params, where=Thing.name != "b")
 
     else:
 
         class Routes(lists.view_base):
             @fr.get("/first")
-            def first(self, list_params) -> ListResponseSchema:
+            def first(self, list_params) -> ViewListResponse:
                 return self.get_many(list_params, where=Thing.name != "b")
 
     fr.include_view(
@@ -301,14 +301,14 @@ def test_a_mapping_as_list_params_goes_through_the_same_checks(lists):
 
         class Routes(lists.view_base):
             @fr.get("/two")
-            async def two(self) -> ListResponseSchema:
+            async def two(self) -> ViewListResponse:
                 return await self.get_many({"limit": "2", "offset": "1"})
 
     else:
 
         class Routes(lists.view_base):
             @fr.get("/two")
-            def two(self) -> ListResponseSchema:
+            def two(self) -> ViewListResponse:
                 return self.get_many({"limit": "2", "offset": "1"})
 
     lists.view(base=Routes, pagination=fr.OffsetPagination())
@@ -1390,12 +1390,12 @@ def test_a_page_field_with_only_a_validation_alias_reads_the_alias(lists):
 def test_list_params_from_code_use_the_names_of_the_view(lists, params, settings, page):
     if lists.view_base is fr.AsyncRestView:
 
-        async def own(self) -> ListResponseSchema:
+        async def own(self) -> ViewListResponse:
             return self.to_list_response(await self.handle_get_many(params))
 
     else:
 
-        def own(self) -> ListResponseSchema:
+        def own(self) -> ViewListResponse:
             return self.to_list_response(self.handle_get_many(params))
 
     lists.view(

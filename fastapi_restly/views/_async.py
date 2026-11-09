@@ -36,11 +36,11 @@ from ._lifecycle import (
 from ._list_params import _apply_own_filters, _check_list_methods
 from ._reads import _count_statement
 from ._schema_types import (
-    CreateSchema,
     IDType,
-    ListResponseSchema,
-    ResponseSchema,
-    UpdateSchema,
+    ViewCreate,
+    ViewListResponse,
+    ViewResponse,
+    ViewUpdate,
 )
 
 
@@ -93,7 +93,7 @@ class AsyncRestView(
     # ====================================================================
 
     @get("/")
-    async def get_many_endpoint(self, list_params: Any) -> ListResponseSchema:
+    async def get_many_endpoint(self, list_params: Any) -> ViewListResponse:
         """``GET /`` endpoint method. Put the rows in ``scope``, and the list
         params in ``apply_list_params``. Restly builds the response with
         ``to_list_response``. Replace this method only to change the HTTP
@@ -101,7 +101,7 @@ class AsyncRestView(
         return await self.handle_get_many(list_params)
 
     @get("/{id}")
-    async def get_one_endpoint(self, id: IDType) -> ResponseSchema:
+    async def get_one_endpoint(self, id: IDType) -> ViewResponse:
         """``GET /{id}`` endpoint method. Put the rows in ``scope``, and the
         lookup of the id in ``where_id``. Restly builds the response with
         ``to_single_response``. Replace this method only to change the HTTP
@@ -109,7 +109,7 @@ class AsyncRestView(
         return await self.handle_get_one(id)
 
     @post("/")
-    async def create_endpoint(self, data: CreateSchema) -> ResponseSchema:
+    async def create_endpoint(self, data: ViewCreate) -> ViewResponse:
         """``POST /`` endpoint method. Override ``create`` for domain
         logic (it is commit-free; the handler owns the commit). Restly builds
         the response with ``to_single_response``. Replace this method only to
@@ -117,7 +117,7 @@ class AsyncRestView(
         return await self.handle_create(data)
 
     @patch("/{id}")
-    async def update_endpoint(self, id: IDType, data: UpdateSchema) -> ResponseSchema:
+    async def update_endpoint(self, id: IDType, data: ViewUpdate) -> ViewResponse:
         """``PATCH /{id}`` endpoint method. Override ``update`` for
         domain logic. Restly builds the response with
         ``to_single_response``. Replace this method only to change the HTTP

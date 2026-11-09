@@ -222,7 +222,7 @@ commit still run. This view also sends the URL of the new row in a
 
 ```python
 from fastapi import Response
-from fastapi_restly.views import CreateSchema, ResponseSchema
+from fastapi_restly.views import ViewCreate, ViewResponse
 
 
 @fr.include_view(app)
@@ -231,7 +231,7 @@ class ProductView(fr.AsyncRestView):
     model = Product
 
     @fr.post("/")
-    async def create_endpoint(self, data: CreateSchema, response: Response) -> ResponseSchema:
+    async def create_endpoint(self, data: ViewCreate, response: Response) -> ViewResponse:
         product = await self.handle_create(data)
         response.headers["Location"] = f"/products/{product.id}"
         return product
@@ -239,8 +239,8 @@ class ProductView(fr.AsyncRestView):
 
 `response: Response` is FastAPI's way to set a header on the response; see
 [Response Headers](https://fastapi.tiangolo.com/advanced/response-headers/).
-`fr.post` answers `201`, as the default route does. `CreateSchema` and
-`ResponseSchema` stand for the create schema and the response schema of the
+`fr.post` answers `201`, as the default route does. `ViewCreate` and
+`ViewResponse` stand for the create schema and the response schema of the
 view; see [Name the view's schemas in a custom route](#name-the-view-schemas).
 [Replace an endpoint method](#replace-endpoint-method) has the rules for all
 five routes.
@@ -265,7 +265,7 @@ class UserView(fr.AsyncRestView):
     schema = UserSchema
 
     @fr.post("/sign-up")
-    async def sign_up(self, data: SignUp) -> ResponseSchema:
+    async def sign_up(self, data: SignUp) -> ViewResponse:
         return await self.handle_create(data)
 ```
 

@@ -18,7 +18,7 @@ from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
 from fastapi_restly.testing._client import RestlyTestClient
-from fastapi_restly.views import UpdateSchema
+from fastapi_restly.views import ViewUpdate
 
 from ._models import SharedBase
 from .conftest import create_tables
@@ -108,22 +108,22 @@ def test_string_markers_on_replaced_endpoint_get_the_schema_types(
 
             @fr.patch("/{id}")
             async def update_endpoint(
-                self, id: fr.views.IDType, schema_obj: UpdateSchema
-            ) -> fr.views.ResponseSchema:
+                self, id: fr.views.IDType, schema_obj: ViewUpdate
+            ) -> fr.views.ViewResponse:
                 return await self.handle_update(id, schema_obj)
 
         else:
 
             @fr.patch("/{id}")
             def update_endpoint(
-                self, id: fr.views.IDType, schema_obj: UpdateSchema
-            ) -> fr.views.ResponseSchema:
+                self, id: fr.views.IDType, schema_obj: ViewUpdate
+            ) -> fr.views.ViewResponse:
                 return self.handle_update(id, schema_obj)
 
     assert ProductView.update_endpoint.__annotations__ == {
         "id": "fr.views.IDType",
-        "schema_obj": "UpdateSchema",
-        "return": "fr.views.ResponseSchema",
+        "schema_obj": "ViewUpdate",
+        "return": "fr.views.ViewResponse",
     }
     fr.include_view(client.app, ProductView)
     make_tables()

@@ -881,14 +881,14 @@ marker:
 
 | Marker | What it stands for | On `UserView` |
 |---|---|---|
-| {data}`ResponseSchema <fastapi_restly.views.ResponseSchema>` | {attr}`response_schema <fastapi_restly.views.BaseRestView.response_schema>` | `UserResponse` |
-| {data}`ListResponseSchema <fastapi_restly.views.ListResponseSchema>` | {attr}`list_response_schema <fastapi_restly.views.BaseRestView.list_response_schema>` | `UserListResponse` |
-| {data}`CreateSchema <fastapi_restly.views.CreateSchema>` | {attr}`create_schema <fastapi_restly.views.BaseRestView.create_schema>` | `UserCreate` |
-| {data}`UpdateSchema <fastapi_restly.views.UpdateSchema>` | {attr}`update_schema <fastapi_restly.views.BaseRestView.update_schema>` | `UserUpdate` |
+| {data}`ViewResponse <fastapi_restly.views.ViewResponse>` | {attr}`response_schema <fastapi_restly.views.BaseRestView.response_schema>` | `UserResponse` |
+| {data}`ViewListResponse <fastapi_restly.views.ViewListResponse>` | {attr}`list_response_schema <fastapi_restly.views.BaseRestView.list_response_schema>` | `UserListResponse` |
+| {data}`ViewCreate <fastapi_restly.views.ViewCreate>` | {attr}`create_schema <fastapi_restly.views.BaseRestView.create_schema>` | `UserCreate` |
+| {data}`ViewUpdate <fastapi_restly.views.ViewUpdate>` | {attr}`update_schema <fastapi_restly.views.BaseRestView.update_schema>` | `UserUpdate` |
 | {data}`IDType <fastapi_restly.views.IDType>` | {attr}`id_type <fastapi_restly.views.BaseRestView.id_type>` | `int` |
 
 ```python
-from fastapi_restly.views import IDType, ListResponseSchema, ResponseSchema
+from fastapi_restly.views import IDType, ViewListResponse, ViewResponse
 
 
 @fr.include_view(app)
@@ -901,11 +901,11 @@ class UserView(AppView):
         ACTIVATE = "activate"
 
     @fr.get("/inactive")
-    async def inactive(self, list_params) -> ListResponseSchema:
+    async def inactive(self, list_params) -> ViewListResponse:
         return await self.handle_get_many(list_params, where=User.active.is_(False))
 
     @fr.post("/{id}/activate", status_code=200)
-    async def activate(self, id: IDType) -> ResponseSchema:
+    async def activate(self, id: IDType) -> ViewResponse:
         user = await self.get_one(id)
         async with self.write_action(self.Action.ACTIVATE, obj=user):
             user.active = True
@@ -936,8 +936,8 @@ two views this way, in
 
 A marker works wherever a route can name a class: in a parameter annotation, in
 the return annotation, in `response_model=`, in the `model` of `responses=`, in a
-type alias, and inside another type, such as `list[ResponseSchema]` or
-`ResponseSchema | None`. `Annotated[IDType, Path(ge=1)]`
+type alias, and inside another type, such as `list[ViewResponse]` or
+`ViewResponse | None`. `Annotated[IDType, Path(ge=1)]`
 keeps the `Path(ge=1)`. A path that gives a converter, such as `/{id:str}`,
 keeps it. Registration raises for a type alias that names itself and holds a
 marker, and for a marker in a field of a class.
@@ -971,7 +971,7 @@ shows a type of its own in OpenAPI. Restly does not fill such a class from a
 `ListResult`. So the route calls `to_list_response` itself.
 
 A marker works in the annotation of a route, also inside a generic class, as in
-`Data[ResponseSchema]`. It does not work in a field of a class that you write:
+`Data[ViewResponse]`. It does not work in a field of a class that you write:
 the field would have no type in OpenAPI, so registration raises. Make the class
 generic, or [build it in a function](#schema-type).
 :::
@@ -1070,7 +1070,7 @@ function can read any setting of the view, in any order, and it can use a class
 that the module defines later. A function that reads its own result raises
 {class}`RestlyConfigurationError <fastapi_restly.exc.RestlyConfigurationError>`,
 and so does a function that returns `None`. A [marker](#name-the-view-schemas)
-in what it returns gets the type of the view, as in `Data[ResponseSchema]`.
+in what it returns gets the type of the view, as in `Data[ViewResponse]`.
 
 Restly keeps one result for each function. So define `Single` once, or use a
 named function. Two lambdas are two functions, even when they look the same, so
@@ -1084,7 +1084,7 @@ its type argument, such as `Data_UserResponse_`. For another class, use
 
 A setting holds a function or a class. It cannot hold a
 [marker](#name-the-view-schemas), because Restly fills a marker in a route. So
-`list_response_schema = list[ResponseSchema]` raises at registration. Write
+`list_response_schema = list[ViewResponse]` raises at registration. Write
 `list_response_schema = SchemaType(lambda view: list[view.response_schema])`.
 In this lambda, mypy reports `name-defined`, so add `# type:
 ignore[name-defined]`, or write a `def` with `view: Any`.

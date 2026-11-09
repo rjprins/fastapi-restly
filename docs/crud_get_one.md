@@ -178,7 +178,7 @@ This view lets clients keep the row for a minute:
 
 ```python
 from fastapi import Response
-from fastapi_restly.views import IDType, ResponseSchema
+from fastapi_restly.views import IDType, ViewResponse
 
 
 @fr.include_view(app)
@@ -187,14 +187,14 @@ class ProductView(fr.AsyncRestView):
     model = Product
 
     @fr.get("/{id}")
-    async def get_one_endpoint(self, id: IDType, response: Response) -> ResponseSchema:
+    async def get_one_endpoint(self, id: IDType, response: Response) -> ViewResponse:
         response.headers["Cache-Control"] = "max-age=60"
         return await self.handle_get_one(id)
 ```
 
 `response: Response` is FastAPI's way to set a header on the response; see
 [Response Headers](https://fastapi.tiangolo.com/advanced/response-headers/).
-`IDType` and `ResponseSchema` stand for the id type and the response schema
+`IDType` and `ViewResponse` stand for the id type and the response schema
 of the view; see
 [Name the view's schemas in a custom route](#name-the-view-schemas).
 [Replace an endpoint method](#replace-endpoint-method) has the rules for all
@@ -214,7 +214,7 @@ that picks the row:
 
 ```python
     @fr.get("/me")
-    async def get_me(self) -> ResponseSchema:
+    async def get_me(self) -> ViewResponse:
         return await self.handle_get_one(Current.user_id())
 ```
 

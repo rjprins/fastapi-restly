@@ -126,7 +126,7 @@ route makes a user active again, after the `delete` above:
         ACTIVATE = "activate"
 
     @fr.post("/{id}/activate", status_code=200)
-    async def activate(self, id: IDType) -> ResponseSchema:
+    async def activate(self, id: IDType) -> ViewResponse:
         user = await self.get_one(id)
         async with self.write_action(self.Action.ACTIVATE, obj=user):
             user.active = True
@@ -137,7 +137,7 @@ route makes a user active again, after the `delete` above:
 same steps as a CRUD write: it calls `authorize` with the action
 `"activate"`, saves the change and commits.
 {data}`IDType <fastapi_restly.views.IDType>` and
-{data}`ResponseSchema <fastapi_restly.views.ResponseSchema>`, from
+{data}`ViewResponse <fastapi_restly.views.ViewResponse>`, from
 `fastapi_restly.views`, stand for the id type and the response schema of the
 view. So OpenAPI shows `UserResponse` for this route too. See
 [Custom Routes](custom_routes.md).

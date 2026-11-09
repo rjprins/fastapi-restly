@@ -423,15 +423,15 @@ class, so the route works as before:
 ```python
     @fr.post("/")
     async def create_endpoint(
-        self, data: CreateSchema, response: Response
-    ) -> ResponseSchema:
+        self, data: ViewCreate, response: Response
+    ) -> ViewResponse:
         obj = await super().create_endpoint(data)
         path = self.request.url.path.rstrip("/")
         response.headers["Location"] = f"{path}/{obj.id}"
         return obj
 ```
 
-`ResponseSchema` keeps the view's response as the response model; see
+`ViewResponse` keeps the view's response as the response model; see
 [Name the view's schemas in a custom route](#name-the-view-schemas). An item
 route that you declare, such as `GET /{id}`, keeps the path that you give it.
 Restly adds the `int` or `uuid` converter only to a path parameter annotated
@@ -570,12 +570,12 @@ When several views need the same replacement, put it in a mixin. List the
 mixin before the view class, so Python finds its method first:
 
 ```python
-from fastapi_restly.views import IDType, ResponseSchema
+from fastapi_restly.views import IDType, ViewResponse
 
 
 class DeleteReturnsObjectMixin:
     @fr.delete("/{id}", status_code=200)
-    async def delete_endpoint(self, id: IDType) -> ResponseSchema:
+    async def delete_endpoint(self, id: IDType) -> ViewResponse:
         obj = await self.get_one(id)
         response = self.to_single_response(obj)
         await self.handle_delete(id)
@@ -588,7 +588,7 @@ class ProductView(DeleteReturnsObjectMixin, fr.AsyncRestView):
     model = Product
 ```
 
-`IDType` and `ResponseSchema` give each view that uses the mixin its own id
+`IDType` and `ViewResponse` give each view that uses the mixin its own id
 type and response schema. The [React Admin](react_admin.md) views use this
 pattern. They replace
 {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>`
@@ -605,7 +605,7 @@ view then has no such route. With `fr.configure(warn_on_misuse=True)`, Restly
 warns about it.
 
 The built-in endpoint methods get the view's types from markers, such as
-`get_one_endpoint(self, id: IDType) -> ResponseSchema`. A replacement gets the
+`get_one_endpoint(self, id: IDType) -> ViewResponse`. A replacement gets the
 view's types only where it uses the markers too; see
 [Name the view's schemas in a custom route](#name-the-view-schemas). A
 parameter or a return without an annotation gets no type. Restly keeps an

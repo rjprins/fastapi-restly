@@ -57,10 +57,6 @@ def test_a_subclass_of_a_base_with_an_old_setting_names_the_base():
     "module, name",
     [
         (fr.views, "ViewID"),
-        (fr.views, "ViewResponse"),
-        (fr.views, "ViewListResponse"),
-        (fr.views, "ViewCreate"),
-        (fr.views, "ViewUpdate"),
         (fr.schemas, "derive_schema_response"),
         (fr.schemas, "derive_schema_list_response"),
         (fr.schemas, "derive_schema_create"),

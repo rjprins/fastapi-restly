@@ -36,12 +36,12 @@ import fastapi_restly as fr
 from fastapi_restly.exc import RestlyConfigurationError
 from fastapi_restly.testing._client import RestlyTestClient
 from fastapi_restly.views import (
-    CreateSchema,
     IDType,
-    ListResponseSchema,
     NumberedEnvelope,
-    ResponseSchema,
     SchemaType,
+    ViewCreate,
+    ViewListResponse,
+    ViewResponse,
 )
 
 from ._models import SharedBase
@@ -749,11 +749,11 @@ def test_a_view_without_a_model_raises_at_registration():
 
 
 class _Wrapped(pydantic.BaseModel):
-    thing: ResponseSchema
+    thing: ViewResponse
 
 
 class _WrappedList(pydantic.BaseModel):
-    things: list[ResponseSchema]
+    things: list[ViewResponse]
 
 
 class _WrappedFunction(pydantic.BaseModel):
@@ -973,12 +973,12 @@ def test_endpoints_replaced_on_a_base_view_give_each_view_its_types(client, Lamp
 
     class ApiView(fr.AsyncRestView):
         @fr.get("/{id}")
-        async def get_one_endpoint(self, id: IDType) -> Data[ResponseSchema]:
+        async def get_one_endpoint(self, id: IDType) -> Data[ViewResponse]:
             obj = await self.handle_get_one(id)
             return {"data": self.to_single_response(obj)}
 
         @fr.post("/")
-        async def create_endpoint(self, data: CreateSchema) -> Data[ResponseSchema]:
+        async def create_endpoint(self, data: ViewCreate) -> Data[ViewResponse]:
             obj = await self.handle_create(data)
             return {"data": self.to_single_response(obj)}
 
@@ -1014,7 +1014,7 @@ def test_a_delete_that_sends_the_row_shows_it_in_the_spec(client, Lamp):
         schema = LampSchema
 
         @fr.delete("/{id}", status_code=200)
-        async def delete_endpoint(self, id: int) -> ResponseSchema:
+        async def delete_endpoint(self, id: int) -> ViewResponse:
             obj = await self.get_one(id)
             response = self.to_single_response(obj)
             await self.handle_delete(id)
@@ -1120,9 +1120,9 @@ def test_a_route_function_that_returns_nothing_raises(client, Lamp):
 @pytest.mark.parametrize(
     "fn",
     [
-        lambda view: ResponseSchema,
-        lambda view: Optional[ResponseSchema],
-        lambda view: Data[ResponseSchema],
+        lambda view: ViewResponse,
+        lambda view: Optional[ViewResponse],
+        lambda view: Data[ViewResponse],
     ],
     ids=["bare", "optional", "generic"],
 )
@@ -1173,9 +1173,9 @@ def test_a_function_that_allows_none_uses_the_response_step(client, Lamp):
 @pytest.mark.parametrize(
     "setting, value",
     [
-        ("list_response_schema", list[ResponseSchema]),
-        ("list_response_schema", NumberedEnvelope[ResponseSchema]),
-        ("response_schema", Data[ResponseSchema]),
+        ("list_response_schema", list[ViewResponse]),
+        ("list_response_schema", NumberedEnvelope[ViewResponse]),
+        ("response_schema", Data[ViewResponse]),
     ],
 )
 def test_a_setting_that_holds_a_marker_raises(client, Lamp, setting, value):
@@ -1194,7 +1194,7 @@ def test_a_function_on_a_setting_can_return_a_marker(client, Lamp):
         prefix = "/lamps"
         model = Lamp
         schema = LampSchema
-        list_response_schema = SchemaType(lambda view: list[ResponseSchema])
+        list_response_schema = SchemaType(lambda view: list[ViewResponse])
 
     assert LampView.list_response_schema == list[LampView.response_schema]
 
@@ -1203,7 +1203,7 @@ def test_a_function_on_a_setting_can_return_a_marker(client, Lamp):
 
 
 def test_a_type_alias_of_a_marker(client, Lamp):
-    Resp = TypeAliasType("Resp", ResponseSchema)
+    Resp = TypeAliasType("Resp", ViewResponse)
     Key = TypeAliasType("Key", IDType)
     calls = []
 
@@ -1260,13 +1260,13 @@ def _model_of(operation, status):
 
 @pytest.mark.parametrize(
     "model, name",
-    [(ResponseSchema, "LampResponse"), (Data[ResponseSchema], "Data_LampResponse_")],
+    [(ViewResponse, "LampResponse"), (Data[ViewResponse], "Data_LampResponse_")],
     ids=["bare", "generic"],
 )
 def test_a_marker_in_responses_of_a_route(client, Lamp, model, name):
     class ApiView(fr.AsyncRestView):
         @fr.post("/{id}/claim", responses={409: {"model": model, "description": "x"}})
-        async def claim(self, id: IDType) -> ResponseSchema:
+        async def claim(self, id: IDType) -> ViewResponse:
             return await self.handle_get_one(id)
 
     class LampView(ApiView):
@@ -1285,7 +1285,7 @@ def test_a_marker_in_responses_of_a_route(client, Lamp, model, name):
 
 def test_a_marker_in_responses_of_a_view(client, Lamp):
     class ApiView(fr.AsyncRestView):
-        responses = {409: {"model": ResponseSchema}}
+        responses = {409: {"model": ViewResponse}}
 
     class LampView(ApiView):
         prefix = "/lamps"
@@ -1302,17 +1302,17 @@ def test_a_marker_in_responses_of_a_plain_view_raises(client):
     class PlainView(fr.View):
         prefix = "/plain"
 
-        @fr.get("/", responses={409: {"model": ResponseSchema}})
+        @fr.get("/", responses={409: {"model": ViewResponse}})
         def index(self):
             return {}
 
-    with pytest.raises(RestlyConfigurationError, match="ResponseSchema"):
+    with pytest.raises(RestlyConfigurationError, match="ViewResponse"):
         fr.include_view(client.app, PlainView)
 
 
 def test_a_marker_can_be_copied():
-    assert copy.copy(ResponseSchema) == ResponseSchema
-    marker = get_args(ResponseSchema)[1]
+    assert copy.copy(ViewResponse) == ViewResponse
+    marker = get_args(ViewResponse)[1]
     assert copy.deepcopy(marker) is marker
 
 
@@ -1321,15 +1321,15 @@ def test_a_marker_can_be_copied():
 
 @dataclasses.dataclass
 class InADataclass:
-    item: ResponseSchema
+    item: ViewResponse
 
 
 class InATypedDict(TypedDict):
-    item: ResponseSchema
+    item: ViewResponse
 
 
 class InANamedTuple(NamedTuple):
-    item: ResponseSchema
+    item: ViewResponse
 
 
 @pytest.mark.parametrize("wrapper", [InADataclass, InATypedDict, InANamedTuple])
@@ -1438,12 +1438,12 @@ def test_a_decorator_without_async_around_an_async_endpoint(client, Lamp):
 
         @fr.get("/{id}")
         @logged
-        async def get_one_endpoint(self, id: IDType) -> ResponseSchema:
+        async def get_one_endpoint(self, id: IDType) -> ViewResponse:
             return await self.handle_get_one(id)
 
         @fr.get("/")
         @logged
-        async def get_many_endpoint(self, list_params) -> ListResponseSchema:
+        async def get_many_endpoint(self, list_params) -> ViewListResponse:
             return await self.handle_get_many(list_params)
 
     fr.include_view(client.app, LampView)
@@ -1495,11 +1495,11 @@ def test_a_list_of_rows_uses_the_response_class_of_an_override(client, Lamp):
             return Wide(id=obj.id, name=obj.name)
 
         @fr.get("/{id}/one")
-        async def one(self, id: IDType) -> ResponseSchema:
+        async def one(self, id: IDType) -> ViewResponse:
             return await self.handle_get_one(id)
 
         @fr.get("/{id}/many")
-        async def many(self, id: IDType) -> list[ResponseSchema]:
+        async def many(self, id: IDType) -> list[ViewResponse]:
             return [await self.handle_get_one(id)]
 
     fr.include_view(client.app, LampView)
@@ -1570,7 +1570,7 @@ def test_a_class_with_two_derived_parents_keeps_out_what_each_dropped(Lamp):
 
 
 class _LampWrapper(pydantic.BaseModel):
-    detail: ResponseSchema
+    detail: ViewResponse
 
 
 def test_a_marker_in_a_field_of_a_class_in_responses_of_a_view_raises(client, Lamp):
@@ -1595,7 +1595,7 @@ def test_a_marker_in_a_field_of_a_class_in_responses_of_a_plain_view_raises(clie
 
 def test_a_marker_in_a_typing_extensions_typed_dict_raises(client, Lamp):
     class Wrapper(typing_extensions.TypedDict):
-        lamp: ResponseSchema
+        lamp: ViewResponse
 
     class View(fr.AsyncRestView):
         prefix = "/lamps"
@@ -1612,7 +1612,7 @@ def test_a_marker_in_a_typing_extensions_typed_dict_raises(client, Lamp):
 def _alias(statement: str) -> Any:
     """A type alias that names itself: on Python 3.11 only a string can do that,
     and Restly leaves a string alone."""
-    namespace = {"ResponseSchema": ResponseSchema}
+    namespace = {"ViewResponse": ViewResponse}
     exec(statement, namespace)
     return namespace[statement.split()[1]]
 
@@ -1625,7 +1625,7 @@ needs_type_statement = pytest.mark.skipif(
 @needs_type_statement
 def test_a_type_alias_that_names_itself_and_holds_a_marker_raises(client, Lamp):
     """Restly can fill the outer marker only, so the spec would have no type."""
-    Tree = _alias("type Tree = ResponseSchema | list[Tree]")
+    Tree = _alias("type Tree = ViewResponse | list[Tree]")
 
     class View(fr.AsyncRestView):
         prefix = "/lamps"
@@ -1662,7 +1662,7 @@ def test_a_marker_in_a_generic_class_in_responses_of_a_view(client, Lamp):
         prefix = "/lamps"
         model = Lamp
         schema = LampSchema
-        responses = {400: {"model": Data[ResponseSchema]}}
+        responses = {400: {"model": Data[ViewResponse]}}
 
     fr.include_view(client.app, View)
 

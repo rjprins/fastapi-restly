@@ -219,7 +219,7 @@ takes an instance of the update schema.
 The classes that
 {func}`derive_response_schema() <fastapi_restly.schemas.derive_response_schema>`
 returns cannot be used in an annotation. In a route, use the markers of
-`fastapi_restly.views` instead, such as `ResponseSchema`: a type checker reads
+`fastapi_restly.views` instead, such as `ViewResponse`: a type checker reads
 each marker as `Any`. See
 [Name the view's schemas in a custom route](#name-the-view-schemas).
 

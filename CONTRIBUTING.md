@@ -195,9 +195,10 @@ them.
    (`to_list_response`, `list_response_schema`) and the list params
    (`list_params_schema`).
 3. A name ends with what it is: `response_schema` is a schema, `id_type` is a
-   type, and `create_endpoint` is an endpoint. A marker gets the name of its
-   setting, written as a class name: `ResponseSchema` for `response_schema`,
-   and `IDType` for `id_type`.
+   type, and `create_endpoint` is an endpoint. A marker stands for a class,
+   so it gets a name like that class: `ViewResponse` stands for the view's
+   `UserResponse`. `IDType` stands for `int` or `UUID`, not for a class, so
+   it gets the name of its setting `id_type`.
 4. A function name starts with a verb. Use the name of an action as that verb
    only when the function is part of that action: `update_object` is fine,
    but `create_schema_from_model` is not. A getter, such as

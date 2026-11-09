@@ -1,7 +1,7 @@
 """A replaced endpoint method keeps the annotations its author wrote.
 
 Registration puts the view's types only in place of the markers of
-``fastapi_restly.views``, such as ``IDType`` and ``ResponseSchema``. A
+``fastapi_restly.views``, such as ``IDType`` and ``ViewResponse``. A
 parameter or a return without an annotation gets none. ``list_params`` is
 the exception: it always takes the view's list params, because the
 unknown-key guard checks against them.
@@ -261,37 +261,37 @@ def test_replaced_endpoint_with_markers_gets_the_schema_types(env):
         if env.asynchronous:
 
             @fr.get("/{id}")
-            async def get_one_endpoint(self, id: views.IDType) -> views.ResponseSchema:
+            async def get_one_endpoint(self, id: views.IDType) -> views.ViewResponse:
                 return await self.handle_get_one(id)
 
             @fr.post("/", status_code=201)
             async def create_endpoint(
-                self, schema_obj: views.CreateSchema
-            ) -> views.ResponseSchema:
+                self, schema_obj: views.ViewCreate
+            ) -> views.ViewResponse:
                 return await self.handle_create(schema_obj)
 
             @fr.patch("/{id}")
             async def update_endpoint(
-                self, id: views.IDType, schema_obj: views.UpdateSchema
-            ) -> views.ResponseSchema:
+                self, id: views.IDType, schema_obj: views.ViewUpdate
+            ) -> views.ViewResponse:
                 return await self.handle_update(id, schema_obj)
 
         else:
 
             @fr.get("/{id}")
-            def get_one_endpoint(self, id: views.IDType) -> views.ResponseSchema:
+            def get_one_endpoint(self, id: views.IDType) -> views.ViewResponse:
                 return self.handle_get_one(id)
 
             @fr.post("/", status_code=201)
             def create_endpoint(
-                self, schema_obj: views.CreateSchema
-            ) -> views.ResponseSchema:
+                self, schema_obj: views.ViewCreate
+            ) -> views.ViewResponse:
                 return self.handle_create(schema_obj)
 
             @fr.patch("/{id}")
             def update_endpoint(
-                self, id: views.IDType, schema_obj: views.UpdateSchema
-            ) -> views.ResponseSchema:
+                self, id: views.IDType, schema_obj: views.ViewUpdate
+            ) -> views.ViewResponse:
                 return self.handle_update(id, schema_obj)
 
     openapi = _register(env, ProductView)

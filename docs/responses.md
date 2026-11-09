@@ -214,7 +214,7 @@ A custom route that declares the view's response schema goes through the same
 response step as the CRUD routes. So it can return the row itself:
 
 ```python
-from fastapi_restly.views import IDType, ResponseSchema
+from fastapi_restly.views import IDType, ViewResponse
 
 
 @fr.include_view(app)
@@ -227,7 +227,7 @@ class ProjectView(fr.AsyncRestView):
         ARCHIVE = "archive"
 
     @fr.post("/{id}/archive")
-    async def archive(self, id: IDType) -> ResponseSchema:
+    async def archive(self, id: IDType) -> ViewResponse:
         project = await self.get_one(id)
         async with self.write_action(self.Action.ARCHIVE, obj=project):
             project.archived = True
@@ -243,15 +243,15 @@ annotation or in `response_model=`:
 
 | The route declares | The route returns | Restly sends |
 |---|---|---|
-| {data}`ResponseSchema <fastapi_restly.views.ResponseSchema>` | a row of the view's model | `to_single_response(row)` |
-| `list[ResponseSchema]` | a list of rows, or another iterable of rows, such as `await self.session.scalars(stmt)` | `to_single_response(row)` for each row |
-| {data}`ListResponseSchema <fastapi_restly.views.ListResponseSchema>` | a {class}`ListResult <fastapi_restly.views.ListResult>` | `to_list_response(result)` |
-| the view's response schema itself, as in `response_model=ProjectResponse` | a row | the same as for `ResponseSchema` |
-| the view's model, as in `-> Project` | a row | the same as for `ResponseSchema` |
-| `list[Project]` | a list of rows | the same as for `list[ResponseSchema]` |
-| nothing, `response_model=None`, or a type without fields, such as `Any`, `dict` or `dict[str, Any]` | a row of the view's model, a list of rows, a `ListResult`, or a dict with one of these as a value | the same as for `ResponseSchema` and `ListResponseSchema`, and any other value goes out as it is |
+| {data}`ViewResponse <fastapi_restly.views.ViewResponse>` | a row of the view's model | `to_single_response(row)` |
+| `list[ViewResponse]` | a list of rows, or another iterable of rows, such as `await self.session.scalars(stmt)` | `to_single_response(row)` for each row |
+| {data}`ViewListResponse <fastapi_restly.views.ViewListResponse>` | a {class}`ListResult <fastapi_restly.views.ListResult>` | `to_list_response(result)` |
+| the view's response schema itself, as in `response_model=ProjectResponse` | a row | the same as for `ViewResponse` |
+| the view's model, as in `-> Project` | a row | the same as for `ViewResponse` |
+| `list[Project]` | a list of rows | the same as for `list[ViewResponse]` |
+| nothing, `response_model=None`, or a type without fields, such as `Any`, `dict` or `dict[str, Any]` | a row of the view's model, a list of rows, a `ListResult`, or a dict with one of these as a value | the same as for `ViewResponse` and `ViewListResponse`, and any other value goes out as it is |
 
-Each of these may allow `None`, as in `-> ResponseSchema | None`, and a `None`
+Each of these may allow `None`, as in `-> ViewResponse | None`, and a `None`
 goes out as `null`. Any other value goes out as it is: a dict, an instance
 of a schema, or a `fastapi.Response`. So a route that calls
 `self.to_single_response(row)` itself works the same way.
@@ -312,7 +312,7 @@ from typing import Generic, TypeVar
 
 import pydantic
 
-from fastapi_restly.views import CreateSchema, IDType, ResponseSchema
+from fastapi_restly.views import ViewCreate, IDType, ViewResponse
 
 T = TypeVar("T")
 
@@ -328,12 +328,12 @@ class UserView(fr.AsyncRestView):
     schema = UserSchema
 
     @fr.get("/{id}")
-    async def get_one_endpoint(self, id: IDType) -> Data[ResponseSchema]:
+    async def get_one_endpoint(self, id: IDType) -> Data[ViewResponse]:
         obj = await self.handle_get_one(id)
         return {"data": self.to_single_response(obj)}
 
     @fr.post("/")
-    async def create_endpoint(self, data: CreateSchema) -> Data[ResponseSchema]:
+    async def create_endpoint(self, data: ViewCreate) -> Data[ViewResponse]:
         obj = await self.handle_create(data)
         return {"data": self.to_single_response(obj)}
 ```
@@ -369,12 +369,12 @@ view gets its own type in OpenAPI:
 ```python
 class ApiView(fr.AsyncRestView):
     @fr.get("/{id}")
-    async def get_one_endpoint(self, id: IDType) -> Data[ResponseSchema]:
+    async def get_one_endpoint(self, id: IDType) -> Data[ViewResponse]:
         obj = await self.handle_get_one(id)
         return {"data": self.to_single_response(obj)}
 
     @fr.post("/")
-    async def create_endpoint(self, data: CreateSchema) -> Data[ResponseSchema]:
+    async def create_endpoint(self, data: ViewCreate) -> Data[ViewResponse]:
         obj = await self.handle_create(data)
         return {"data": self.to_single_response(obj)}
 ```
@@ -565,11 +565,11 @@ A subclass of the view keeps the class. A subclass that sets a new `schema` or
 
 For a shape that Restly cannot fill, set the type and replace
 {meth}`get_many_endpoint <fastapi_restly.views.RestView.get_many_endpoint>`. The
-marker {data}`ListResponseSchema <fastapi_restly.views.ListResponseSchema>` then
+marker {data}`ViewListResponse <fastapi_restly.views.ViewListResponse>` then
 gives the route this type. This route sends a map from id to name:
 
 ```python
-from fastapi_restly.views import ListResponseSchema
+from fastapi_restly.views import ViewListResponse
 
 
 class UserView(fr.AsyncRestView):
@@ -579,7 +579,7 @@ class UserView(fr.AsyncRestView):
     list_response_schema = dict[int, str]
 
     @fr.get("/")
-    async def get_many_endpoint(self, list_params) -> ListResponseSchema:
+    async def get_many_endpoint(self, list_params) -> ViewListResponse:
         result = await self.handle_get_many(list_params)
         return {user.id: user.name for user in result.objects}
 ```

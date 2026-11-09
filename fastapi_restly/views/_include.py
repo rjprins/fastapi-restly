@@ -721,7 +721,7 @@ def _reject_markers_in_fields(where: str, annotations: Iterable[Any]) -> None:
                 f"and its field {field} uses {marker!r}. Restly fills a marker "
                 "in the annotations of a route, not in a field of a class, so "
                 "this field would have no type in OpenAPI. Make the class "
-                "generic and write Wrapper[ResponseSchema] in the route, or build "
+                "generic and write Wrapper[ViewResponse] in the route, or build "
                 "the class in a fastapi_restly.views.SchemaType function."
             )
 

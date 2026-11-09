@@ -157,10 +157,8 @@ fastapi_restly.views:
   - AsyncReactAdminView
   - AsyncRestView
   - BaseRestView
-  - CreateSchema
   - Envelope
   - IDType
-  - ListResponseSchema
   - ListResult
   - NoPagination
   - NumberedEnvelope
@@ -171,11 +169,13 @@ fastapi_restly.views:
   - ReactAdminListParams
   - ReactAdminView
   - ReadScope
-  - ResponseSchema
   - RestView
   - SchemaType
-  - UpdateSchema
   - View
+  - ViewCreate
+  - ViewListResponse
+  - ViewResponse
+  - ViewUpdate
   - delete
   - get
   - include_view
@@ -260,14 +260,14 @@ fastapi_restly.testing:
   - configure_tests
 fastapi_restly.views:
   - BaseRestView
-  - CreateSchema
   - Envelope
   - IDType
-  - ListResponseSchema
   - NumberedEnvelope
   - OffsetEnvelope
   - ReactAdminListParams
   - ReadScope
-  - ResponseSchema
   - SchemaType
-  - UpdateSchema
+  - ViewCreate
+  - ViewListResponse
+  - ViewResponse
+  - ViewUpdate

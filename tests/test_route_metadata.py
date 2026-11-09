@@ -6,7 +6,7 @@ from fastapi.routing import APIRoute
 from sqlalchemy.orm import Mapped
 
 import fastapi_restly as fr
-from fastapi_restly.views import CreateSchema, IDType, ResponseSchema
+from fastapi_restly.views import IDType, ViewCreate, ViewResponse
 
 from ._models import SharedBase
 
@@ -79,21 +79,21 @@ def test_override_with_a_decorator_sets_metadata_and_keeps_the_route(base):
         if issubclass(base, fr.AsyncRestView):
 
             @fr.get("/{id}", operation_id="catalog_get", summary="Get an item")
-            async def get_one_endpoint(self, id: IDType) -> ResponseSchema:
+            async def get_one_endpoint(self, id: IDType) -> ViewResponse:
                 return await super().get_one_endpoint(id)
 
             @fr.post("/", name="add_item", summary="Add an item")
-            async def create_endpoint(self, schema_obj: CreateSchema) -> ResponseSchema:
+            async def create_endpoint(self, schema_obj: ViewCreate) -> ViewResponse:
                 return await super().create_endpoint(schema_obj)
 
         else:
 
             @fr.get("/{id}", operation_id="catalog_get", summary="Get an item")
-            def get_one_endpoint(self, id: IDType) -> ResponseSchema:
+            def get_one_endpoint(self, id: IDType) -> ViewResponse:
                 return super().get_one_endpoint(id)
 
             @fr.post("/", name="add_item", summary="Add an item")
-            def create_endpoint(self, schema_obj: CreateSchema) -> ResponseSchema:
+            def create_endpoint(self, schema_obj: ViewCreate) -> ViewResponse:
                 return super().create_endpoint(schema_obj)
 
     app = FastAPI()

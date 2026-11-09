@@ -389,7 +389,7 @@ handler, write a base view instead of a mixin. A base view subclasses the
 view class, so it has the real methods, with their types:
 
 ```python
-from fastapi_restly.views import IDType, ResponseSchema
+from fastapi_restly.views import IDType, ViewResponse
 
 
 class ArchiveView(fr.AsyncRestView):
@@ -399,7 +399,7 @@ class ArchiveView(fr.AsyncRestView):
         ARCHIVE = "archive"
 
     @fr.post("/{id}/archive", status_code=200)
-    async def archive(self, id: IDType) -> ResponseSchema:
+    async def archive(self, id: IDType) -> ViewResponse:
         obj = await self.get_one(id)
         async with self.write_action(self.Action.ARCHIVE, obj=obj):
             obj.archived = True
@@ -450,7 +450,7 @@ override for each change. Two shared concerns have their own sections:
 owner id, on Models, and [soft delete](#soft-delete-mixin) on Scopes.
 
 A route on a base view names the classes of each subclass with markers, such
-as `ResponseSchema`; see
+as `ViewResponse`; see
 [Name the view's schemas in a custom route](#name-the-view-schemas).
 
 (app-wide-base-view)=

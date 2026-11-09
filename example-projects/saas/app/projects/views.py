@@ -9,7 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm.attributes import flag_modified
 
 import fastapi_restly as fr
-from fastapi_restly.views import ResponseSchema
+from fastapi_restly.views import ViewResponse
 
 from ..current import Current
 from ..tasks.models import Task, TaskClauses, TaskPriority, TaskStatus, TaskType
@@ -138,7 +138,7 @@ class ProjectView(TrashView[Project]):
             )
 
     @fr.delete("/{id}", status_code=200)
-    async def delete_endpoint(self, id: int) -> ResponseSchema:
+    async def delete_endpoint(self, id: int) -> ViewResponse:
         """Answer 200 with the soft-deleted project, in place of 204.
 
         ``SoftDeleteMixin.delete`` sets ``deleted_at`` instead of removing
@@ -149,7 +149,7 @@ class ProjectView(TrashView[Project]):
         return project
 
     @fr.post("/{id}/archive")
-    async def archive_project(self, id: int) -> ResponseSchema:
+    async def archive_project(self, id: int) -> ViewResponse:
         """Archive a project (prevents new task creation).
 
         Loads through ``get_one``; ``write_action(self.Action.ARCHIVE)`` gates the
@@ -165,7 +165,7 @@ class ProjectView(TrashView[Project]):
         return project
 
     @fr.post("/{id}/clone")
-    async def clone_project(self, id: int, request: CloneRequest) -> ResponseSchema:
+    async def clone_project(self, id: int, request: CloneRequest) -> ViewResponse:
         """Clone a project with all its tasks.
 
         One write action: the new project is its subject, under the name
@@ -202,7 +202,7 @@ class ProjectView(TrashView[Project]):
         return clone
 
     @fr.get("/by-slug/{slug}")
-    async def get_by_slug(self, slug: str) -> ResponseSchema:
+    async def get_by_slug(self, slug: str) -> ViewResponse:
         """Retrieve by the natural key instead of the id.
 
         ``handle_get_one`` takes a predicate in place of the id, so this
@@ -217,7 +217,7 @@ class ProjectView(TrashView[Project]):
     @fr.patch("/by-slug/{slug}")
     async def update_by_slug(
         self, slug: str, request: ProjectPatchRequest
-    ) -> ResponseSchema:
+    ) -> ViewResponse:
         """Update by the natural key, through the standard commit bracket.
 
         ``handle_update`` takes the same predicate, so this loads,

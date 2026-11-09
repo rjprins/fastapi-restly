@@ -8,8 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 This release adds `SchemaType`, a type that depends on the view, and a setting
-for the list response. The settings and markers for a view's schemas now have
-names that end with what they are. Each filter key now has the type of its field,
+for the list response. The settings for a view's schemas now have names that
+end with what they are. Each filter key now has the type of its field,
 and a field has only the keys that work for it. To upgrade, work through these steps. A
 missed step fails with an error. A step marked "Silent" gives no error when you
 miss it.
@@ -17,10 +17,8 @@ miss it.
 1. Rename these settings of a view: `schema_response` to `response_schema`,
    `schema_create` to `create_schema`, `schema_update` to `update_schema`, and
    `schema_list_params` to `list_params_schema`.
-2. Rename these markers of `fastapi_restly.views`: `ViewID` to `IDType`,
-   `ViewResponse` to `ResponseSchema`, `ViewListResponse` to
-   `ListResponseSchema`, `ViewCreate` to `CreateSchema`, and `ViewUpdate` to
-   `UpdateSchema`.
+2. Rename the marker `fastapi_restly.views.ViewID` to `IDType`. The other
+   markers, such as `ViewResponse`, keep their names.
 3. Rename these functions: `fr.schemas.derive_schema_response` to
    `derive_response_schema`, `fr.schemas.derive_schema_list_response` to
    `derive_list_response_schema`, and `fr.query.derive_schema_list_params` to
@@ -28,8 +26,8 @@ miss it.
    of `fr.query.apply_list_params`, of `fr.query.FilterKey` or of
    `fr.query.SortKey` is now `response_schema`.
 4. Remove `to_response` and `ResponseShape`. In a custom route, declare
-   `-> ResponseSchema` and return the row, or call `to_single_response`. For a
-   list, declare `-> ListResponseSchema` and return the `ListResult`, or call
+   `-> ViewResponse` and return the row, or call `to_single_response`. For a
+   list, declare `-> ViewListResponse` and return the `ListResult`, or call
    `to_list_response`. For `ResponseShape.EMPTY`, return
    `fastapi.Response(status_code=204)`. An override of `to_response` for one
    object becomes an override of `to_single_response`. An override that wraps
@@ -54,7 +52,7 @@ miss it.
 8. Silent: a custom route without a response model, which calls an override of
    `to_single_response` that returns another model, sends all fields of that
    model. Before, `to_response` copied the value into the response schema. Declare
-   `-> ResponseSchema` on the route.
+   `-> ViewResponse` on the route.
 9. Rename `fr.views.PaginatedEnvelope` to `fr.views.NumberedEnvelope`. A pagination
    style now has an envelope with its own name. The JSON does not change. In
    OpenAPI, a class that you fill yourself, such as `NumberedEnvelope[Summary]`,
@@ -332,7 +330,7 @@ miss it.
   marker in a plain field: of a Pydantic class, a dataclass, a `TypedDict` or a
   `NamedTuple`. The field had no type in OpenAPI.
 - Registration raises `RestlyConfigurationError` for a marker in a setting, as in
-  `list_response_schema = list[ResponseSchema]`, for a function that returns
+  `list_response_schema = list[ViewResponse]`, for a function that returns
   `None`, and for `list_response_schema = NumberedEnvelope` without a type for
   the items. OpenAPI showed items without a type.
 - Registration raises `RestlyConfigurationError` for an own list response schema
@@ -417,9 +415,9 @@ miss it.
   a page size of 1. So an envelope that rejects the default size, such as one with
   `page_size: int = Field(le=10)`, fails when you create the settings, not on a
   request.
-- A marker inside a generic class, as in `Data[ResponseSchema]`, is filled. Before,
+- A marker inside a generic class, as in `Data[ViewResponse]`, is filled. Before,
   the marker stayed, and OpenAPI showed a field without a type.
-- A marker in a type alias, as in `type Resp = ResponseSchema`, is filled. Before,
+- A marker in a type alias, as in `type Resp = ViewResponse`, is filled. Before,
   OpenAPI showed an empty class, and a row went out with all its columns.
 - The list route of a react-admin view shows an array of the response schema in
   OpenAPI. Before, it showed an empty schema. A custom route with the list marker
