@@ -210,6 +210,20 @@ def _canonicalize_index_page(app, pagename, templatename, context, doctree):
         context["pageurl"] = pageurl
 
 
+def _mark_guide_pages(app, pagename, templatename, context, doctree):
+    """Tell the sidebar template which pages belong to the Guide, so it can
+    show a link to "How Restly works" above the Guide's sections."""
+    includes = app.env.toctree_includes
+    guide_pages = {"guide"}
+    todo = ["guide"]
+    while todo:
+        for child in includes.get(todo.pop(), []):
+            if child not in guide_pages:
+                guide_pages.add(child)
+                todo.append(child)
+    context["in_guide"] = pagename in guide_pages
+
+
 def _noindex_snapshots(app, pagename, templatename, context, doctree):
     """Keep frozen version snapshots out of search indexes; root stays the
     single indexed copy."""
@@ -648,4 +662,5 @@ def setup(app):
     app.connect("missing-reference", _resolve_alias_as_data)
     app.connect("html-page-context", _canonicalize_index_page)
     app.connect("html-page-context", _noindex_snapshots)
+    app.connect("html-page-context", _mark_guide_pages)
     app.connect("build-finished", _canonicalize_sitemap_index, priority=900)

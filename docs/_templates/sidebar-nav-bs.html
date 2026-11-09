@@ -1,0 +1,24 @@
+{# The theme's Section Navigation, with a link to "How Restly works" at the
+   top on Guide pages. That section is on the Guide's own page, so the
+   toctree has no entry for it. #}
+{% set show_nav_level = meta['html_theme.show_nav_level'] if (meta is defined and meta is not none and 'html_theme.show_nav_level' in meta) else theme_show_nav_level %}
+<nav class="bd-docs-nav bd-links"
+     aria-label="{{ _('Section Navigation') }}">
+  <p class="bd-links__title" role="heading" aria-level="1">{{ _("Section Navigation") }}</p>
+  <div class="bd-toc-item navbar-nav">
+    {%- if in_guide %}
+    <ul class="nav bd-sidenav">
+      <li class="toctree-l1"><a class="reference internal" href="{{ pathto('guide') }}#how-restly-works">How Restly works</a></li>
+    </ul>
+    {%- endif %}
+    {{- generate_toctree_html(
+      "sidebar",
+      show_nav_level=show_nav_level | int,
+      maxdepth=theme_navigation_depth | int,
+      collapse=theme_collapse_navigation | tobool,
+      includehidden=theme_sidebar_includehidden | tobool,
+      titles_only=True
+      )
+    -}}
+  </div>
+</nav>

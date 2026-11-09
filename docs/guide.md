@@ -8,76 +8,59 @@ Restly, start with the tutorial, [Build a Blog API](tutorial.md).
 
 ## How Restly works
 
-You write a SQLAlchemy model and a view class, and Restly turns the view into
-FastAPI routes. For example, when a client sends `PATCH /projects/1`,
-FastAPI first checks the request body against the update schema,
-`ProjectUpdate`. Then these steps run:
+The goal of Restly is less boilerplate and more consistency.
 
-```{code-block} text
-:emphasize-lines: 2,5,7,9,11,12
+In Restly, you write your API as view classes. A view is a class that groups
+related FastAPI routes, for example all routes under `/projects`. The base
+class, {class}`fr.View <fastapi_restly.views.View>`, is for your own set of
+reusable endpoints. It has no predefined routes. See
+[Group endpoints that are not CRUD](#when-to-use-view-directly).
 
-PATCH /projects/1
-  └─ update_endpoint(id, data)            # endpoint method: HTTP contract
-       ├─ handle_update(id, data)         # handler: runs the steps
-       │    ├─ get_one(id)                # loads through the scope, or 404
-       │    ├─ authorize("update", ...)   # may the caller do this? Or 403
-       │    ├─ check the references       # an id that does not exist: 404
-       │    ├─ update(obj, data)          # business method: the change
-       │    ├─ save                       # flush and refresh the row
-       │    ├─ before_action_commit(...)
-       │    ├─ commit
-       │    └─ after_action_commit(...)
-       └─ to_single_response(obj)         # the response schema, as JSON
+{class}`fr.RestView <fastapi_restly.views.RestView>` is a view that already
+has five CRUD routes. You give it a SQLAlchemy model, and it serves routes to
+list, read, create, update and delete rows of that model. `RestView` has an
+async version, {class}`fr.AsyncRestView <fastapi_restly.views.AsyncRestView>`.
+These docs say `RestView` for both.
+
+```python
+@fr.include_view(app)
+class ProjectView(fr.AsyncRestView):
+    prefix = "/projects"
+    model = Project  # your SQLAlchemy model
 ```
 
-The highlighted lines are the methods that you can override in your view.
-Restly runs the other steps itself, and the handler and `get_one` are
-final.
+Each route of a `RestView` has two layers that you can change:
 
-These are the parts, and the page that explains each one:
+- **The HTTP layer**: one endpoint method for each route, such as
+  `update_endpoint`. It holds what is about HTTP: the path, the parameters
+  and the response. To change one option of a route, such as the status
+  code, use {func}`fr.modify_route <fastapi_restly.views.modify_route>`. To
+  change more, replace the endpoint method. See
+  [Change one option of a route](#modify-route).
+- **The business layer**: business methods, such as `create`, `update` and
+  `delete`. They make the change to the data. Override one to change what a
+  route does, for example to hash a password or to set a field. See
+  [Change what an action does](#business-methods).
 
-- **Model**: your SQLAlchemy model, on a declarative base of your own.
-  Restly works with it, but does not own it. See [Models](models.md).
-- **View**: a class that groups related endpoints under a `prefix`.
-  {func}`fr.include_view() <fastapi_restly.views.include_view>` registers its
-  routes on an app or a router. A CRUD view,
-  {class}`fr.AsyncRestView <fastapi_restly.views.AsyncRestView>` or
-  {class}`fr.RestView <fastapi_restly.views.RestView>`, also names a `model`,
-  and serves five routes for it. See [Views](views.md) and
-  [CRUD Routes](crud_routes.md).
-- **The main schema**: a Pydantic class that lists the fields of the
-  resource. Restly builds the other schemas from it, such as the update schema
-  `ProjectUpdate` and the response schema `ProjectResponse`. A view without a
-  schema gets one that Restly generates from the model. See
-  [Schemas & Validation](schemas.md).
-- **Endpoint method, handler and business method**: the three layers of each
-  CRUD route. To change what an action does, override the business method,
-  such as `update`. A read has a final load, `get_one` or `get_many`, in
-  place of a business method: the scope and the loader options decide what
-  it reads. To change one option of a route, such as the status code, use
-  {func}`fr.modify_route <fastapi_restly.views.modify_route>`. For a change that
-  needs code, replace the endpoint method. A handler is final. See
-  [Request Lifecycle & Hooks](lifecycle.md).
-- **Commit**: a write route commits after the business method.
-  `before_action_commit` runs just before the commit, and
-  `after_action_commit` just after it. A read does not commit. See
-  [What commits, and when](#what-commits).
-- **Scope**: a SQL where clause that limits which rows of a model a request
-  can read. Restly applies it to every read of the model and to every
-  reference to the model, so a row outside the scope is a 404. You write a
-  scope as a query clause, a named rule that you can reuse. See
-  [Scopes](scopes.md) and [Query Clauses](clauses.md).
-- **`authorize`**: decides whether the caller may do the action. A refusal
-  is a 403. See [Authorization](authorization.md).
-- **`Current`**: the request context. It holds the caller and other values
-  for the request. Scopes, column defaults and your `authorize` can read it.
-  See [Request Context](context.md).
-- **List params**: the filter, sort and page parameters of the list route.
-  Restly builds them from the response schema. See
-  [Filtering, Sorting & Pagination](filtering.md).
-- **Session**: each request gets a database session from the source that
-  {func}`fr.configure() <fastapi_restly.db.configure>` sets. See
-  [Database & Configuration](database.md).
+Between the two layers, Restly runs a fixed set of steps, such as loading a
+row from the database, checking access and committing.
+[Request Lifecycle & Hooks](lifecycle.md) shows all steps in order, and which
+ones you can override.
+
+Some things you write only once:
+
+- **Fields**: you list the fields that clients see in one Pydantic schema, and
+  Restly builds the create, update and response schemas from it. If you do not
+  write this schema, Restly makes one from the model.
+- **Access**: you write once which rows a caller can see, as a scope, and
+  Restly applies it to every read of the model.
+- **Shared behavior**: behavior that several views share goes in a base view
+  that they inherit from.
+
+Underneath, Restly is plain FastAPI, SQLAlchemy and Pydantic. Your model stays
+your own SQLAlchemy model, the routes are FastAPI routes, and the schemas are
+Pydantic classes. When a route does not fit Restly, write it as a normal
+FastAPI route next to your views.
 
 ## Setup
 

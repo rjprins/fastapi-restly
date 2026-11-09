@@ -28,7 +28,7 @@ see [Use Restly in an existing project](#add-to-existing-app).
 > get an email when 1.0 is released. If something is broken or missing,
 > please [open an issue](https://github.com/rjprins/fastapi-restly/issues).
 
-[How Restly works](#how-restly-works) shows all the parts on one screen, and
+[How Restly works](#how-restly-works) gives the main ideas in a few paragraphs, and
 the [Guide](guide.md) explains each part and how you can change it.
 
 ## Quick Start
