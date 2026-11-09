@@ -46,19 +46,23 @@
     }
 }
 
-/* Page width: a left sidebar of at most 19rem, the article and a right sidebar
-   of 21rem (the theme gives 17rem, too narrow for the page headings). At
-   100rem the article gets the theme's full 60em. The sidebar collapse button
+/* Page width: a left sidebar of at most 19rem, an article of at most 56rem
+   (the theme gives 60em) and a right sidebar of 24rem (the theme gives 17rem,
+   too narrow for the page headings). Together that is 99rem. The sidebar collapse button
    still works: it sets the same property with a stronger selector. The left
    sidebar gets more space on its left, but not when it is collapsed, because
    then the button needs that space. */
 html {
-    --pst-sidebar-secondary: 21rem;
+    --pst-sidebar-secondary: 24rem;
 }
 
 @media (min-width: 62rem) {
     .bd-page-width {
-        max-width: 100rem;
+        max-width: 99rem;
+    }
+
+    .bd-main .bd-content .bd-article-container {
+        max-width: 56rem;
     }
 
     .bd-sidebar-primary {
@@ -67,6 +71,16 @@ html {
 
     .bd-sidebar-primary:not(.pst-squeeze) {
         padding-left: 2rem;
+    }
+}
+
+/* When the screen gets narrower, the right sidebar gives up its extra width
+   (down to the theme's 17rem) before the article gets narrower than the text
+   column. 49rem is the text column of 45rem plus the article padding. The
+   rule starts where the theme shows the right sidebar next to the article. */
+@media (min-width: 75rem) {
+    .bd-sidebar-secondary {
+        width: clamp(17rem, 100% - 49rem, 24rem);
     }
 }
 
