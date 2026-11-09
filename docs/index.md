@@ -115,6 +115,33 @@ to `UserView`, so that it keeps the row and marks the user as inactive:
 returns 204. The other four routes do not change. See
 [Delete](crud_delete.md).
 
+### Add your own routes
+
+A view can have routes of its own, next to the CRUD routes. Declare them with
+a route decorator, such as {func}`@fr.post <fastapi_restly.views.post>`. This
+route makes a user active again, after the `delete` above:
+
+```python
+    class Action(fr.Action):
+        ACTIVATE = "activate"
+
+    @fr.post("/{id}/activate", status_code=200)
+    async def activate(self, id: IDType) -> ResponseSchema:
+        user = await self.get_one(id)
+        async with self.write_action(self.Action.ACTIVATE, obj=user):
+            user.active = True
+        return user
+```
+
+{meth}`write_action <fastapi_restly.views.RestView.write_action>` runs the
+same steps as a CRUD write: it calls `authorize` with the action
+`"activate"`, saves the change and commits.
+{data}`IDType <fastapi_restly.views.IDType>` and
+{data}`ResponseSchema <fastapi_restly.views.ResponseSchema>`, from
+`fastapi_restly.views`, stand for the id type and the response schema of the
+view. So OpenAPI shows `UserResponse` for this route too. See
+[Custom Routes](custom_routes.md).
+
 ### Declare dependencies once
 
 Views are Python classes, so they share code by inheritance. Declare the
@@ -192,7 +219,7 @@ scope of `Team`. A wrong id is a 404. To make a body or the response
 different, write that schema yourself and set it on the view. See
 [Schemas & Validation](schemas.md).
 
-### SQLAlchemy stays SQLAlchemy, FastAPI stays FastAPI
+### Use plain FastAPI where you need it
 
 When a route needs something that Restly does not do, write it as a plain
 FastAPI route. Your declarative base, your engine and your app stay yours,

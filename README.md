@@ -147,6 +147,30 @@ class UserView(fr.AsyncRestView):
 other four routes do not change. See
 [Delete](https://www.fastapi-restly.org/crud_delete.html).
 
+### Add your own routes
+
+A view can have routes of its own, next to the CRUD routes. Declare them with
+a route decorator, such as `@fr.post`. This route makes a user active again,
+after the `delete` above:
+
+```python
+    class Action(fr.Action):
+        ACTIVATE = "activate"
+
+    @fr.post("/{id}/activate", status_code=200)
+    async def activate(self, id: IDType) -> ResponseSchema:
+        user = await self.get_one(id)
+        async with self.write_action(self.Action.ACTIVATE, obj=user):
+            user.active = True
+        return user
+```
+
+`write_action` runs the same steps as a CRUD write: it calls `authorize` with
+the action `"activate"`, saves the change and commits. `IDType` and
+`ResponseSchema`, from `fastapi_restly.views`, stand for the id type and the
+response schema of the view. So OpenAPI shows `UserResponse` for this route
+too. See [Custom Routes](https://www.fastapi-restly.org/custom_routes.html).
+
 ### Declare dependencies once
 
 Views are Python classes, so they share code by inheritance. Declare the
@@ -169,9 +193,8 @@ class ProjectView(AppRestView):
 ```
 
 Every view that inherits from `AppRestView` gets `self.current_user`, and the
-same rule in `authorize`: only an admin can change data. A view can also have
-custom routes, with `@fr.post` and the other route decorators. `fr.View`
-groups custom routes, such as login or webhooks, and has no CRUD routes. See
+same rule in `authorize`: only an admin can change data. `fr.View` groups
+custom routes, such as login or webhooks, and has no CRUD routes. See
 [Views](https://www.fastapi-restly.org/views.html).
 
 ### Decide who sees which rows
@@ -235,7 +258,7 @@ scope of `Team`. A wrong id is a 404. To make a body or the response
 different, write that schema yourself and set it on the view. See
 [Schemas & Validation](https://www.fastapi-restly.org/schemas.html).
 
-### SQLAlchemy stays SQLAlchemy, FastAPI stays FastAPI
+### Use plain FastAPI where you need it
 
 When a route needs something that Restly does not do, write it as a plain
 FastAPI route. Your declarative base, your engine and your app stay yours,
