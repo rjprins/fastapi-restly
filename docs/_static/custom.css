@@ -76,11 +76,23 @@ html {
 
 /* When the screen gets narrower, the right sidebar gives up its extra width
    (down to the theme's 17rem) before the article gets narrower than the text
-   column. 49rem is the text column of 45rem plus the article padding. The
-   rule starts where the theme shows the right sidebar next to the article. */
+   column. 48rem is the text column of 45rem plus the article padding. The
+   rule starts where the theme shows the right sidebar next to the article.
+
+   The space between a table and each sidebar line is the same: 1.5rem. The
+   theme gives 3rem on the left and 2rem on the right. */
 @media (min-width: 75rem) {
     .bd-sidebar-secondary {
-        width: clamp(17rem, 100% - 49rem, 24rem);
+        width: clamp(17rem, 100% - 48rem, 24rem);
+        padding-left: 0;
+    }
+
+    .bd-main .bd-content .bd-article-container {
+        padding-inline: 1.5rem;
+    }
+
+    .bd-main .bd-content .bd-article-container .bd-article {
+        padding-left: 0;
     }
 }
 
