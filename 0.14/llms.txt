@@ -1,0 +1,129 @@
+# FastAPI-Restly
+
+> **Class-based REST resources for FastAPI and SQLAlchemy. Minimal boilerplate, full control.**
+
+The Guide has one page for each part of Restly, in five groups. Each page
+starts with how that part works, then shows how to use it. If you are new to
+Restly, start with the tutorial, [Build a Blog API](https://www.fastapi-restly.org/0.14/tutorial.html).
+
+The goal of Restly is less boilerplate and more consistency.
+
+In Restly, you write your API as view classes. A view is a class that groups
+related FastAPI routes, for example all routes under `/projects`. The base
+class, `fr.View`, is for your own set of
+reusable endpoints. It has no predefined routes. See
+[Group endpoints that are not CRUD](https://www.fastapi-restly.org/0.14/views.html#when-to-use-view-directly).
+
+`fr.RestView` is a view that already
+has five CRUD routes. You give it a SQLAlchemy model, and it serves routes to
+list, read, create, update and delete rows of that model. `RestView` has an
+async version, `fr.AsyncRestView`.
+These docs say `RestView` for both.
+
+```python
+@fr.include_view(app)
+class ProjectView(fr.AsyncRestView):
+    prefix = "/projects"
+    model = Project  # your SQLAlchemy model
+```
+
+Each route of a `RestView` has two layers that you can change:
+
+- **The HTTP layer**: one endpoint method for each route, such as
+  `update_endpoint`. It holds what is about HTTP: the path, the parameters
+  and the response. To change one option of a route, such as the status
+  code, use `fr.modify_route`. To
+  change more, replace the endpoint method. See
+  [Change one option of a route](https://www.fastapi-restly.org/0.14/crud_routes.html#modify-route).
+- **The business layer**: business methods, such as `create`, `update` and
+  `delete`. They make the change to the data. Override one to change what a
+  route does, for example to hash a password or to set a field. See
+  [Change what a write does](https://www.fastapi-restly.org/0.14/crud_routes.html#business-methods).
+
+Between the two layers, Restly runs a fixed set of steps, such as loading a
+row from the database, checking access and committing.
+[How a CRUD route runs](https://www.fastapi-restly.org/0.14/crud_routes.html#view-request-steps) shows all steps in order, and
+which ones you can override.
+
+Some things you write only once:
+
+- **Fields**: you list the fields that clients see in one Pydantic schema, and
+  Restly builds the create, update and response schemas from it. If you do not
+  write this schema, Restly makes one from the model.
+- **Access**: you write once which rows a caller can see, as a scope, and
+  Restly applies it to every read of the model.
+- **Shared behavior**: behavior that several views share goes in a base view
+  that they inherit from.
+
+Underneath, Restly is plain FastAPI, SQLAlchemy and Pydantic. Your model stays
+your own SQLAlchemy model, the routes are FastAPI routes, and the schemas are
+Pydantic classes. When a route does not fit Restly, write it as a normal
+FastAPI route next to your views.
+
+## Tutorial
+
+- [Tutorial: Build a Blog API](https://www.fastapi-restly.org/0.14/tutorial.html)
+- [Tutorial: Add Authors and Drafts](https://www.fastapi-restly.org/0.14/tutorial_customizing.html)
+
+## Setup
+
+- [New Projects](https://www.fastapi-restly.org/0.14/new_projects.html): start a project with `restly new`, lay it out as it grows, and serve more than one API version.
+- [Existing Projects](https://www.fastapi-restly.org/0.14/existing_projects.html): add Restly to an app that you already have, share its login check and its `get_db`, keep its engine and models, and replace a hand-written router with a view.
+- [Database & Configuration](https://www.fastapi-restly.org/0.14/database.html): tell Restly where its database is, reuse the engine, sessionmaker or session generator that your app already has, use another database on one view, such as a read replica, and open a session outside a request.
+- [Models](https://www.fastapi-restly.org/0.14/models.html): add Restly's defaults and common columns to your models, and set the values that every write needs, such as the author or a slug.
+
+## Views & Routes
+
+- [Views](https://www.fastapi-restly.org/0.14/views.html): the view classes, how to declare routes, add a decorator and register a view, routes that are not CRUD, such as login and webhooks, and how views share behavior through base classes.
+- [React Admin](https://www.fastapi-restly.org/0.14/react_admin.html): connect react-admin to a view, the list format and the routes that react-admin expects, to-many id arrays, CORS, and a list that shows no rows.
+- [Type Annotations](https://www.fastapi-restly.org/0.14/typing.html): type the schema, the methods that you override and your custom routes.
+
+## CRUD Routes
+
+- [Overview](https://www.fastapi-restly.org/0.14/crud_routes.html): the five default routes, the id type, how a route runs, async or sync, how to change one option of a route, leave some routes out, where a business method fits, and how to replace an endpoint method.
+- [List](https://www.fastapi-restly.org/0.14/crud_list.html): the steps of `GET /`, what you can change, a header with the total, and a list of a subset.
+- [Get One](https://www.fastapi-restly.org/0.14/crud_get_one.html): the steps of `GET /{id}`, visibility and policy, a row found by a slug or a composite key, and the error for a missing row.
+- [Create](https://www.fastapi-restly.org/0.14/crud_create.html): the steps of `POST /`, the `create` method, a password hash, the id of a new row, and a `Location` header.
+- [Update](https://www.fastapi-restly.org/0.14/crud_update.html): the steps of `PATCH /`, what you can change, the`update` method, a `PUT` route, and an update from a custom route.
+- [Delete](https://www.fastapi-restly.org/0.14/crud_delete.html): the steps of `DELETE /`, the`delete` method, a soft delete, and a response with the deleted row.
+- [Custom Routes](https://www.fastapi-restly.org/0.14/custom_routes.html): routes of your own on a CRUD view, a lookup by another key, actions such as publish, and several rows in one action.
+- [Commits & Hooks](https://www.fastapi-restly.org/0.14/commits.html): what commits and when, code before or after the commit, work after the response, errors in a write, several writes in one commit, code that must commit, and the same logic in a script or a worker.
+- [Nested Routes](https://www.fastapi-restly.org/0.14/nested_routes.html): serve a child resource under its parent, create a child, limit the parents that a client can reach, and nest more than one level.
+
+## Requests & Responses
+
+- [Schemas & Validation](https://www.fastapi-restly.org/0.14/schemas.html): generate the schema or write it, keep a field out of the requests or the responses, validate input, keep times in UTC, keep NaN and infinity, store a Pydantic model in a JSON column, use other field names in JSON, such as camelCase, and build a class for each view with `SchemaType`.
+- [Relationships](https://www.fastapi-restly.org/0.14/relationships.html): accept the id of another row, check that the row exists, link many rows to many rows, return related objects, and fix `MissingGreenlet`.
+- [Responses](https://www.fastapi-restly.org/0.14/responses.html): what each route returns, the list envelope and the list response schema, the response of a custom route, and how to change the shape of one route or of all routes.
+- [Filtering, Sorting & Pagination](https://www.fastapi-restly.org/0.14/filtering.html): the filters, the sort order and the pages that a client can use on a list, the keys that a view chooses, filters of your own, and list params that you write yourself.
+- [Errors](https://www.fastapi-restly.org/0.14/errors.html): raise a 404 or a 403, see why a duplicate value gives a 409, and change the error body.
+- [OpenAPI](https://www.fastapi-restly.org/0.14/openapi.html): the tags, names and operation IDs of the routes, and how to document a custom route.
+
+## Access
+
+- [Request Context](https://www.fastapi-restly.org/0.14/context.html): bind the current user in a dependency, a script or a test.
+- [Authorization](https://www.fastapi-restly.org/0.14/authorization.html): allow or refuse each action, for each caller.
+- [Query Clauses](https://www.fastapi-restly.org/0.14/clauses.html): name a query rule once, then reuse and combine it.
+- [Scopes](https://www.fastapi-restly.org/0.14/scopes.html): hide rows from every read, show each user only their own rows, and soft-delete rows.
+- [Multi-Tenancy](https://www.fastapi-restly.org/0.14/tenancy.html): keep the rows of each tenant apart.
+
+## Testing & Deploying
+
+- [Testing](https://www.fastapi-restly.org/0.14/testing.html): set up the test suite, build the test schema, and use the test clients and fixtures.
+- [Deploying](https://www.fastapi-restly.org/0.14/deploying.html): read the settings from the environment, run the app, set up Alembic, add a health check, and check the list settings before an API goes public.
+
+## What FastAPI covers
+
+- [Security](https://fastapi.tiangolo.com/tutorial/security/): OAuth2, API keys and other security schemes. To make the caller available to your views, see [Request Context](https://www.fastapi-restly.org/0.14/context.html#current-request-binding).
+- [Middleware](https://fastapi.tiangolo.com/tutorial/middleware/).
+- [CORS](https://fastapi.tiangolo.com/tutorial/cors/). For a react-admin frontend, see also [CORS for React Admin](https://www.fastapi-restly.org/0.14/react_admin.html#react-admin-cors).
+- [Background tasks](https://fastapi.tiangolo.com/tutorial/background-tasks/). For work that must still happen after a crash, use an outbox row in a [transaction hook](https://www.fastapi-restly.org/0.14/commits.html#after-action-commit-raises).
+- [File uploads](https://fastapi.tiangolo.com/tutorial/request-files/).
+- [WebSockets](https://fastapi.tiangolo.com/advanced/websockets/). Declare them on the app or on a router, not on a view: a view has HTTP routes only.
+
+## API
+
+- [API Reference](https://www.fastapi-restly.org/0.14/api_reference.html)
+- [Modules](https://www.fastapi-restly.org/0.14/api/index.html)
+- [View Reference](https://www.fastapi-restly.org/0.14/view_reference.html)
+- [Changelog](https://www.fastapi-restly.org/0.14/changelog.html)
