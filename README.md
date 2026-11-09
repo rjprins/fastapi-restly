@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  <strong>Class-based REST resources for FastAPI and SQLAlchemy 2.0. Minimal boilerplate, full control.</strong>
+  <strong>Class-based REST resources for FastAPI and SQLAlchemy. Minimal boilerplate, full control.</strong>
 </p>
 
 ```python
@@ -125,13 +125,13 @@ class User(fr.IDMixin, Base):
     active: Mapped[bool] = mapped_column(default=True)
 ```
 
-## What Restly does differently
+## Made for customization
 
 ### Change one step, keep the rest
 
-Each CRUD route runs a fixed list of steps. To change one step, override its
-method. This view overrides `delete`, so that it keeps the row and marks the
-user as inactive:
+Each CRUD route runs a fixed list of steps. To change one of the steps,
+override the related method. For example, this view overrides `delete`, so
+that it keeps the row and marks the user as inactive:
 
 ```python
 @fr.include_view(app)
@@ -147,12 +147,39 @@ class UserView(fr.AsyncRestView):
 other four routes do not change. See
 [Delete](https://www.fastapi-restly.org/crud_delete.html).
 
-### A hidden row is a 404, a refused action is a 403
+### Declare dependencies once
 
-A scope on the model decides which rows exist for a request. Restly applies
-it when a view lists, reads, updates or deletes rows of the model, and in
-every reference check. `authorize` decides what the caller may do with a row
-that they can see.
+Views are Python classes, so they share code by inheritance. Declare the
+dependencies of your app once, on a base view, and read them from `self`:
+
+```python
+class AppRestView(fr.AsyncRestView):
+    current_user: Annotated[User, Depends(get_current_user)]
+
+    async def authorize(self, action, obj=None, data=None):
+        reads = (fr.Action.GET_MANY, fr.Action.GET_ONE)
+        if action not in reads and not self.current_user.is_admin:
+            raise fr.exc.Forbidden("Only admins can change this")
+
+
+@fr.include_view(app)
+class ProjectView(AppRestView):
+    prefix = "/projects"
+    model = Project
+```
+
+Every view that inherits from `AppRestView` gets `self.current_user`, and the
+same rule in `authorize`: only an admin can change data. A view can also have
+custom routes, with `@fr.post` and the other route decorators. `fr.View`
+groups custom routes, such as login or webhooks, and has no CRUD routes. See
+[Views](https://www.fastapi-restly.org/views.html).
+
+### Decide who sees which rows
+
+A scope on the model decides which rows exist for a request. You write it
+once, and Restly applies it when a view lists, reads, updates or deletes
+rows of the model, and in every reference check. `authorize` decides what
+the caller may do with a row that they can see.
 
 ```python
 class PostClauses(fr.ClauseNamespace):
@@ -180,7 +207,7 @@ value each time it applies the scope. Another user's draft is a 404 on `GET`,
 [Scopes](https://www.fastapi-restly.org/scopes.html) and
 [Authorization](https://www.fastapi-restly.org/authorization.html).
 
-### One schema for requests and responses
+### Choose which fields go in and out
 
 Write one Pydantic schema for the resource. `fr.ReadOnly` marks a field that
 only goes out, and `fr.WriteOnly` marks a field that only comes in. Restly
@@ -210,9 +237,9 @@ different, write that schema yourself and set it on the view. See
 
 ### SQLAlchemy stays SQLAlchemy, FastAPI stays FastAPI
 
-Your declarative base, your engine and your app stay yours. Add Restly next
-to the routes that you have, one resource at a time. When one route needs
-something that Restly does not do, write it as a plain FastAPI route.
+When a route needs something that Restly does not do, write it as a plain
+FastAPI route. Your declarative base, your engine and your app stay yours,
+and Restly works next to the routes that you have:
 
 ```python
 app = FastAPI()
@@ -226,33 +253,6 @@ class CustomerView(fr.AsyncRestView):
 ```
 
 See [Existing Projects](https://www.fastapi-restly.org/existing_projects.html).
-
-## Declare dependencies once
-
-Views are Python classes, so they share code by inheritance. Declare the
-dependencies of your app once, on a base view, and read them from `self`:
-
-```python
-class AppRestView(fr.AsyncRestView):
-    current_user: Annotated[User, Depends(get_current_user)]
-
-    async def authorize(self, action, obj=None, data=None):
-        reads = (fr.Action.GET_MANY, fr.Action.GET_ONE)
-        if action not in reads and not self.current_user.is_admin:
-            raise fr.exc.Forbidden("Only admins can change this")
-
-
-@fr.include_view(app)
-class ProjectView(AppRestView):
-    prefix = "/projects"
-    model = Project
-```
-
-Every view that inherits from `AppRestView` gets `self.current_user` and the
-same rule. A view can also have custom routes, with `@fr.post` and the other
-route decorators. `fr.View` is a view without the CRUD routes, for a group
-of routes such as login or webhooks. See
-[Views](https://www.fastapi-restly.org/views.html).
 
 ## Also in Restly
 
