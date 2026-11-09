@@ -7,461 +7,280 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-This release adds `SchemaType`, a type that depends on the view, and a setting
-for the list response. The settings for a view's schemas now have names that
-end with what they are. Each filter key now has the type of its field,
-and a field has only the keys that work for it. To upgrade, work through these steps. A
-missed step fails with an error. A step marked "Silent" gives no error when you
-miss it.
+This release adds `SchemaType`, a type that depends on the view,
+`fr.modify_route`, pages with `limit` and `offset`, and a setting for the list
+response. The settings for a view's schemas now have names that end with what
+they are. Each filter key has the type of its field, and a field has only the
+keys that work for it. To upgrade, work through these steps. A missed step
+fails with an error. A step marked "Silent" gives no error when you miss it.
 
-1. Rename these settings of a view: `schema_response` to `response_schema`,
-   `schema_create` to `create_schema`, `schema_update` to `update_schema`, and
-   `schema_list_params` to `list_params_schema`.
-2. Rename the marker `fastapi_restly.views.ViewID` to `IDType`. The other
-   markers, such as `ViewResponse`, keep their names.
-3. Rename these functions: `fr.schemas.derive_schema_response` to
-   `derive_response_schema`, `fr.schemas.derive_schema_list_response` to
-   `derive_list_response_schema`, and `fr.query.derive_schema_list_params` to
-   `derive_list_params_schema`. A parameter `schema_response` of these functions,
-   of `fr.query.apply_list_params`, of `fr.query.FilterKey` or of
-   `fr.query.SortKey` is now `response_schema`.
-4. Remove `to_response` and `ResponseShape`. In a custom route, declare
-   `-> ViewResponse` and return the row, or call `to_single_response`. For a
-   list, declare `-> ViewListResponse` and return the `ListResult`, or call
-   `to_list_response`. For `ResponseShape.EMPTY`, return
-   `fastapi.Response(status_code=204)`. An override of `to_response` for one
-   object becomes an override of `to_single_response`. An override that wraps
-   each response becomes endpoint methods that you replace on a base view; see
-   "Change the shape of every route" in the guide.
-5. Silent: a default endpoint method that you call yourself, such as
-   `await super().get_one_endpoint(id)`, returns the row or the `ListResult`.
-   Restly builds the response after the route returns. So code that reads the
-   result gets a row, not the response. Call `to_single_response` or
-   `to_list_response` if you need the response, also in a test.
-6. Silent: a route that declares no response, or a type without fields such as
-   `dict[str, Any]`, and returns a row of the view's model, a list of rows, or a
-   dict with these as values, sends the fields of the response schema. A row further
-   down still goes out as FastAPI sends it. Before, FastAPI sent each column
-   of the row, also a `WriteOnly` column. To send more fields, declare a class. In
-   async code, a relationship that the response schema names and your own `select`
-   did not load now raises `MissingGreenlet`, so load it.
-7. Silent: on a react-admin view, `GET /` now has a response model, the list type.
-   An override of `to_list_response` that returns data, and not a `Response`, loses
-   the fields that this type does not have. Set `list_response_schema` to the type
+Names:
+
+1. Rename the settings `schema_response`, `schema_create`, `schema_update` and
+   `schema_list_params` to `response_schema`, `create_schema`, `update_schema`
+   and `list_params_schema`.
+2. Rename the marker `fastapi_restly.views.ViewID` to `IDType`.
+3. Rename `fr.schemas.derive_schema_response`,
+   `fr.schemas.derive_schema_list_response` and
+   `fr.query.derive_schema_list_params` to `derive_response_schema`,
+   `derive_list_response_schema` and `derive_list_params_schema`. A parameter
+   `schema_response`, here and in `apply_list_params`, `FilterKey` and
+   `SortKey`, is now `response_schema`.
+4. Rename `fr.views.PaginatedEnvelope` to `fr.views.NumberedEnvelope`. The JSON
+   stays the same. In OpenAPI, `NumberedEnvelope[Summary]` gets the name
+   `NumberedEnvelope_Summary_`.
+
+Responses:
+
+5. Remove `to_response` and `ResponseShape`. In a custom route, declare
+   `-> ViewResponse` or `-> ViewListResponse`, and return the row or the
+   `ListResult`. For `ResponseShape.EMPTY`, return
+   `fastapi.Response(status_code=204)`. Move an override of `to_response` to
+   `to_single_response`, or to endpoint methods on a base view; see "Change
+   the shape of every route" in the guide.
+6. Silent: a default endpoint method that you call, such as
+   `await super().get_one_endpoint(id)`, returns the row or the `ListResult`,
+   not the response. Call `to_single_response` or `to_list_response` where
+   you need the response, also in a test.
+7. Silent: a route without a response model, or with a type without fields
+   such as `dict[str, Any]`, that returns rows of the view's model, sends only
+   the fields of the response schema. Before, it sent each column, also a
+   `WriteOnly` one. To send more fields, declare a class. In async code, load
+   each relationship that the response schema names, or the route raises
+   `MissingGreenlet`.
+8. Silent: a custom route without a response model that calls an override of
+   `to_single_response` sends all fields of the model that the override
+   returns. Declare `-> ViewResponse` on the route.
+9. Silent: on a react-admin view, `GET /` has the list type as its response
+   model. An override of `to_list_response` that returns data loses the
+   fields that this type does not have. Set `list_response_schema` to the type
    that you send.
-8. Silent: a custom route without a response model, which calls an override of
-   `to_single_response` that returns another model, sends all fields of that
-   model. Before, `to_response` copied the value into the response schema. Declare
-   `-> ViewResponse` on the route.
-9. Rename `fr.views.PaginatedEnvelope` to `fr.views.NumberedEnvelope`. A pagination
-   style now has an envelope with its own name. The JSON does not change. In
-   OpenAPI, a class that you fill yourself, such as `NumberedEnvelope[Summary]`,
-   gets a new name: `NumberedEnvelope_Summary_`. A client that you generate from
-   the spec can see this new name.
-10. A view with one of these now fails when it registers. Before, each one
-    started without an error:
-    - A route that reads a key of its list params itself, such as `limit` next to
-      `list_params` on a view with `fr.OffsetPagination`, or `name` when `name` is
-      a filter. One value filled both, and OpenAPI showed the key twice. Read the
-      value from `list_params`, or give the parameter of the route another name.
-    - List params of your own with more than one field for a query key.
-    - A subclass of `fr.query.PagedListParams` or `fr.query.OffsetListParams` that
-      declares a page field again. The view ignored its default and its bounds.
-      Set them on the pagination.
-    - A hand-written `page_size` or `limit` field with the default `None`. A
-      request without it returned every row, and the response reported the default
-      size. Give the field a number as its default.
-    - A SQLModel table class, or a subclass of one, as `schema`, `create_schema` or
-      `update_schema`. With a table class as `schema`, each create gave `500`. As
-      `create_schema` or `update_schema`, the body was not validated, so a wrong type
-      was saved. Leave the setting out, or set a class without `table=True`. The
-      functions `fr.schemas.derive_response_schema`, `derive_create_schema` and
-      `derive_update_schema` now also fail when you call them with such a class.
-    - A SQLModel table class in a field that a client can write, on a `schema`,
-      `create_schema` or `update_schema`: `team: Team`, `teams: list[Team]`, or a data
-      model that holds one. A client could write a row through that field, with any id
-      and any column. To let a client choose a row, send its id with `fr.MustExist`,
-      `fr.IDRef` or `fr.IDSchema`. To show the row in responses, mark the field
-      `fr.ReadOnly`.
-    - A subclass of a SQLModel table class as `response_schema` or as the items of
-      `list_response_schema`, or anywhere inside a schema of the view, such as in a
-      read-only field. OpenAPI showed no required fields. Use the table class itself,
-      or a class that does not inherit from it.
-11. Silent: a custom route keeps the name of its method, without the name of the
-    view. On `ItemView`, a method `stats` at `/items/stats` had the route name
-    `itemview_stats`, the summary `Itemview Stats` and the operation ID
-    `itemview_stats_items_stats_get`. Now these are `stats`, `Stats` and
-    `stats_items_stats_get`. The same happens to a method named after a CRUD route
-    on a plain `View`. A client that you generate from the spec gets the new IDs.
-    To keep an ID, pass `operation_id` to the decorator.
-12. Silent: a CRUD route with a `name` of your own now gets its summary and
-    operation ID from FastAPI, as any route with a name does. So `name="search"`
-    on the list route at `/items` gives the summary `Search` and the ID
-    `search_items_get`, in place of `List` and `items_search`. To keep them, pass
-    `summary` and `operation_id` to the decorator.
-13. Silent: a CRUD view documents `404` only on a route that can answer it. That
-    is a route with a parameter in its path, or with a reference to a row in its
-    request body. So `GET /`, a simple `POST /` and a custom route without a path
-    parameter no longer list it. A custom route that answers 404 for another reason
-    needs `responses={404: {"description": "Not found"}}` on its decorator.
-    `BaseRestView.responses` is now `{}`, so code that reads its 404 entry must
-    write this entry itself.
-14. Silent: the default `delete_endpoint` returns `None`, not a `Response`. So
-    code that reads `.status_code` from the result of
-    `await super().delete_endpoint(id)` fails when the route runs. The route now
-    sends the status code of its decorator: `@fr.delete("/{id}", status_code=200)` that calls
-    `super()` answers `200` with the body `null`, where it answered `204` before.
-15. A wrapper of a decorator that reads `self` from `args[0]` now gets an
-    `IndexError` on each request, on a method that a view inherits and on a route
-    that takes `list_params`. Before, only a method that the view defines without
-    `list_params` had this. Name the parameter instead:
-    `def wrapper(self, *args, **kwargs)`.
-16. Silent: on those same methods, `self` is now a keyword in a wrapper. So a wrapper
-    that tests `if args` now skips that code. If that code is a permission check, the
-    check no longer runs. And a cache key made from `kwargs` now holds `self`, so the
-    cache gets few hits or none. Build the key from what the response depends on.
-17. Silent: OpenAPI no longer has `x-resource-ref`. A client that reads it must
-    stop. To keep it on one field, set it on that field:
+10. Silent: the default `delete_endpoint` returns `None`, not a `Response`. So
+    `.status_code` on the result of `super().delete_endpoint(id)` fails, and a
+    route with `status_code=200` that calls it answers `200` with `null`.
+
+Routes and OpenAPI:
+
+11. Silent: a custom route keeps the name of its method. `stats` on `ItemView`
+    gets the summary `Stats` and the operation ID `stats_items_stats_get`,
+    without `itemview`. So does a method named after a CRUD route on a plain
+    `View`. A generated client gets the new IDs. To keep an ID, pass
+    `operation_id`.
+12. Silent: a CRUD route with a `name` of your own gets its summary and
+    operation ID from FastAPI: `name="search"` on `/items` gives `Search` and
+    `search_items_get`. To keep the old ones, pass `summary` and
+    `operation_id`.
+13. Silent: a CRUD view documents `404` only on a route with a path parameter
+    or a reference in its body. Add
+    `responses={404: {"description": "Not found"}}` to a custom route that
+    answers 404 for another reason. `BaseRestView.responses` is now `{}`.
+14. Silent: a view on an `APIRouter` with tags of its own gets no tag from its
+    prefix. To keep that tag, set `tags = ["Widgets"]` on the view.
+15. Silent: OpenAPI no longer has `x-resource-ref`. To keep it on a field, set
     `pydantic.Field(json_schema_extra={"x-resource-ref": "authors"})`.
-18. A CRUD view with two paths that differ only in the names of their parameters,
-    such as `/users/{id}` and a route of your own at `/users/{user_id}`, now raises
-    `RestlyConfigurationError` when it registers. OpenAPI does not allow such
-    paths, so the spec was wrong. Use the same name in both paths. A custom route
-    with `id: IDType` and a path parameter that nothing reads, such as `/by/{name}`,
-    now raises too. `id` read the query, and OpenAPI did not show `name`.
-19. Silent: only `__in` and the new `__not_in` split a value at commas. On a text
-    field, `?status=a,b` now looks for the text `a,b`, where it meant "a or b", and
-    `?status__ne=a,b` now hides almost nothing, where it hid both values. Neither
-    gives an error, so search your clients for such URLs. Write `?status__in=a,b`
-    and `?status__not_in=a,b`. On another type, such as `?id=1,2`, the request now
-    gets `422`. The spaces around each value of `__in` and `__not_in` now go, so
-    `?name__in=a,%20b` finds the name `b`, where it looked for ` b`.
-20. Silent: `__icontains` takes one piece of text. So
-    `?name__icontains=john%20doe` now looks for `john doe`, where it looked for each
-    word. For every word, write a filter of your own; see "Search for text" in the
-    guide.
-21. A key that takes one value now gets `422` when it comes twice, also for a text
-    search, `sort`, the page parameters, a key of your own and list params of your
-    own. Before, a repeated filter key added a condition for each value, so
-    `?name=a&name=b` found no rows, and `sort` and the page parameters took the last
-    value. Change a client that sends `?name=a&name=b` to `?name__in=a,b`. Outside a
-    view, `fr.query.apply_list_params` still takes the last value of a `QueryParams`.
-    Silent: `__in` and `__not_in` read each value of a repeated key. So
-    `?name__in=a&name__in=b` now finds the names `a` and `b`, where it found no rows.
-22. A filter value that fails now gets `422` in the form of FastAPI, not `400`, and
-    `loc` names the key. Change a client or a test that expects `400` or reads the
-    text of its `detail`. A key inside the `filter` of a react-admin view, and
-    `FilterKey.parse()`, keep the `400`. Silent: a handler for `RestlyHTTPError` no
-    longer gets these errors, so the response no longer has the body of your handler.
-    A handler for `RequestValidationError` gets them.
-23. Silent: a filter value no longer has the bounds of its field, such as `gt` or
-    `min_length`. `?price=-1` on a field with `gt=0` is now `200` with no rows, where
-    it was `400`. OpenAPI no longer shows bounds on these keys. A number in a filter
-    must be between `-1e50` and `1e50`, so a huge value gets `422`. A `Decimal` has
-    at most 50 digits after the point. If a bound kept a value away from a column
-    type that Restly does not check, that value now reaches the database, which can
-    answer with a `500`. Such types are `Numeric`, `Float`,
-    `Uuid` and the types of a dialect. Write the limit in a field validator for
-    this; a validator still runs.
-24. Silent: the fields of generated list params now hold the type of their field, not
-    text. So `list_params.price__gte` is a `Decimal`, `list_params.price__in` is a
-    list, and a reference gives its id. Change code that reads them as text. Code
-    that sets a value without validation, as with `model_copy(update=...)`, must
-    set this type too: `{"active": True}`, not `{"active": "true"}`. Restly uses
-    the value as it is, so text finds no rows or fails in the database.
-25. Silent: `__ne` now keeps the rows where the field is NULL, as `__not_in` does.
-    Before, SQL left them out, so `?status__ne=archived` also hid each row without a
-    status. To leave them out too, add `&status__isnull=false`.
-26. Silent: a dotted filter key now uses a `LEFT OUTER JOIN`, as a sort key does. So
-    `?vendor.id__isnull=true` finds the rows without a vendor, where it found no
-    rows, and `?vendor.name__ne=acme` keeps them. A key that looks for a value, such
-    as `?vendor.name=acme`, gives the same rows as before.
-27. `__contains` is gone, so `?name__contains=a` now gets `422`. Use `__icontains`.
-    Its case counted on one database and not on another. For a search where the case
-    counts, write a filter of your own; see "Search for text" in the guide. In list
-    params of your own, a field named `name__contains` now gets `400`. On a view
-    that ignores unknown keys, see step 38.
-28. `__isnull` now exists only on a column that can be NULL, and on each dotted key.
-    So `?id__isnull=false` now gets `422`. On such a column, it gave the same answer
-    for each row. On a view that ignores unknown keys, see step 38.
-29. `__gte`, `__lte`, `__gt` and `__lt` no longer exist on a text column, so
-    `?name__gte=a` now gets `422`. The database sorts such values as text, so `"9"`
-    comes after `"10"`. A field of type `date` on a text column keeps them. For
-    another field, write a filter of your own. On a view that ignores unknown keys,
-    see step 38.
-30. `__icontains` now follows the column, not the type of the field. A `str` field on
-    a column that does not hold text loses it, so such a key now gets `422`. A field
-    of another type on a text column, such as `HttpUrl`, gets it. An enum, a `Literal`
-    and a `bool` do not. On a `TypeDecorator` column, only a `str` field gets it,
-    and only when the type holds text inside. SQLAlchemy runs the type on the search
-    text too, so a type that stores another value as text would search for
-    something else. On a view that ignores unknown keys, see step 38.
-31. Silent: in `exclude_filters`, a name without a suffix now leaves out the whole
-    field. So `exclude_filters = ("name",)` also removes `name__in`, where it removed
-    only `?name=`. To keep the other keys, list the keys in `include_filters`, such
-    as `("*__*", "id", "email")`, and remove the name from `exclude_filters`.
-32. A field with the name of a page or sort parameter now raises
-    `RestlyConfigurationError`, not `ValueError`. Change an `except ValueError` around
-    `derive_list_params_schema`.
-33. A key now has the name that a response shows. So a field with a
-    `serialization_alias` has its filter and sort keys under that name, and a client
-    that sends the alias or the Python name gets `422`. Change the client. On a view
-    that ignores unknown keys, see step 38.
-34. Generated list params now forbid a key that they do not have. In a route outside
-    a view, with `Annotated[ListParams, Query()]`, an unknown key now gets `422`. A
-    view still follows `unknown_query_params`.
-35. The key settings now take the Python names of the fields: `include_filters`,
-    `exclude_filters`, `include_sort_keys`, `exclude_sort_keys` and `default_sort`,
-    on a view and in `derive_list_params_schema`. Before, an entry was the key in
-    the URL, so it used the alias of a field with one. Such an entry now fails when
-    the view registers, also when the view inherits it, and the message gives the
-    Python name. Write `created_at` for a field with the alias `createdAt`, also in
-    each part of a dotted key. The URL does not change, and neither does the key of
-    `fr.list_filter`.
-36. A filter value that a validator of its field turns into `None`, such as empty
-    text, now gets `422`. Before, `?note=` found the rows where `note` is NULL. A
-    client that wants these rows sends `?note__isnull=true`. A list of values for
-    `__in` or `__not_in` cannot hold `None` either, so `?note__not_in=x,` gets
-    `422` too. `FilterKey.parse()` refuses such a value with `400`. A `None` that
-    your code puts in a list params model is still no filter. In a dict, see
-    step 37.
-37. Silent: a dict that you pass as list params, such as
-    `view.get_many({"id__in": allowed_ids})`, now keeps its values as values. An
-    empty list on `__in` now matches no rows, where it matched every row, and on
-    `__not_in` it keeps every row. A set or a tuple now holds several values, where
-    it became one text, such as `{'a', 'b'}`. Check code that builds such a dict
-    from a list that can be empty. `None` as a value now gets an error, so
-    `{"note": None}` no longer looks for the text `None`. Leave the key out for no
-    filter.
-38. Silent: a view with `unknown_query_params = "ignore"` ignores a key that it
-    does not have. So each key that steps 27, 28, 29, 30, 33 and 41 remove now
-    gives `200` with the rows that the other keys find, where it filtered the rows.
-    Search the clients of such a view for these keys.
-39. A field whose public name starts with `_`, such as `_id`, is no longer a sort
-    key, so `?sort=_id` now gets `422`. Pydantic takes such a name as a private
-    attribute, so the field had no filter keys either. A key setting that names it
-    now fails when the view registers. Give the field another alias.
-40. Silent: a field of another type over `Mapped[str]` now stores the text that a
-    response shows; see "A text column takes text" below. A row that an earlier
-    version stored can hold other text, such as `1` for `true` on SQLite, or
-    `2024-01-02 10:00:00+00:00` for `2024-01-02T10:00:00Z`. A filter does not find
-    such a row, and its response looks the same. Write the new text into these
-    rows.
-41. A field of type `Any`, such as the `id` of `fr.IDSchema`, now has `__gte`,
-    `__lte`, `__gt` and `__lt` only when the type of its column has them, as a
-    field of that type has. So on a `Uuid` or a `Boolean` column, `?id__gte=...`
-    now gets `422`. On a `Boolean` column, each request with them gave `500`. On a
-    view that ignores unknown keys, see step 38.
-42. A CRUD view with two routes on the same path and HTTP method now raises
-    `RestlyConfigurationError` when it registers. The server ran the first route,
-    but the spec showed the second. This happens, for example, with a method of
-    your own at `@fr.get("/{id}")` next to `get_one_endpoint`. Replace
-    `get_one_endpoint` instead, or leave it out with `get_one_endpoint = None`.
-43. Replace `include_routes` and `exclude_routes`: set each route that the view
-    leaves out to `None`, such as `delete_endpoint = None`. `fr.ViewRoute` is
-    gone. A view that still sets one of these settings raises an error that names
-    the fix, and so does `fr.ViewRoute`.
-44. Silent: a view on an `APIRouter` with tags of its own, such as
-    `APIRouter(tags=["shop"])`, no longer gets a tag from its prefix. Its routes
-    get only the tags of the router, as a plain route on that router does. Before,
-    each route was in two groups in the spec, such as `shop` and `Widgets`. To keep
-    the old tag, set `tags = ["Widgets"]` on the view.
+16. Replace `include_routes` and `exclude_routes`: set each route that the
+    view leaves out to `None`, as in `delete_endpoint = None`. `fr.ViewRoute`
+    is gone.
+17. A wrapper of a decorator that reads `self` from `args[0]` gets an
+    `IndexError` on a method that a view inherits, and on a route with
+    `list_params`. Write `def wrapper(self, *args, **kwargs)`. Silent: on these
+    methods, `self` comes as a keyword. So code under `if args:` no longer
+    runs, also a permission check, and a cache key made from `kwargs` holds
+    `self`.
+
+Views that no longer register:
+
+18. A view raises an error when it registers with one of these:
+    - Two paths that differ only in the names of their parameters, such as
+      `/users/{id}` and `/users/{user_id}`. Use one name.
+    - A custom route with `id: IDType` and a path parameter that nothing
+      reads, such as `/by/{name}`.
+    - Two routes on the same path and method, such as `@fr.get("/{id}")` next
+      to `get_one_endpoint`. Replace `get_one_endpoint`, or set it to `None`.
+    - A route that reads a key of its list params itself, such as `limit` next
+      to `list_params`. Read it from `list_params`, or rename the parameter.
+    - List params of your own with two fields for one query key.
+    - A subclass of `PagedListParams` or `OffsetListParams` that declares a
+      page field again. Set the default and the bounds on the pagination.
+    - A `page_size` or `limit` field with the default `None`. Give it a
+      number.
+    - A SQLModel table class as `schema`, `create_schema` or `update_schema`,
+      or in a field that a client can write. Use a class without
+      `table=True`. To let a client choose a row, use `fr.MustExist`,
+      `fr.IDRef` or `fr.IDSchema`. To only show the row, mark the field
+      `fr.ReadOnly`. The `derive_*_schema` functions refuse such a class too.
+    - A subclass of a SQLModel table class as `response_schema`, as the items
+      of `list_response_schema`, or inside a schema of the view.
+
+Filters and list params:
+
+19. Silent: only `__in` and the new `__not_in` split a value at commas.
+    `?status=a,b` now looks for the text `a,b`, and `?status__ne=a,b` hides
+    almost nothing. Search your clients for such URLs, and write
+    `?status__in=a,b` or `?status__not_in=a,b`. On a type other than text,
+    `?id=1,2` gets `422`. The spaces around each value of `__in` and
+    `__not_in` are removed.
+20. Silent: `__icontains` looks for the whole text, so
+    `?name__icontains=john%20doe` looks for `john doe`, not for each word. For
+    each word, write a filter of your own; see "Search for text" in the guide.
+21. A key that takes one value gets `422` when it comes twice. Change
+    `?name=a&name=b` to `?name__in=a,b`. Silent: `__in` and `__not_in` read
+    each value of a repeated key.
+22. A filter value that fails gets `422` in the form of FastAPI, not `400`,
+    and `loc` names the key. A react-admin filter keeps `400`. Silent: a
+    handler for `RestlyHTTPError` no longer gets these errors; a handler for
+    `RequestValidationError` does.
+23. Silent: a filter value no longer has the bounds of its field, such as
+    `gt=0`, so `?price=-1` gets `200` with no rows. A number must be between
+    `-1e50` and `1e50`, with at most 50 digits after the point. A value that a
+    bound kept from a `Numeric`, `Float`, `Uuid` or dialect column now reaches
+    the database, which can answer `500`. Write such a limit in a field
+    validator.
+24. Silent: the fields of generated list params hold the type of their field,
+    not text: `list_params.price__gte` is a `Decimal`. Code that sets a value
+    without validation, as with `model_copy(update=...)`, must set that type,
+    such as `True`, not `"true"`.
+25. Silent: `__ne` keeps the rows where the field is NULL. To leave them out,
+    add `&status__isnull=false`.
+26. Silent: a dotted filter key uses a `LEFT OUTER JOIN`. So
+    `?vendor.id__isnull=true` finds the rows without a vendor, and
+    `?vendor.name__ne=acme` keeps them.
+27. These keys are gone, and a request with one gets `422`. Search your
+    clients for them. Silent: on a view with
+    `unknown_query_params = "ignore"`, such a request gets `200`, with the
+    rows that the other keys find.
+    - `__contains`. Use `__icontains`, or a filter of your own when the case
+      counts. In list params of your own, a field `name__contains` gets `400`.
+    - `__isnull` on a column that cannot be NULL.
+    - `__gte`, `__lte`, `__gt` and `__lt` on a text column, unless the field
+      is a `date`. On a field of type `Any`, also on a column type without an
+      order, such as `Uuid` or `Boolean`.
+    - `__icontains` on a column that does not hold text, and on an enum, a
+      `Literal` or a `bool`. A field such as `HttpUrl` on a text column gets
+      it.
+    - The Python name of a field with a `serialization_alias`. A key now has
+      the name that a response shows.
+    - A sort key on a field whose public name starts with `_`, such as `_id`.
+      Give the field another alias.
+28. Silent: in `exclude_filters`, a name without a suffix leaves out every key
+    of the field, also `name__in`. To keep the other keys, list them in
+    `include_filters`.
+29. The key settings `include_filters`, `exclude_filters`, `include_sort_keys`,
+    `exclude_sort_keys` and `default_sort` take the Python names of the
+    fields, also in each part of a dotted key. An alias there fails when the
+    view registers. The URL stays the same.
+30. A field with the name of a page or sort parameter raises
+    `RestlyConfigurationError`, not `ValueError`.
+31. Generated list params forbid a key that they do not have. In a route
+    outside a view, with `Annotated[ListParams, Query()]`, an unknown key gets
+    `422`.
+32. A filter value that a validator turns into `None`, such as empty text,
+    gets `422`, also inside `__in` or `__not_in`. Before, `?note=` found the
+    rows where `note` is NULL. Send `?note__isnull=true` for these rows.
+33. Silent: a dict that you pass as list params, such as
+    `view.get_many({"id__in": allowed_ids})`, keeps its values. An empty list
+    on `__in` matches no rows, where it matched every row. A set or a tuple
+    holds several values. `None` as a value gets an error; leave the key out.
+34. Silent: a field of another type over `Mapped[str]` now stores the text
+    that a response shows. A filter does not find a row that an earlier
+    version stored with other text, such as `1` for `true` on SQLite. Write
+    the new text into these rows.
 
 ### Added
 
-- `atomic_write_actions`: a setting of a view, `True` by default. With `False`, code
-  in a write action may call `session.commit()`, for a library or a function that
-  must keep its commit. The action then has no savepoint, and all else stays. So
-  the action is no longer one transaction: what is committed stays saved when a
-  later step raises. See "Code that must commit in a write action" in the guide.
-- `__not_in`, on each field that has `__in`: rows with none of these values.
-- `fr.modify_route`: change the options of a route that a view inherits, and keep
-  the rest. Use it under the name of the route method, as in
-  `create_endpoint = fr.modify_route(status_code=200, name="create_tag")`. The route
-  needs no method of its own for a name, a status code, a path, dependencies or the
-  documented responses. It changes how a route is served, not what it sends, so
-  `response_model` and the other `response_model_*` arguments raise an error.
-  See "Change one option of a route" in the guide.
-- A status code set to `None` in `responses`, on a view or on a route, is left
-  out of the spec. So `responses = {404: None}` removes a 404 that a route of a
-  CRUD view documents by itself.
-- `fr.configure(warn_on_misuse=True)` warns about a method that replaces an
-  inherited route and has no route decorator, so that the route is gone.
-- `fr.OffsetPagination`: a list that pages with `limit` and `offset`, next to
-  `fr.NumberedPagination`. It takes `default_limit`, `max_limit`, `max_offset`,
-  `limit_query_param`, `offset_query_param` and `envelope`, and its default
-  envelope is `fr.views.OffsetEnvelope`. `offset_query_param="skip"` serves a
-  client that sends `skip`. Generated list params, `@fr.list_filter` and the list
-  settings work with it; see "Page with limit and offset" in the guide.
-- `fr.query.OffsetListParams`: the base of list params of your own with `limit`
-  and `offset`, next to `fr.query.PagedListParams`.
-- `fr.Pagination`: the base class of the pagination settings. Use it to annotate
-  the setting on a base view, as in `pagination: ClassVar[fr.Pagination | None]`.
-- `fastapi_restly.views.SchemaType(fn)`: a type that depends on the view. The
-  function gets the view class and returns the type. It goes on a setting that
-  takes a schema class, as a decorator on such a setting, or in the annotation of
-  a route. OpenAPI shows the type of each view; see "Make dynamic schemas that depend on the view"
-  in the guide.
-- `list_response_schema`, a setting for the class of the list response. Restly
-  fills it as it fills an envelope. So a view can send smaller items, or other
-  keys, without a replaced endpoint. A list type, such as `list[UserSummary]`,
-  sends a JSON array. On a react-admin view the setting is such a list.
-- `fr.schemas.derive_create_schema` and `fr.schemas.derive_update_schema`, which
-  build the classes of a view from a schema and a model.
-- A marker in the `model` of `responses=`, on a route or on a view, gets the type
-  of the view.
-- You can read a view's schemas before the view registers, as in
+- `fr.modify_route`: change the options of a route that a view inherits, as
+  in `create_endpoint = fr.modify_route(status_code=200)`.
+- `atomic_write_actions = False`: code in a write action may commit, for a
+  library that must. The action then has no savepoint.
+- `fr.OffsetPagination` and `fr.query.OffsetListParams`: pages with `limit`
+  and `offset`. `fr.Pagination` is the base class of the pagination settings.
+- `__not_in`, on each field that has `__in`.
+- `fastapi_restly.views.SchemaType(fn)`: a type that depends on the view.
+- `list_response_schema`: the class of the list response. A list type, such
+  as `list[UserSummary]`, sends a JSON array.
+- `fr.schemas.derive_create_schema` and `fr.schemas.derive_update_schema`.
+- A marker in the `model` of `responses=` gets the type of the view.
+- You can read a view's schemas before it registers, as in
   `UserView.response_schema`.
+- `None` in `responses` leaves a status code out of the spec, as in
+  `responses = {404: None}`.
+- `warn_on_misuse=True` warns about a method that replaces an inherited route
+  and has no route decorator.
 
 ### Changed
 
-- A view on a router with tags gets no tag from its prefix, so each route is in
-  one group of the spec, as a plain route on that router is.
-- Each filter key in OpenAPI has the type of its field, such as `integer` or a date,
-  not text. Each description is written once, not on both the parameter and its
-  schema.
-- A field whose public name has `.` or `__` gets no filter and no sort key, and its
-  view starts. Before, this raised `ValueError`.
-- Restly builds a view's schemas when something first reads them, once for each
-  view. Registration no longer writes them on the view class.
-- Registration raises `RestlyConfigurationError` for a schema setting that is not
-  a Pydantic class or a `SchemaType`, and for a function that gives another type.
-- Registration raises `RestlyConfigurationError` for a class in a route with a
-  marker in a plain field: of a Pydantic class, a dataclass, a `TypedDict` or a
-  `NamedTuple`. The field had no type in OpenAPI.
-- Registration raises `RestlyConfigurationError` for a marker in a setting, as in
-  `list_response_schema = list[ViewResponse]`, for a function that returns
-  `None`, and for `list_response_schema = NumberedEnvelope` without a type for
-  the items. OpenAPI showed items without a type.
-- Registration raises `RestlyConfigurationError` for an own list response schema
-  that `GET /` cannot fill: items that are not a Pydantic class, an item field that
-  the response schema does not have, `list[X] | None`, or a class without a field
-  named `data`. Before, the first row gave a `500`, or the list was always empty.
-  The check on a field named `data` also holds for the `envelope` of a pagination.
-  A `RootModel` and a class with a `mode="before"` validator read the page values
-  themselves, so they need no such field.
-- Registration raises `RestlyConfigurationError` for a marker in a field of a class
-  in `responses=` of a view, and for a type alias that names itself and holds a
-  marker. OpenAPI showed no type for these.
-- Two views with the same schema and model share one create schema and one update
-  schema.
-- A subclass of a view with a new `schema` gets the function of a base view back,
-  if a base view has one, and otherwise Restly's default. A function on the
-  subclass counts as a new `schema`.
+- Each filter key in OpenAPI has the type of its field, such as `integer`.
+- A view on a router with tags gets no tag from its prefix.
+- A field whose public name has `.` or `__` gets no keys, and its view
+  registers. Before, it raised `ValueError`.
+- Restly builds a view's schemas when something first reads them.
+- Registration raises `RestlyConfigurationError` for a schema setting of the
+  wrong type, a marker in a setting or in a plain field, and a list response
+  schema that `GET /` cannot fill.
+- Two views with the same schema and model share one create schema and one
+  update schema.
+- A subclass of a view with a new `schema` gets the function of its base view
+  back, or Restly's default.
 - A subclass of a derived class can declare a field of `omit` again.
-- The check for two classes with the same name in OpenAPI now also runs on an app
-  that has only plain `fr.View` classes. Before, it started with the first CRUD view.
-- On SQLite, Restly no longer sends a `BEGIN` of its own before the savepoint of a
-  write action. The driver begins the transaction, as with a plain
-  `session.begin_nested()`. So with the default settings of the driver, the end of
-  the savepoint can already commit, just before the commit. A write with
-  `sqlite+aiosqlite` and `connect_args={"autocommit": True}` is saved again.
+- The check for two classes with one name in OpenAPI also runs on an app with
+  only plain views.
+- On SQLite, Restly sends no `BEGIN` of its own before the savepoint of a
+  write action. A write on aiosqlite with `autocommit=True` is saved again.
   See "Transactions on SQLite" in the guide.
-- The error for a view class that defines a handler, `get_one`, `get_many` or
-  `select` now says that you cannot override the method, not that it is final.
-- The guide has a group "CRUD Routes", with a page for each of the five routes. Each
-  page shows the steps of its route and what you can change. The page "Request
-  Lifecycle & Hooks" is gone; its sections are on the new pages, and its address
-  leads to the "CRUD Routes" overview.
+- The error for a view that defines a handler, `get_one`, `get_many` or
+  `select` says that you cannot override the method.
+- The guide has a group "CRUD Routes", with a page for each route. "Request
+  Lifecycle & Hooks" is gone.
 
 ### Removed
 
-- `include_routes`, `exclude_routes` and `fr.ViewRoute`. A view leaves out a route
-  with `delete_endpoint = None`. `include_routes` also left out the custom routes
-  that it did not name, with no error.
-- The `x-resource-ref` extension in OpenAPI. No part of Restly read it, and it could
-  name the wrong view when several views served one model.
+- `include_routes`, `exclude_routes` and `fr.ViewRoute`. Use
+  `delete_endpoint = None`.
+- `to_response`, `ResponseShape` and the filter `__contains`. See the upgrade
+  steps.
+- The `x-resource-ref` extension in OpenAPI.
 
 ### Fixed
 
-- `before_action_commit` no longer runs after a `session.rollback()` or a
-  `session.close()` in the write action. Before, a hook with an outside effect ran
-  for a write that was not saved.
-- A filter on a `Literal` of numbers, such as `Literal[1, 2]`, or on an enum whose
-  values are all numbers, now reads the number from the URL, as for an `IntEnum`.
-  So `?level=1` works. Before, each value got an error.
-- A filter on a field of type `Any` over an `Enum` column now takes the value of a
-  member, as a response shows it. So with a member `red = "R"`, `?color=R` works.
-  Before, only the name `red` worked, and `R` got an error.
-- A text column takes text. A field of another type over `Mapped[str]`, such as
-  `HttpUrl`, `IPv4Address`, `Path`, `UUID`, a plain `Enum`, `date`, `time`,
-  `datetime`, `timedelta`, `Decimal`, `int` or `bool`, now stores the text that a
-  response shows, and a filter finds its row with that text. Before, these gave `500`
-  on a create, in a filter, or both, and which ones depended on the database. A
-  `datetime` in a filter on SQLite found no rows. A URL that is too long for
-  `String(n)` is now `422`.
-- A `pydantic.Json[list]` or `pydantic.Json[dict]` field has only `__isnull`, as a
-  `list` or `dict` field has. Before, it had the filters for one value on a text
-  column, and each request with them gave `400`, `500`, or no rows. A filter value
-  that becomes a list or a dict, as in a field of type `pydantic.Json`, now gets
-  `422`. Before, it gave `500`, and in `Json[str | list[str]]` a list became one
-  condition for each item.
-- The error for list params of your own without page fields now fits a list with
-  its own `limit` and `offset`. Its advice was `PagedListParams`, which gives page
-  numbers, or `pagination = None`. With `pagination = None`, an envelope with a
-  `total_count` field gets the number of rows in the response, without an error. The
-  error now names `fr.OffsetPagination`, and the guide warns about the count.
-- A route can read a key of its own next to list params with `extra="forbid"`.
-  Before, OpenAPI showed the key, and a request with it got `422`.
-- A page field with only a `validation_alias` works. Before, a request with that
-  key got `400`.
-- List params of your own that code creates work on a view that renames its page
-  parameters, in `handle_get_many`, in `ListResult` and in
-  `fr.query.apply_list_params`. Before, they got `400`, a filter on the renamed key
-  or the wrong page in the response.
-- OpenAPI shows the `page_size` of generated list params as an integer. Before, it
-  also allowed `null`, which a query cannot send.
-- Creating a pagination checks the envelope with the default page size, not with
-  a page size of 1. So an envelope that rejects the default size, such as one with
-  `page_size: int = Field(le=10)`, fails when you create the settings, not on a
-  request.
-- A marker inside a generic class, as in `Data[ViewResponse]`, is filled. Before,
-  the marker stayed, and OpenAPI showed a field without a type.
-- A marker in a type alias, as in `type Resp = ViewResponse`, is filled. Before,
-  OpenAPI showed an empty class, and a row went out with all its columns.
-- The list route of a react-admin view shows an array of the response schema in
-  OpenAPI. Before, it showed an empty schema. A custom route with the list marker
-  no longer shows an envelope while it sends an array.
-- A subclass of a derived class keeps out the fields that the class dropped.
-  Before, a subclass of the update schema could write a `ReadOnly` field, and a
-  subclass of the response schema required a `WriteOnly` field and failed on each
-  response.
-- A SQLModel table class as `schema`, `create_schema` or `update_schema` of a view
-  now fails when the view registers, and the message says what to use instead.
-  `derive_response_schema`, `derive_create_schema` and `derive_update_schema` fail when
-  you call them with one. Before, with a table class as `schema`, each create gave
-  `500` and OpenAPI showed no required fields. As `create_schema` or `update_schema`,
-  a wrong type was saved. A subclass of a table class also fails as `response_schema`,
-  as the items of a list response, or inside a schema of the view. OpenAPI showed it
-  with no required fields.
-- A SQLModel table class in a field that a client can write now fails when the view
-  registers. Before, `POST {"team": {"id": 777, "is_admin": true}}` on a field
-  `team: Team` wrote that row: a client could set any id and any column, with values
-  of any type.
-- `/openapi.json` no longer gives `500` on an app with a view and a route that uses
-  a `pydantic.v1` class, on FastAPI 0.119 to 0.127.
+These gave a 500, an error or wrong data before:
+
+- `before_action_commit` after a `session.rollback()` or a `session.close()`
+  in the write action.
+- A filter on a `Literal` or an enum of numbers, and on an `Any` field over an
+  `Enum` column with the value of a member.
+- A field of another type over `Mapped[str]`, such as `HttpUrl`, `UUID`,
+  `date` or `bool`. It now stores the text that a response shows.
+- A filter on a `pydantic.Json` field, and a filter value that becomes a list
+  or a dict.
+- List params of your own: a route key next to `extra="forbid"`, a page field
+  with only a `validation_alias`, and renamed page parameters.
+- A marker inside a generic class, as in `Data[ViewResponse]`, or in a type
+  alias.
+- A subclass of a derived class: it could write a `ReadOnly` field, or it
+  required a `WriteOnly` field.
+- A SQLModel table class as `schema`: each create gave a 500.
+- `/openapi.json` with a `pydantic.v1` class, on FastAPI 0.119 to 0.127.
 - A decorator that reads the request from `args` or `kwargs`, such as
-  `@limiter.limit` from slowapi, works on a method that a view inherits, and on a
-  route that takes `list_params`. Before, each request gave `500`. These methods now
-  get the same call as a method that the view defines and a FastAPI function: each
-  argument by keyword, also `self`. slowapi names a limit after the module and the
-  name of the function, so two views in one module that limit a method with the same
-  name share their limits. See "Add a decorator of your own" in the guide.
-- `fr.configure(warn_on_misuse=True)` no longer warns about `session.commit()` on a
-  plain `fr.View`. A route of a plain view that writes must commit. The warning told
-  it to use `handle_<verb>()` or `write_action`, and a plain view has neither.
-- A view with an `id_type` such as `Annotated[int, {"unit": "row"}]`, with metadata
-  that cannot be hashed, no longer raises a `TypeError` when it registers.
-- `id: "IDType"` with quotes, under `from __future__ import annotations`, now works
-  as `id: IDType`. Before, the spec did not give the type, and the method got a
-  string.
+  `@limiter.limit` of slowapi, on a method that a view inherits. slowapi
+  names a limit after the module and the function, so two views in one module
+  share the limit of a method with the same name.
+- An `id_type` with metadata that cannot be hashed, and `id: "IDType"` with
+  quotes under `from __future__ import annotations`.
+
+Other fixes: OpenAPI shows `page_size` without `null`, and the list of a
+react-admin view as an array. A pagination checks its envelope when you
+create it. The error for list params without page fields names
+`fr.OffsetPagination`. `warn_on_misuse=True` no longer warns about
+`session.commit()` on a plain `fr.View`.
 
 ### Security
 
-- A field with a secret type in a union, such as `SecretStr | int`, no longer has
-  filter or sort keys, as a `SecretStr` field has none. Before, a response hid the
-  value, but a filter such as `?code__icontains=12` let a client find it. Such a key
-  now gets `422`.
+- A field with a secret type in a union, such as `SecretStr | int`, has no
+  filter or sort keys. Before, `?code__icontains=12` let a client find the
+  hidden value.
+- A SQLModel table class in a field that a client can write fails when the
+  view registers. Before, `{"team": {"id": 777, "is_admin": true}}` on a field
+  `team: Team` wrote that row, with any id and any column.
 
 ## [0.13.0] - 2026-11-01
 
