@@ -117,11 +117,20 @@ returns 204. The other four routes do not change. See
 
 ### Add your own routes
 
-A view can have routes of its own, next to the CRUD routes. Declare them with
-a route decorator, such as {func}`@fr.post <fastapi_restly.views.post>`. This
-route makes a user active again, after the `delete` above:
+A view can have routes of its own, next to the CRUD routes. A route is a
+method of the view class, with a route decorator such as
+{func}`@fr.post <fastapi_restly.views.post>`. Here `UserView` gets a route
+that makes a user active again, after the `delete` above:
 
 ```python
+from fastapi_restly.views import IDType, ViewResponse
+
+
+@fr.include_view(app)
+class UserView(fr.AsyncRestView):
+    prefix = "/users"
+    model = User
+
     class Action(fr.Action):
         ACTIVATE = "activate"
 
@@ -137,9 +146,8 @@ route makes a user active again, after the `delete` above:
 same steps as a CRUD write: it calls `authorize` with the action
 `"activate"`, saves the change and commits.
 {data}`IDType <fastapi_restly.views.IDType>` and
-{data}`ViewResponse <fastapi_restly.views.ViewResponse>`, from
-`fastapi_restly.views`, stand for the id type and the response schema of the
-view. So OpenAPI shows `UserResponse` for this route too. See
+{data}`ViewResponse <fastapi_restly.views.ViewResponse>` stand for the id
+type and the response schema of the view. So OpenAPI shows `UserResponse` for this route too. See
 [Custom Routes](custom_routes.md).
 
 ### Declare dependencies once
@@ -309,9 +317,7 @@ History, design goals, and why this framework exists.
 (newsletter-signup)=
 ## Newsletter
 
-An email when there is a new release: what changed, and what is worth
-upgrading for. Subscribe to get an email when 1.0 is released. You can
-unsubscribe from any email.
+Subscribe to get an email when 1.0 is released.
 
 ```{raw} html
 :file: _templates/newsletter-form.html

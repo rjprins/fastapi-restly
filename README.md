@@ -149,11 +149,20 @@ other four routes do not change. See
 
 ### Add your own routes
 
-A view can have routes of its own, next to the CRUD routes. Declare them with
-a route decorator, such as `@fr.post`. This route makes a user active again,
-after the `delete` above:
+A view can have routes of its own, next to the CRUD routes. A route is a
+method of the view class, with a route decorator such as `@fr.post`. Here
+`UserView` gets a route that makes a user active again, after the `delete`
+above:
 
 ```python
+from fastapi_restly.views import IDType, ViewResponse
+
+
+@fr.include_view(app)
+class UserView(fr.AsyncRestView):
+    prefix = "/users"
+    model = User
+
     class Action(fr.Action):
         ACTIVATE = "activate"
 
@@ -167,8 +176,7 @@ after the `delete` above:
 
 `write_action` runs the same steps as a CRUD write: it calls `authorize` with
 the action `"activate"`, saves the change and commits. `IDType` and
-`ViewResponse`, from `fastapi_restly.views`, stand for the id type and the
-response schema of the view. So OpenAPI shows `UserResponse` for this route
+`ViewResponse` stand for the id type and the response schema of the view. So OpenAPI shows `UserResponse` for this route
 too. See [Custom Routes](https://www.fastapi-restly.org/custom_routes.html).
 
 ### Declare dependencies once
