@@ -382,6 +382,9 @@ miss it.
 - A filter on a `Literal` of numbers, such as `Literal[1, 2]`, or on an enum whose
   values are all numbers, now reads the number from the URL, as for an `IntEnum`.
   So `?level=1` works. Before, each value got an error.
+- A filter on a field of type `Any` over an `Enum` column now takes the value of a
+  member, as a response shows it. So with a member `red = "R"`, `?color=R` works.
+  Before, only the name `red` worked, and `R` got an error.
 - A text column takes text. A field of another type over `Mapped[str]`, such as
   `HttpUrl`, `IPv4Address`, `Path`, `UUID`, a plain `Enum`, `date`, `time`,
   `datetime`, `timedelta`, `Decimal`, `int` or `bool`, now stores the text that a
@@ -454,6 +457,13 @@ miss it.
 - `id: "IDType"` with quotes, under `from __future__ import annotations`, now works
   as `id: IDType`. Before, the spec did not give the type, and the method got a
   string.
+
+### Security
+
+- A field with a secret type in a union, such as `SecretStr | int`, no longer has
+  filter or sort keys, as a `SecretStr` field has none. Before, a response hid the
+  value, but a filter such as `?code__icontains=12` let a client find it. Such a key
+  now gets `422`.
 
 ## [0.13.0] - 2026-11-01
 
