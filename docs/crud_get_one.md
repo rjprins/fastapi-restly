@@ -220,7 +220,7 @@ that picks the row:
 
 `Current.user_id()` is the id of the caller; see
 [Request Context](context.md). The scope and `authorize` run as on
-`GET /users/{id}`. The route `/me` works beside `/{id}`, because the item
-routes match only an integer id; see
-[Item paths and static routes](#item-route-matching). [Add a custom read route](#custom-read-route) has more
-examples, such as a read that starts from `self.select()`.
+`GET /users/{id}`. The route `/me` works beside `/{id}`, because Restly adds
+the routes of the view before the CRUD routes.
+[Add a custom read route](#custom-read-route) has more examples, such as a
+read that starts from `self.select()`.

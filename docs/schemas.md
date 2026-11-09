@@ -915,7 +915,7 @@ class UserView(AppView):
 OpenAPI then shows `UserListResponse` and `UserResponse` for these routes,
 as for the CRUD routes. A path parameter annotated `IDType` gets the path
 converter of the id type, as the item routes do: here `/{id:int}`; see
-[Item paths](#item-route-matching).
+[Change the ID type](#id-type).
 
 The routes return the list result and the row. Because they declare the
 view's response, Restly passes these through

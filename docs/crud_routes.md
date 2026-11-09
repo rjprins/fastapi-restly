@@ -30,22 +30,16 @@ table of what you can change.
 ## Choose async or sync
 
 Use {class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` for a new
-application, unless the application already uses synchronous SQLAlchemy. It
-gets an `AsyncSession` through
-{data}`fr.AsyncSessionDep <fastapi_restly.db.AsyncSessionDep>`, and the
-methods you override are `async def` methods.
+application. Use {class}`RestView <fastapi_restly.views.RestView>` if the
+application already uses synchronous SQLAlchemy. Async code can serve more
+requests at the same time, but it is a bit more complex to write. Sync code
+is simpler, but it depends on threads and blocking I/O.
 
-Use {class}`RestView <fastapi_restly.views.RestView>` with synchronous
-SQLAlchemy sessions, or with libraries that only work synchronously. It gets
-a `Session` through {data}`fr.SessionDep <fastapi_restly.db.SessionDep>`,
-and the methods you override are plain `def` methods.
-
-Apart from this, the two classes are the same: the same routes, the same
-configuration and the same methods to override. You choose for each view, so
-one application can use both. [Database & Configuration](database.md) shows
-how to configure the sessions. To give one view another session, see
-[Use another database on one view](#session-dependency-one-view).
-The examples on this page use `AsyncRestView`.
+The two classes have the same routes, settings and methods. In
+`AsyncRestView`, the methods that you override are `async def`, and they use
+an `AsyncSession`. You choose for each view, so one application can use both.
+[Database & Configuration](database.md) shows how to set up the sessions. The
+examples on this page use `AsyncRestView`.
 
 (default-crud-routes)=
 (default-crud-behavior)=
@@ -55,7 +49,7 @@ For `prefix = "/users"`, `include_view` registers these routes:
 
 | Request | Endpoint method | Input | Response | Status |
 |---|---|---|---|---|
-| [`GET /users`](crud_list.md) | {meth}`get_many_endpoint <fastapi_restly.views.AsyncRestView.get_many_endpoint>` | Filter, sort and page parameters | A page of objects in a `data` envelope | `200` |
+| [`GET /users`](crud_list.md) | {meth}`get_many_endpoint <fastapi_restly.views.AsyncRestView.get_many_endpoint>` | `list_params_schema` | `list_response_schema` | `200` |
 | [`POST /users`](crud_create.md) | {meth}`create_endpoint <fastapi_restly.views.AsyncRestView.create_endpoint>` | `create_schema` | `response_schema` | `201` |
 | [`GET /users/{id}`](crud_get_one.md) | {meth}`get_one_endpoint <fastapi_restly.views.AsyncRestView.get_one_endpoint>` | The id in the path | `response_schema` | `200` |
 | [`PATCH /users/{id}`](crud_update.md) | {meth}`update_endpoint <fastapi_restly.views.AsyncRestView.update_endpoint>` | `update_schema` | `response_schema` | `200` |
@@ -64,9 +58,9 @@ For `prefix = "/users"`, `include_view` registers these routes:
 The main path of the list is `/users`, without a slash at the end. Restly
 also accepts `/users/`, as a route that OpenAPI does not show.
 
-`GET /users` takes the filter, sort and page parameters that
-[Filtering, Sorting & Pagination](filtering.md) defines, and it is paginated by
-default.
+`GET /users` takes the list params that
+[Filtering, Sorting & Pagination](filtering.md) defines: filters, sort and
+page. The list is paginated by default.
 [Responses](responses.md) shows the response bodies and how to
 change the `data` envelope.
 
@@ -84,13 +78,44 @@ decide per action who may do what in
 [Authorization](#authorize-gate).
 :::
 
-(item-route-matching)=
-### Item paths and static routes
+(id-type)=
+### Change the ID type
 
-The paths of the built-in `GET`, `PATCH` and `DELETE` routes for one row
-follow {attr}`id_type <fastapi_restly.views.BaseRestView.id_type>`. By
-default, Restly takes it from the model's primary key. The `PUT` route of a
-React Admin view uses the same path.
+The item routes, such as `GET /users/{id}`, read the id of the row from the
+path.
+
+:::{note}
+An `int`, `UUID` or `str` key needs no setting. By default, the id has the
+type of the model's primary key.
+:::
+
+Set {attr}`id_type <fastapi_restly.views.BaseRestView.id_type>` when the path
+holds a value other than the primary key, such as a slug. Then also override
+{meth}`where_id <fastapi_restly.views.BaseRestView.where_id>`, so that the
+routes find the row by that value:
+
+```python
+from sqlalchemy import ColumnElement
+
+
+@fr.include_view(app)
+class RecipeView(fr.AsyncRestView):
+    prefix = "/recipes"
+    model = Recipe
+    id_type = str
+
+    def where_id(self, id: str) -> ColumnElement[bool]:
+        return Recipe.slug == id
+```
+
+`GET`, `PATCH` and `DELETE /recipes/{id}` now find the recipe by its slug.
+[Find the row by another key](#natural-key-route) explains `where_id`.
+
+:::{admonition} Details
+:class: details
+
+`id_type` also decides which values the item path matches. For `int` and
+`UUID`, Restly adds a path converter of Starlette:
 
 | ID type | Registered item path | Matching values |
 |---|---|---|
@@ -98,14 +123,9 @@ React Admin view uses the same path.
 | `uuid.UUID` | `/{id:uuid}` | UUIDs that Starlette's converter accepts |
 | Any other type | `/{id}` | Any single path segment, then FastAPI validation |
 
-With an integer or UUID item path, a static route such as `/users/me` still
-works when you register it after the view.
-
-An untyped item path, such as the path for string ids, also matches
-`/users/me`. Register a static route like that before the item route.
-
-:::{admonition} Details
-:class: details
+The `PUT` route of a React Admin view uses the same path. A model with a
+composite primary key gets `int`. For such a model, set `id_type = str` and
+override `where_id`; see [Find the row by another key](#natural-key-route).
 
 A value that does not match the converter returns `404`, unless another
 route matches it. So a negative integer id does not match, even when the row
@@ -125,8 +145,7 @@ The item routes use the name `id` in the path. An existing API can use another
 name, such as `{user_id}`. The URLs are the same, but OpenAPI and the clients that
 are generated from it show the name. To keep that name, replace each item endpoint,
 and `put` on a React Admin view, with a path such as `@fr.get("/{user_id:int}")` and
-a parameter `user_id: int`. With the converter, a wrong value still answers `404`,
-and `/users/me` still works after the view.
+a parameter `user_id: int`. With the converter, a wrong value still answers `404`.
 
 OpenAPI does not allow two paths that differ only in the names of their
 parameters. So `/{id}` next to `/{user_id}` on one view raises an error when you
@@ -287,7 +306,7 @@ whole view:
 |---|---|
 | Fixed fields in the responses | [`schema`](#write-or-generate) |
 | Other fields on create or update | [`create_schema`, `update_schema`](#explicit-write-schemas) |
-| The type of `{id}` in the path | [`id_type`](#item-route-matching) |
+| The type of `{id}` in the path | [`id_type`](#id-type) |
 | Fewer routes | [`delete_endpoint = None`](#leave-out-routes) |
 | Hide rows from every read | [`scope`](#view-scope) |
 | Pages of the list | [`pagination`](#list-pagination) |
@@ -416,7 +435,7 @@ class, so the route works as before:
 [Name the view's schemas in a custom route](#name-the-view-schemas). An item
 route that you declare, such as `GET /{id}`, keeps the path that you give it.
 Restly adds the `int` or `uuid` converter only to a path parameter annotated
-`IDType`; see [Item paths and static routes](#item-route-matching).
+`IDType`; see [Change the ID type](#id-type).
 :::
 
 (leave-out-routes)=

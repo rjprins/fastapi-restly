@@ -291,9 +291,9 @@ Some rules for registration:
   {class}`RestlyMisuseWarning <fastapi_restly.exc.RestlyMisuseWarning>`. It
   usually means that a module was imported twice, or that the decorator and a
   direct call both registered the view.
-- FastAPI tries the routes in the order you added them. For a route such as
-  `/users/me` next to the CRUD routes, see
-  [Item paths and static routes](#item-route-matching).
+- FastAPI tries the routes in the order you added them. Restly adds the
+  routes that a view declares before the CRUD routes that it inherits. So a
+  route such as `/users/me` on the view works next to `/users/{id}`.
 :::
 
 (dependency-injection-on-class-attributes)=
