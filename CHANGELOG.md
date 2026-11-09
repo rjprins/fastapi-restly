@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-11-09
+
 This release adds `SchemaType`, a type that depends on the view,
 `fr.modify_route`, pages with `limit` and `offset`, and a setting for the list
 response. The settings for a view's schemas now have names that end with what
@@ -1220,7 +1222,8 @@ First public beta release.
 - Removed duplicate pytest fixture exports from `fastapi_restly.testing`;
   the pytest plugin path is `fastapi_restly.pytest_fixtures`.
 
-[Unreleased]: https://github.com/rjprins/fastapi-restly/compare/v0.13.0...HEAD
+[Unreleased]: https://github.com/rjprins/fastapi-restly/compare/v0.14.0...HEAD
+[0.14.0]: https://github.com/rjprins/fastapi-restly/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/rjprins/fastapi-restly/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/rjprins/fastapi-restly/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/rjprins/fastapi-restly/compare/v0.10.0...v0.11.0
