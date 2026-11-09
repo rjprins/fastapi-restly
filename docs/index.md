@@ -12,9 +12,10 @@ class UserView(fr.AsyncRestView):
     model = User  # your SQLAlchemy model
 ```
 
-This view serves the five CRUD routes under `/users`, with Pydantic schemas
-made from the model, and filtering, sorting and pagination on the list. To
-change one step, override its method, and the rest stays the same.
+This view serves five CRUD routes under `/users`. It makes Pydantic schemas
+from the model, and a list route that can filter, sort and paginate. Each route
+runs a few small methods on the view. To change one part, override that
+method; the rest stays the same.
 
 Restly is for REST resources, not for your whole app. It works inside the
 FastAPI app that you already have, and you add it one resource at a time;
