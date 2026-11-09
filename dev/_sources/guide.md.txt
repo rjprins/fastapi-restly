@@ -105,9 +105,10 @@ create, update and delete. Each route runs a fixed list of steps, such as
 order, and what you can change, from a rule on the schema to a route of your
 own.
 
-- [Overview](crud_routes.md): the five default routes, how a route runs,
-  async or sync, how to change one option of a route, leave some routes out,
-  where a business method fits, and how to replace an endpoint method.
+- [Overview](crud_routes.md): the five default routes, the id type, how a
+  route runs, async or sync, how to change one option of a route, leave some
+  routes out, where a business method fits, and how to replace an endpoint
+  method.
 - [List](crud_list.md): the steps of `GET /`, what you can change, a header
   with the total, and a list of a subset.
 - [Get One](crud_get_one.md): the steps of `GET /{id}`, visibility and

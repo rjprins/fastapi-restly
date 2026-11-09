@@ -33,7 +33,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=b715876a" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=964c8a9c" />
   
   <!-- So that users can add custom icons -->
   <script defer src="_static/scripts/fontawesome.js?digest=18bd87630a240e9c25be"></script>
@@ -582,13 +582,13 @@ through the scope, but it does not call <code class="docutils literal notranslat
 model with its scope and its loader options. So the rows are the ones that
 the view shows, and each row loads what the response needs:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/recent"</span><span class="p">)</span>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">recent</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">ResponseSchema</span><span class="p">]:</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">recent</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">ViewResponse</span><span class="p">]:</span>
         <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">authorize</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">GET_MANY</span><span class="p">)</span>
         <span class="n">stmt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">select</span><span class="p">()</span><span class="o">.</span><span class="n">order_by</span><span class="p">(</span><span class="n">Post</span><span class="o">.</span><span class="n">created_at</span><span class="o">.</span><span class="n">desc</span><span class="p">())</span><span class="o">.</span><span class="n">limit</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
         <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">scalars</span><span class="p">(</span><span class="n">stmt</span><span class="p">))</span>
 </pre></div>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">ResponseSchema</span></code> from <code class="docutils literal notranslate"><span class="pre">fastapi_restly.views</span></code> stands for the view’s response
+<p><code class="docutils literal notranslate"><span class="pre">ViewResponse</span></code> from <code class="docutils literal notranslate"><span class="pre">fastapi_restly.views</span></code> stands for the view’s response
 schema. The route declares a list of it, so Restly passes each row through
 <code class="docutils literal notranslate"><span class="pre">to_single_response</span></code>, as the list route does; see
 <a class="reference internal" href="responses.html#custom-route-response"><span class="std std-ref">The response of a custom route</span></a>. The route builds
@@ -609,7 +609,7 @@ boolean expression in place of the id. The expression picks the row instead
 of the primary key. The view’s <a class="reference internal" href="scopes.html#view-scope"><span class="std std-ref">scope</span></a>, the loader options and
 the 404 stay the same:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/by-email/</span><span class="si">{email}</span><span class="s2">"</span><span class="p">)</span>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_by_email</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">email</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ResponseSchema</span><span class="p">:</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_by_email</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">email</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ViewResponse</span><span class="p">:</span>
         <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_get_one</span><span class="p">(</span><span class="n">User</span><span class="o">.</span><span class="n">email</span> <span class="o">==</span> <span class="n">email</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -680,7 +680,7 @@ commit. The page of each route has an example:
 such as a parent row and its child rows. Build the new object, and pass it to
 <code class="docutils literal notranslate"><span class="pre">write_action</span></code> as <code class="docutils literal notranslate"><span class="pre">obj</span></code>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">"/with-lines"</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">201</span><span class="p">)</span>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_with_lines</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">OrderWithLines</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ResponseSchema</span><span class="p">:</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_with_lines</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">OrderWithLines</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ViewResponse</span><span class="p">:</span>
         <span class="n">order</span> <span class="o">=</span> <span class="n">Order</span><span class="p">(</span><span class="n">customer_id</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">customer_id</span><span class="p">)</span>
         <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">write_action</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">CREATE</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="n">order</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="p">):</span>
             <span class="n">order</span><span class="o">.</span><span class="n">lines</span> <span class="o">=</span> <span class="p">[</span><span class="n">OrderLine</span><span class="p">(</span><span class="n">sku</span><span class="o">=</span><span class="n">line</span><span class="o">.</span><span class="n">sku</span><span class="p">)</span> <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">lines</span><span class="p">]</span>
@@ -710,7 +710,7 @@ options, so each row comes back as the database has it:</p>
         <span class="n">REORDER</span> <span class="o">=</span> <span class="s2">"reorder"</span>
 
     <span class="nd">@fr</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="s2">"/positions"</span><span class="p">)</span>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">reorder</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">items</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">CookbookPosition</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">ResponseSchema</span><span class="p">]:</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">reorder</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">items</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">CookbookPosition</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">ViewResponse</span><span class="p">]:</span>
         <span class="n">cookbooks</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">write_action</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">REORDER</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">items</span><span class="p">):</span>
             <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">items</span><span class="p">:</span>
@@ -750,7 +750,7 @@ after the block with <code class="docutils literal notranslate"><span class="pre
 <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.get_loader_options" title="fastapi_restly.views.BaseRestView.get_loader_options"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_loader_options</span></code></a>.</p>
 <p>Restly checks the references in <code class="docutils literal notranslate"><span class="pre">data</span></code>, also in the schemas nested in it and
 in each item of a list; see <a class="reference internal" href="relationships.html#reference-exists"><span class="std std-ref">Check that the referenced row exists</span></a>.</p>
-<p>The routes above declare <code class="docutils literal notranslate"><span class="pre">ResponseSchema</span></code>, or a list of it. So Restly sends
+<p>The routes above declare <code class="docutils literal notranslate"><span class="pre">ViewResponse</span></code>, or a list of it. So Restly sends
 the rows that they return through the view’s response step, and OpenAPI
 shows the same types as for the CRUD routes; see
 <a class="reference internal" href="responses.html#custom-route-response"><span class="std std-ref">The response of a custom route</span></a>. A route

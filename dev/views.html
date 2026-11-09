@@ -33,7 +33,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=b715876a" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=964c8a9c" />
   
   <!-- So that users can add custom icons -->
   <script defer src="_static/scripts/fontawesome.js?digest=18bd87630a240e9c25be"></script>
@@ -699,7 +699,7 @@ business method either: <code class="docutils literal notranslate"><span class="
 <code class="docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code> when Python creates the class, also for a route
 of a mixin. A plain <code class="docutils literal notranslate"><span class="pre">View</span></code> has no business methods, so these three names are
 free there. A CRUD view class that defines <code class="docutils literal notranslate"><span class="pre">get_one</span></code>, <code class="docutils literal notranslate"><span class="pre">get_many</span></code> or <code class="docutils literal notranslate"><span class="pre">select</span></code>
-fails when Python creates it too, because the loads are final. Give the
+fails when Python creates it too, because you cannot override the loads. Give the
 route another name; its path stays the same. To change one option of a CRUD
 route, see <a class="reference internal" href="crud_routes.html#modify-route"><span class="std std-ref">Change one option of a route</span></a>. To replace a CRUD route,
 override its endpoint method, such as <code class="docutils literal notranslate"><span class="pre">create_endpoint</span></code>; see
@@ -807,9 +807,9 @@ an admin router. Each parent gets the routes.</p></li>
 <a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyMisuseWarning" title="fastapi_restly.exc.RestlyMisuseWarning"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyMisuseWarning</span></code></a>. It
 usually means that a module was imported twice, or that the decorator and a
 direct call both registered the view.</p></li>
-<li><p>FastAPI tries the routes in the order you added them. For a route such as
-<code class="docutils literal notranslate"><span class="pre">/users/me</span></code> next to the CRUD routes, see
-<a class="reference internal" href="crud_routes.html#item-route-matching"><span class="std std-ref">Item paths and static routes</span></a>.</p></li>
+<li><p>FastAPI tries the routes in the order you added them. Restly adds the
+routes that a view declares before the CRUD routes that it inherits. So a
+route such as <code class="docutils literal notranslate"><span class="pre">/users/me</span></code> on the view works next to <code class="docutils literal notranslate"><span class="pre">/users/{id}</span></code>.</p></li>
 </ul>
 </div>
 </section>
@@ -893,7 +893,7 @@ nothing:</p>
 <p>When the shared code calls methods of the view, such as <code class="docutils literal notranslate"><span class="pre">get_one</span></code> or a
 handler, write a base view instead of a mixin. A base view subclasses the
 view class, so it has the real methods, with their types:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi_restly.views</span><span class="w"> </span><span class="kn">import</span> <span class="n">IDType</span><span class="p">,</span> <span class="n">ResponseSchema</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi_restly.views</span><span class="w"> </span><span class="kn">import</span> <span class="n">IDType</span><span class="p">,</span> <span class="n">ViewResponse</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">ArchiveView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
@@ -903,7 +903,7 @@ view class, so it has the real methods, with their types:</p>
         <span class="n">ARCHIVE</span> <span class="o">=</span> <span class="s2">"archive"</span>
 
     <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">"/</span><span class="si">{id}</span><span class="s2">/archive"</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">archive</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="n">IDType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ResponseSchema</span><span class="p">:</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">archive</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="n">IDType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ViewResponse</span><span class="p">:</span>
         <span class="n">obj</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_one</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
         <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">write_action</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">ARCHIVE</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="n">obj</span><span class="p">):</span>
             <span class="n">obj</span><span class="o">.</span><span class="n">archived</span> <span class="o">=</span> <span class="kc">True</span>
@@ -949,7 +949,7 @@ override for each change. Two shared concerns have their own sections:
 <a class="reference internal" href="models.html#write-path-values"><span class="std std-ref">values that every write path must set</span></a>, such as an
 owner id, on Models, and <a class="reference internal" href="scopes.html#soft-delete-mixin"><span class="std std-ref">soft delete</span></a> on Scopes.</p>
 <p>A route on a base view names the classes of each subclass with markers, such
-as <code class="docutils literal notranslate"><span class="pre">ResponseSchema</span></code>; see
+as <code class="docutils literal notranslate"><span class="pre">ViewResponse</span></code>; see
 <a class="reference internal" href="schemas.html#name-the-view-schemas"><span class="std std-ref">Name the view’s schemas in a custom route</span></a>.</p>
 <section id="one-base-view-for-the-whole-app">
 <span id="app-wide-base-view"></span><h3>One base view for the whole app<a class="headerlink" href="#one-base-view-for-the-whole-app" title="Link to this heading">#</a></h3>

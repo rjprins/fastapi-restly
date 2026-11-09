@@ -10,7 +10,7 @@ either on a FastAPI app.
    :members:
    :undoc-members:
    :show-inheritance:
-   :exclude-members: IDType, ResponseSchema, ListResponseSchema, CreateSchema, UpdateSchema
+   :exclude-members: IDType, ViewResponse, ViewListResponse, ViewCreate, ViewUpdate
 
 Markers for the view's own types
 --------------------------------
@@ -29,24 +29,24 @@ for each view, use :class:`~fastapi_restly.views.SchemaType`; see
    gets the view's path converter: ``{id:int}`` for ``int`` and
    ``{id:uuid}`` for ``UUID``.
 
-.. py:data:: ResponseSchema
+.. py:data:: ViewResponse
 
    The view's response schema,
    :attr:`~fastapi_restly.views.BaseRestView.response_schema`.
 
-.. py:data:: ListResponseSchema
+.. py:data:: ViewListResponse
 
    The view's list response,
    :attr:`~fastapi_restly.views.BaseRestView.list_response_schema`. Unless the
    view sets another class, this is the envelope of the view's pagination, with
    items of the view's response schema.
 
-.. py:data:: CreateSchema
+.. py:data:: ViewCreate
 
    The view's create schema,
    :attr:`~fastapi_restly.views.BaseRestView.create_schema`.
 
-.. py:data:: UpdateSchema
+.. py:data:: ViewUpdate
 
    The view's update schema,
    :attr:`~fastapi_restly.views.BaseRestView.update_schema`.

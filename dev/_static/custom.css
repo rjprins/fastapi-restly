@@ -32,11 +32,31 @@
     .bd-header ul.bd-navbar-elements > li.nav-item > .nav-link {
         white-space: nowrap;
     }
+
+    /* The links stand in the middle of the space between the logo and the
+       search field. On a wide screen, the header then has two small gaps
+       instead of one large gap. The theme already gives the right margin. */
+    .bd-header .navbar-header-items__center {
+        margin-left: auto;
+    }
+
+    /* The header is narrower than the page (99rem), so that on a wide screen
+       the logo and the search field do not stand at the far edges. */
+    .bd-header .bd-header__inner.bd-page-width {
+        max-width: 80rem;
+    }
 }
 
+/* On a wide screen, the links get a larger font (the theme gives 1rem) and
+   more space between them. A narrower screen keeps the theme's size, so that
+   the header fits on one line. */
 @media (min-width: 84rem) {
     .bd-header ul.bd-navbar-elements > li.nav-item {
-        margin-inline: 0.25rem;
+        margin-inline: 0.5rem;
+    }
+
+    .bd-header ul.bd-navbar-elements > li.nav-item > .nav-link {
+        font-size: 1.0625rem;
     }
 }
 
@@ -80,11 +100,26 @@ html {
    rule starts where the theme shows the right sidebar next to the article.
 
    The space between a table and each sidebar line is the same: 1.5rem. The
-   theme gives 3rem on the left and 2rem on the right. */
+   theme gives 3rem on the left and 2rem on the right.
+
+   A page without a left sidebar, such as the front page, gets an empty space
+   on the left that is as wide as the right sidebar. That keeps the text in
+   the center of the page. When the screen gets narrower, this space gives up
+   its width first. */
 @media (min-width: 75rem) {
+    .bd-main .bd-content {
+        --restly-toc-width: clamp(17rem, 100% - 48rem, 24rem);
+    }
+
     .bd-sidebar-secondary {
-        width: clamp(17rem, 100% - 48rem, 24rem);
+        width: var(--restly-toc-width);
         padding-left: 0;
+    }
+
+    .bd-container__inner:has(> .bd-sidebar-primary.hide-on-wide) .bd-content::before {
+        content: "";
+        flex-shrink: 0;
+        width: clamp(0rem, 100% - 48rem - var(--restly-toc-width), var(--restly-toc-width));
     }
 
     .bd-main .bd-content .bd-article-container {
@@ -100,8 +135,12 @@ html {
    are easy to read. Tables and call trees can use the full width of the
    article; the theme already centers tables. The column uses margins, not
    max-width, so that a narrower block such as the newsletter form keeps its
-   own max-width and starts at the left edge of the text. */
-.bd-article section > :not(section, .pst-scrollable-table-container, .call-tree) {
+   own max-width and starts at the left edge of the text.
+
+   The rule skips the empty <span id="..."> that Sphinx puts before a heading
+   with a label. With side margins, that span would take up a line of its
+   own, and the space above the heading would get much larger. */
+.bd-article section > :not(section, span, .pst-scrollable-table-container, .call-tree) {
     margin-left: max(0px, (100% - 45rem) / 2);
     margin-right: max(0px, (100% - 45rem) / 2);
 }

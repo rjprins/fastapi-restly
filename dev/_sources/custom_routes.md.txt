@@ -32,13 +32,13 @@ the view shows, and each row loads what the response needs:
 
 ```python
     @fr.get("/recent")
-    async def recent(self) -> list[ResponseSchema]:
+    async def recent(self) -> list[ViewResponse]:
         await self.authorize(fr.Action.GET_MANY)
         stmt = self.select().order_by(Post.created_at.desc()).limit(5)
         return list(await self.session.scalars(stmt))
 ```
 
-`ResponseSchema` from `fastapi_restly.views` stands for the view's response
+`ViewResponse` from `fastapi_restly.views` stands for the view's response
 schema. The route declares a list of it, so Restly passes each row through
 `to_single_response`, as the list route does; see
 [The response of a custom route](#custom-route-response). The route builds
@@ -65,7 +65,7 @@ the 404 stay the same:
 
 ```python
     @fr.get("/by-email/{email}")
-    async def get_by_email(self, email: str) -> ResponseSchema:
+    async def get_by_email(self, email: str) -> ViewResponse:
         return await self.handle_get_one(User.email == email)
 ```
 
@@ -137,7 +137,7 @@ such as a parent row and its child rows. Build the new object, and pass it to
 
 ```python
     @fr.post("/with-lines", status_code=201)
-    async def create_with_lines(self, data: OrderWithLines) -> ResponseSchema:
+    async def create_with_lines(self, data: OrderWithLines) -> ViewResponse:
         order = Order(customer_id=data.customer_id)
         async with self.write_action(self.Action.CREATE, obj=order, data=data):
             order.lines = [OrderLine(sku=line.sku) for line in data.lines]
@@ -172,7 +172,7 @@ options, so each row comes back as the database has it:
         REORDER = "reorder"
 
     @fr.put("/positions")
-    async def reorder(self, items: list[CookbookPosition]) -> list[ResponseSchema]:
+    async def reorder(self, items: list[CookbookPosition]) -> list[ViewResponse]:
         cookbooks = []
         async with self.write_action(self.Action.REORDER, obj=None, data=items):
             for item in items:
@@ -219,7 +219,7 @@ after the block with `await obj.awaitable_attrs.<name>`, or add it to
 Restly checks the references in `data`, also in the schemas nested in it and
 in each item of a list; see [Check that the referenced row exists](#reference-exists).
 
-The routes above declare `ResponseSchema`, or a list of it. So Restly sends
+The routes above declare `ViewResponse`, or a list of it. So Restly sends
 the rows that they return through the view's response step, and OpenAPI
 shows the same types as for the CRUD routes; see
 [The response of a custom route](#custom-route-response). A route

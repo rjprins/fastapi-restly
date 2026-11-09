@@ -1,6 +1,6 @@
 # FastAPI-Restly
 
-> **Class-based REST resources for FastAPI and SQLAlchemy 2.0. Minimal boilerplate, full control.**
+> **Class-based REST resources for FastAPI and SQLAlchemy. Minimal boilerplate, full control.**
 
 The Guide has one page for each part of Restly, in five groups. Each page
 starts with how that part works, then shows how to use it. If you are new to
@@ -80,7 +80,7 @@ FastAPI route next to your views.
 
 ## CRUD Routes
 
-- [Overview](https://www.fastapi-restly.org/dev/crud_routes.html): the five default routes, how a route runs, async or sync, how to change one option of a route, leave some routes out, where a business method fits, and how to replace an endpoint method.
+- [Overview](https://www.fastapi-restly.org/dev/crud_routes.html): the five default routes, the id type, how a route runs, async or sync, how to change one option of a route, leave some routes out, where a business method fits, and how to replace an endpoint method.
 - [List](https://www.fastapi-restly.org/dev/crud_list.html): the steps of `GET /`, what you can change, a header with the total, and a list of a subset.
 - [Get One](https://www.fastapi-restly.org/dev/crud_get_one.html): the steps of `GET /{id}`, visibility and policy, a row found by a slug or a composite key, and the error for a missing row.
 - [Create](https://www.fastapi-restly.org/dev/crud_create.html): the steps of `POST /`, the `create` method, a password hash, the id of a new row, and a `Location` header.

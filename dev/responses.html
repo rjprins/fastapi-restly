@@ -33,7 +33,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=b715876a" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=964c8a9c" />
   
   <!-- So that users can add custom icons -->
   <script defer src="_static/scripts/fontawesome.js?digest=18bd87630a240e9c25be"></script>
@@ -756,7 +756,7 @@ query. So the <code class="docutils literal notranslate"><span class="pre">DataC
 <span id="custom-route-response"></span><h2>The response of a custom route<a class="headerlink" href="#the-response-of-a-custom-route" title="Link to this heading">#</a></h2>
 <p>A custom route that declares the view’s response schema goes through the same
 response step as the CRUD routes. So it can return the row itself:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi_restly.views</span><span class="w"> </span><span class="kn">import</span> <span class="n">IDType</span><span class="p">,</span> <span class="n">ResponseSchema</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi_restly.views</span><span class="w"> </span><span class="kn">import</span> <span class="n">IDType</span><span class="p">,</span> <span class="n">ViewResponse</span>
 
 
 <span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
@@ -769,7 +769,7 @@ response step as the CRUD routes. So it can return the row itself:</p>
         <span class="n">ARCHIVE</span> <span class="o">=</span> <span class="s2">"archive"</span>
 
     <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">"/</span><span class="si">{id}</span><span class="s2">/archive"</span><span class="p">)</span>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">archive</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="n">IDType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ResponseSchema</span><span class="p">:</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">archive</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="n">IDType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ViewResponse</span><span class="p">:</span>
         <span class="n">project</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_one</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
         <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">write_action</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">ARCHIVE</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="n">project</span><span class="p">):</span>
             <span class="n">project</span><span class="o">.</span><span class="n">archived</span> <span class="o">=</span> <span class="kc">True</span>
@@ -789,38 +789,38 @@ annotation or in <code class="docutils literal notranslate"><span class="pre">re
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.ResponseSchema" title="fastapi_restly.views.ResponseSchema"><code class="xref py py-data docutils literal notranslate"><span class="pre">ResponseSchema</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.ViewResponse" title="fastapi_restly.views.ViewResponse"><code class="xref py py-data docutils literal notranslate"><span class="pre">ViewResponse</span></code></a></p></td>
 <td><p>a row of the view’s model</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">to_single_response(row)</span></code></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">list[ResponseSchema]</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">list[ViewResponse]</span></code></p></td>
 <td><p>a list of rows, or another iterable of rows, such as <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">self.session.scalars(stmt)</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">to_single_response(row)</span></code> for each row</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.ListResponseSchema" title="fastapi_restly.views.ListResponseSchema"><code class="xref py py-data docutils literal notranslate"><span class="pre">ListResponseSchema</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.ViewListResponse" title="fastapi_restly.views.ViewListResponse"><code class="xref py py-data docutils literal notranslate"><span class="pre">ViewListResponse</span></code></a></p></td>
 <td><p>a <a class="reference internal" href="api/views.html#fastapi_restly.views.ListResult" title="fastapi_restly.views.ListResult"><code class="xref py py-class docutils literal notranslate"><span class="pre">ListResult</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">to_list_response(result)</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p>the view’s response schema itself, as in <code class="docutils literal notranslate"><span class="pre">response_model=ProjectResponse</span></code></p></td>
 <td><p>a row</p></td>
-<td><p>the same as for <code class="docutils literal notranslate"><span class="pre">ResponseSchema</span></code></p></td>
+<td><p>the same as for <code class="docutils literal notranslate"><span class="pre">ViewResponse</span></code></p></td>
 </tr>
 <tr class="row-even"><td><p>the view’s model, as in <code class="docutils literal notranslate"><span class="pre">-&gt;</span> <span class="pre">Project</span></code></p></td>
 <td><p>a row</p></td>
-<td><p>the same as for <code class="docutils literal notranslate"><span class="pre">ResponseSchema</span></code></p></td>
+<td><p>the same as for <code class="docutils literal notranslate"><span class="pre">ViewResponse</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">list[Project]</span></code></p></td>
 <td><p>a list of rows</p></td>
-<td><p>the same as for <code class="docutils literal notranslate"><span class="pre">list[ResponseSchema]</span></code></p></td>
+<td><p>the same as for <code class="docutils literal notranslate"><span class="pre">list[ViewResponse]</span></code></p></td>
 </tr>
 <tr class="row-even"><td><p>nothing, <code class="docutils literal notranslate"><span class="pre">response_model=None</span></code>, or a type without fields, such as <code class="docutils literal notranslate"><span class="pre">Any</span></code>, <code class="docutils literal notranslate"><span class="pre">dict</span></code> or <code class="docutils literal notranslate"><span class="pre">dict[str,</span> <span class="pre">Any]</span></code></p></td>
 <td><p>a row of the view’s model, a list of rows, a <code class="docutils literal notranslate"><span class="pre">ListResult</span></code>, or a dict with one of these as a value</p></td>
-<td><p>the same as for <code class="docutils literal notranslate"><span class="pre">ResponseSchema</span></code> and <code class="docutils literal notranslate"><span class="pre">ListResponseSchema</span></code>, and any other value goes out as it is</p></td>
+<td><p>the same as for <code class="docutils literal notranslate"><span class="pre">ViewResponse</span></code> and <code class="docutils literal notranslate"><span class="pre">ViewListResponse</span></code>, and any other value goes out as it is</p></td>
 </tr>
 </tbody>
 </table>
 </div>
-<p>Each of these may allow <code class="docutils literal notranslate"><span class="pre">None</span></code>, as in <code class="docutils literal notranslate"><span class="pre">-&gt;</span> <span class="pre">ResponseSchema</span> <span class="pre">|</span> <span class="pre">None</span></code>, and a <code class="docutils literal notranslate"><span class="pre">None</span></code>
+<p>Each of these may allow <code class="docutils literal notranslate"><span class="pre">None</span></code>, as in <code class="docutils literal notranslate"><span class="pre">-&gt;</span> <span class="pre">ViewResponse</span> <span class="pre">|</span> <span class="pre">None</span></code>, and a <code class="docutils literal notranslate"><span class="pre">None</span></code>
 goes out as <code class="docutils literal notranslate"><span class="pre">null</span></code>. Any other value goes out as it is: a dict, an instance
 of a schema, or a <code class="docutils literal notranslate"><span class="pre">fastapi.Response</span></code>. So a route that calls
 <code class="docutils literal notranslate"><span class="pre">self.to_single_response(row)</span></code> itself works the same way.</p>
@@ -870,7 +870,7 @@ replace
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">pydantic</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi_restly.views</span><span class="w"> </span><span class="kn">import</span> <span class="n">CreateSchema</span><span class="p">,</span> <span class="n">IDType</span><span class="p">,</span> <span class="n">ResponseSchema</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi_restly.views</span><span class="w"> </span><span class="kn">import</span> <span class="n">ViewCreate</span><span class="p">,</span> <span class="n">IDType</span><span class="p">,</span> <span class="n">ViewResponse</span>
 
 <span class="n">T</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s2">"T"</span><span class="p">)</span>
 
@@ -886,12 +886,12 @@ replace
     <span class="n">schema</span> <span class="o">=</span> <span class="n">UserSchema</span>
 
     <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/</span><span class="si">{id}</span><span class="s2">"</span><span class="p">)</span>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_one_endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="n">IDType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Data</span><span class="p">[</span><span class="n">ResponseSchema</span><span class="p">]:</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_one_endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="n">IDType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Data</span><span class="p">[</span><span class="n">ViewResponse</span><span class="p">]:</span>
         <span class="n">obj</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_get_one</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
         <span class="k">return</span> <span class="p">{</span><span class="s2">"data"</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_single_response</span><span class="p">(</span><span class="n">obj</span><span class="p">)}</span>
 
     <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">"/"</span><span class="p">)</span>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">CreateSchema</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Data</span><span class="p">[</span><span class="n">ResponseSchema</span><span class="p">]:</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">ViewCreate</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Data</span><span class="p">[</span><span class="n">ViewResponse</span><span class="p">]:</span>
         <span class="n">obj</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_create</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
         <span class="k">return</span> <span class="p">{</span><span class="s2">"data"</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_single_response</span><span class="p">(</span><span class="n">obj</span><span class="p">)}</span>
 </pre></div>
@@ -921,12 +921,12 @@ base view. A marker stands for the class of each view that registers, so each
 view gets its own type in OpenAPI:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ApiView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/</span><span class="si">{id}</span><span class="s2">"</span><span class="p">)</span>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_one_endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="n">IDType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Data</span><span class="p">[</span><span class="n">ResponseSchema</span><span class="p">]:</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_one_endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="n">IDType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Data</span><span class="p">[</span><span class="n">ViewResponse</span><span class="p">]:</span>
         <span class="n">obj</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_get_one</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
         <span class="k">return</span> <span class="p">{</span><span class="s2">"data"</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_single_response</span><span class="p">(</span><span class="n">obj</span><span class="p">)}</span>
 
     <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">"/"</span><span class="p">)</span>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">CreateSchema</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Data</span><span class="p">[</span><span class="n">ResponseSchema</span><span class="p">]:</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">ViewCreate</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Data</span><span class="p">[</span><span class="n">ViewResponse</span><span class="p">]:</span>
         <span class="n">obj</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_create</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
         <span class="k">return</span> <span class="p">{</span><span class="s2">"data"</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_single_response</span><span class="p">(</span><span class="n">obj</span><span class="p">)}</span>
 </pre></div>
@@ -1088,9 +1088,9 @@ as in <code class="docutils literal notranslate"><span class="pre">{&quot;articl
 <a class="reference internal" href="schemas.html#subclass-new-classes"><span class="std std-ref">other classes</span></a>.</p>
 <p>For a shape that Restly cannot fill, set the type and replace
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many_endpoint" title="fastapi_restly.views.RestView.get_many_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many_endpoint</span></code></a>. The
-marker <a class="reference internal" href="api/views.html#fastapi_restly.views.ListResponseSchema" title="fastapi_restly.views.ListResponseSchema"><code class="xref py py-data docutils literal notranslate"><span class="pre">ListResponseSchema</span></code></a> then
+marker <a class="reference internal" href="api/views.html#fastapi_restly.views.ViewListResponse" title="fastapi_restly.views.ViewListResponse"><code class="xref py py-data docutils literal notranslate"><span class="pre">ViewListResponse</span></code></a> then
 gives the route this type. This route sends a map from id to name:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi_restly.views</span><span class="w"> </span><span class="kn">import</span> <span class="n">ListResponseSchema</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi_restly.views</span><span class="w"> </span><span class="kn">import</span> <span class="n">ViewListResponse</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
@@ -1100,7 +1100,7 @@ gives the route this type. This route sends a map from id to name:</p>
     <span class="n">list_response_schema</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span>
 
     <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/"</span><span class="p">)</span>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_many_endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">list_params</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ListResponseSchema</span><span class="p">:</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_many_endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">list_params</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ViewListResponse</span><span class="p">:</span>
         <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_get_many</span><span class="p">(</span><span class="n">list_params</span><span class="p">)</span>
         <span class="k">return</span> <span class="p">{</span><span class="n">user</span><span class="o">.</span><span class="n">id</span><span class="p">:</span> <span class="n">user</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">user</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">objects</span><span class="p">}</span>
 </pre></div>

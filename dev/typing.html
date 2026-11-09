@@ -33,7 +33,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=b715876a" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=964c8a9c" />
   
   <!-- So that users can add custom icons -->
   <script defer src="_static/scripts/fontawesome.js?digest=18bd87630a240e9c25be"></script>
@@ -723,8 +723,9 @@ loads the row, and returns 404 if it does not exist, before <code class="docutil
 <li><p><code class="docutils literal notranslate"><span class="pre">where_id</span></code> gets the id from the path, so its type is the id type, the last
 parameter. It returns a SQL condition, a <code class="docutils literal notranslate"><span class="pre">ColumnElement[bool]</span></code>; see
 <a class="reference internal" href="crud_get_one.html#natural-key-route"><span class="std std-ref">Find the row by another key</span></a>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">get_one</span></code> and <code class="docutils literal notranslate"><span class="pre">get_many</span></code> are final, so you call them and do not override
-them. A type checker reports an override, as it does for a handler. Their
+<li><p>You call <code class="docutils literal notranslate"><span class="pre">get_one</span></code> and <code class="docutils literal notranslate"><span class="pre">get_many</span></code>, but you cannot override them. They are
+marked with <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.final" title="(in Python v3.15)"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;typing.final</span></code></a>, so a type checker reports
+an override, as it does for a handler. Their
 return types follow the model parameter: <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">self.get_one(id)</span></code> is a
 <code class="docutils literal notranslate"><span class="pre">User</span></code>, and so is each row of <code class="docutils literal notranslate"><span class="pre">self.select()</span></code>.</p></li>
 <li><p>For the response type, give the main schema: the response schema that
@@ -775,7 +776,7 @@ takes an instance of the update schema.</p>
 <p>The classes that
 <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.derive_response_schema" title="fastapi_restly.schemas.derive_response_schema"><code class="xref py py-func docutils literal notranslate"><span class="pre">derive_response_schema()</span></code></a>
 returns cannot be used in an annotation. In a route, use the markers of
-<code class="docutils literal notranslate"><span class="pre">fastapi_restly.views</span></code> instead, such as <code class="docutils literal notranslate"><span class="pre">ResponseSchema</span></code>: a type checker reads
+<code class="docutils literal notranslate"><span class="pre">fastapi_restly.views</span></code> instead, such as <code class="docutils literal notranslate"><span class="pre">ViewResponse</span></code>: a type checker reads
 each marker as <code class="docutils literal notranslate"><span class="pre">Any</span></code>. See
 <a class="reference internal" href="schemas.html#name-the-view-schemas"><span class="std std-ref">Name the view’s schemas in a custom route</span></a>.</p>
 </section>

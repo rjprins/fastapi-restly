@@ -11,9 +11,9 @@ route. For `GET /{id}`, these steps run:
   - {override}`get_one_endpoint(id) <fastapi_restly.views.RestView.get_one_endpoint>`
     The endpoint method.
     - {meth}`handle_get_one(id) <fastapi_restly.views.RestView.handle_get_one>`
-      The handler. It is final.
+      The handler. You call it, but you cannot override it.
       - {meth}`get_one(id) <fastapi_restly.views.RestView.get_one>`
-        The load. It is final.
+        The load. You call it, but you cannot override it.
         - {meth}`select() <fastapi_restly.views.BaseRestView.select>`
           The model, the scope and the loader options.
         - {override}`where_id(id) <fastapi_restly.views.BaseRestView.where_id>`
@@ -69,11 +69,11 @@ too.
 :::{admonition} Details
 :class: details
 
-The loads are final: a view class that defines `get_one`, `get_many` or
-`select` fails when Python creates the class. The message names the place
-for each change. An override of a load could leave out the scope, or the
-`scope=` that a route asked for, and nothing would tell you. With final
-loads, the scope always applies.
+You cannot override the loads: a view class that defines `get_one`,
+`get_many` or `select` fails when Python creates the class. The message names
+the place for each change. An override of a load could leave out the scope,
+or the `scope=` that a route asked for, and nothing would tell you. Because
+you cannot override the loads, the scope always applies.
 
 `select()` also adds the options of
 {meth}`get_loader_options <fastapi_restly.views.BaseRestView.get_loader_options>`,
@@ -178,7 +178,7 @@ This view lets clients keep the row for a minute:
 
 ```python
 from fastapi import Response
-from fastapi_restly.views import IDType, ResponseSchema
+from fastapi_restly.views import IDType, ViewResponse
 
 
 @fr.include_view(app)
@@ -187,14 +187,14 @@ class ProductView(fr.AsyncRestView):
     model = Product
 
     @fr.get("/{id}")
-    async def get_one_endpoint(self, id: IDType, response: Response) -> ResponseSchema:
+    async def get_one_endpoint(self, id: IDType, response: Response) -> ViewResponse:
         response.headers["Cache-Control"] = "max-age=60"
         return await self.handle_get_one(id)
 ```
 
 `response: Response` is FastAPI's way to set a header on the response; see
 [Response Headers](https://fastapi.tiangolo.com/advanced/response-headers/).
-`IDType` and `ResponseSchema` stand for the id type and the response schema
+`IDType` and `ViewResponse` stand for the id type and the response schema
 of the view; see
 [Name the view's schemas in a custom route](#name-the-view-schemas).
 [Replace an endpoint method](#replace-endpoint-method) has the rules for all
@@ -214,13 +214,13 @@ that picks the row:
 
 ```python
     @fr.get("/me")
-    async def get_me(self) -> ResponseSchema:
+    async def get_me(self) -> ViewResponse:
         return await self.handle_get_one(Current.user_id())
 ```
 
 `Current.user_id()` is the id of the caller; see
 [Request Context](context.md). The scope and `authorize` run as on
-`GET /users/{id}`. The route `/me` works beside `/{id}`, because the item
-routes match only an integer id; see
-[Item paths and static routes](#item-route-matching). [Add a custom read route](#custom-read-route) has more
-examples, such as a read that starts from `self.select()`.
+`GET /users/{id}`. The route `/me` works beside `/{id}`, because Restly adds
+the routes of the view before the CRUD routes.
+[Add a custom read route](#custom-read-route) has more examples, such as a
+read that starts from `self.select()`.

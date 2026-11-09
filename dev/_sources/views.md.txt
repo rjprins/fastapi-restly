@@ -164,7 +164,7 @@ business method either: `create`, `update` or `delete`. Both fail with
 `RestlyConfigurationError` when Python creates the class, also for a route
 of a mixin. A plain `View` has no business methods, so these three names are
 free there. A CRUD view class that defines `get_one`, `get_many` or `select`
-fails when Python creates it too, because the loads are final. Give the
+fails when Python creates it too, because you cannot override the loads. Give the
 route another name; its path stays the same. To change one option of a CRUD
 route, see [Change one option of a route](#modify-route). To replace a CRUD route,
 override its endpoint method, such as `create_endpoint`; see
@@ -291,9 +291,9 @@ Some rules for registration:
   {class}`RestlyMisuseWarning <fastapi_restly.exc.RestlyMisuseWarning>`. It
   usually means that a module was imported twice, or that the decorator and a
   direct call both registered the view.
-- FastAPI tries the routes in the order you added them. For a route such as
-  `/users/me` next to the CRUD routes, see
-  [Item paths and static routes](#item-route-matching).
+- FastAPI tries the routes in the order you added them. Restly adds the
+  routes that a view declares before the CRUD routes that it inherits. So a
+  route such as `/users/me` on the view works next to `/users/{id}`.
 :::
 
 (dependency-injection-on-class-attributes)=
@@ -389,7 +389,7 @@ handler, write a base view instead of a mixin. A base view subclasses the
 view class, so it has the real methods, with their types:
 
 ```python
-from fastapi_restly.views import IDType, ResponseSchema
+from fastapi_restly.views import IDType, ViewResponse
 
 
 class ArchiveView(fr.AsyncRestView):
@@ -399,7 +399,7 @@ class ArchiveView(fr.AsyncRestView):
         ARCHIVE = "archive"
 
     @fr.post("/{id}/archive", status_code=200)
-    async def archive(self, id: IDType) -> ResponseSchema:
+    async def archive(self, id: IDType) -> ViewResponse:
         obj = await self.get_one(id)
         async with self.write_action(self.Action.ARCHIVE, obj=obj):
             obj.archived = True
@@ -450,7 +450,7 @@ override for each change. Two shared concerns have their own sections:
 owner id, on Models, and [soft delete](#soft-delete-mixin) on Scopes.
 
 A route on a base view names the classes of each subclass with markers, such
-as `ResponseSchema`; see
+as `ViewResponse`; see
 [Name the view's schemas in a custom route](#name-the-view-schemas).
 
 (app-wide-base-view)=

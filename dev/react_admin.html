@@ -33,7 +33,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=b715876a" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=964c8a9c" />
   
   <!-- So that users can add custom icons -->
   <script defer src="_static/scripts/fontawesome.js?digest=18bd87630a240e9c25be"></script>
@@ -789,7 +789,7 @@ payload. So an <a class="reference internal" href="api/views.html#fastapi_restly
 method that you override changes both routes. To give <code class="docutils literal notranslate"><span class="pre">PUT</span></code> its own rules,
 <a class="reference internal" href="crud_routes.html#replace-endpoint-method"><span class="std std-ref">replace</span></a> its endpoint method <code class="docutils literal notranslate"><span class="pre">put</span></code>. This version
 requires the complete record, while <code class="docutils literal notranslate"><span class="pre">PATCH</span></code> still accepts a part of it:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi_restly.views</span><span class="w"> </span><span class="kn">import</span> <span class="n">ResponseSchema</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi_restly.views</span><span class="w"> </span><span class="kn">import</span> <span class="n">ViewResponse</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">ProductReplace</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">BaseSchema</span><span class="p">):</span>
@@ -802,7 +802,7 @@ requires the complete record, while <code class="docutils literal notranslate"><
     <span class="n">model</span> <span class="o">=</span> <span class="n">Product</span>
 
     <span class="nd">@fr</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="s2">"/</span><span class="si">{id}</span><span class="s2">"</span><span class="p">)</span>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">put</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">payload</span><span class="p">:</span> <span class="n">ProductReplace</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ResponseSchema</span><span class="p">:</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">put</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">payload</span><span class="p">:</span> <span class="n">ProductReplace</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ViewResponse</span><span class="p">:</span>
         <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_update</span><span class="p">(</span><span class="nb">id</span><span class="p">,</span> <span class="n">payload</span><span class="p">)</span>
 </pre></div>
 </div>

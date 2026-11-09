@@ -33,7 +33,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=b715876a" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=964c8a9c" />
   
   <!-- So that users can add custom icons -->
   <script defer src="_static/scripts/fontawesome.js?digest=18bd87630a240e9c25be"></script>
@@ -779,7 +779,7 @@ each value.</p>
 <p>A custom route can pass a clause as <code class="docutils literal notranslate"><span class="pre">scope=</span></code> to the handler. That clause
 replaces the view’s scope for this one read. So the trash list and the
 restore action can be routes on the same view, not a second view class:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi_restly.views</span><span class="w"> </span><span class="kn">import</span> <span class="n">IDType</span><span class="p">,</span> <span class="n">ListResponseSchema</span><span class="p">,</span> <span class="n">ResponseSchema</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi_restly.views</span><span class="w"> </span><span class="kn">import</span> <span class="n">IDType</span><span class="p">,</span> <span class="n">ViewListResponse</span><span class="p">,</span> <span class="n">ViewResponse</span>
 
 
 <span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
@@ -793,11 +793,11 @@ restore action can be routes on the same view, not a second view class:</p>
         <span class="n">RESTORE</span> <span class="o">=</span> <span class="s2">"restore"</span>
 
     <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/trash"</span><span class="p">)</span>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">trash</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">list_params</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ListResponseSchema</span><span class="p">:</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">trash</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">list_params</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ViewListResponse</span><span class="p">:</span>
         <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_get_many</span><span class="p">(</span><span class="n">list_params</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="n">ItemClauses</span><span class="o">.</span><span class="n">trashed</span><span class="p">)</span>
 
     <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">"/</span><span class="si">{id}</span><span class="s2">/restore"</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">restore</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="n">IDType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ResponseSchema</span><span class="p">:</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">restore</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="n">IDType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ViewResponse</span><span class="p">:</span>
         <span class="n">item</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_one</span><span class="p">(</span><span class="nb">id</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="n">ItemClauses</span><span class="o">.</span><span class="n">trashed</span><span class="p">)</span>
         <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">write_action</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">RESTORE</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="n">item</span><span class="p">):</span>
             <span class="n">item</span><span class="o">.</span><span class="n">deleted_at</span> <span class="o">=</span> <span class="kc">None</span>
@@ -819,7 +819,7 @@ never be replaced belongs on the session, like the
 the action itself; see <a class="reference internal" href="custom_routes.html#custom-action-route"><span class="std std-ref">Add a custom action route</span></a>. The
 route reads only the trash, so a row that is not deleted returns 404 here. To
 read without any scope on one route, pass <code class="docutils literal notranslate"><span class="pre">scope=fr.clauses.UNSCOPED</span></code>.</p>
-<p>The markers <code class="docutils literal notranslate"><span class="pre">ListResponseSchema</span></code>, <code class="docutils literal notranslate"><span class="pre">ResponseSchema</span></code> and <code class="docutils literal notranslate"><span class="pre">IDType</span></code> give the two
+<p>The markers <code class="docutils literal notranslate"><span class="pre">ViewListResponse</span></code>, <code class="docutils literal notranslate"><span class="pre">ViewResponse</span></code> and <code class="docutils literal notranslate"><span class="pre">IDType</span></code> give the two
 routes the view’s schemas, <code class="docutils literal notranslate"><span class="pre">ItemListResponse</span></code> and <code class="docutils literal notranslate"><span class="pre">ItemResponse</span></code>, and its id
 type. So OpenAPI shows the same types as for the CRUD routes, and Restly
 sends the list result and the row through the view’s response step.
@@ -837,7 +837,7 @@ the same rows as the trash route. The SaaS example puts a trash and a restore ro
 also takes <code class="docutils literal notranslate"><span class="pre">where=</span></code>. It narrows the read and keeps the scope. Here a list of
 the items in one collection still hides deleted items:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/in-collection/</span><span class="si">{collection_id}</span><span class="s2">"</span><span class="p">)</span>
-<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">in_collection</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">collection_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">list_params</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ListResponseSchema</span><span class="p">:</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">in_collection</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">collection_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">list_params</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ViewListResponse</span><span class="p">:</span>
     <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_get_many</span><span class="p">(</span>
         <span class="n">list_params</span><span class="p">,</span> <span class="n">where</span><span class="o">=</span><span class="n">Item</span><span class="o">.</span><span class="n">collection_id</span> <span class="o">==</span> <span class="n">collection_id</span>
     <span class="p">)</span>
