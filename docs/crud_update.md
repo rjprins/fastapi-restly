@@ -7,25 +7,31 @@ fields that it wants to change, and the other fields keep their values.
 each route: the endpoint method, the handler and the business method. For
 `PATCH /{id}`, these steps run:
 
-```{code-block} text
-:emphasize-lines: 2,5,8,10,12,13
+:::{call-tree}
+- `PATCH /{id}`
+  - {override}`update_endpoint(id, data) <fastapi_restly.views.RestView.update_endpoint>`
+    The endpoint method. FastAPI has checked `data` against the update schema.
+    - {meth}`handle_update(id, data) <fastapi_restly.views.RestView.handle_update>`
+      The handler. It is final.
+      - {meth}`get_one(id) <fastapi_restly.views.RestView.get_one>`
+        Loads the row through the scope. A missing or hidden row is a 404.
+      - {override}`authorize("update", obj=obj, data=data) <fastapi_restly.views.RestView.authorize>`
+        A refusal is a 403.
+      - Check the [references](#reference-exists) in the data. An id that does
+        not exist is a 404.
+      - {meth}`snapshot(obj) <fastapi_restly.views.BaseRestView.snapshot>`
+        Takes `old`: the column values before the change.
+      - {override}`update(obj, data) <fastapi_restly.views.RestView.update>`
+        The business method: it changes the row.
+      - Save: flush, and refresh the row.
+      - {override}`before_action_commit("update", new=obj, old=old) <fastapi_restly.views.RestView.before_action_commit>`
+      - Commit.
+      - {override}`after_action_commit("update", new=obj, old=old) <fastapi_restly.views.RestView.after_action_commit>`
+    - {override}`to_single_response(obj) <fastapi_restly.views.BaseRestView.to_single_response>`
+      The response.
+:::
 
-PATCH /{id}
-  └─ update_endpoint(id, data)              # endpoint method
-       ├─ handle_update(id, data)           # handler (final)
-       │    ├─ get_one(id)                  # loads the row through the scope, or 404
-       │    ├─ authorize("update", obj=obj, data=data)   # or 403
-       │    ├─ check the references in data # an id that does not exist: 404
-       │    ├─ old = snapshot(obj)          # the column values before the change
-       │    ├─ update(obj, data)            # business method: the change
-       │    ├─ save                         # flush and refresh the row
-       │    ├─ before_action_commit("update", new=obj, old=old)
-       │    ├─ commit
-       │    └─ after_action_commit("update", new=obj, old=old)
-       └─ to_single_response(obj)           # the response
-```
-
-The highlighted lines are the methods that you can override. Before
+A method marked *override* is a method that you can override in your view. Before
 `update_endpoint` runs, FastAPI checks the request body against the view's
 {attr}`update_schema <fastapi_restly.views.BaseRestView.update_schema>`. A
 body that does not fit returns 422, and none of the steps run.

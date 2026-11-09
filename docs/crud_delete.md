@@ -6,23 +6,27 @@ with status 204. [How a CRUD route runs](#view-request-steps) explains the
 three methods of each route: the endpoint method, the handler and the
 business method. For `DELETE /{id}`, these steps run:
 
-```{code-block} text
-:emphasize-lines: 2,5,7,9,11
+:::{call-tree}
+- `DELETE /{id}`
+  - {override}`delete_endpoint(id) <fastapi_restly.views.RestView.delete_endpoint>`
+    The endpoint method. The response is empty, with status 204.
+    - {meth}`handle_delete(id) <fastapi_restly.views.RestView.handle_delete>`
+      The handler. It is final.
+      - {meth}`get_one(id) <fastapi_restly.views.RestView.get_one>`
+        Loads the row through the scope. A missing or hidden row is a 404.
+      - {override}`authorize("delete", obj=obj) <fastapi_restly.views.RestView.authorize>`
+        A refusal is a 403.
+      - {meth}`snapshot(obj) <fastapi_restly.views.BaseRestView.snapshot>`
+        Takes `old`: the column values before the delete.
+      - {override}`delete(obj) <fastapi_restly.views.RestView.delete>`
+        The business method: it marks the row for deletion.
+      - Save: flush. The `DELETE` statement runs here.
+      - {override}`before_action_commit("delete", new=None, old=old) <fastapi_restly.views.RestView.before_action_commit>`
+      - Commit.
+      - {override}`after_action_commit("delete", new=None, old=old) <fastapi_restly.views.RestView.after_action_commit>`
+:::
 
-DELETE /{id}
-  └─ delete_endpoint(id)                # endpoint method; the response is a 204
-       └─ handle_delete(id)             # handler (final)
-            ├─ get_one(id)              # loads the row through the scope, or 404
-            ├─ authorize("delete", obj=obj)   # or 403
-            ├─ old = snapshot(obj)      # the column values before the delete
-            ├─ delete(obj)              # business method: marks the row for deletion
-            ├─ save                     # flush: the DELETE runs here
-            ├─ before_action_commit("delete", new=None, old=old)
-            ├─ commit
-            └─ after_action_commit("delete", new=None, old=old)
-```
-
-The highlighted lines are the methods that you can override.
+A method marked *override* is a method that you can override in your view.
 
 (delete-what-to-change)=
 ## What you can change

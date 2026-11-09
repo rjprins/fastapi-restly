@@ -7,23 +7,27 @@ the new row, and the response holds the saved row with its id.
 each route: the endpoint method, the handler and the business method. For
 `POST /`, these steps run:
 
-```{code-block} text
-:emphasize-lines: 2,4,6,8,10,11
+:::{call-tree}
+- `POST /`
+  - {override}`create_endpoint(data) <fastapi_restly.views.RestView.create_endpoint>`
+    The endpoint method. FastAPI has checked `data` against the create schema.
+    - {meth}`handle_create(data) <fastapi_restly.views.RestView.handle_create>`
+      The handler. It is final.
+      - {override}`authorize("create", data=data) <fastapi_restly.views.RestView.authorize>`
+        A refusal is a 403.
+      - Check the [references](#reference-exists) in the data. An id that does
+        not exist is a 404.
+      - {override}`create(data) <fastapi_restly.views.RestView.create>`
+        The business method: it builds the object.
+      - Save: add the object to the session, flush, and refresh it.
+      - {override}`before_action_commit("create", new=obj, old=None) <fastapi_restly.views.RestView.before_action_commit>`
+      - Commit.
+      - {override}`after_action_commit("create", new=obj, old=None) <fastapi_restly.views.RestView.after_action_commit>`
+    - {override}`to_single_response(obj) <fastapi_restly.views.BaseRestView.to_single_response>`
+      The response, with status 201.
+:::
 
-POST /
-  └─ create_endpoint(data)                # endpoint method
-       ├─ handle_create(data)             # handler (final)
-       │    ├─ authorize("create", data=data)   # or 403
-       │    ├─ check the references in data     # an id that does not exist: 404
-       │    ├─ create(data)               # business method: builds the object
-       │    ├─ save                       # flush and refresh the new row
-       │    ├─ before_action_commit("create", new=obj, old=None)
-       │    ├─ commit
-       │    └─ after_action_commit("create", new=obj, old=None)
-       └─ to_single_response(obj)         # the response, with status 201
-```
-
-The highlighted lines are the methods that you can override. Before
+A method marked *override* is a method that you can override in your view. Before
 `create_endpoint` runs, FastAPI checks the request body against the view's
 {attr}`create_schema <fastapi_restly.views.BaseRestView.create_schema>`. A
 body that does not fit returns 422, and none of the steps run.

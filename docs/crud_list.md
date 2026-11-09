@@ -8,22 +8,29 @@ it has no business method and no commit.
 [How a CRUD route runs](#view-request-steps) explains the methods of each
 route. For `GET /`, these steps run:
 
-```{code-block} text
-:emphasize-lines: 2,4,7,8,9,10
+:::{call-tree}
+- `GET /`
+  - {override}`get_many_endpoint(list_params) <fastapi_restly.views.RestView.get_many_endpoint>`
+    The endpoint method.
+    - {meth}`handle_get_many(list_params) <fastapi_restly.views.RestView.handle_get_many>`
+      The handler. It is final.
+      - {override}`authorize("get_many") <fastapi_restly.views.RestView.authorize>`
+        There is no row yet. A refusal is a 403.
+      - {meth}`get_many(list_params) <fastapi_restly.views.RestView.get_many>`
+        The load. It is final.
+        - {meth}`select() <fastapi_restly.views.BaseRestView.select>`
+          The model, the scope and the loader options.
+        - {override}`apply_list_params(stmt, list_params) <fastapi_restly.views.RestView.apply_list_params>`
+          The filters, the sort and the page.
+        - {override}`count(stmt) <fastapi_restly.views.RestView.count>`
+          The total, on a paginated view.
+    - {override}`to_list_response(result) <fastapi_restly.views.BaseRestView.to_list_response>`
+      The list response.
+      - {override}`to_single_response(row) <fastapi_restly.views.BaseRestView.to_single_response>`
+        The response of each row.
+:::
 
-GET /
-  └─ get_many_endpoint(list_params)           # endpoint method
-       ├─ handle_get_many(list_params)        # handler (final)
-       │    ├─ authorize("get_many")          # or 403; there is no row yet
-       │    └─ get_many(list_params)          # the load (final)
-       │         ├─ select()                  # the model, the scope and the loader options
-       │         ├─ apply_list_params(stmt, list_params)   # filters, sort, page
-       │         └─ count(stmt)               # the total, on a paginated view
-       └─ to_list_response(result)            # the list response
-            └─ to_single_response(row)        # for each row
-```
-
-The highlighted lines are the methods that you can override.
+A method marked *override* is a method that you can override in your view.
 [Visibility, then policy](#read-request-steps) explains the scope and
 `authorize` of a read.
 

@@ -6,21 +6,27 @@ it has no business method and no commit.
 [How a CRUD route runs](#view-request-steps) explains the methods of each
 route. For `GET /{id}`, these steps run:
 
-```{code-block} text
-:emphasize-lines: 2,6,7,8,9
+:::{call-tree}
+- `GET /{id}`
+  - {override}`get_one_endpoint(id) <fastapi_restly.views.RestView.get_one_endpoint>`
+    The endpoint method.
+    - {meth}`handle_get_one(id) <fastapi_restly.views.RestView.handle_get_one>`
+      The handler. It is final.
+      - {meth}`get_one(id) <fastapi_restly.views.RestView.get_one>`
+        The load. It is final.
+        - {meth}`select() <fastapi_restly.views.BaseRestView.select>`
+          The model, the scope and the loader options.
+        - {override}`where_id(id) <fastapi_restly.views.BaseRestView.where_id>`
+          The WHERE that picks the row: the primary key by default.
+        - {override}`not_found(id) <fastapi_restly.views.BaseRestView.not_found>`
+          The error when no row matches: a 404 by default.
+      - {override}`authorize("get_one", obj=obj) <fastapi_restly.views.RestView.authorize>`
+        A refusal is a 403.
+    - {override}`to_single_response(obj) <fastapi_restly.views.BaseRestView.to_single_response>`
+      The response.
+:::
 
-GET /{id}
-  └─ get_one_endpoint(id)                 # endpoint method
-       ├─ handle_get_one(id)              # handler (final)
-       │    ├─ get_one(id)                # the load (final)
-       │    │    ├─ select()              # the model, the scope and the loader options
-       │    │    ├─ .where(where_id(id))  # the primary key by default
-       │    │    └─ no row: raise not_found(id)   # a 404 by default
-       │    └─ authorize("get_one", obj=obj)      # or 403
-       └─ to_single_response(obj)         # the response
-```
-
-The highlighted lines are the methods that you can override.
+A method marked *override* is a method that you can override in your view.
 
 (get-one-what-to-change)=
 ## What you can change
