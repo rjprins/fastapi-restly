@@ -44,8 +44,8 @@ Each route of a `RestView` has two layers that you can change:
 
 Between the two layers, Restly runs a fixed set of steps, such as loading a
 row from the database, checking access and committing.
-[Request Lifecycle & Hooks](lifecycle.md) shows all steps in order, and which
-ones you can override.
+[How a CRUD route runs](#view-request-steps) shows all steps in order, and
+which ones you can override.
 
 Some things you write only once:
 
@@ -84,27 +84,39 @@ ordinary SQLAlchemy models on a declarative base of your own.
 
 ## Views & Routes
 
-A view is a class that groups related endpoints. A CRUD view serves five
-routes for one model by default. Each route runs a fixed list of steps, such
-as `authorize` and `create`. To change a route, you override the method of
-one step. [View Reference](view_reference.md) lists everything that you can
-set, override or call on a view.
+A view is a class that groups related endpoints under one URL prefix.
+[View Reference](view_reference.md) lists everything that you can set,
+override or call on a view.
 
 - [Views](views.md): the view classes, how to declare routes, add a decorator
   and register a view, routes that are not CRUD, such as login and webhooks, and
   how views share behavior through base classes.
-- [CRUD Routes](crud_routes.md): the five default routes, async or sync, how
-  to change one option of a route, how to leave some routes out, and how to
-  serve a child resource under its parent.
-- [Request Lifecycle & Hooks](lifecycle.md): the steps of a request, which
-  method to override for each change, a value on each row, a lookup by
-  another key, custom routes, what commits when, code that must commit, several
-  writes in one commit, and the same logic in a script or a worker.
 - [React Admin](react_admin.md): connect react-admin to a view, the list
   format and the routes that react-admin expects, to-many id arrays, CORS,
   and a list that shows no rows.
 - [Type Annotations](typing.md): type the schema, the methods that you
   override and your custom routes.
+
+## CRUD Routes
+
+A CRUD view serves five routes for one model by default: list, get one,
+create, update and delete. Each route runs a fixed list of steps, such as
+`authorize` and the commit. Each route has a page that shows its steps in
+order, and what you can change, from a rule on the schema to a route of your
+own.
+
+- [Overview](crud_routes.md): the five default routes, how a route runs,
+  async or sync, how to change one option of a route, and how to leave some
+  routes out.
+- [Update](crud_update.md): the steps of `PATCH /{id}`, what you can change,
+  the `update` method, a `PUT` route, and an update from a custom route.
+- [Request Lifecycle & Hooks](lifecycle.md): which method to override for
+  each change, a value on each row, a lookup by another key, custom routes,
+  what commits when, code that must commit, several writes in one commit, and
+  the same logic in a script or a worker.
+- [Nested Routes](nested_routes.md): serve a child resource under its
+  parent, create a child, limit the parents that a client can reach, and nest
+  more than one level.
 
 ## Requests & Responses
 
@@ -202,10 +214,19 @@ models
 :hidden:
 
 views
-crud_routes
-lifecycle
 react_admin
 typing
+```
+
+```{toctree}
+:caption: CRUD Routes
+:maxdepth: 1
+:hidden:
+
+Overview <crud_routes>
+crud_update
+lifecycle
+nested_routes
 ```
 
 ```{toctree}

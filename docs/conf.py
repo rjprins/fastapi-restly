@@ -110,7 +110,7 @@ redirects = {
     "howto_relationship_loading": "relationships.html",
     "howto_inheritance": "views.html",
     "howto_compose_views_with_mixins": "models.html",
-    "howto_nested": "crud_routes.html",
+    "howto_nested": "nested_routes.html",
     "howto_existing_project": "existing_projects.html",
     "technical_details": "schemas.html",
     "howto_project_structure": "new_projects.html",

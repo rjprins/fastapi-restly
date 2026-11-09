@@ -19,11 +19,10 @@ configuration and the model around such a view, in one file that runs.
 `include_view` also works as a direct call; see
 [Register a view](#register-a-view).
 
-Each route runs an endpoint method, a final handler, and a business method
-or, for a read, a final load. To change what a route does, you override the
-endpoint method or the business method, or set what the load reads;
-[Which method do I override](#which-method-to-override) maps each change to
-its method.
+Each route runs a fixed list of steps, such as loading the row, `authorize`
+and the commit. [How a CRUD route runs](#view-request-steps) explains these
+steps. Each route also has a page of its own, such as [Update](crud_update.md).
+It shows the steps of that route in order, and a table of what you can change.
 
 (choose-async-or-sync)=
 ## Choose async or sync
@@ -57,7 +56,7 @@ For `prefix = "/users"`, `include_view` registers these routes:
 | `GET /users` | {meth}`get_many_endpoint <fastapi_restly.views.AsyncRestView.get_many_endpoint>` | Filter, sort and page parameters | A page of objects in a `data` envelope | `200` |
 | `POST /users` | {meth}`create_endpoint <fastapi_restly.views.AsyncRestView.create_endpoint>` | `create_schema` | `response_schema` | `201` |
 | `GET /users/{id}` | {meth}`get_one_endpoint <fastapi_restly.views.AsyncRestView.get_one_endpoint>` | The id in the path | `response_schema` | `200` |
-| `PATCH /users/{id}` | {meth}`update_endpoint <fastapi_restly.views.AsyncRestView.update_endpoint>` | `update_schema` | `response_schema` | `200` |
+| [`PATCH /users/{id}`](crud_update.md) | {meth}`update_endpoint <fastapi_restly.views.AsyncRestView.update_endpoint>` | `update_schema` | `response_schema` | `200` |
 | `DELETE /users/{id}` | {meth}`delete_endpoint <fastapi_restly.views.AsyncRestView.delete_endpoint>` | The id in the path | Empty body | `204` |
 
 The main path of the list is `/users`, without a slash at the end. Restly
@@ -130,6 +129,170 @@ and `/users/me` still works after the view.
 OpenAPI does not allow two paths that differ only in the names of their
 parameters. So `/{id}` next to `/{user_id}` on one view raises an error when you
 register the view. Use the same name in both paths.
+:::
+
+(view-request-steps)=
+## How a CRUD route runs
+
+Take `POST /`, the create route. FastAPI calls
+{meth}`create_endpoint <fastapi_restly.views.RestView.create_endpoint>`, the
+**endpoint method**. It calls
+{meth}`handle_create <fastapi_restly.views.RestView.handle_create>`, the
+**handler**. The handler runs the steps in this order:
+
+```{code-block} text
+:emphasize-lines: 2,4,6,7,9,11,12
+
+POST /
+  └─ create_endpoint(data)                # endpoint method: the HTTP contract
+       ├─ handle_create(data)             # handler: runs the steps (final)
+       │    ├─ authorize("create", data=data)
+       │    ├─ check the references in data   # an id that does not exist: 404
+       │    ├─ create(data)               # business method: builds the object;
+       │    │                             #   nothing is written yet
+       │    ├─ save: flush, refresh obj, load it with the loader options
+       │    ├─ before_action_commit("create", new=obj, old=None)
+       │    ├─ commit
+       │    └─ after_action_commit("create", new=obj, old=None)
+       └─ to_single_response(obj)
+```
+
+The highlighted lines are the methods that you can override in your view.
+The page of each route, such as [Update](crud_update.md), shows the steps of
+that route.
+
+Every CRUD route has these three methods. The names follow one pattern for
+all five actions: `update_endpoint` calls `handle_update`, which calls
+`update`, and so on. A read has a load in the place of the business method.
+
+- The **endpoint method**, `<verb>_endpoint`, is the method that FastAPI
+  calls. It owns the HTTP contract: the route decorator, the parameters and
+  the `response_model`. It returns the row, and Restly builds the response with
+  {meth}`to_single_response <fastapi_restly.views.BaseRestView.to_single_response>`.
+  To change one option of the route, such as the status code, use
+  {func}`fr.modify_route <fastapi_restly.views.modify_route>`. Replace the method
+  only when the change needs code. See
+  [Replace the endpoint method of one route](#replace-endpoint-method).
+- The **handler**, `handle_<verb>`, runs the steps. It calls
+  {meth}`authorize <fastapi_restly.views.RestView.authorize>`, checks the
+  [references](#reference-exists) in the data, and then calls the business
+  method. On a write, it ends with the **commit bracket**: it saves the
+  object, runs
+  {meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>`,
+  commits, then runs
+  {meth}`after_action_commit <fastapi_restly.views.RestView.after_action_commit>`.
+  It returns the object. Only the delete handler returns nothing. A handler
+  is final: a view class that defines one fails when Python creates the
+  class. A custom route calls a handler to run the same steps.
+- The **business method** of a write is the bare verb:
+  {meth}`create <fastapi_restly.views.RestView.create>`,
+  {meth}`update <fastapi_restly.views.RestView.update>` or
+  {meth}`delete <fastapi_restly.views.RestView.delete>`. It makes the
+  change: it builds the object or applies the input to it, and returns it. It
+  does not check permissions, does not flush and does not commit. So when your
+  override runs, `authorize` and the reference checks have already passed.
+  Nothing is written while it runs. The save after it writes the change, and
+  then the commit follows.
+- A read has a **load**:
+  {meth}`get_one <fastapi_restly.views.RestView.get_one>` or
+  {meth}`get_many <fastapi_restly.views.RestView.get_many>`. A load is
+  final, as a handler is. You change it through the scope, the list params,
+  the loader options and two small hooks. See [A read](#read-request-steps).
+
+:::{admonition} Details
+:class: details
+
+Update and delete have the same steps, with a load first. Their handlers load
+the row through {meth}`get_one <fastapi_restly.views.RestView.get_one>`, so a
+row that the caller cannot see is a 404. Then they call `authorize` with the
+loaded row, check the references in the data, and take a
+{meth}`snapshot <fastapi_restly.views.BaseRestView.snapshot>` of it as `old`.
+The business method runs next, then the commit bracket. The delete business
+method only marks the row for deletion.
+
+The row that an action is about is its **subject**: the object that `create`
+or `update` returns, or the row that `delete` gets. `old` is the subject
+before the action, and `new` is the subject after it. So the hooks can see
+what changed. After a delete, the row is gone and `new` is `None`. A soft
+delete keeps the row, so `new` is the row.
+
+The save is the step that `session.flush()` and `session.refresh()` do in
+plain SQLAlchemy. It flushes the session. Then it refreshes the subject, and
+every other row of the view's model that the action wrote. It loads them
+with the view's
+[loader options](#eager-load-extra-relationships), as a read does: the
+relationships that the response shows, and any value that you add there. So
+the hooks and the response see the saved rows. Rows of other models are
+written, but not refreshed.
+
+The business method runs under SQLAlchemy's
+{attr}`session.no_autoflush <sqlalchemy.orm.Session.no_autoflush>`.
+So a query inside it does not write a half-built object, also on a
+{class}`RestView <fastapi_restly.views.RestView>`, whose session flushes
+before each query everywhere else.
+:::
+
+(read-request-steps)=
+### A read: visibility, then policy
+
+A read has no commit bracket and no business method. Its load is final. Each
+step of the load comes from a declaration or from a small hook:
+
+```{code-block} text
+:emphasize-lines: 2,7,8,9,10,13,15,18,19,20,21
+
+GET /{id}
+  └─ get_one_endpoint(id)                     # endpoint method
+       ├─ handle_get_one(id)                  # handler
+       │    ├─ get_one(id)                    # the load (final)
+       │    │    ├─ select()                  # select(model), the scope, the loader options
+       │    │    │                            #   VISIBILITY: a hidden row is a 404 for every caller
+       │    │    ├─ .where(where_id(id))      # hook: the primary key by default
+       │    │    └─ no row: raise not_found(id)   # hook: a 404 by default
+       │    └─ authorize("get_one", obj=obj)  # POLICY: checks the loaded row
+       └─ to_single_response(obj)             # the response of the row
+
+GET /
+  └─ get_many_endpoint(list_params)
+       ├─ handle_get_many(list_params)
+       │    ├─ authorize("get_many")          # POLICY: no row yet
+       │    └─ get_many(list_params)          # the load (final)
+       │         ├─ select()                  # the same start as get_one
+       │         ├─ apply_list_params(stmt, list_params)   # filters, sort, page
+       │         └─ count(stmt)               # on a paginated view
+       └─ to_list_response(result)
+            └─ to_single_response(row)        # for each row
+```
+
+The highlighted lines are the methods that you can override in your view.
+
+- **Visibility.** The load starts from
+  {meth}`select() <fastapi_restly.views.BaseRestView.select>`: the model with
+  the view's scope. A row outside the scope is a 404 for every caller, as if
+  the row did not exist. See [Scopes](scopes.md).
+- **Policy.** The handler calls `authorize`. For one row, it gets the loaded
+  row, and a refusal is a 403. See [Authorization](authorization.md).
+
+`PATCH /{id}`, `DELETE /{id}` and your action routes load their row with the
+same `get_one`. So the scope,
+{meth}`where_id <fastapi_restly.views.BaseRestView.where_id>` and
+{meth}`not_found <fastapi_restly.views.BaseRestView.not_found>` apply to them
+too.
+
+:::{admonition} Details
+:class: details
+
+The loads are final: a view class that defines `get_one`, `get_many` or
+`select` fails when Python creates the class. The message names the place
+for each change. An override of a load could leave out the scope, or the
+`scope=` that a route asked for, and nothing would tell you. With final
+loads, the scope always applies.
+
+`select()` also adds the options of
+{meth}`get_loader_options <fastapi_restly.views.BaseRestView.get_loader_options>`,
+so the rows are ready for the response. A custom read starts from it too, as
+in `self.select().where(Item.price > 10)`. In a count, a subquery or a select
+of some columns, SQLAlchemy leaves the loader options out.
 :::
 
 (crud-model-and-schemas)=
@@ -373,320 +536,6 @@ name, so a typo such as `delte_endpoint = None` leaves out nothing.
 because there is no route to change.
 :::
 
-(nested-resources)=
-## Nest a resource under its parent
-
-A nested resource is a child resource that the URL places under its parent,
-such as `/projects/{project_id}/tasks`. In Restly, it is a normal
-{class}`AsyncRestView <fastapi_restly.views.AsyncRestView>` with three
-additions: a path parameter in its `prefix`, a dependency that looks up the
-parent, and a {attr}`scope <fastapi_restly.views.BaseRestView.scope>` that
-limits the rows to that parent. Every CRUD route keeps working, including
-pages, filters and sorting.
-
-A flat view that filters on the foreign key, `GET /tasks?project_id=17`,
-needs no extra code; see [Filter by a foreign key](#foreign-key-filtering).
-Nest the view when the nested URL is part of your API.
-
-(nested-one-level)=
-### Nest one level
-
-This example serves the tasks of a project at
-`/projects/{project_id}/tasks`:
-
-```python
-import sqlalchemy as sa
-from fastapi import FastAPI
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-
-import fastapi_restly as fr
-
-
-class Base(fr.ModelDefaults, DeclarativeBase):
-    pass
-
-
-class Project(fr.IDMixin, Base):
-    name: Mapped[str]
-    archived: Mapped[bool] = mapped_column(default=False)
-
-
-class Task(fr.IDMixin, Base):
-    title: Mapped[str]
-    project_id: Mapped[int] = mapped_column(sa.ForeignKey("project.id"), init=False)
-
-
-class ProjectSchema(fr.IDSchema):
-    name: str
-
-
-class TaskSchema(fr.IDSchema):
-    title: str
-    project_id: fr.ReadOnly[int]
-
-
-class Parent(fr.ContextNamespace):
-    project_id: fr.ContextParam[int]
-
-
-app = FastAPI()
-fr.configure(app, async_database_url="sqlite+aiosqlite:///app.db")
-
-
-@fr.include_view(app)
-class ProjectView(fr.AsyncRestView):
-    prefix = "/projects"
-    model = Project
-    schema = ProjectSchema
-    scope = fr.where_clause(Project.archived.is_(False))
-
-
-async def project_from_path(project_id: int, session: fr.AsyncSessionDep) -> int:
-    stmt = fr.apply_clauses(
-        sa.select(Project.id).where(Project.id == project_id),
-        fr.resolve_scope(ProjectView),
-    )
-    found = await session.scalar(stmt)
-    if found is None:
-        raise fr.exc.NotFound(f"Project with id {project_id} was not found")
-    return found
-
-
-@fr.include_view(app)
-class ProjectTaskView(fr.AsyncRestView):
-    prefix = "/projects/{project_id}/tasks"
-    model = Task
-    schema = TaskSchema
-    dependencies = [Parent.depends(project_id=project_from_path)]
-    scope = fr.all_of(
-        fr.resolve_scope(Task),
-        fr.where_clause(Task.project_id == Parent.project_id),
-    )
-
-    async def create(self, data):
-        task = await super().create(data)
-        task.project_id = Parent.project_id()
-        return task
-```
-
-`ProjectTaskView` differs from a flat view in these places:
-
-- `prefix` contains `{project_id}`, so every route of the view is under a
-  project. Name the path parameter after the parent, as here. The item routes
-  already use `{id}`, and FastAPI raises an error for a second `{id}` when you
-  register the view.
-- `project_from_path` reads `project_id` from the path. FastAPI checks that it
-  is an integer, and OpenAPI lists it on every route. The function returns
-  `404` when the project does not exist or when `ProjectView` hides it.
-- {meth}`Parent.depends <fastapi_restly.clauses.ContextNamespace.depends>`
-  binds the project id for the request. `Parent` is a
-  {class}`fr.ContextNamespace <fastapi_restly.clauses.ContextNamespace>`, like
-  `Current` in [Request Context](#current-request-binding). One `Parent`
-  serves every nested view in the app.
-- `scope` limits every read to the tasks of that project: the list, its
-  total count, get one, update and delete. A task of another project returns
-  `404`. A view's scope replaces the model's default scope
-  ([Give one view other rows](#view-scope)), so `fr.resolve_scope(Task)`
-  adds the default scope back.
-- `create` sets the project id; see [Create a child](#nested-create).
-
-The routes then answer like this:
-
-```text
-GET    /projects/1/tasks?sort=-title   the tasks of project 1, by title, descending
-POST   /projects/1/tasks               a new task in project 1
-GET    /projects/2/tasks/7             404 when task 7 is in another project
-GET    /projects/99/tasks              404 when project 99 does not exist
-GET    /projects/x/tasks               422, x is not an integer
-```
-
-:::{admonition} Details
-:class: details
-
-A sync {class}`fr.RestView <fastapi_restly.views.RestView>` works in the same
-way. Write the lookups as plain functions that take
-{data}`fr.SessionDep <fastapi_restly.db.SessionDep>`, and write the `create`
-override as a plain `def` without `await`.
-:::
-
-(nested-create)=
-### Create a child
-
-The project id comes from the path, not from the request body. `TaskSchema`
-marks `project_id` as {data}`fr.ReadOnly <fastapi_restly.schemas.ReadOnly>`,
-so the generated create and update schemas leave it out. The `create`
-override sets it from `Parent` after `super().create()` builds the task. The
-INSERT has the id, because Restly saves after `create` returns.
-
-Declare the foreign key with `init=False`. `super().create()` builds the task
-from the request body, which has no `project_id`. Without `init=False`, the
-model requires `project_id` in its constructor, and the create returns `500`.
-
-Keep the parent id out of every write schema of the nested view. If
-`TaskSchema` declared a writable `project_id`, the generated update schema
-would include it. An [explicit write schema](#explicit-write-schemas) writes
-every field it declares. In both cases, a `PATCH` request could move the task
-to a project that the URL never named, and the lookup would not check it.
-
-:::{admonition} Details
-:class: details
-
-Set the parent id in the view, not in a column default that reads
-`Parent.project_id`. Only the nested route knows the parent, so the value
-belongs in `create`; see [Values every write path sets](#write-path-values)
-for the difference. With such a default, creating a task anywhere else
-fails, for example in a flat view or a script, because nothing binds
-`Parent` there.
-:::
-
-(nested-parent-access)=
-### Which parents a client can reach
-
-The lookup decides which parents a client can reach. `project_from_path`
-applies the scope of `ProjectView` through
-{func}`fr.resolve_scope <fastapi_restly.views.resolve_scope>`. So a project
-that `GET /projects/{id}` hides also returns `404` here, with all of its
-tasks. In the example, that is an archived project.
-
-Without this check, `POST /projects/{project_id}/tasks` creates a task in any
-project whose id a client can guess.
-
-The lookup does not run the
-{meth}`authorize <fastapi_restly.views.AsyncRestView.authorize>` method of
-`ProjectView`. Put rules about which rows a user may see in a scope, so that
-both views apply them. The nested view still runs its own `authorize` on each
-of its routes.
-
-(nested-deeper)=
-### Nest more than one level
-
-For more levels, build a chain of base views, one for each level. Each base
-adds its segment to `prefix` and its lookup to `dependencies`. Both add up
-from base to subclass; see [Concatenate URL prefixes](#prefix-concatenation).
-This example serves tasks at
-`/companies/{company_id}/projects/{project_id}/tasks`. It is a separate app.
-It uses the imports, `app`, `Base`, `Task` and `TaskSchema` of the first
-example, and its own `Project`, `Parent` and lookups:
-
-```python
-from typing import Annotated
-
-from fastapi import Depends
-
-
-class Company(fr.IDMixin, Base):
-    name: Mapped[str]
-
-
-class Project(fr.IDMixin, Base):
-    name: Mapped[str]
-    company_id: Mapped[int] = mapped_column(sa.ForeignKey("company.id"), init=False)
-
-
-class Parent(fr.ContextNamespace):
-    company_id: fr.ContextParam[int]
-    project_id: fr.ContextParam[int]
-
-
-async def company_from_path(company_id: int, session: fr.AsyncSessionDep) -> int:
-    stmt = fr.apply_clauses(
-        sa.select(Company.id).where(Company.id == company_id),
-        fr.resolve_scope(Company),
-    )
-    found = await session.scalar(stmt)
-    if found is None:
-        raise fr.exc.NotFound(f"Company with id {company_id} was not found")
-    return found
-
-
-async def project_from_path(
-    project_id: int,
-    company_id: Annotated[int, Depends(company_from_path)],
-    session: fr.AsyncSessionDep,
-) -> int:
-    stmt = fr.apply_clauses(
-        sa.select(Project.id).where(
-            Project.id == project_id, Project.company_id == company_id
-        ),
-        fr.resolve_scope(Project),
-    )
-    found = await session.scalar(stmt)
-    if found is None:
-        raise fr.exc.NotFound(f"Project with id {project_id} was not found")
-    return found
-
-
-class CompanyScoped(fr.AsyncRestView):
-    prefix = "/companies/{company_id}"
-    dependencies = [Parent.depends(company_id=company_from_path)]
-
-
-class ProjectScoped(CompanyScoped):
-    prefix = "/projects/{project_id}"
-    dependencies = [Parent.depends(project_id=project_from_path)]
-
-
-@fr.include_view(app)
-class ProjectTaskView(ProjectScoped):
-    prefix = "/tasks"
-    model = Task
-    schema = TaskSchema
-    scope = fr.all_of(
-        fr.resolve_scope(Task),
-        fr.where_clause(Task.project_id == Parent.project_id),
-    )
-
-    async def create(self, data):
-        task = await super().create(data)
-        task.project_id = Parent.project_id()
-        return task
-```
-
-`project_from_path` gets the company id from `company_from_path` as a FastAPI
-sub-dependency. FastAPI runs the company lookup first, once per request, and
-returns `404` for an unknown company. The project query also checks that the
-project belongs to that company. So `/companies/2/projects/1/tasks` returns
-`404` when project 1 is in company 1.
-
-Each lookup applies the scope of its parent, as in
-[Which parents a client can reach](#nested-parent-access). This example has
-no views for companies or projects, so it passes the models. When a view
-serves the parent, such as a `ProjectView`, pass the view instead. The nested
-routes then hide what that view hides.
-
-:::{admonition} Details
-:class: details
-
-Do not read `Parent.company_id()` in `project_from_path` instead. When the
-company id in the path is not an integer, FastAPI still runs the project
-lookup. `Parent.company_id` is then not bound, and the request returns `500`
-instead of `422`.
-
-Let each base inherit the one above it, as `ProjectScoped` inherits
-`CompanyScoped`. Two mixins side by side,
-`class ProjectTaskView(CompanyMixin, ProjectMixin, fr.AsyncRestView)`, add their
-segments in reverse order: `/projects/{project_id}/companies/{company_id}/tasks`.
-
-Each level adds one query to every request.
-:::
-
-(nested-and-flat-views)=
-### A flat view next to the nested one
-
-A model can have a flat view and nested views at the same time, such as a
-`TaskView` at `/tasks` next to `ProjectTaskView`. Watch these points:
-
-- Each view applies its own scope. Rows that the scope of `TaskView` hides,
-  such as the tasks of other users, still show under the nested URL. To hide
-  them there too, use `fr.resolve_scope(TaskView)` instead of
-  `fr.resolve_scope(Task)` in the scope of `ProjectTaskView`.
-- `TaskView` cannot create tasks with `TaskSchema`, because `project_id` is
-  read-only there. Give `TaskView` its own `create_schema`, a
-  `fr.BaseSchema` with `project_id: fr.MustExist[int, Project]`. Keep
-  `project_id` read-only in `TaskSchema`; see [Create a child](#nested-create).
-- Both views appear under the "Tasks" tag in OpenAPI, unless you set
-  {attr}`tags <fastapi_restly.views.View.tags>`.
-
 (crud-limits)=
 ## What the default routes do not do
 
@@ -706,12 +555,17 @@ The default CRUD routes have these limits:
   change the payload in a business method; see
   [Relationships](relationships.md).
 - The update route uses `PATCH`, not `PUT`. Add a `PUT` route only when the
-  client needs one.
+  client needs one; see [Replace `update_endpoint`](#replace-update-endpoint).
 
 ## See also
 
 - [Build a Blog API](tutorial.md): build and run a first resource.
-- [Request Lifecycle & Hooks](lifecycle.md): change what a route does.
+- [Update](crud_update.md): the steps of `PATCH /{id}` and what you can
+  change.
+- [Request Lifecycle & Hooks](lifecycle.md): the business methods, the
+  commit and its hooks, and custom routes.
+- [Nested Routes](nested_routes.md): serve a child resource under its
+  parent.
 - [Schemas & Validation](schemas.md): the fields that the routes
   accept and return.
 - [Views](views.md): registration, shared dependencies and base
