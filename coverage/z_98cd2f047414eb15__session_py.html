@@ -67,7 +67,7 @@
             <a id="nextFileLink" class="nav" href="z_6b564a2f931a106a___init___py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.17.0">coverage.py v7.17.0</a>,
-            created at 2026-11-01 21:41 +0000
+            created at 2026-11-09 21:47 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -281,7 +281,7 @@
     <p class="pln"><span class="n"><a id="t197" href="#t197">197</a></span><span class="t"><span class="str">        :class:`~fastapi_restly.exc.RestlyMisuseWarning` when ``include_view``</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t198" href="#t198">198</a></span><span class="t"><span class="str">        registers a view with an endpoint method override that calls neither</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t199" href="#t199">199</a></span><span class="t"><span class="str">        its ``handle_&lt;verb&gt;`` handler nor the endpoint method of its base, a</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t200" href="#t200">200</a></span><span class="t"><span class="str">        direct ``session.commit()``, a scalar foreign key typed as an</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t200" href="#t200">200</a></span><span class="t"><span class="str">        direct ``session.commit()`` in a CRUD view, a scalar foreign key typed as an</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t201" href="#t201">201</a></span><span class="t"><span class="str">        ``IDRef`` / ``IDSchema`` reference instead of ``fr.MustExist``, or a</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t202" href="#t202">202</a></span><span class="t"><span class="str">        writable field on a column that the model sets (``init=False`` with a</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t203" href="#t203">203</a></span><span class="t"><span class="str">        default). It also warns when a view is registered twice on the same</span>&nbsp;</span><span class="r"></span></p>
@@ -407,7 +407,7 @@
     <p class="run"><span class="n"><a id="t323" href="#t323">323</a></span><span class="t">    <span class="key">if</span> <span class="nam">session_generator</span> <span class="key">is</span> <span class="key">not</span> <span class="key">None</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t324" href="#t324">324</a></span><span class="t">        <span class="nam">_fr_config</span><span class="op">.</span><span class="nam">session_generator</span> <span class="op">=</span> <span class="nam">session_generator</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t325" href="#t325">325</a></span><span class="t">    <span class="key">if</span> <span class="nam">app</span> <span class="key">is</span> <span class="key">not</span> <span class="key">None</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t326" href="#t326">326</a></span><span class="t">        <span class="key">from</span> <span class="op">.</span><span class="op">.</span><span class="nam">views</span><span class="op">.</span><span class="nam">_openapi</span> <span class="key">import</span> <span class="nam">_ensure_patched</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t326" href="#t326">326</a></span><span class="t">        <span class="key">from</span> <span class="op">.</span><span class="op">.</span><span class="nam">views</span><span class="op">.</span><span class="nam">_openapi_names</span> <span class="key">import</span> <span class="nam">_ensure_patched</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t327" href="#t327">327</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t328" href="#t328">328</a></span><span class="t">        <span class="com"># The check for two classes with the same name in OpenAPI.</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t329" href="#t329">329</a></span><span class="t">        <span class="nam">_ensure_patched</span><span class="op">(</span><span class="nam">app</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
@@ -728,7 +728,7 @@
             <a class="nav" href="z_6b564a2f931a106a___init___py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.17.0">coverage.py v7.17.0</a>,
-            created at 2026-11-01 21:41 +0000
+            created at 2026-11-09 21:47 +0000
         </p>
     </div>
 </footer>

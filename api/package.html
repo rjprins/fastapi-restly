@@ -7,7 +7,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Package API &#8212; FastAPI-Restly 0.13.0 documentation</title>
+    <title>Package API &#8212; FastAPI-Restly 0.14.0 documentation</title>
   
   
   
@@ -32,7 +32,7 @@
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=643d5ecc" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=964c8a9c" />
   
   <!-- So that users can add custom icons -->
   <script defer src="../_static/scripts/fontawesome.js?digest=18bd87630a240e9c25be"></script>
@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=18bd87630a240e9c25be" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=18bd87630a240e9c25be" />
 
-    <script src="../_static/documentation_options.js?v=1019fba8"></script>
+    <script src="../_static/documentation_options.js?v=9e420a66"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -67,7 +67,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="color-scheme" content="light dark"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.13" />
+  <meta name="docsearch:version" content="0.14" />
   
     
     <script src="../_static/searchtools.js"></script>
@@ -584,17 +584,23 @@ through <code class="docutils literal notranslate"><span class="pre">fr</span></
 <tr class="row-odd"><td><p><a class="reference internal" href="models.html#fastapi_restly.models.ModelDefaults" title="fastapi_restly.models.ModelDefaults"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.ModelDefaults</span></code></a></p></td>
 <td><p>Restly’s defaults for models, added to your own declarative base.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.MustExist</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="views.html#fastapi_restly.views.modify_route" title="fastapi_restly.views.modify_route"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.modify_route</span></code></a></p></td>
+<td><p>Change the options of an inherited route, and keep the rest.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.MustExist</span></code></a></p></td>
 <td><p>Scalar foreign-key annotation that checks the referenced row exists.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="clauses.html#fastapi_restly.clauses.none_of" title="fastapi_restly.clauses.none_of"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.none_of</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="clauses.html#fastapi_restly.clauses.none_of" title="fastapi_restly.clauses.none_of"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.none_of</span></code></a></p></td>
 <td><p>Match the rows where none of the query clauses match.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="views.html#fastapi_restly.views.NoPagination" title="fastapi_restly.views.NoPagination"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.NoPagination</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="views.html#fastapi_restly.views.NoPagination" title="fastapi_restly.views.NoPagination"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.NoPagination</span></code></a></p></td>
 <td><p>Settings for a view’s <code class="docutils literal notranslate"><span class="pre">pagination</span></code> that returns every row, optionally with an envelope of your own.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="views.html#fastapi_restly.views.NumberedPagination" title="fastapi_restly.views.NumberedPagination"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.NumberedPagination</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="views.html#fastapi_restly.views.NumberedPagination" title="fastapi_restly.views.NumberedPagination"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.NumberedPagination</span></code></a></p></td>
 <td><p>Page-number pagination settings for a view’s <code class="docutils literal notranslate"><span class="pre">pagination</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="views.html#fastapi_restly.views.OffsetPagination" title="fastapi_restly.views.OffsetPagination"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.OffsetPagination</span></code></a></p></td>
+<td><p>Limit and offset pagination settings for a view’s <code class="docutils literal notranslate"><span class="pre">pagination</span></code>.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="db.html#fastapi_restly.db.open_async_session" title="fastapi_restly.db.open_async_session"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.open_async_session</span></code></a></p></td>
 <td><p>Open an async session outside request handling.</p></td>
@@ -602,26 +608,26 @@ through <code class="docutils literal notranslate"><span class="pre">fr</span></
 <tr class="row-odd"><td><p><a class="reference internal" href="db.html#fastapi_restly.db.open_session" title="fastapi_restly.db.open_session"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.open_session</span></code></a></p></td>
 <td><p>Open a synchronous session outside request handling.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="views.html#fastapi_restly.views.patch" title="fastapi_restly.views.patch"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.patch</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="views.html#fastapi_restly.views.Pagination" title="fastapi_restly.views.Pagination"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.Pagination</span></code></a></p></td>
+<td><p>The base class of the pagination settings, to annotate a view’s <code class="docutils literal notranslate"><span class="pre">pagination</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="views.html#fastapi_restly.views.patch" title="fastapi_restly.views.patch"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.patch</span></code></a></p></td>
 <td><p>Decorate a PATCH endpoint method.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="views.html#fastapi_restly.views.post" title="fastapi_restly.views.post"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.post</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="views.html#fastapi_restly.views.post" title="fastapi_restly.views.post"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.post</span></code></a></p></td>
 <td><p>Decorate a POST endpoint method.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="views.html#fastapi_restly.views.put" title="fastapi_restly.views.put"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.put</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="views.html#fastapi_restly.views.put" title="fastapi_restly.views.put"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.put</span></code></a></p></td>
 <td><p>Decorate a PUT endpoint method.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="views.html#fastapi_restly.views.ReactAdminView" title="fastapi_restly.views.ReactAdminView"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.ReactAdminView</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="views.html#fastapi_restly.views.ReactAdminView" title="fastapi_restly.views.ReactAdminView"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.ReactAdminView</span></code></a></p></td>
 <td><p>Synchronous CRUD view for the react-admin simple REST protocol.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="schemas.html#fastapi_restly.schemas.ReadOnly" title="fastapi_restly.schemas.ReadOnly"><code class="xref py py-data docutils literal notranslate"><span class="pre">fr.ReadOnly</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="schemas.html#fastapi_restly.schemas.ReadOnly" title="fastapi_restly.schemas.ReadOnly"><code class="xref py py-data docutils literal notranslate"><span class="pre">fr.ReadOnly</span></code></a></p></td>
 <td><p>Mark a field as excluded from generated create and update schemas.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="views.html#fastapi_restly.views.resolve_scope" title="fastapi_restly.views.resolve_scope"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.resolve_scope</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="views.html#fastapi_restly.views.resolve_scope" title="fastapi_restly.views.resolve_scope"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.resolve_scope</span></code></a></p></td>
 <td><p>Resolve the read scope for a view or model.</p></td>
-</tr>
-<tr class="row-even"><td><p><a class="reference internal" href="views.html#fastapi_restly.views.ResponseShape" title="fastapi_restly.views.ResponseShape"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.ResponseShape</span></code></a></p></td>
-<td><p>Response forms for one object, a list, or an empty body.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.RestView</span></code></a></p></td>
 <td><p>CRUD view using a synchronous SQLAlchemy session.</p></td>
@@ -644,19 +650,16 @@ through <code class="docutils literal notranslate"><span class="pre">fr</span></
 <tr class="row-odd"><td><p><a class="reference internal" href="views.html#fastapi_restly.views.View" title="fastapi_restly.views.View"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.View</span></code></a></p></td>
 <td><p>Base class for a group of endpoint methods.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="views.html#fastapi_restly.views.ViewRoute" title="fastapi_restly.views.ViewRoute"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.ViewRoute</span></code></a></p></td>
-<td><p>Default CRUD endpoint names for route exclusion.</p></td>
-</tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="clauses.html#fastapi_restly.clauses.where_clause" title="fastapi_restly.clauses.where_clause"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.where_clause</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="clauses.html#fastapi_restly.clauses.where_clause" title="fastapi_restly.clauses.where_clause"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.where_clause</span></code></a></p></td>
 <td><p>Declare a reusable query predicate.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="clauses.html#fastapi_restly.clauses.WhereClause" title="fastapi_restly.clauses.WhereClause"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.WhereClause</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="clauses.html#fastapi_restly.clauses.WhereClause" title="fastapi_restly.clauses.WhereClause"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.WhereClause</span></code></a></p></td>
 <td><p>A reusable predicate that produces a SQLAlchemy expression.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="schemas.html#fastapi_restly.schemas.WriteOnly" title="fastapi_restly.schemas.WriteOnly"><code class="xref py py-data docutils literal notranslate"><span class="pre">fr.WriteOnly</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="schemas.html#fastapi_restly.schemas.WriteOnly" title="fastapi_restly.schemas.WriteOnly"><code class="xref py py-data docutils literal notranslate"><span class="pre">fr.WriteOnly</span></code></a></p></td>
 <td><p>Mark a field as accepted on input and excluded from serialization.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#fastapi_restly.__version__" title="fastapi_restly.__version__"><code class="xref py py-data docutils literal notranslate"><span class="pre">fr.__version__</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#fastapi_restly.__version__" title="fastapi_restly.__version__"><code class="xref py py-data docutils literal notranslate"><span class="pre">fr.__version__</span></code></a></p></td>
 <td><p>Installed package version.</p></td>
 </tr>
 </tbody>

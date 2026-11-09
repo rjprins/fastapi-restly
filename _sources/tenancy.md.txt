@@ -3,18 +3,33 @@
 # Multi-Tenancy
 
 In a multi-tenant app, each organization reads and writes only its own rows.
-The rule has two halves: a filter on every read, and a column that every write
-stamps. Both read the tenant from [`Current`](context.md).
+This page calls that the tenant rule.
 
-The tenant rule is not a [scope](#default-scope). A view or a route can
-replace its scope, but the tenant rule must hold under every scope, also
-under `fr.clauses.UNSCOPED`, and for every reference check. So it lives on
-the SQLAlchemy session. A `do_orm_execute` listener adds a
-[`with_loader_criteria`](https://docs.sqlalchemy.org/en/20/orm/queryguide/api.html#sqlalchemy.orm.with_loader_criteria)
-option to every ORM read of an entity or a relationship. Restly's views,
-the {mod}`fr.objects <fastapi_restly.objects>` helpers and your own ORM
-queries all read through a session. So the rule reaches each of them, with
-the limits in [What the listener does not cover](#tenant-listener-limits).
+Multi-tenancy is best implemented using a SQLAlchemy pattern: a
+{meth}`do_orm_execute <sqlalchemy.orm.SessionEvents.do_orm_execute>` listener
+on the session adds a
+{func}`with_loader_criteria <sqlalchemy.orm.with_loader_criteria>` option to
+every ORM read of an entity or a relationship. The SQLAlchemy docs describe
+this pattern in
+[Adding global WHERE / ON criteria](https://docs.sqlalchemy.org/en/20/orm/session_events.html#do-orm-execute-global-criteria).
+
+The pattern needs no special support in Restly, and it combines with what
+Restly provides:
+
+- **Reads.** Restly's views, the {mod}`fr.objects <fastapi_restly.objects>`
+  helpers, the reference checks and your own ORM queries all read through a
+  session. So the listener reaches each of them, with the limits in
+  [What the listener does not cover](#tenant-listener-limits).
+- **The tenant of the request.** [`Current`](context.md) holds it. The listener
+  and the tenant column both read it.
+- **Writes.** The listener only filters reads. A tenant column with
+  `Current.org_id` as its insert default stamps every new row, and
+  {data}`fr.ReadOnly <fastapi_restly.schemas.ReadOnly>` on the schema stops a
+  client from setting it.
+- **Scopes.** A [scope](#default-scope) holds a rule that a view or a route can
+  replace, such as soft delete. The tenant rule stays on the session, because
+  it must hold under every scope, also under `fr.clauses.UNSCOPED`.
+  [Put the parts together](#composing-on-a-view) uses both on one view.
 
 The [SaaS example](https://github.com/rjprins/fastapi-restly/tree/main/example-projects/saas)
 runs this rule on all of its tenant models.
@@ -85,7 +100,7 @@ class Project(TenantOwned, fr.TimestampsMixin, fr.IDMixin, Base):
     name: orm.Mapped[str]
 ```
 
-The column is the write half. It is a stamped field, as in
+The column handles the writes. It is a stamped field, as in
 [Stamp the fields the server owns](#server-stamped-fields): an insert default
 with `init=False`, and {data}`fr.ReadOnly <fastapi_restly.schemas.ReadOnly>`
 on the schema. It reads the same member as the listener, so a row lands in

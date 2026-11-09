@@ -7,7 +7,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Exceptions API &#8212; FastAPI-Restly 0.13.0 documentation</title>
+    <title>Exceptions API &#8212; FastAPI-Restly 0.14.0 documentation</title>
   
   
   
@@ -32,7 +32,7 @@
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=643d5ecc" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=964c8a9c" />
   
   <!-- So that users can add custom icons -->
   <script defer src="../_static/scripts/fontawesome.js?digest=18bd87630a240e9c25be"></script>
@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=18bd87630a240e9c25be" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=18bd87630a240e9c25be" />
 
-    <script src="../_static/documentation_options.js?v=1019fba8"></script>
+    <script src="../_static/documentation_options.js?v=9e420a66"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -67,7 +67,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="color-scheme" content="light dark"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.13" />
+  <meta name="docsearch:version" content="0.14" />
   
     
     <script src="../_static/searchtools.js"></script>
@@ -526,13 +526,14 @@ distinctly (e.g. into RFC 9457 problem+json).</p></li>
 <dt class="sig sig-object py" id="fastapi_restly.exc.BadQueryParam">
 <em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.exc.</span></span><span class="sig-name descname"><span class="pre">BadQueryParam</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">detail</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" title="(in Python v3.15)"><span class="pre">object</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.15)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" title="(in Python v3.15)"><span class="pre">object</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#fastapi_restly.exc.BadQueryParam" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#fastapi_restly.exc.RestlyHTTPError" title="fastapi_restly.exc.RestlyHTTPError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyHTTPError</span></code></a></p>
-<p>HTTP 400 – a list query parameter with a known key, whose value
+<p>HTTP 400 – a value that the list params did not validate, and that
 Restly cannot apply.</p>
-<p>An example is a filter value that fails the validation of its field,
-such as <code class="docutils literal notranslate"><span class="pre">?age=old</span></code> on an <code class="docutils literal notranslate"><span class="pre">int</span></code> field. On a list route, a query
-string that does not match the list params, such as an unknown key or a
-bad page, is a 422 instead: a <code class="docutils literal notranslate"><span class="pre">RequestValidationError</span></code>, in the shape
-that FastAPI uses for a bad parameter.</p>
+<p>An example is a key inside the <code class="docutils literal notranslate"><span class="pre">filter</span></code> of a react-admin view, or a value
+given to <a class="reference internal" href="query.html#fastapi_restly.query.FilterKey.parse" title="fastapi_restly.query.FilterKey.parse"><code class="xref py py-meth docutils literal notranslate"><span class="pre">FilterKey.parse</span></code></a>. On
+a list route, a query string that does not match the list params, such as
+an unknown key or a filter value of the wrong type, is a 422 instead: a
+<code class="docutils literal notranslate"><span class="pre">RequestValidationError</span></code>, in the shape that FastAPI uses for a bad
+parameter.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.exc.BadQueryParam.status_code">
 <span class="sig-name descname"><span class="pre">status_code</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><span class="pre">int</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">400</span></em><a class="headerlink" href="#fastapi_restly.exc.BadQueryParam.status_code" title="Link to this definition">#</a></dt>
@@ -627,7 +628,8 @@ setup that is declared wrongly, or Restly used before it is configured.</p>
 <p>OpenAPI keeps all classes in one list, by name. So pydantic shows the
 classes under long names that can change, such as
 <code class="docutils literal notranslate"><span class="pre">app__tasks__views__TaskCreate</span></code>, and generated clients use these names
-as type names. The warning names the classes and the views that use them.</p>
+as type names. The warning names the classes and the CRUD views that use
+them.</p>
 <p>Restly checks the spec each time the app builds it. It knows the app when
 you pass it to <a class="reference internal" href="db.html#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">configure()</span></code></a> or
 <a class="reference internal" href="testing.html#fastapi_restly.testing.configure_tests" title="fastapi_restly.testing.configure_tests"><code class="xref py py-func docutils literal notranslate"><span class="pre">configure_tests()</span></code></a>, or when you include a
@@ -690,7 +692,7 @@ detail. Each error class sets its own.</p>
 class is registered via <code class="docutils literal notranslate"><span class="pre">include_view</span></code>, the framework then flags the
 dominant misuses – overriding an endpoint method (<code class="docutils literal notranslate"><span class="pre">&lt;verb&gt;_endpoint</span></code>) where
 a business-method override was meant, calling <code class="docutils literal notranslate"><span class="pre">session.commit()</span></code> directly in a
-view method, typing a scalar foreign-key column (<code class="docutils literal notranslate"><span class="pre">post_id</span></code>) as an
+method of a CRUD view, typing a scalar foreign-key column (<code class="docutils literal notranslate"><span class="pre">post_id</span></code>) as an
 <code class="docutils literal notranslate"><span class="pre">IDRef</span></code> / <code class="docutils literal notranslate"><span class="pre">IDSchema</span></code> reference instead of <code class="docutils literal notranslate"><span class="pre">fr.MustExist[int,</span> <span class="pre">Model]</span></code>,
 and a writable field that sets a column that the model sets
 (<code class="docutils literal notranslate"><span class="pre">init=False</span></code> with a default) instead of <code class="docutils literal notranslate"><span class="pre">fr.ReadOnly</span></code>. It also flags
@@ -708,7 +710,7 @@ its filter methods.</p>
 only for its own list params: those of a list route, or a dict or a
 <code class="docutils literal notranslate"><span class="pre">QueryParams</span></code> that a method gets. A Pydantic model of another class,
 such as one of your own, does not run them. Then the list can have rows
-that a method would leave out. Pass the view’s <code class="docutils literal notranslate"><span class="pre">schema_list_params</span></code>, a
+that a method would leave out. Pass the view’s <code class="docutils literal notranslate"><span class="pre">list_params_schema</span></code>, a
 dict or a <code class="docutils literal notranslate"><span class="pre">QueryParams</span></code> instead. To skip the methods on purpose, turn
 the warning off with <code class="docutils literal notranslate"><span class="pre">warnings.filterwarnings</span></code>.</p>
 </dd></dl>

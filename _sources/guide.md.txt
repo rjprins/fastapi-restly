@@ -8,75 +8,59 @@ Restly, start with the tutorial, [Build a Blog API](tutorial.md).
 
 ## How Restly works
 
-You write a SQLAlchemy model and a view class, and Restly turns the view into
-FastAPI routes. For example, when a client sends `PATCH /projects/1`,
-FastAPI first checks the request body against the update schema,
-`ProjectUpdate`. Then these steps run:
+The goal of Restly is less boilerplate and more consistency.
 
-```{code-block} text
-:emphasize-lines: 2,5,7,9,11,12
+In Restly, you write your API as view classes. A view is a class that groups
+related FastAPI routes, for example all routes under `/projects`. The base
+class, {class}`fr.View <fastapi_restly.views.View>`, is for your own set of
+reusable endpoints. It has no predefined routes. See
+[Group endpoints that are not CRUD](#when-to-use-view-directly).
 
-PATCH /projects/1
-  └─ update_endpoint(id, data)            # endpoint method: HTTP contract
-       ├─ handle_update(id, data)         # handler: runs the steps
-       │    ├─ get_one(id)                # loads through the scope, or 404
-       │    ├─ authorize("update", ...)   # may the caller do this? Or 403
-       │    ├─ check the references       # an id that does not exist: 404
-       │    ├─ update(obj, data)          # business method: the change
-       │    ├─ save                       # flush and refresh the row
-       │    ├─ before_action_commit(...)
-       │    ├─ commit
-       │    └─ after_action_commit(...)
-       └─ to_response(obj)                # the response class, as JSON
+{class}`fr.RestView <fastapi_restly.views.RestView>` is a view that already
+has five CRUD routes. You give it a SQLAlchemy model, and it serves routes to
+list, read, create, update and delete rows of that model. `RestView` has an
+async version, {class}`fr.AsyncRestView <fastapi_restly.views.AsyncRestView>`.
+These docs say `RestView` for both.
+
+```python
+@fr.include_view(app)
+class ProjectView(fr.AsyncRestView):
+    prefix = "/projects"
+    model = Project  # your SQLAlchemy model
 ```
 
-The highlighted lines are the methods that you can override in your view.
-Restly runs the other steps itself, and the handler and `get_one` are
-final.
+Each route of a `RestView` has two layers that you can change:
 
-These are the parts, and the page that explains each one:
+- **The HTTP layer**: one endpoint method for each route, such as
+  `update_endpoint`. It holds what is about HTTP: the path, the parameters
+  and the response. To change one option of a route, such as the status
+  code, use {func}`fr.modify_route <fastapi_restly.views.modify_route>`. To
+  change more, replace the endpoint method. See
+  [Change one option of a route](#modify-route).
+- **The business layer**: business methods, such as `create`, `update` and
+  `delete`. They make the change to the data. Override one to change what a
+  route does, for example to hash a password or to set a field. See
+  [Change what a write does](#business-methods).
 
-- **Model**: your SQLAlchemy model, on a declarative base of your own.
-  Restly works with it, but does not own it. See [Models](models.md).
-- **View**: a class that groups related endpoints under a `prefix`.
-  {func}`fr.include_view() <fastapi_restly.views.include_view>` registers its
-  routes on an app or a router. A CRUD view,
-  {class}`fr.AsyncRestView <fastapi_restly.views.AsyncRestView>` or
-  {class}`fr.RestView <fastapi_restly.views.RestView>`, also names a `model`,
-  and serves five routes for it. See [Views](views.md) and
-  [CRUD Routes](crud_routes.md).
-- **The view's schema**: a Pydantic class that lists the fields of the
-  resource. Restly builds the request bodies, such as `ProjectUpdate`, and the
-  response class, `ProjectResponse`, from it. A view without a schema gets one
-  that Restly generates from the model. See
-  [Schemas & Validation](schemas.md).
-- **Endpoint method, handler and business method**: the three layers of each
-  CRUD route. To change what an action does, override the business method,
-  such as `update`. A read has a final load, `get_one` or `get_many`, in
-  place of a business method: the scope and the loader options decide what
-  it reads. To change the HTTP contract, such as the status code, replace
-  the endpoint method. A handler is final. See
-  [Request Lifecycle & Hooks](lifecycle.md).
-- **Commit**: a write route commits after the business method.
-  `before_action_commit` runs just before the commit, and
-  `after_action_commit` just after it. A read does not commit. See
-  [What commits, and when](#what-commits).
-- **Scope**: a SQL where clause that limits which rows of a model a request
-  can read. Restly applies it to every read of the model and to every
-  reference to the model, so a row outside the scope is a 404. You write a
-  scope as a query clause, a named rule that you can reuse. See
-  [Scopes](scopes.md) and [Query Clauses](clauses.md).
-- **`authorize`**: decides whether the caller may do the action. A refusal
-  is a 403. See [Authorization](authorization.md).
-- **`Current`**: the request context. It holds the caller and other values
-  for the request. Scopes, column defaults and your `authorize` can read it.
-  See [Request Context](context.md).
-- **List params**: the filter, sort and page parameters of the list route.
-  Restly builds them from the response class. See
-  [Filtering, Sorting & Pagination](filtering.md).
-- **Session**: each request gets a database session from the source that
-  {func}`fr.configure() <fastapi_restly.db.configure>` sets. See
-  [Database & Configuration](database.md).
+Between the two layers, Restly runs a fixed set of steps, such as loading a
+row from the database, checking access and committing.
+[How a CRUD route runs](#view-request-steps) shows all steps in order, and
+which ones you can override.
+
+Some things you write only once:
+
+- **Fields**: you list the fields that clients see in one Pydantic schema, and
+  Restly builds the create, update and response schemas from it. If you do not
+  write this schema, Restly makes one from the model.
+- **Access**: you write once which rows a caller can see, as a scope, and
+  Restly applies it to every read of the model.
+- **Shared behavior**: behavior that several views share goes in a base view
+  that they inherit from.
+
+Underneath, Restly is plain FastAPI, SQLAlchemy and Pydantic. Your model stays
+your own SQLAlchemy model, the routes are FastAPI routes, and the schemas are
+Pydantic classes. When a route does not fit Restly, write it as a normal
+FastAPI route next to your views.
 
 ## Setup
 
@@ -100,54 +84,80 @@ ordinary SQLAlchemy models on a declarative base of your own.
 
 ## Views & Routes
 
-A view is a class that groups related endpoints. A CRUD view serves five
-routes for one model by default. Each route runs a fixed list of steps, such
-as `authorize` and `create`. To change a route, you override the method of
-one step. [View Reference](view_reference.md) lists everything that you can
-set, override or call on a view.
+A view is a class that groups related endpoints under one URL prefix.
+[View Reference](view_reference.md) lists everything that you can set,
+override or call on a view.
 
-- [Views](views.md): the view classes, how to declare routes and register a
-  view, routes that are not CRUD, such as login and webhooks, and how views
-  share behavior through base classes.
-- [CRUD Routes](crud_routes.md): the five default routes, async or sync, how
-  to leave some routes out, and how to serve a child resource under its
-  parent.
-- [Request Lifecycle & Hooks](lifecycle.md): the steps of a request, which
-  method to override for each change, a value on each row, a lookup by
-  another key, custom routes, what commits when, several writes in one
-  commit, and the same logic in a script or a worker.
+- [Views](views.md): the view classes, how to declare routes, add a decorator
+  and register a view, routes that are not CRUD, such as login and webhooks, and
+  how views share behavior through base classes.
 - [React Admin](react_admin.md): connect react-admin to a view, the list
   format and the routes that react-admin expects, to-many id arrays, CORS,
   and a list that shows no rows.
 - [Type Annotations](typing.md): type the schema, the methods that you
   override and your custom routes.
 
+## CRUD Routes
+
+A CRUD view serves five routes for one model by default: list, get one,
+create, update and delete. Each route runs a fixed list of steps, such as
+`authorize` and the commit. Each route has a page that shows its steps in
+order, and what you can change, from a rule on the schema to a route of your
+own.
+
+- [Overview](crud_routes.md): the five default routes, the id type, how a
+  route runs, async or sync, how to change one option of a route, leave some
+  routes out, where a business method fits, and how to replace an endpoint
+  method.
+- [List](crud_list.md): the steps of `GET /`, what you can change, a header
+  with the total, and a list of a subset.
+- [Get One](crud_get_one.md): the steps of `GET /{id}`, visibility and
+  policy, a row found by a slug or a composite key, and the error for a
+  missing row.
+- [Create](crud_create.md): the steps of `POST /`, the `create` method, a
+  password hash, the id of a new row, and a `Location` header.
+- [Update](crud_update.md): the steps of `PATCH /{id}`, what you can change,
+  the `update` method, a `PUT` route, and an update from a custom route.
+- [Delete](crud_delete.md): the steps of `DELETE /{id}`, the `delete`
+  method, a soft delete, and a response with the deleted row.
+- [Custom Routes](custom_routes.md): routes of your own on a CRUD view, a
+  lookup by another key, actions such as publish, and several rows in one
+  action.
+- [Commits & Hooks](commits.md): what commits and when, code before or after
+  the commit, work after the response, errors in a write, several writes in
+  one commit, code that must commit, and the same logic in a script or a
+  worker.
+- [Nested Routes](nested_routes.md): serve a child resource under its
+  parent, create a child, limit the parents that a client can reach, and nest
+  more than one level.
+
 ## Requests & Responses
 
 A view has several schemas. The main one is the view's
 {attr}`schema <fastapi_restly.views.BaseRestView.schema>`, a Pydantic class
 that lists the fields of the resource. Restly builds the other schemas
-from it: the request bodies and the response class. So the view's schema
+from it: the response, create and update schemas. So the main schema
 decides what clients send and what they get back. The list route adds
 filter, sort and page parameters to the URL.
 
 - [Schemas & Validation](schemas.md): generate the schema or write it, keep
   a field out of the requests or the responses, validate input, keep times
-  in UTC, keep NaN and infinity, store a Pydantic model in a JSON column, and
-  use other field names in JSON, such as camelCase.
+  in UTC, keep NaN and infinity, store a Pydantic model in a JSON column, use
+  other field names in JSON, such as camelCase, and build a class for each view
+  with `SchemaType`.
 - [Relationships](relationships.md): accept the id of another row, check
   that the row exists, link many rows to many rows, return related objects,
   and fix `MissingGreenlet`.
-- [Responses](responses.md): what each route returns, the list envelope,
-  the response of a custom route, and how to change the shape of one route
-  or of all routes.
+- [Responses](responses.md): what each route returns, the list envelope and
+  the list response schema, the response of a custom route, and how to change
+  the shape of one route or of all routes.
 - [Filtering, Sorting & Pagination](filtering.md): the filters, the sort
   order and the pages that a client can use on a list, the keys that a view
   chooses, filters of your own, and list params that you write yourself.
 - [Errors](errors.md): raise a 404 or a 403, see why a duplicate value gives
   a 409, and change the error body.
-- [OpenAPI](openapi.md): the tags, names and operation IDs of the routes,
-  and how to document a custom route.
+- [OpenAPI](openapi.md): the tags, names and operation IDs of the routes, and
+  how to document a custom route.
 
 ## Access
 
@@ -217,10 +227,24 @@ models
 :hidden:
 
 views
-crud_routes
-lifecycle
 react_admin
 typing
+```
+
+```{toctree}
+:caption: CRUD Routes
+:maxdepth: 1
+:hidden:
+
+Overview <crud_routes>
+crud_list
+crud_get_one
+crud_create
+crud_update
+crud_delete
+custom_routes
+commits
+nested_routes
 ```
 
 ```{toctree}

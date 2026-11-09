@@ -32,11 +32,31 @@
     .bd-header ul.bd-navbar-elements > li.nav-item > .nav-link {
         white-space: nowrap;
     }
+
+    /* The links stand in the middle of the space between the logo and the
+       search field. On a wide screen, the header then has two small gaps
+       instead of one large gap. The theme already gives the right margin. */
+    .bd-header .navbar-header-items__center {
+        margin-left: auto;
+    }
+
+    /* The header is narrower than the page (99rem), so that on a wide screen
+       the logo and the search field do not stand at the far edges. */
+    .bd-header .bd-header__inner.bd-page-width {
+        max-width: 80rem;
+    }
 }
 
+/* On a wide screen, the links get a larger font (the theme gives 1rem) and
+   more space between them. A narrower screen keeps the theme's size, so that
+   the header fits on one line. */
 @media (min-width: 84rem) {
     .bd-header ul.bd-navbar-elements > li.nav-item {
-        margin-inline: 0.25rem;
+        margin-inline: 0.5rem;
+    }
+
+    .bd-header ul.bd-navbar-elements > li.nav-item > .nav-link {
+        font-size: 1.0625rem;
     }
 }
 
@@ -46,40 +66,115 @@
     }
 }
 
+/* Page width: a left sidebar of at most 19rem, an article of at most 56rem
+   (the theme gives 60em) and a right sidebar of 24rem (the theme gives 17rem,
+   too narrow for the page headings). Together that is 99rem. The sidebar collapse button
+   still works: it sets the same property with a stronger selector. The left
+   sidebar gets more space on its left, but not when it is collapsed, because
+   then the button needs that space. */
+html {
+    --pst-sidebar-secondary: 24rem;
+}
+
+@media (min-width: 62rem) {
+    .bd-page-width {
+        max-width: 99rem;
+    }
+
+    .bd-main .bd-content .bd-article-container {
+        max-width: 56rem;
+    }
+
+    .bd-sidebar-primary {
+        --pst-sidebar-primary-width: min(25%, 19rem);
+    }
+
+    .bd-sidebar-primary:not(.pst-squeeze) {
+        padding-left: 2rem;
+    }
+}
+
+/* When the screen gets narrower, the right sidebar gives up its extra width
+   (down to the theme's 17rem) before the article gets narrower than the text
+   column. 48rem is the text column of 45rem plus the article padding. The
+   rule starts where the theme shows the right sidebar next to the article.
+
+   The space between a table and each sidebar line is the same: 1.5rem. The
+   theme gives 3rem on the left and 2rem on the right.
+
+   A page without a left sidebar, such as the front page, gets an empty space
+   on the left that is as wide as the right sidebar. That keeps the text in
+   the center of the page. When the screen gets narrower, this space gives up
+   its width first. */
+@media (min-width: 75rem) {
+    .bd-main .bd-content {
+        --restly-toc-width: clamp(17rem, 100% - 48rem, 24rem);
+    }
+
+    .bd-sidebar-secondary {
+        width: var(--restly-toc-width);
+        padding-left: 0;
+    }
+
+    .bd-container__inner:has(> .bd-sidebar-primary.hide-on-wide) .bd-content::before {
+        content: "";
+        flex-shrink: 0;
+        width: clamp(0rem, 100% - 48rem - var(--restly-toc-width), var(--restly-toc-width));
+    }
+
+    .bd-main .bd-content .bd-article-container {
+        padding-inline: 1.5rem;
+    }
+
+    .bd-main .bd-content .bd-article-container .bd-article {
+        padding-left: 0;
+    }
+}
+
+/* Text stays in a column of 45rem in the center of the article, so that lines
+   are easy to read. Tables and call trees can use the full width of the
+   article; the theme already centers tables. The column uses margins, not
+   max-width, so that a narrower block such as the newsletter form keeps its
+   own max-width and starts at the left edge of the text.
+
+   The rule skips the empty <span id="..."> that Sphinx puts before a heading
+   with a label. With side margins, that span would take up a line of its
+   own, and the space above the heading would get much larger. */
+.bd-article section > :not(section, span, .pst-scrollable-table-container, .call-tree) {
+    margin-left: max(0px, (100% - 45rem) / 2);
+    margin-right: max(0px, (100% - 45rem) / 2);
+}
+
 .bd-header .nav-link.nav-external[href="https://www.fastapi-restly.org/blog/"]::after,
 .bd-header .nav-link.nav-external[href="https://www.fastapi-restly.org/"]::after {
     content: none;
 }
 
-/* Homepage wordmark: keep the mark and title together. */
-.bd-article h1:has(> img[src$="fr-monogram.svg"]) {
+/* Homepage wordmark: show the logo. The heading text stays for the page title
+   and for screen readers, but has no visible size. */
+.bd-article h1:has(> img[src$="fr-wordmark.svg"]) {
     display: flex;
-    align-items: center;
     justify-content: center;
-    gap: 0.235294em;
     margin: 0 0 2rem;
-    font-family: "Archivo", var(--pst-font-family-heading);
-    font-size: clamp(1.75rem, 5.902778vw, 5.3125rem);
-    font-weight: 700;
+    font-size: 0;
     line-height: 1;
-    letter-spacing: -0.045em;
-    white-space: nowrap;
 }
 
-.bd-article h1 > img[src$="fr-monogram.svg"] {
-    flex: 0 0 auto;
-    width: 1.035294em;
+.bd-article h1 > img[src$="fr-wordmark.svg"] {
+    width: min(100%, 666px);
     height: auto;
 }
 
-.bd-article h1:has(> img[src$="fr-monogram.svg"]) > .headerlink {
+.bd-article h1:has(> img[src$="fr-wordmark.svg"]) > .headerlink {
     display: none;
 }
 
-html[data-theme="dark"] .bd-article h1 > img[src$="fr-monogram.svg"] {
+html[data-theme="dark"] .bd-article h1 > img[src$="fr-wordmark.svg"] {
     border-radius: 0;
     background-color: transparent;
-    content: url("fr-monogram-dark.svg");
+    /* The theme dims images in dark mode, which would make the logo grey. */
+    filter: none;
+    content: url("fr-wordmark-dark.svg");
 }
 
 /* Hide the "Section Navigation" sidebar block when it has no links */
@@ -175,7 +270,8 @@ html[data-theme="dark"] .bd-article h1 > img[src$="fr-monogram.svg"] {
     border-left: 2px solid var(--pst-color-border);
     border-radius: 0;
     box-shadow: none !important;
-    margin: 1.25em 0;
+    /* Only the block margins: the side margins put it in the text column. */
+    margin-block: 1.25em;
     padding: 0 0 0 1rem;
     font-size: 0.92em;
 }
@@ -197,4 +293,161 @@ html[data-theme="dark"] .bd-article h1 > img[src$="fr-monogram.svg"] {
 .bd-article div.admonition.details p.admonition-title ~ * {
     margin-left: 0;
     margin-right: 0;
+}
+
+/* Call trees (the call-tree directive in docs/_ext/call_tree.py): the steps of
+   a request as a tree that folds. Each row is one step. A row with children
+   is a <details>, so it folds without JavaScript. The lines of the tree are
+   borders: each item draws its own part of the vertical line, and a short
+   horizontal line to its step. The vertical line of the last item stops at
+   its step.
+
+   A tree uses the full width of the article, as a table does. It sits on a
+   light panel: lighter than a code block, because it is not code. */
+.bd-article .call-tree {
+    --ct-row: 1.6rem;
+    --ct-indent: 1.4rem;
+    --ct-line: var(--pst-color-border);
+    margin-block: 1.5em;
+    padding: 0.75rem 1.25rem 0.75rem 0.5rem;
+    border: 1px solid color-mix(in srgb, var(--pst-color-border) 60%, transparent);
+    border-radius: 0.375rem;
+    background-color: color-mix(in srgb, var(--pst-color-surface) 50%, transparent);
+    font-size: 0.95rem;
+    line-height: var(--ct-row);
+}
+
+.call-tree ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.call-tree li {
+    position: relative;
+    margin: 0;
+    padding-left: var(--ct-indent);
+}
+
+/* The children start a little to the right of the start of their parent. */
+.call-tree li ul {
+    margin-left: 0.35rem;
+}
+
+.call-tree li li::before,
+.call-tree li li::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    border-color: var(--ct-line);
+    border-style: solid;
+    border-width: 0;
+}
+
+.call-tree li li::before {
+    top: 0;
+    bottom: 0;
+    border-left-width: 1px;
+}
+
+.call-tree li li:last-child::before {
+    bottom: auto;
+    height: calc(var(--ct-row) / 2);
+}
+
+.call-tree li li::after {
+    top: calc(var(--ct-row) / 2);
+    width: calc(var(--ct-indent) - 0.4rem);
+    border-top-width: 1px;
+}
+
+/* A step that folds has an arrow at the end of its line. */
+.call-tree li li.call-tree-fold::after {
+    width: 0.35rem;
+}
+
+.call-tree summary {
+    display: block;
+    list-style: none;
+    cursor: pointer;
+}
+
+.call-tree summary::-webkit-details-marker {
+    display: none;
+}
+
+.call-tree summary::before {
+    content: "\f054"; /* Font Awesome: chevron-right */
+    font: var(--fa-font-solid);
+    position: absolute;
+    left: calc(var(--ct-indent) - 1rem);
+    top: 0;
+    width: 0.8rem;
+    line-height: var(--ct-row);
+    font-size: 0.55rem;
+    text-align: center;
+    color: var(--pst-color-text-muted);
+    transition: transform 0.15s;
+}
+
+.call-tree details[open] > summary::before {
+    transform: rotate(90deg);
+}
+
+.call-tree summary:hover::before {
+    color: var(--pst-color-primary);
+}
+
+/* A call is code, without the box that the theme gives inline code. */
+.call-tree .call-tree-step code.literal {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 0.9em;
+}
+
+.call-tree > ul > li > details > summary .call-tree-step {
+    font-weight: 600;
+}
+
+.call-tree .call-tree-badge {
+    margin-left: 0.5em;
+    padding: 0.15em 0.45em;
+    border-radius: 0.25rem;
+    background-color: var(--pst-color-primary-bg);
+    color: var(--pst-color-primary);
+    font-size: 0.7rem;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: 0.04em;
+    vertical-align: 0.1em;
+}
+
+.call-tree .call-tree-note {
+    margin-left: 0.6em;
+    color: var(--pst-color-text-muted);
+}
+
+/* The text that a closed step holds. */
+.call-tree .call-tree-text {
+    max-width: 45rem;
+    margin: 0.2rem 0 0.6rem;
+    font-size: 0.92em;
+    line-height: 1.6;
+}
+
+.call-tree .call-tree-text p:last-child {
+    margin-bottom: 0;
+}
+
+/* Print every step open, also in the PDF. */
+@media print {
+    .call-tree details::details-content {
+        content-visibility: visible;
+        display: block;
+    }
+
+    .call-tree summary::before {
+        display: none;
+    }
 }

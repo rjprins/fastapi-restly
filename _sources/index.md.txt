@@ -1,7 +1,6 @@
-# ![](_static/fr-monogram.svg) FastAPI-Restly
+# ![](_static/fr-wordmark.svg) FastAPI-Restly
 
-**Class-based REST resources for FastAPI and SQLAlchemy 2.0. Minimal
-boilerplate, full control.**
+**Class-based REST resources for FastAPI and SQLAlchemy. Minimal boilerplate, full control.**
 
 ```python
 import fastapi_restly as fr
@@ -12,9 +11,10 @@ class UserView(fr.AsyncRestView):
     model = User  # your SQLAlchemy model
 ```
 
-This view serves the five CRUD routes under `/users`, with Pydantic schemas
-made from the model, and filtering, sorting and pagination on the list. To
-change one step, override its method, and the rest stays the same.
+This view serves five CRUD routes under `/users`. It makes Pydantic schemas
+from the model, and a list route that can filter, sort and paginate. Each route
+runs a few small methods on the view. To change one part, override that
+method; the rest stays the same.
 
 Restly is for REST resources, not for your whole app. It works inside the
 FastAPI app that you already have, and you add it one resource at a time;
@@ -27,7 +27,7 @@ see [Use Restly in an existing project](#add-to-existing-app).
 > get an email when 1.0 is released. If something is broken or missing,
 > please [open an issue](https://github.com/rjprins/fastapi-restly/issues).
 
-[How Restly works](#how-restly-works) shows all the parts on one screen, and
+[How Restly works](#how-restly-works) gives the main ideas in a few paragraphs, and
 the [Guide](guide.md) explains each part and how you can change it.
 
 ## Quick Start
@@ -98,12 +98,11 @@ The list returns a page of at most 50 rows, in an envelope:
 [Build a Blog API](tutorial.md) teaches Restly step by step, from the first
 model to authors, drafts, and tests.
 
-## What Restly does differently
+## Made for customization
 
 ### Change one step, keep the rest
 
-Each CRUD route runs a fixed list of steps. To change one step, override its
-method. Add this {meth}`delete <fastapi_restly.views.RestView.delete>` method
+Each CRUD route runs a fixed list of steps. To change one of the steps, override the related method. For example, add this {meth}`delete <fastapi_restly.views.RestView.delete>` method
 to `UserView`, so that it keeps the row and marks the user as inactive:
 
 ```python
@@ -114,14 +113,75 @@ to `UserView`, so that it keeps the row and marks the user as inactive:
 `DELETE /users/{id}` still runs
 {meth}`authorize <fastapi_restly.views.RestView.authorize>`, commits and
 returns 204. The other four routes do not change. See
-[Request Lifecycle & Hooks](lifecycle.md).
+[Delete](crud_delete.md).
 
-### A hidden row is a 404, a refused action is a 403
+### Add your own routes
 
-A scope on the model decides which rows exist for a request. Restly applies
-it when a view lists, reads, updates or deletes rows of the model, and in
-every reference check. The blog example shows published posts, and the
-drafts of the caller:
+A view can have routes of its own, next to the CRUD routes. A route is a
+method of the view class, with a route decorator such as
+{func}`@fr.post <fastapi_restly.views.post>`. Here `UserView` gets a route
+that makes a user active again, after the `delete` above:
+
+```python
+from fastapi_restly.views import IDType, ViewResponse
+
+
+@fr.include_view(app)
+class UserView(fr.AsyncRestView):
+    prefix = "/users"
+    model = User
+
+    class Action(fr.Action):
+        ACTIVATE = "activate"
+
+    @fr.post("/{id}/activate", status_code=200)
+    async def activate(self, id: IDType) -> ViewResponse:
+        user = await self.get_one(id)
+        async with self.write_action(self.Action.ACTIVATE, obj=user):
+            user.active = True
+        return user
+```
+
+{meth}`write_action <fastapi_restly.views.RestView.write_action>` runs the
+same steps as a CRUD write: it calls `authorize` with the action
+`"activate"`, saves the change and commits.
+{data}`IDType <fastapi_restly.views.IDType>` and
+{data}`ViewResponse <fastapi_restly.views.ViewResponse>` stand for the id
+type and the response schema of the view. So OpenAPI shows `UserResponse` for this route too. See
+[Custom Routes](custom_routes.md).
+
+### Declare dependencies once
+
+Views are Python classes, so they share code by inheritance. Declare the
+dependencies of your app once, on a base view, and read them from `self`:
+
+```python
+class AppRestView(fr.AsyncRestView):
+    current_user: Annotated[User, Depends(get_current_user)]
+
+    async def authorize(self, action, obj=None, data=None):
+        reads = (fr.Action.GET_MANY, fr.Action.GET_ONE)
+        if action not in reads and not self.current_user.is_admin:
+            raise fr.exc.Forbidden("Only admins can change this")
+
+
+@fr.include_view(app)
+class ProjectView(AppRestView):
+    prefix = "/projects"
+    model = Project
+```
+
+Every view that inherits from `AppRestView` gets `self.current_user`, and the
+same rule in {meth}`authorize <fastapi_restly.views.RestView.authorize>`:
+only an admin can change data. See
+[Share behavior with base views](#share-behaviour-with-base-views).
+
+### Decide who sees which rows
+
+A scope on the model decides which rows exist for a request. You write it
+once, and Restly applies it when a view lists, reads, updates or deletes
+rows of the model, and in every reference check. The blog example shows
+published posts, and the drafts of the caller:
 
 ```{literalinclude} ../example-projects/blog/blog/main.py
 :language: python
@@ -137,13 +197,13 @@ does not show or count it.
 caller may do with a row that they can see, and a refusal is a 403. See
 [Scopes](scopes.md) and [Authorization](authorization.md).
 
-### One schema for requests and responses
+### Choose which fields go in and out
 
 Write one Pydantic schema for the resource.
 {data}`fr.ReadOnly <fastapi_restly.schemas.ReadOnly>` marks a field that only
 goes out, and {data}`fr.WriteOnly <fastapi_restly.schemas.WriteOnly>` marks a
-field that only comes in. Restly builds the response class and the two
-request bodies from it, with names that OpenAPI and generated clients show.
+field that only comes in. Restly builds the response, create and update
+schemas from it, with names that OpenAPI and generated clients show.
 Here the `User` model also has `password`, `team_id` and `created_at`
 columns:
 
@@ -167,11 +227,11 @@ scope of `Team`. A wrong id is a 404. To make a body or the response
 different, write that schema yourself and set it on the view. See
 [Schemas & Validation](schemas.md).
 
-### SQLAlchemy stays SQLAlchemy, FastAPI stays FastAPI
+### Use plain FastAPI where you need it
 
-Your declarative base, your engine and your app stay yours. Add Restly next
-to the routes that you have, one resource at a time. When one route needs
-something that Restly does not do, write it as a plain FastAPI route.
+When a route needs something that Restly does not do, write it as a plain
+FastAPI route. Your declarative base, your engine and your app stay yours,
+and Restly works next to the routes that you have:
 
 ```python
 app = FastAPI()
@@ -192,7 +252,7 @@ See [Existing Projects](existing_projects.md).
   custom routes, such as login or webhooks, and declares their dependencies
   once. See [Views](views.md).
 - List params: `GET /users?name=John&sort=-id&page=2`, and operators such as
-  `email__icontains=example.com`. The keys come from the response class, and
+  `email__icontains=example.com`. The keys come from the response schema, and
   an unknown key is a 422. See [Filtering, Sorting & Pagination](filtering.md).
 - Tests: `pip install "fastapi-restly[testing]"` adds pytest fixtures. Each
   test runs in a transaction that rolls back, so a test needs no cleanup code.
@@ -257,9 +317,7 @@ History, design goals, and why this framework exists.
 (newsletter-signup)=
 ## Newsletter
 
-An email when there is a new release: what changed, and what is worth
-upgrading for. Subscribe to get an email when 1.0 is released. You can
-unsubscribe from any email.
+Subscribe to get an email when 1.0 is released.
 
 ```{raw} html
 :file: _templates/newsletter-form.html

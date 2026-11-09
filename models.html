@@ -7,7 +7,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Models &#8212; FastAPI-Restly 0.13.0 documentation</title>
+    <title>Models &#8212; FastAPI-Restly 0.14.0 documentation</title>
   
   
   
@@ -32,7 +32,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=643d5ecc" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=964c8a9c" />
   
   <!-- So that users can add custom icons -->
   <script defer src="_static/scripts/fontawesome.js?digest=18bd87630a240e9c25be"></script>
@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=18bd87630a240e9c25be" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=18bd87630a240e9c25be" />
 
-    <script src="_static/documentation_options.js?v=1019fba8"></script>
+    <script src="_static/documentation_options.js?v=9e420a66"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -67,7 +67,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="color-scheme" content="light dark"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.13" />
+  <meta name="docsearch:version" content="0.14" />
   
     
     <script src="_static/searchtools.js"></script>
@@ -426,7 +426,10 @@
 <nav class="bd-docs-nav bd-links"
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
-  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Setup</span></p>
+  <div class="bd-toc-item navbar-nav">
+    <ul class="nav bd-sidenav">
+      <li class="toctree-l1"><a class="reference internal" href="guide.html#how-restly-works">How Restly works</a></li>
+    </ul><p aria-level="2" class="caption" role="heading"><span class="caption-text">Setup</span></p>
 <ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="new_projects.html">New Projects</a></li>
 <li class="toctree-l1"><a class="reference internal" href="existing_projects.html">Existing Projects</a></li>
@@ -436,10 +439,20 @@
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Views &amp; Routes</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="views.html">Views</a></li>
-<li class="toctree-l1"><a class="reference internal" href="crud_routes.html">CRUD Routes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="lifecycle.html">Request Lifecycle &amp; Hooks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="react_admin.html">React Admin</a></li>
 <li class="toctree-l1"><a class="reference internal" href="typing.html">Type Annotations</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">CRUD Routes</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="crud_routes.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_list.html">List</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_get_one.html">Get One</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_create.html">Create</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_update.html">Update</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_delete.html">Delete</a></li>
+<li class="toctree-l1"><a class="reference internal" href="custom_routes.html">Custom Routes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="commits.html">Commits &amp; Hooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nested_routes.html">Nested Routes</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Requests &amp; Responses</span></p>
 <ul class="nav bd-sidenav">
@@ -542,7 +555,7 @@ never run a view. SQLAlchemy runs a column default or a mapper event when it
 writes the row, whatever code built the row. So the model sets each value
 that every write path needs, such as the author or the tenant. A value that
 only the HTTP API sets belongs in the view’s
-<a class="reference internal" href="lifecycle.html#business-methods"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">create</span></code> or <code class="docutils literal notranslate"><span class="pre">update</span></code></span></a>.</p>
+<a class="reference internal" href="crud_routes.html#business-methods"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">create</span></code> or <code class="docutils literal notranslate"><span class="pre">update</span></code></span></a>.</p>
 <p><a class="reference internal" href="#structural-pieces">Where tenant, audit and soft-delete rules go</a> lists
 these rules. The
 <a class="reference external" href="https://github.com/rjprins/fastapi-restly/tree/main/example-projects/saas">SaaS example</a>
@@ -827,13 +840,13 @@ use all of them.</p>
 <code class="docutils literal notranslate"><span class="pre">fr.objects</span></code> helpers. Put the value on the model, as a column default or a
 mapper event.</p></li>
 <li><p><strong>Only the HTTP API</strong>: put the value in the view’s
-<a class="reference internal" href="lifecycle.html#business-methods"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">create</span></code> or <code class="docutils literal notranslate"><span class="pre">update</span></code></span></a>, such as a password hash from the
+<a class="reference internal" href="crud_routes.html#business-methods"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">create</span></code> or <code class="docutils literal notranslate"><span class="pre">update</span></code></span></a>, such as a password hash from the
 request body.</p></li>
 </ul>
 <p>A view cannot set a value for every write path. A <code class="docutils literal notranslate"><span class="pre">create</span></code> override often
 builds the row itself, without <code class="docutils literal notranslate"><span class="pre">super()</span></code>. Then a value that a view mixin sets
 in <code class="docutils literal notranslate"><span class="pre">create</span></code> is lost. And a script that builds a row, or calls the
-<a class="reference internal" href="lifecycle.html#domain-utilities"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">fr.objects</span></code> functions</span></a>, never runs a view.</p>
+<a class="reference internal" href="commits.html#domain-utilities"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">fr.objects</span></code> functions</span></a>, never runs a view.</p>
 <p>A value from <code class="docutils literal notranslate"><span class="pre">Current</span></code>, such as the author, is a column default:
 <a class="reference internal" href="#server-stamped-fields">Stamp the fields the server owns</a> shows how. A value
 computed from other columns, such as a slug from the title, is a SQLAlchemy
@@ -916,7 +929,7 @@ the row, as
 explains.</p></li>
 </ul>
 <p>Then mark each field
-<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.ReadOnly" title="fastapi_restly.schemas.ReadOnly"><code class="xref py py-data docutils literal notranslate"><span class="pre">fr.ReadOnly</span></code></a> on the view’s schema,
+<a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.ReadOnly" title="fastapi_restly.schemas.ReadOnly"><code class="xref py py-data docutils literal notranslate"><span class="pre">fr.ReadOnly</span></code></a> on the view’s main schema,
 and leave it out of any <a class="reference internal" href="schemas.html#explicit-write-schemas"><span class="std std-ref">explicit write schema</span></a>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">DocumentSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">TimestampsSchemaMixin</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
     <span class="n">title</span><span class="p">:</span> <span class="nb">str</span>
@@ -977,7 +990,7 @@ read.</p></li>
 filters every read.</p></li>
 <li><p><a class="reference internal" href="scopes.html"><span class="std std-doc">Scopes</span></a>: hide rows from every read, and
 <a class="reference internal" href="scopes.html#soft-delete-mixin"><span class="std std-ref">soft-delete rows</span></a>.</p></li>
-<li><p><a class="reference internal" href="lifecycle.html#business-methods"><span class="std std-ref">Request Lifecycle &amp; Hooks</span></a>: values that only the HTTP
+<li><p><a class="reference internal" href="crud_routes.html#business-methods"><span class="std std-ref">Change what a write does</span></a>: values that only the HTTP
 API sets, in <code class="docutils literal notranslate"><span class="pre">create</span></code> and <code class="docutils literal notranslate"><span class="pre">update</span></code>.</p></li>
 </ul>
 </section>

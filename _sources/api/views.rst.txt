@@ -10,17 +10,19 @@ either on a FastAPI app.
    :members:
    :undoc-members:
    :show-inheritance:
-   :exclude-members: ViewID, ViewResponse, ViewListResponse, ViewCreate, ViewUpdate
+   :exclude-members: IDType, ViewResponse, ViewListResponse, ViewCreate, ViewUpdate
 
 Markers for the view's own types
 --------------------------------
 
-A route names the classes of its view with these markers. When the view
-registers, Restly puts the view's class in place of each marker, so a route
-on a base view gets the classes of each subclass. A type checker reads each
-marker as ``Any``. See :ref:`name-the-response-classes`.
+A route names the types of its view with these markers. When the view
+registers, Restly puts the view's own type in place of each marker, so a route
+on a base view gets the types of each subclass. A type checker reads each
+marker as ``Any``. See :ref:`name-the-view-schemas`. To build another type
+for each view, use :class:`~fastapi_restly.views.SchemaType`; see
+:ref:`schema-type`.
 
-.. py:data:: ViewID
+.. py:data:: IDType
 
    The view's id type: :attr:`~fastapi_restly.views.BaseRestView.id_type`,
    else the type of the model's primary key. A path parameter with this type
@@ -29,26 +31,29 @@ marker as ``Any``. See :ref:`name-the-response-classes`.
 
 .. py:data:: ViewResponse
 
-   The view's response class,
-   :attr:`~fastapi_restly.views.BaseRestView.schema_response`.
+   The view's response schema,
+   :attr:`~fastapi_restly.views.BaseRestView.response_schema`.
 
 .. py:data:: ViewListResponse
 
-   The view's list response: the envelope of the view's pagination, with
-   items of the view's response class.
+   The view's list response,
+   :attr:`~fastapi_restly.views.BaseRestView.list_response_schema`. Unless the
+   view sets another class, this is the envelope of the view's pagination, with
+   items of the view's response schema.
 
 .. py:data:: ViewCreate
 
-   The view's create body,
-   :attr:`~fastapi_restly.views.BaseRestView.schema_create`.
+   The view's create schema,
+   :attr:`~fastapi_restly.views.BaseRestView.create_schema`.
 
 .. py:data:: ViewUpdate
 
-   The view's update body,
-   :attr:`~fastapi_restly.views.BaseRestView.schema_update`.
+   The view's update schema,
+   :attr:`~fastapi_restly.views.BaseRestView.update_schema`.
 
 .. seealso::
 
    :doc:`/views` introduces the class-based view concept and
-   hierarchy, and :doc:`/lifecycle` explains how a view handles a request
-   and collects the task-shaped override recipes.
+   hierarchy, and :doc:`/crud_routes` explains how a CRUD route runs. The
+   page of each route, such as :doc:`/crud_update`, shows what you can
+   change.

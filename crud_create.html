@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="./" data-theme="auto">
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Create &#8212; FastAPI-Restly 0.14.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "auto";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "auto";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=18bd87630a240e9c25be" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=18bd87630a240e9c25be" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=964c8a9c" />
+  
+  <!-- So that users can add custom icons -->
+  <script defer src="_static/scripts/fontawesome.js?digest=18bd87630a240e9c25be"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=18bd87630a240e9c25be" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=18bd87630a240e9c25be" />
+
+    <script src="_static/documentation_options.js?v=9e420a66"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=f281be69"></script>
+    <script src="_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'crud_create';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.23.0';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://www.fastapi-restly.org/switcher.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'latest';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            false;
+        </script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <script src="_static/newsletter.js?v=7326e93d"></script>
+    <link rel="canonical" href="https://www.fastapi-restly.org/crud_create.html" />
+    <link rel="icon" href="_static/favicon.svg"/>
+    <link rel="author" title="About these documents" href="about.html" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Update" href="crud_update.html" />
+    <link rel="prev" title="Get One" href="crud_get_one.html" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="color-scheme" content="light dark"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.14" />
+  
+    
+    <script src="_static/searchtools.js"></script>
+    <script src="_static/language_data.js"></script>
+    <script src="searchindex.js"></script>
+  
+<meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700&amp;display=swap"
+      rel="stylesheet" />
+<!-- GoatCounter: cookieless, privacy-friendly analytics (ignores localhost) -->
+<script data-goatcounter="https://fastapi-restly.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+
+  </head>
+  <body data-default-mode="auto">
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+  
+  
+  
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button type="button" class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="_static/fr-monogram.svg" class="logo__image only-light" alt=""/>
+    <img src="_static/fr-monogram-dark.svg" class="logo__image only-dark pst-js-only" alt=""/>
+  
+  
+    <p class="title logo__title">FastAPI-Restly</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="tutorial.html">
+    Tutorial
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="guide.html">
+    Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="api_reference.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="about.html">
+    About
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button type="button" class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button type="button" class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/rjprins/fastapi-restly" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button type="button" class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button type="button" class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="tutorial.html">
+    Tutorial
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="guide.html">
+    Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="api_reference.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="about.html">
+    About
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button type="button" class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/rjprins/fastapi-restly" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item pst-sidebar-collapse"><button type="button" id="pst-collapse-sidebar-button" aria-expanded="true" aria-controls="pst-primary-sidebar">
+  <svg class="pst-icon" role="img" aria-hidden="true" focusable="false" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+    <path fill="currentColor" d="M3 15.5C2.36232 15.5 1.74874 15.2564 1.28478 14.8189C0.820828 14.3815 0.541576 13.7832 0.504167 13.1467L0.5 13L0.5 3C0.499965 2.36232 0.743605 1.74874 1.18107 1.28478C1.61854 0.820828 2.21676 0.541576 2.85333 0.504167L3 0.5L13 0.5C13.6377 0.499965 14.2513 0.743605 14.7152 1.18107C15.1792 1.61854 15.4584 2.21676 15.4958 2.85333L15.5 3L15.5 13C15.5 13.6377 15.2564 14.2513 14.8189 14.7152C14.3815 15.1792 13.7832 15.4584 13.1467 15.4958L13 15.5L3 15.5ZM3 13.8333L10.5 13.8333L10.5 2.16667L3 2.16667C2.79589 2.16669 2.59889 2.24163 2.44636 2.37726C2.29383 2.5129 2.19638 2.69979 2.1725 2.9025L2.16667 3L2.16667 13C2.16669 13.2041 2.24163 13.4011 2.37726 13.5536C2.5129 13.7062 2.69979 13.8036 2.9025 13.8275L3 13.8333ZM6.65583 10.325L6.5775 10.2558L4.91083 8.58917C4.76735 8.44567 4.68116 8.25476 4.66843 8.05223C4.65569 7.84971 4.71729 7.6495 4.84167 7.48917L4.91083 7.41083L6.5775 5.74417C6.72747 5.59471 6.9287 5.50794 7.14032 5.50148C7.35194 5.49502 7.55809 5.56935 7.7169 5.70937C7.8757 5.8494 7.97525 6.04463 7.99533 6.25539C8.01541 6.46616 7.95451 6.67667 7.825 6.84417L7.75583 6.9225L6.67917 8L7.75583 9.0775C7.89931 9.22099 7.98551 9.41191 7.99824 9.61443C8.01097 9.81695 7.94938 10.0172 7.825 10.1775L7.75583 10.2558C7.61234 10.3993 7.42142 10.4855 7.2189 10.4982C7.01638 10.511 6.81617 10.4494 6.65583 10.325Z"/>
+  </svg>
+  <span class="pst-collapse-sidebar-label">Collapse Sidebar</span>
+  <span class="pst-expand-sidebar-label">Expand Sidebar</span>
+</button></div>
+        <div class="sidebar-primary-item">
+
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav">
+    <ul class="nav bd-sidenav">
+      <li class="toctree-l1"><a class="reference internal" href="guide.html#how-restly-works">How Restly works</a></li>
+    </ul><p aria-level="2" class="caption" role="heading"><span class="caption-text">Setup</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="new_projects.html">New Projects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="existing_projects.html">Existing Projects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="database.html">Database &amp; Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="models.html">Models</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Views &amp; Routes</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="views.html">Views</a></li>
+<li class="toctree-l1"><a class="reference internal" href="react_admin.html">React Admin</a></li>
+<li class="toctree-l1"><a class="reference internal" href="typing.html">Type Annotations</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">CRUD Routes</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="crud_routes.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_list.html">List</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_get_one.html">Get One</a></li>
+<li class="toctree-l1 current active"><a aria-current="page" class="current reference internal" href="#">Create</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_update.html">Update</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_delete.html">Delete</a></li>
+<li class="toctree-l1"><a class="reference internal" href="custom_routes.html">Custom Routes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="commits.html">Commits &amp; Hooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nested_routes.html">Nested Routes</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Requests &amp; Responses</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="schemas.html">Schemas &amp; Validation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="relationships.html">Relationships</a></li>
+<li class="toctree-l1"><a class="reference internal" href="responses.html">Responses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="filtering.html">Filtering, Sorting &amp; Pagination</a></li>
+<li class="toctree-l1"><a class="reference internal" href="errors.html">Errors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="openapi.html">OpenAPI</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Access</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="context.html">Request Context</a></li>
+<li class="toctree-l1"><a class="reference internal" href="authorization.html">Authorization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clauses.html">Query Clauses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tenancy.html">Multi-Tenancy</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Testing &amp; Deploying</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deploying.html">Deploying</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="guide.html" class="nav-link">Guide</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Create</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="create">
+<span id="create-route"></span><h1>Create<a class="headerlink" href="#create" title="Link to this heading">#</a></h1>
+<p><code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/</span></code> adds one row to the view’s model. The client sends the fields of
+the new row, and the response holds the saved row with its id.
+<a class="reference internal" href="crud_routes.html#view-request-steps"><span class="std std-ref">How a CRUD route runs</span></a> explains the three methods of
+each route: the endpoint method, the handler and the business method. For
+<code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/</span></code>, these steps run:</p>
+<div class="call-tree docutils container">
+<ul><li class="call-tree-fold"><details open="open"><summary><span class="call-tree-step"><code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/</span></code></span></summary><ul><li class="call-tree-fold"><details open="open"><summary><span class="call-tree-step"><span class="call-tree-call"><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create_endpoint" title="fastapi_restly.views.RestView.create_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create_endpoint(data)</span></code></a><span class="call-tree-badge">override</span></span><span class="call-tree-note">The endpoint method. FastAPI has checked <code class="docutils literal notranslate"><span class="pre">data</span></code> against the create schema.</span></span></summary><ul><li class="call-tree-fold"><details open="open"><summary><span class="call-tree-step"><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_create" title="fastapi_restly.views.RestView.handle_create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_create(data)</span></code></a><span class="call-tree-note">The handler. You call it, but you cannot override it.</span></span></summary><ul><li><span class="call-tree-step"><span class="call-tree-call"><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.authorize" title="fastapi_restly.views.RestView.authorize"><code class="xref py py-meth docutils literal notranslate"><span class="pre">authorize(&quot;create&quot;,</span> <span class="pre">data=data)</span></code></a><span class="call-tree-badge">override</span></span><span class="call-tree-note">A refusal is a 403.</span></span></li><li><span class="call-tree-step call-tree-words">Check the <a class="reference internal" href="relationships.html#reference-exists"><span class="std std-ref">references</span></a> in the data. An id that does
+not exist is a 404.</span></li><li><span class="call-tree-step"><span class="call-tree-call"><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create" title="fastapi_restly.views.RestView.create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create(data)</span></code></a><span class="call-tree-badge">override</span></span><span class="call-tree-note">The business method: it builds the object.</span></span></li><li><span class="call-tree-step call-tree-words">Save: add the object to the session, flush, and refresh it.</span></li><li><span class="call-tree-step"><span class="call-tree-call"><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.before_action_commit" title="fastapi_restly.views.RestView.before_action_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">before_action_commit(&quot;create&quot;,</span> <span class="pre">new=obj,</span> <span class="pre">old=None)</span></code></a><span class="call-tree-badge">override</span></span></span></li><li><span class="call-tree-step call-tree-words">Commit.</span></li><li><span class="call-tree-step"><span class="call-tree-call"><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.after_action_commit" title="fastapi_restly.views.RestView.after_action_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">after_action_commit(&quot;create&quot;,</span> <span class="pre">new=obj,</span> <span class="pre">old=None)</span></code></a><span class="call-tree-badge">override</span></span></span></li></ul></details></li><li><span class="call-tree-step"><span class="call-tree-call"><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_single_response" title="fastapi_restly.views.BaseRestView.to_single_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_single_response(obj)</span></code></a><span class="call-tree-badge">override</span></span><span class="call-tree-note">The response, with status 201.</span></span></li></ul></details></li></ul></details></li></ul></div>
+<p>A method marked <em>override</em> is a method that you can override in your view. Before
+<code class="docutils literal notranslate"><span class="pre">create_endpoint</span></code> runs, FastAPI checks the request body against the view’s
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.create_schema" title="fastapi_restly.views.BaseRestView.create_schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">create_schema</span></code></a>. A
+body that does not fit returns 422, and none of the steps run.</p>
+<section id="what-you-can-change">
+<span id="create-what-to-change"></span><h2>What you can change<a class="headerlink" href="#what-you-can-change" title="Link to this heading">#</a></h2>
+<p>The table starts with rules on the model and on the schema. They need less
+code than an override, and they also hold for the other routes.</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Your change</p></th>
+<th class="head"><p>Where it goes</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>The fields a client can send</p></td>
+<td><p><a class="reference internal" href="schemas.html#readonly-and-writeonly"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">fr.ReadOnly</span></code></span></a> or <a class="reference internal" href="schemas.html#explicit-write-schemas"><span class="std std-ref">a create schema</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>Check one value</p></td>
+<td><p><a class="reference internal" href="schemas.html#validation"><span class="std std-ref">A validator</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>Who may create</p></td>
+<td><p><a class="reference internal" href="authorization.html#authorize-gate"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">authorize</span></code></span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>A value that every write sets</p></td>
+<td><p><a class="reference internal" href="models.html#write-path-values"><span class="std std-ref">A column default</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>What the create does</p></td>
+<td><p><a class="reference internal" href="#create-method"><code class="docutils literal notranslate"><span class="pre">create</span></code></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>Work before the commit</p></td>
+<td><p><a class="reference internal" href="commits.html#transaction-hooks"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">before_action_commit</span></code></span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>Work after the commit</p></td>
+<td><p><a class="reference internal" href="commits.html#transaction-hooks"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code></span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>A value in the response</p></td>
+<td><p><a class="reference internal" href="responses.html#value-on-each-row"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">to_single_response</span></code></span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>Status code, path, dependencies</p></td>
+<td><p><a class="reference internal" href="crud_routes.html#modify-route"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">fr.modify_route</span></code></span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>HTTP method, parameters, body</p></td>
+<td><p><a class="reference internal" href="#replace-create-endpoint"><code class="docutils literal notranslate"><span class="pre">create_endpoint</span></code></a></p></td>
+</tr>
+<tr class="row-even"><td><p>No create route</p></td>
+<td><p><a class="reference internal" href="crud_routes.html#leave-out-routes"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">create_endpoint</span> <span class="pre">=</span> <span class="pre">None</span></code></span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>The same create on another path</p></td>
+<td><p><a class="reference internal" href="#create-from-custom-route"><code class="docutils literal notranslate"><span class="pre">handle_create</span></code></a></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="change-what-the-create-does">
+<span id="password-hash-example"></span><span id="create-method"></span><h2>Change what the create does<a class="headerlink" href="#change-what-the-create-does" title="Link to this heading">#</a></h2>
+<p>Override <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create" title="fastapi_restly.views.RestView.create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create</span></code></a>. It gets the
+request body. It builds the new object and returns it. Call
+<code class="docutils literal notranslate"><span class="pre">super().create()</span></code> to build the object from the fields that the client sent,
+and change it after that call. This view stores a hash of the password, not
+the password:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.orm</span><span class="w"> </span><span class="kn">import</span> <span class="n">Mapped</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.auth</span><span class="w"> </span><span class="kn">import</span> <span class="n">hash_password</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Base</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">User</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDMixin</span><span class="p">,</span> <span class="n">Base</span><span class="p">):</span>
+    <span class="n">email</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">password</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>  <span class="c1"># stores the hash. UserView.create writes it</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">UserSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
+    <span class="n">email</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">password</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">WriteOnly</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>  <span class="c1"># accepted on input, never in a response</span>
+
+
+<span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">"/users"</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserSchema</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="n">user</span> <span class="o">=</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="n">user</span><span class="o">.</span><span class="n">password</span> <span class="o">=</span> <span class="n">hash_password</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">password</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">user</span>
+</pre></div>
+</div>
+<p>The default <code class="docutils literal notranslate"><span class="pre">create</span></code> passes each field that the client sent to the model’s
+constructor. So the plain password goes into <code class="docutils literal notranslate"><span class="pre">password</span></code> first, and the
+override replaces it with the hash. The save comes after <code class="docutils literal notranslate"><span class="pre">create</span></code> returns,
+so the database only gets the hash. <code class="docutils literal notranslate"><span class="pre">fr.WriteOnly</span></code> keeps the field out of
+every response.</p>
+<p>When <code class="docutils literal notranslate"><span class="pre">create</span></code> runs, you can rely on these things:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">data</span></code> is the request body, an instance of the create schema. Pydantic has
+validated it.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">authorize</span></code> allowed the create.</p></li>
+<li><p>Every row that <code class="docutils literal notranslate"><span class="pre">data</span></code> refers to by its id exists; see
+<a class="reference internal" href="relationships.html#reference-exists"><span class="std std-ref">Check that the referenced row exists</span></a>.</p></li>
+<li><p>Nothing is written to the database yet.</p></li>
+<li><p>You can use <code class="docutils literal notranslate"><span class="pre">self.session</span></code>, <code class="docutils literal notranslate"><span class="pre">self.request</span></code> and the view’s dependencies, as
+in every method of the view.</p></li>
+</ul>
+<p>The default <code class="docutils literal notranslate"><span class="pre">create</span></code> builds a new object of the view’s model from the fields
+that the client sent, except the <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> fields, and adds it to the
+session. It does not flush and does not commit. After <code class="docutils literal notranslate"><span class="pre">create</span></code> returns the
+object, the handler saves it, runs <code class="docutils literal notranslate"><span class="pre">before_action_commit</span></code>, commits and runs
+<code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code>. When <code class="docutils literal notranslate"><span class="pre">create</span></code> raises, nothing is saved, and the client
+gets the error. <a class="reference internal" href="errors.html"><span class="std std-doc">Errors</span></a> lists the exceptions that you can raise.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p><code class="docutils literal notranslate"><span class="pre">create</span></code> runs for <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/</span></code>, and for a custom route that calls
+<code class="docutils literal notranslate"><span class="pre">handle_create</span></code>. A script or a worker does not run it; see
+<a class="reference internal" href="commits.html#logic-outside-a-view"><span class="std std-ref">Run the same logic in a script or a worker</span></a>.</p>
+<p>The generated update schema takes <code class="docutils literal notranslate"><span class="pre">password</span></code> too. Without more code,
+<code class="docutils literal notranslate"><span class="pre">PATCH</span> <span class="pre">/users/{id}</span></code> stores a new password as plain text. So hash it in
+<code class="docutils literal notranslate"><span class="pre">update</span></code> as well:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="n">user</span> <span class="o">=</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s2">"password"</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">model_fields_set</span><span class="p">:</span>
+            <span class="n">user</span><span class="o">.</span><span class="n">password</span> <span class="o">=</span> <span class="n">hash_password</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">password</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">user</span>
+</pre></div>
+</div>
+<p>The other way is an <a class="reference internal" href="schemas.html#explicit-write-schemas"><span class="std std-ref">update schema of your own</span></a>
+without <code class="docutils literal notranslate"><span class="pre">password</span></code>, and a separate route that changes the password. The SaaS
+example does this: its change-password route checks the current password
+first
+(<a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/users/views.py"><code class="docutils literal notranslate"><span class="pre">app/users/views.py</span></code></a>).</p>
+<p><code class="docutils literal notranslate"><span class="pre">create</span></code> must return the object. When it returns <code class="docutils literal notranslate"><span class="pre">None</span></code>, Restly raises
+<code class="docutils literal notranslate"><span class="pre">TypeError</span></code>.</p>
+</div>
+</section>
+<section id="the-new-object-has-no-id-in-create">
+<span id="no-id-in-create"></span><h2>The new object has no id in <code class="docutils literal notranslate"><span class="pre">create</span></code><a class="headerlink" href="#the-new-object-has-no-id-in-create" title="Link to this heading">#</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">create</span></code> returns the object before the save. So inside <code class="docutils literal notranslate"><span class="pre">create</span></code>, the new
+object has no primary key yet. The values that the database or a mapper event
+sets at the flush, such as a slug or a tenant id, are not there either. Code
+that reads them gets <code class="docutils literal notranslate"><span class="pre">None</span></code>, not an error.</p>
+<p>Most code that needs these values runs after the save. An outbox row goes in
+<a class="reference internal" href="commits.html#transaction-hooks"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">before_action_commit</span></code></span></a>, which gets the saved object.
+When <code class="docutils literal notranslate"><span class="pre">create</span></code> itself needs the id, flush, as in plain SQLAlchemy:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="n">report</span> <span class="o">=</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>  <span class="c1"># report.id is set now</span>
+        <span class="n">report</span><span class="o">.</span><span class="n">file_path</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"reports/</span><span class="si">{</span><span class="n">report</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">.pdf"</span>
+        <span class="k">return</span> <span class="n">report</span>
+</pre></div>
+</div>
+<p>The flush writes the row, and the save writes the path with an <code class="docutils literal notranslate"><span class="pre">UPDATE</span></code>.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<ul class="simple">
+<li><p>Nothing is written before the save, so a query inside <code class="docutils literal notranslate"><span class="pre">create</span></code> does not
+see the new object. A check such as “is this email taken?” after
+<code class="docutils literal notranslate"><span class="pre">super().create()</span></code> finds only the rows that are already in the database,
+as it should. Restly runs the business method under
+<a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/session_api.html#sqlalchemy.orm.Session.no_autoflush" title="(in SQLAlchemy v2.0)"><code class="xref py py-attr docutils literal notranslate"><span class="pre">session.no_autoflush</span></code></a> for
+this. Without it, a sync session would write the half-built object before
+the query.</p></li>
+<li><p>For the same reason, a query in a business method or a <code class="docutils literal notranslate"><span class="pre">write_action</span></code>
+block does not see any of your unflushed changes. A loop that looks a row
+up and adds it when it is missing, or a count of rows against a limit,
+must call <code class="docutils literal notranslate"><span class="pre">flush()</span></code> before the query.</p></li>
+<li><p>A <code class="docutils literal notranslate"><span class="pre">try</span></code> or a <code class="docutils literal notranslate"><span class="pre">with</span></code> around <code class="docutils literal notranslate"><span class="pre">super().create()</span></code> catches no error of the
+INSERT, because the INSERT runs at the save, after <code class="docutils literal notranslate"><span class="pre">create</span></code> returns. To
+catch it in <code class="docutils literal notranslate"><span class="pre">create</span></code>, flush inside the <code class="docutils literal notranslate"><span class="pre">try</span></code>.</p></li>
+<li><p>“Nothing is written” is about the objects in the session. A statement that
+you run yourself, such as
+<code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">self.session.execute(update(Product).values(...))</span></code>, goes to the
+database at once. It is part of the same transaction, so the commit
+of the action commits it, and an error rolls it back.</p></li>
+<li><p>Often you do not need the id at all. Link the objects with a
+relationship, such as <code class="docutils literal notranslate"><span class="pre">line.order</span> <span class="pre">=</span> <span class="pre">order</span></code>, and the flush copies the key.</p></li>
+</ul>
+</div>
+</section>
+<section id="build-the-object-yourself">
+<span id="create-build-yourself"></span><h2>Build the object yourself<a class="headerlink" href="#build-the-object-yourself" title="Link to this heading">#</a></h2>
+<p>To build the object in another way, build it yourself and return it. You do
+not need to add it to the session: the save does that.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="c1"># this model's constructor takes the values in another form</span>
+        <span class="k">return</span> <span class="n">Product</span><span class="o">.</span><span class="n">from_catalog_entry</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">catalog_entry</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The handler has already checked the references in <code class="docutils literal notranslate"><span class="pre">data</span></code> (<code class="docutils literal notranslate"><span class="pre">fr.IDRef</span></code> and
+<code class="docutils literal notranslate"><span class="pre">fr.MustExist</span></code>; see <a class="reference internal" href="relationships.html"><span class="std std-doc">Relationships</span></a>). So an object that you
+build yourself keeps those rules.</p>
+</section>
+<section id="replace-create-endpoint">
+<span id="id1"></span><h2>Replace <code class="docutils literal notranslate"><span class="pre">create_endpoint</span></code><a class="headerlink" href="#replace-create-endpoint" title="Link to this heading">#</a></h2>
+<p>To change one option of the route, such as its status code, use
+<a class="reference internal" href="api/views.html#fastapi_restly.views.modify_route" title="fastapi_restly.views.modify_route"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.modify_route</span></code></a>. When the change
+needs code, define <code class="docutils literal notranslate"><span class="pre">create_endpoint</span></code> in your view, with a route decorator.
+Keep the call to <code class="docutils literal notranslate"><span class="pre">handle_create</span></code>, so <code class="docutils literal notranslate"><span class="pre">authorize</span></code>, your <code class="docutils literal notranslate"><span class="pre">create</span></code> and the
+commit still run. This view also sends the URL of the new row in a
+<code class="docutils literal notranslate"><span class="pre">Location</span></code> header:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">Response</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi_restly.views</span><span class="w"> </span><span class="kn">import</span> <span class="n">ViewCreate</span><span class="p">,</span> <span class="n">ViewResponse</span>
+
+
+<span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ProductView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">"/products"</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Product</span>
+
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">"/"</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">ViewCreate</span><span class="p">,</span> <span class="n">response</span><span class="p">:</span> <span class="n">Response</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ViewResponse</span><span class="p">:</span>
+        <span class="n">product</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_create</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s2">"Location"</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"/products/</span><span class="si">{</span><span class="n">product</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">"</span>
+        <span class="k">return</span> <span class="n">product</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">response:</span> <span class="pre">Response</span></code> is FastAPI’s way to set a header on the response; see
+<a class="reference external" href="https://fastapi.tiangolo.com/advanced/response-headers/">Response Headers</a>.
+<code class="docutils literal notranslate"><span class="pre">fr.post</span></code> answers <code class="docutils literal notranslate"><span class="pre">201</span></code>, as the default route does. <code class="docutils literal notranslate"><span class="pre">ViewCreate</span></code> and
+<code class="docutils literal notranslate"><span class="pre">ViewResponse</span></code> stand for the create schema and the response schema of the
+view; see <a class="reference internal" href="schemas.html#name-the-view-schemas"><span class="std std-ref">Name the view’s schemas in a custom route</span></a>.
+<a class="reference internal" href="crud_routes.html#replace-endpoint-method"><span class="std std-ref">Replace an endpoint method</span></a> has the rules for all
+five routes.</p>
+</section>
+<section id="create-a-row-from-a-custom-route">
+<span id="create-from-custom-route"></span><h2>Create a row from a custom route<a class="headerlink" href="#create-a-row-from-a-custom-route" title="Link to this heading">#</a></h2>
+<p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_create" title="fastapi_restly.views.RestView.handle_create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_create</span></code></a> runs all
+the steps of <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/</span></code>. Call it from a route of your own to create a row under
+another path, or from another request body:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">SignUp</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">BaseSchema</span><span class="p">):</span>
+    <span class="n">email</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">password</span><span class="p">:</span> <span class="nb">str</span>
+
+
+<span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">"/users"</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserSchema</span>
+
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">"/sign-up"</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">sign_up</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">SignUp</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ViewResponse</span><span class="p">:</span>
+        <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_create</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">authorize</span></code>, your <code class="docutils literal notranslate"><span class="pre">create</span></code> and the commit run as on <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/users</span></code>. So with
+the <code class="docutils literal notranslate"><span class="pre">create</span></code> from <a class="reference internal" href="#create-method">Change what the create does</a>, both routes
+store a hash of the password.</p>
+<p>To create several rows in one action, such as an order with its lines, see
+<a class="reference internal" href="custom_routes.html#custom-action-route"><span class="std std-ref">Add a custom action route</span></a>.</p>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="crud_get_one.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Get One</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="crud_update.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Update</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#what-you-can-change">What you can change</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#change-what-the-create-does">Change what the create does</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#the-new-object-has-no-id-in-create">The new object has no id in <code class="docutils literal notranslate"><span class="pre">create</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#build-the-object-yourself">Build the object yourself</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#replace-create-endpoint">Replace <code class="docutils literal notranslate"><span class="pre">create_endpoint</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#create-a-row-from-a-custom-route">Create a row from a custom route</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+<p class="sidebar-newsletter">
+  <a href="newsletter.html">Subscribe to newsletter</a>
+</p></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="_static/scripts/bootstrap.js?digest=18bd87630a240e9c25be"></script>
+<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=18bd87630a240e9c25be"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, Rutger Prins.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.23.0.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

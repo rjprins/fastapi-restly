@@ -1,9 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 663.560 88" role="img">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 666.110 88" role="img">
   <title>FastAPI-Restly</title>
   <style>
     .letters { fill: #17212b; }
     .period { fill: #009b84; }
-    @media (prefers-color-scheme: dark) { .letters { fill: #f4f5f6; } }
   </style>
   <defs>
     <path id="glyph-1" d="M6 0 270 686H454L718 0H557L508 135H209L160 0ZM252 255H465L404 424Q400 435 394.5 450.5Q389 466 383.0 485.0Q377 504 371.5 522.5Q366 541 361 556H355Q350 537 342.0 511.5Q334 486 326.0 462.5Q318 439 313 424Z"/>
@@ -31,15 +30,15 @@
     <use href="#glyph-225" transform="translate(545.000 0.000)"/>
     <use href="#glyph-378" transform="translate(1080.000 0.000)"/>
     <use href="#glyph-387" transform="translate(1591.000 0.000)"/>
-    <use href="#glyph-1" transform="translate(1888.000 0.000)"/>
-    <use href="#glyph-143" transform="translate(2567.000 0.000)"/>
-    <use href="#glyph-73" transform="translate(3203.000 0.000)"/>
-    <use href="#glyph-554" transform="translate(3459.000 0.000)"/>
-    <use href="#glyph-146" transform="translate(3747.000 0.000)"/>
-    <use href="#glyph-265" transform="translate(4420.000 0.000)"/>
-    <use href="#glyph-378" transform="translate(4959.000 0.000)"/>
-    <use href="#glyph-387" transform="translate(5470.000 0.000)"/>
-    <use href="#glyph-320" transform="translate(5767.000 0.000)"/>
-    <use href="#glyph-426" transform="translate(5989.000 0.000)"/>
+    <use href="#glyph-1" transform="translate(1918.000 0.000)"/>
+    <use href="#glyph-143" transform="translate(2597.000 0.000)"/>
+    <use href="#glyph-73" transform="translate(3233.000 0.000)"/>
+    <use href="#glyph-554" transform="translate(3489.000 0.000)"/>
+    <use href="#glyph-146" transform="translate(3777.000 0.000)"/>
+    <use href="#glyph-265" transform="translate(4450.000 0.000)"/>
+    <use href="#glyph-378" transform="translate(4989.000 0.000)"/>
+    <use href="#glyph-387" transform="translate(5500.000 0.000)"/>
+    <use href="#glyph-320" transform="translate(5797.000 0.000)"/>
+    <use href="#glyph-426" transform="translate(6019.000 0.000)"/>
   </g>
 </svg>

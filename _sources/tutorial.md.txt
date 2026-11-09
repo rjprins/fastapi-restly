@@ -133,7 +133,7 @@ the insert was tried, and it does not say which field was wrong. A missing
 post should answer `404`, and name the field. So comments need to check the
 post before the insert.
 
-Until now, Restly generated the view's schema from the model. For comments we
+Until now, Restly generated the schema from the model. For comments we
 write the schema ourselves, and mark `post_id` as a checked reference. Put
 the schema above `CommentView`, and point the view at it:
 

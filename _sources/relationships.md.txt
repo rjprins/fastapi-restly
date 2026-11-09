@@ -7,7 +7,7 @@ directions:
   update, Restly looks the id up. If the row does not exist, the request
   returns `404`. Otherwise Restly writes the foreign key or the relationship.
 - In a response, the field shows the other row as an id or as a full object.
-  Restly loads every relationship that the response class names before it
+  Restly loads every relationship that the response schema names before it
   serializes the response, so this also works on an async view.
 
 Restly reads the SQLAlchemy mapper to decide what a field writes. A field
@@ -361,7 +361,7 @@ The schema takes the tags as a list of ids, as in
 replaces the whole list.
 
 Responses show the ids, also on an async view. Restly loads each relationship
-that the response class names. So the relationship needs no `lazy` option.
+that the response schema names. So the relationship needs no `lazy` option.
 
 The schema of a tag can show the ids of its posts with
 `posts: fr.ReadOnly[list[fr.IDRef[Post]]]`. The field is read-only here.
@@ -370,7 +370,7 @@ The schema of a tag can show the ids of its posts with
 :class: details
 
 To return the tags as objects, while clients still send ids, set your own
-[response class](#own-response-class):
+[response schema](#own-response-schema):
 
 ```python
 class PostResponse(fr.IDSchema):
@@ -382,7 +382,7 @@ class PostView(fr.AsyncRestView):
     prefix = "/posts"
     model = Post
     schema = PostSchema
-    schema_response = PostResponse
+    response_schema = PostResponse
 ```
 
 A link with columns of its own, such as the position of a tag on a post, is
@@ -555,7 +555,7 @@ task_label = await async_make_new_object(
 
 `async_make_new_object` still checks that the rows exist, and writes the
 foreign key columns. A schema that validates, such as
-`self.schema_create(task_id=..., label_id=...)`, needs none of this, and a
+`self.create_schema(task_id=..., label_id=...)`, needs none of this, and a
 handler can take it. The SaaS example's `POST /task-labels/create-and-attach`
 route does that, in
 [`app/labels/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/labels/views.py).
@@ -592,8 +592,8 @@ async def attach(self, request: AttachRequest):
 ```
 
 {meth}`self.to_single_response(obj) <fastapi_restly.views.BaseRestView.to_single_response>`
-returns the response class of the view, not this route's class. Use it only
-when the route returns the view's own response class.
+returns the response schema of the view, not this route's class. Use it only
+when the route returns the view's own response schema.
 :::
 
 (relationship-loading)=
@@ -602,13 +602,14 @@ when the route returns the view's own response class.
 On an async view, serializing the response cannot use the database. So every
 field that a relationship fills must be loaded first. An unloaded
 relationship raises `MissingGreenlet`. Restly loads them for you in most
-cases: it eager-loads each relationship that the view's response class names,
-on reads and on writes. By default the response class is the view's schema
-without its `WriteOnly` fields; see [Set your own response class](#own-response-class).
+cases: it eager-loads each relationship that the view's response schema names,
+on reads and on writes. By default the response schema is the view's main schema
+without its `WriteOnly` fields; see [Set your own response
+schema](#own-response-schema).
 
 ### What Restly loads for you
 
-A field of the response class whose name matches a relationship of the model
+A field of the response schema whose name matches a relationship of the model
 is loaded. Take an article with an author and comments:
 
 ```python
@@ -619,7 +620,7 @@ class Article(fr.IDMixin, Base):
     comments: Mapped[list["Comment"]] = relationship(default_factory=list, init=False)
 ```
 
-Name `author` and `comments` on the view's schema, and Restly loads them.
+Name `author` and `comments` on the main schema, and Restly loads them.
 Mark them `fr.ReadOnly`, so they stay out of the create and update bodies:
 
 ```python
@@ -644,10 +645,11 @@ the sync session loads the relationship with one more query. On an async view,
 the same missing load raises `MissingGreenlet`.
 :::
 
+(embedded-objects-read-only)=
 ### Embedded objects are read-only
 
 A nested schema shows a related object in responses. It cannot take one in a
-create or update body: Restly would pass the nested Pydantic object to the
+create or update schema: Restly would pass the nested Pydantic object to the
 model as it is, and the model does not accept it. That is why the fields
 above are `fr.ReadOnly`.
 
@@ -691,7 +693,7 @@ update responses have the same loads.
 :::{admonition} Details
 :class: details
 
-The default returns the loads that the response class needs. Adding to it
+The default returns the loads that the response schema needs. Adding to it
 keeps those loads. To replace them, return a new list, for example to use
 `joinedload` instead of `selectinload`.
 
@@ -728,7 +730,7 @@ async def after_action_commit(self, action, new, old=None):
 ```
 
 Use `awaitable_attrs` for one read. If every request needs the relationship,
-add it to the response class or to `get_loader_options`
+add it to the response schema or to `get_loader_options`
 instead. Then it loads in one query for all rows, not with one query per
 attribute.
 
@@ -746,8 +748,8 @@ Restly view, the cause is almost always a response that reads a relationship
 that is not loaded. When it comes from a nested model, Pydantic can wrap it
 in a `ValidationError`. Check these in order:
 
-1. **Is the field in the response class?** A field that names a relationship
-   is enough to load it. A `WriteOnly` field is not in the response class, so
+1. **Is the field in the response schema?** A field that names a relationship
+   is enough to load it. A `WriteOnly` field is not in the response schema, so
    its relationship does not load. A field that should load but does not
    usually has the wrong name; see the note below.
 2. **Does a hook, a property or `to_single_response` read it?** Load it with
@@ -799,7 +801,7 @@ SQLAlchemy's
 ### How Restly loads the relationships of a response
 
 {meth}`get_loader_options() <fastapi_restly.views.BaseRestView.get_loader_options>`
-walks the fields of the response class. For each field whose name is a
+walks the fields of the response schema. For each field whose name is a
 relationship of the model, it adds a `selectinload(...)` option. When the
 field type is a nested schema, it walks that schema against the related
 model in the same way, and adds the result as child options.

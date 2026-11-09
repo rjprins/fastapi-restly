@@ -7,7 +7,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Authorization &#8212; FastAPI-Restly 0.13.0 documentation</title>
+    <title>Authorization &#8212; FastAPI-Restly 0.14.0 documentation</title>
   
   
   
@@ -32,7 +32,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=643d5ecc" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=964c8a9c" />
   
   <!-- So that users can add custom icons -->
   <script defer src="_static/scripts/fontawesome.js?digest=18bd87630a240e9c25be"></script>
@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=18bd87630a240e9c25be" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=18bd87630a240e9c25be" />
 
-    <script src="_static/documentation_options.js?v=1019fba8"></script>
+    <script src="_static/documentation_options.js?v=9e420a66"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -67,7 +67,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="color-scheme" content="light dark"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.13" />
+  <meta name="docsearch:version" content="0.14" />
   
     
     <script src="_static/searchtools.js"></script>
@@ -426,7 +426,10 @@
 <nav class="bd-docs-nav bd-links"
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
-  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Setup</span></p>
+  <div class="bd-toc-item navbar-nav">
+    <ul class="nav bd-sidenav">
+      <li class="toctree-l1"><a class="reference internal" href="guide.html#how-restly-works">How Restly works</a></li>
+    </ul><p aria-level="2" class="caption" role="heading"><span class="caption-text">Setup</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="new_projects.html">New Projects</a></li>
 <li class="toctree-l1"><a class="reference internal" href="existing_projects.html">Existing Projects</a></li>
@@ -436,10 +439,20 @@
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Views &amp; Routes</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="views.html">Views</a></li>
-<li class="toctree-l1"><a class="reference internal" href="crud_routes.html">CRUD Routes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="lifecycle.html">Request Lifecycle &amp; Hooks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="react_admin.html">React Admin</a></li>
 <li class="toctree-l1"><a class="reference internal" href="typing.html">Type Annotations</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">CRUD Routes</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="crud_routes.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_list.html">List</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_get_one.html">Get One</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_create.html">Create</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_update.html">Update</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_delete.html">Delete</a></li>
+<li class="toctree-l1"><a class="reference internal" href="custom_routes.html">Custom Routes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="commits.html">Commits &amp; Hooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nested_routes.html">Nested Routes</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Requests &amp; Responses</span></p>
 <ul class="nav bd-sidenav">
@@ -576,8 +589,8 @@ an action. The client then gets a 403.</p>
 the view’s scope, and then calls <code class="docutils literal notranslate"><span class="pre">authorize</span></code> with it. So <code class="docutils literal notranslate"><span class="pre">authorize</span></code> only gets
 rows that the caller can see. For <code class="docutils literal notranslate"><span class="pre">get_many</span></code>, it runs before the query and
 gets no row. On a write, it runs before the change is made.
-<a class="reference internal" href="lifecycle.html#read-request-steps"><span class="std std-ref">A read</span></a> shows where <code class="docutils literal notranslate"><span class="pre">authorize</span></code> runs among the steps of
-a request.</p>
+<a class="reference internal" href="crud_routes.html#view-request-steps"><span class="std std-ref">How a CRUD route runs</span></a> shows where <code class="docutils literal notranslate"><span class="pre">authorize</span></code> runs
+among the steps of a route, and the page of each route shows all its steps.</p>
 <p>A refusal from <code class="docutils literal notranslate"><span class="pre">authorize</span></code> is a 403: the caller can see the row, but may not
 do this. To hide a row, so that the caller gets a 404 as if the row did not
 exist, use a <a class="reference internal" href="scopes.html"><span class="std std-doc">scope</span></a> instead.</p>
@@ -718,7 +731,7 @@ checker reports a typo.</p>
 and
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.after_action_commit" title="fastapi_restly.views.RestView.after_action_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">after_action_commit</span></code></a>.
 Reads do not call the hooks, so the hooks only see write actions. See
-<a class="reference internal" href="lifecycle.html#transaction-hooks"><span class="std std-ref">Run code before or after the commit</span></a>.</p>
+<a class="reference internal" href="commits.html#transaction-hooks"><span class="std std-ref">Run code before or after the commit</span></a>.</p>
 <div class="details admonition">
 <p class="admonition-title">Details</p>
 <p>A mixin or a base view with actions of its own declares its <code class="docutils literal notranslate"><span class="pre">Action</span></code> class in
@@ -773,15 +786,15 @@ view’s <code class="docutils literal notranslate"><span class="pre">Action</sp
 <p>Write <code class="docutils literal notranslate"><span class="pre">authorize</span></code> so that an action name it does not know gets the strictest
 rule, not no rule. The blog example does this: every action that is not a
 read or a create needs the author. Then a new custom action is never open to
-everyone. <a class="reference internal" href="lifecycle.html#custom-action-route"><span class="std std-ref">Add a custom action route</span></a> shows the routes
+everyone. <a class="reference internal" href="custom_routes.html#custom-action-route"><span class="std std-ref">Add a custom action route</span></a> shows the routes
 themselves.</p>
 </section>
 <section id="see-also">
 <h2>See also<a class="headerlink" href="#see-also" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p><a class="reference internal" href="scopes.html"><span class="std std-doc">Scopes</span></a>: which rows a caller can see, and the 404.</p></li>
-<li><p><a class="reference internal" href="lifecycle.html#view-request-steps"><span class="std std-ref">Request Lifecycle &amp; Hooks</span></a>: the steps of a request,
-and where <code class="docutils literal notranslate"><span class="pre">authorize</span></code> runs.</p></li>
+<li><p><a class="reference internal" href="crud_routes.html#view-request-steps"><span class="std std-ref">CRUD Routes</span></a>: the steps of a route, and where
+<code class="docutils literal notranslate"><span class="pre">authorize</span></code> runs.</p></li>
 <li><p><a class="reference internal" href="context.html"><span class="std std-doc">Request Context</span></a>: who is calling.</p></li>
 <li><p><a class="reference internal" href="errors.html"><span class="std std-doc">Errors</span></a>: the exceptions to raise, and how errors
 look.</p></li>

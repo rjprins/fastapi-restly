@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="./" data-theme="auto">
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Commits &amp; Hooks &#8212; FastAPI-Restly 0.14.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "auto";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "auto";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=18bd87630a240e9c25be" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=18bd87630a240e9c25be" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=964c8a9c" />
+  
+  <!-- So that users can add custom icons -->
+  <script defer src="_static/scripts/fontawesome.js?digest=18bd87630a240e9c25be"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=18bd87630a240e9c25be" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=18bd87630a240e9c25be" />
+
+    <script src="_static/documentation_options.js?v=9e420a66"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=f281be69"></script>
+    <script src="_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'commits';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.23.0';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://www.fastapi-restly.org/switcher.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'latest';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            false;
+        </script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <script src="_static/newsletter.js?v=7326e93d"></script>
+    <link rel="canonical" href="https://www.fastapi-restly.org/commits.html" />
+    <link rel="icon" href="_static/favicon.svg"/>
+    <link rel="author" title="About these documents" href="about.html" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Nested Routes" href="nested_routes.html" />
+    <link rel="prev" title="Custom Routes" href="custom_routes.html" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="color-scheme" content="light dark"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.14" />
+  
+    
+    <script src="_static/searchtools.js"></script>
+    <script src="_static/language_data.js"></script>
+    <script src="searchindex.js"></script>
+  
+<meta name="msvalidate.01" content="F82C510631DC90055708DF6DA4FBB6FD" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700&amp;display=swap"
+      rel="stylesheet" />
+<!-- GoatCounter: cookieless, privacy-friendly analytics (ignores localhost) -->
+<script data-goatcounter="https://fastapi-restly.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+
+  </head>
+  <body data-default-mode="auto">
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+  
+  
+  
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button type="button" class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="_static/fr-monogram.svg" class="logo__image only-light" alt=""/>
+    <img src="_static/fr-monogram-dark.svg" class="logo__image only-dark pst-js-only" alt=""/>
+  
+  
+    <p class="title logo__title">FastAPI-Restly</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="tutorial.html">
+    Tutorial
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="guide.html">
+    Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="api_reference.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="about.html">
+    About
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button type="button" class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button type="button" class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/rjprins/fastapi-restly" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button type="button" class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button type="button" class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="tutorial.html">
+    Tutorial
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="guide.html">
+    Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="api_reference.html">
+    API
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-external" href="https://www.fastapi-restly.org/blog/">
+    Blog
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="about.html">
+    About
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button type="button" class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/rjprins/fastapi-restly" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item pst-sidebar-collapse"><button type="button" id="pst-collapse-sidebar-button" aria-expanded="true" aria-controls="pst-primary-sidebar">
+  <svg class="pst-icon" role="img" aria-hidden="true" focusable="false" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+    <path fill="currentColor" d="M3 15.5C2.36232 15.5 1.74874 15.2564 1.28478 14.8189C0.820828 14.3815 0.541576 13.7832 0.504167 13.1467L0.5 13L0.5 3C0.499965 2.36232 0.743605 1.74874 1.18107 1.28478C1.61854 0.820828 2.21676 0.541576 2.85333 0.504167L3 0.5L13 0.5C13.6377 0.499965 14.2513 0.743605 14.7152 1.18107C15.1792 1.61854 15.4584 2.21676 15.4958 2.85333L15.5 3L15.5 13C15.5 13.6377 15.2564 14.2513 14.8189 14.7152C14.3815 15.1792 13.7832 15.4584 13.1467 15.4958L13 15.5L3 15.5ZM3 13.8333L10.5 13.8333L10.5 2.16667L3 2.16667C2.79589 2.16669 2.59889 2.24163 2.44636 2.37726C2.29383 2.5129 2.19638 2.69979 2.1725 2.9025L2.16667 3L2.16667 13C2.16669 13.2041 2.24163 13.4011 2.37726 13.5536C2.5129 13.7062 2.69979 13.8036 2.9025 13.8275L3 13.8333ZM6.65583 10.325L6.5775 10.2558L4.91083 8.58917C4.76735 8.44567 4.68116 8.25476 4.66843 8.05223C4.65569 7.84971 4.71729 7.6495 4.84167 7.48917L4.91083 7.41083L6.5775 5.74417C6.72747 5.59471 6.9287 5.50794 7.14032 5.50148C7.35194 5.49502 7.55809 5.56935 7.7169 5.70937C7.8757 5.8494 7.97525 6.04463 7.99533 6.25539C8.01541 6.46616 7.95451 6.67667 7.825 6.84417L7.75583 6.9225L6.67917 8L7.75583 9.0775C7.89931 9.22099 7.98551 9.41191 7.99824 9.61443C8.01097 9.81695 7.94938 10.0172 7.825 10.1775L7.75583 10.2558C7.61234 10.3993 7.42142 10.4855 7.2189 10.4982C7.01638 10.511 6.81617 10.4494 6.65583 10.325Z"/>
+  </svg>
+  <span class="pst-collapse-sidebar-label">Collapse Sidebar</span>
+  <span class="pst-expand-sidebar-label">Expand Sidebar</span>
+</button></div>
+        <div class="sidebar-primary-item">
+
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav">
+    <ul class="nav bd-sidenav">
+      <li class="toctree-l1"><a class="reference internal" href="guide.html#how-restly-works">How Restly works</a></li>
+    </ul><p aria-level="2" class="caption" role="heading"><span class="caption-text">Setup</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="new_projects.html">New Projects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="existing_projects.html">Existing Projects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="database.html">Database &amp; Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="models.html">Models</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Views &amp; Routes</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="views.html">Views</a></li>
+<li class="toctree-l1"><a class="reference internal" href="react_admin.html">React Admin</a></li>
+<li class="toctree-l1"><a class="reference internal" href="typing.html">Type Annotations</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">CRUD Routes</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="crud_routes.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_list.html">List</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_get_one.html">Get One</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_create.html">Create</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_update.html">Update</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_delete.html">Delete</a></li>
+<li class="toctree-l1"><a class="reference internal" href="custom_routes.html">Custom Routes</a></li>
+<li class="toctree-l1 current active"><a aria-current="page" class="current reference internal" href="#">Commits &amp; Hooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nested_routes.html">Nested Routes</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Requests &amp; Responses</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="schemas.html">Schemas &amp; Validation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="relationships.html">Relationships</a></li>
+<li class="toctree-l1"><a class="reference internal" href="responses.html">Responses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="filtering.html">Filtering, Sorting &amp; Pagination</a></li>
+<li class="toctree-l1"><a class="reference internal" href="errors.html">Errors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="openapi.html">OpenAPI</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Access</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="context.html">Request Context</a></li>
+<li class="toctree-l1"><a class="reference internal" href="authorization.html">Authorization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clauses.html">Query Clauses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scopes.html">Scopes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tenancy.html">Multi-Tenancy</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Testing &amp; Deploying</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deploying.html">Deploying</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="guide.html" class="nav-link">Guide</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Commits &amp; Hooks</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="commits-hooks">
+<h1>Commits &amp; Hooks<a class="headerlink" href="#commits-hooks" title="Link to this heading">#</a></h1>
+<p>A write route commits once, at the end of its steps. This page explains what
+commits and when, the two hooks around the commit, what happens on an error,
+and how to commit several writes at once.
+<a class="reference internal" href="crud_routes.html#view-request-steps"><span class="std std-ref">How a CRUD route runs</span></a> shows where the commit comes
+among the steps of a route.</p>
+<section id="what-commits-and-when">
+<span id="what-commits"></span><h2>What commits, and when<a class="headerlink" href="#what-commits-and-when" title="Link to this heading">#</a></h2>
+<p>Restly commits for you, once for each write action. The handler of a write
+route, or a <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.write_action" title="fastapi_restly.views.RestView.write_action"><code class="xref py py-meth docutils literal notranslate"><span class="pre">write_action</span></code></a>
+block in a custom route, runs <code class="docutils literal notranslate"><span class="pre">before_action_commit</span></code>, commits, and then runs
+<code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code>. Your business methods and hooks do not commit. For code
+that must commit, see
+<a class="reference internal" href="#atomic-write-actions">Code that must commit in a write action</a>.</p>
+<p>The session that Restly opens for a request does not commit when the request
+ends. It rolls back and closes. So a custom route that writes must commit
+through a handler or a <code class="docutils literal notranslate"><span class="pre">write_action</span></code> block. A route on a plain
+<a class="reference internal" href="api/views.html#fastapi_restly.views.View" title="fastapi_restly.views.View"><code class="xref py py-class docutils literal notranslate"><span class="pre">View</span></code></a> has neither, so it commits the
+session itself. When a request ends with changes
+that are not committed, Restly warns with
+<a class="reference internal" href="api/exc.html#fastapi_restly.exc.RestlyUncommittedChangesWarning" title="fastapi_restly.exc.RestlyUncommittedChangesWarning"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyUncommittedChangesWarning</span></code></a>.</p>
+<p>To commit several writes at once, see
+<a class="reference internal" href="#shared-write-action-commit">Commit several writes together</a>.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p>The warning is on by default. To turn it off for the app, pass
+<code class="docutils literal notranslate"><span class="pre">warn_on_uncommitted=False</span></code> to <a class="reference internal" href="api/db.html#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.configure</span></code></a>.
+A route that rolls back on purpose, such as a dry run, can turn it off for one
+request with <code class="docutils literal notranslate"><span class="pre">session.info[&quot;_fr_suppress_uncommitted&quot;]</span> <span class="pre">=</span> <span class="pre">True</span></code>.</p>
+<p>A session generator of your own decides how a session is made and closed. It
+does not change who commits, unless it commits itself, which it must not do;
+see <a class="reference internal" href="database.html#own-session-generator"><span class="std std-ref">Build sessions with your own generator</span></a>.</p>
+</div>
+</section>
+<section id="run-code-before-or-after-the-commit">
+<span id="transaction-hooks"></span><h2>Run code before or after the commit<a class="headerlink" href="#run-code-before-or-after-the-commit" title="Link to this heading">#</a></h2>
+<p>Every write action calls two hooks around its commit:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.before_action_commit" title="fastapi_restly.views.RestView.before_action_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">before_action_commit(action,</span> <span class="pre">new,</span> <span class="pre">old=None)</span></code></a>
+runs inside the transaction, before the commit. What it writes is committed
+together with the change, or not at all. Use it for outbox rows and audit
+rows. A view with <code class="docutils literal notranslate"><span class="pre">atomic_write_actions</span> <span class="pre">=</span> <span class="pre">False</span></code> is different; see
+<a class="reference internal" href="#atomic-write-actions">Code that must commit in a write action</a>.</p></li>
+<li><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.after_action_commit" title="fastapi_restly.views.RestView.after_action_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">after_action_commit(action,</span> <span class="pre">new,</span> <span class="pre">old=None)</span></code></a>
+runs after the commit, when the change is saved. Use it for email, webhooks
+and cache invalidation.</p></li>
+</ul>
+<p>The hooks run for the CRUD writes and for every <code class="docutils literal notranslate"><span class="pre">write_action</span></code> block. Reads do
+not call them, and neither do the <code class="docutils literal notranslate"><span class="pre">fr.objects</span></code> functions. The arguments are:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">action</span></code>: the name of the action, such as <code class="docutils literal notranslate"><span class="pre">&quot;create&quot;</span></code>, or the name that a
+custom route gives <code class="docutils literal notranslate"><span class="pre">write_action</span></code>. See <a class="reference internal" href="authorization.html#action-names"><span class="std std-ref">Action names</span></a>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">new</span></code>: the row that the action is about, after the save. It is <code class="docutils literal notranslate"><span class="pre">None</span></code> when
+the action removed the row, as a delete does, or when the action has no
+single row. On a session that expires on commit, <code class="docutils literal notranslate"><span class="pre">snapshot(new)</span></code> in
+<code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code> is empty, and Restly warns; see
+<a class="reference internal" href="database.html#session-factory-defaults"><span class="std std-ref">Session factory defaults</span></a>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">old</span></code>: a dict of that row’s column values before the action, from
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.snapshot" title="fastapi_restly.views.BaseRestView.snapshot"><code class="xref py py-meth docutils literal notranslate"><span class="pre">snapshot</span></code></a>. It holds only
+the columns that were loaded. It is <code class="docutils literal notranslate"><span class="pre">None</span></code> when the row is new, as on a
+create, or when the action has no single row.</p></li>
+</ul>
+<p>So <code class="docutils literal notranslate"><span class="pre">old</span></code> and <code class="docutils literal notranslate"><span class="pre">new</span></code> tell what happened: a new row has no <code class="docutils literal notranslate"><span class="pre">old</span></code>, a removed row
+has no <code class="docutils literal notranslate"><span class="pre">new</span></code>, and a changed row has both. This is the same for the CRUD
+handlers and for every <code class="docutils literal notranslate"><span class="pre">write_action</span></code> block. So a hook can check what changed
+without a list of routes:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">after_action_commit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">,</span> <span class="n">new</span><span class="p">,</span> <span class="n">old</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">old</span> <span class="ow">and</span> <span class="n">new</span> <span class="ow">and</span> <span class="n">old</span><span class="p">[</span><span class="s2">"status"</span><span class="p">]</span> <span class="o">!=</span> <span class="n">new</span><span class="o">.</span><span class="n">status</span><span class="p">:</span>  <span class="c1"># PATCH, archive, ...</span>
+            <span class="k">await</span> <span class="n">notify_status_change</span><span class="p">(</span><span class="n">new</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">new</span><span class="o">.</span><span class="n">status</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Do not change <code class="docutils literal notranslate"><span class="pre">new</span></code> or the database in <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code>. The commit is
+done, so the change is not saved. A change to <code class="docutils literal notranslate"><span class="pre">new</span></code> still shows in the
+response of this request, which hides the problem. Make the change in the
+business method or in <code class="docutils literal notranslate"><span class="pre">before_action_commit</span></code>.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p>After a delete, <code class="docutils literal notranslate"><span class="pre">new</span></code> is <code class="docutils literal notranslate"><span class="pre">None</span></code> and <code class="docutils literal notranslate"><span class="pre">old</span></code> holds the columns of the removed
+row. A <a class="reference internal" href="scopes.html#soft-delete-recipe"><span class="std std-ref">soft delete</span></a> keeps the row, so <code class="docutils literal notranslate"><span class="pre">new</span></code> is the row
+with its new timestamp. A delete that a worker finishes after the commit is
+on the page <a class="reference internal" href="crud_delete.html#delete-method"><span class="std std-ref">Delete</span></a>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">old</span></code> comes from the action, not from the database. A create always gives
+<code class="docutils literal notranslate"><span class="pre">old=None</span></code>, also when your <code class="docutils literal notranslate"><span class="pre">create</span></code> returns a row that exists already, such
+as a tag with the same name. A hook that reads <code class="docutils literal notranslate"><span class="pre">old</span> <span class="pre">is</span> <span class="pre">None</span></code> as “a new row”
+is wrong on that path. To give the hooks the stored values, look the row up
+in a custom route, and change it in a <code class="docutils literal notranslate"><span class="pre">write_action</span></code> block with the row as
+<code class="docutils literal notranslate"><span class="pre">obj</span></code>.</p>
+<p>Code that a route runs after its <code class="docutils literal notranslate"><span class="pre">write_action</span></code> block also runs after the
+commit, but only when the block commits itself. Inside
+<a class="reference internal" href="#shared-write-action-commit"><code class="docutils literal notranslate"><span class="pre">shared_write_action_commit()</span></code></a>, or inside the
+block of another action, that code runs before the commit. A hook runs after
+the commit in both cases. So work that reads the committed row, such as
+starting a job, goes in <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code>.</p>
+<p>Restly finds <code class="docutils literal notranslate"><span class="pre">new</span></code> from the state of the row after the flush, as SQLAlchemy
+reports it. A row that the action deleted with <code class="docutils literal notranslate"><span class="pre">session.delete()</span></code> or with an
+ORM statement such as <code class="docutils literal notranslate"><span class="pre">delete(Post)</span></code> is gone. A Core <code class="docutils literal notranslate"><span class="pre">delete()</span></code> on the table
+does not tell the session, so the refresh of the row fails with SQLAlchemy’s
+<code class="docutils literal notranslate"><span class="pre">InvalidRequestError</span></code>. Delete the row that <code class="docutils literal notranslate"><span class="pre">obj</span></code> names through the ORM.</p>
+</div>
+<section id="run-the-work-after-the-response">
+<span id="after-commit-background-task"></span><h3>Run the work after the response<a class="headerlink" href="#run-the-work-after-the-response" title="Link to this heading">#</a></h3>
+<p>Work in <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code>, such as sending an email, makes the client
+wait for it. To answer first, give the work to FastAPI’s
+<a class="reference external" href="https://fastapi.tiangolo.com/reference/background/#fastapi.BackgroundTasks" title="(in FastAPI v0.0.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">BackgroundTasks</span></code></a>. Declare it as a
+<a class="reference internal" href="views.html#dependency-injection-on-class-attributes"><span class="std std-ref">class attribute</span></a> of the view, and
+add the task in the hook:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">BackgroundTasks</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">OrderView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="o">...</span>
+    <span class="n">background_tasks</span><span class="p">:</span> <span class="n">BackgroundTasks</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">after_action_commit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">,</span> <span class="n">new</span><span class="p">,</span> <span class="n">old</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">CREATE</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">background_tasks</span><span class="o">.</span><span class="n">add_task</span><span class="p">(</span><span class="n">send_confirmation_email</span><span class="p">,</span> <span class="n">new</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>FastAPI runs the task after it sends the response. The order is committed
+then, so a task that opens its own session finds it. A task queue works the
+same way: enqueue the job in <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code>, with the id of the row.
+Do not enqueue it in <code class="docutils literal notranslate"><span class="pre">before_action_commit</span></code>: a worker can start the job
+before the commit, when other sessions cannot see the row yet, and the commit
+can still fail. A task that fails does not undo the write; see the next
+section.</p>
+</section>
+<section id="when-after-action-commit-raises">
+<span id="after-action-commit-raises"></span><h3>When <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code> raises<a class="headerlink" href="#when-after-action-commit-raises" title="Link to this heading">#</a></h3>
+<p>The write is already committed, so an exception from the hook cannot undo it.
+The request still fails, and a client that tries again repeats the write. For
+an effect that may fail without harm, catch and log the error in the hook:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">after_action_commit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">,</span> <span class="n">new</span><span class="p">,</span> <span class="n">old</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">CREATE</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">await</span> <span class="n">send_confirmation_email</span><span class="p">(</span><span class="n">new</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>  <span class="c1"># the order is saved; don't fail the request</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s2">"Confirmation email failed for order </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">new</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>An effect that must happen belongs in an outbox row, written in
+<code class="docutils literal notranslate"><span class="pre">before_action_commit</span></code>. A worker then delivers it and tries again when it
+fails. Make the delivery safe to repeat, because a retry can deliver it twice.
+FastAPI’s <code class="docutils literal notranslate"><span class="pre">BackgroundTasks</span></code> does not replace an outbox: a crash loses the
+task, and nothing tries it again.</p>
+</section>
+</section>
+<section id="when-a-write-action-raises">
+<span id="write-action-error"></span><h2>When a write action raises<a class="headerlink" href="#when-a-write-action-raises" title="Link to this heading">#</a></h2>
+<p>When a write action raises, Restly rolls back what the action changed, and
+the session stays usable. So a route can catch the error of one write and go
+on:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTTPException</span>
+
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">"/bulk"</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">201</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">bulk_create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">items</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">OrderCreate</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">ViewResponse</span><span class="p">]:</span>
+        <span class="n">orders</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">items</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">orders</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_create</span><span class="p">(</span><span class="n">item</span><span class="p">))</span>
+            <span class="k">except</span> <span class="n">HTTPException</span><span class="p">:</span>  <span class="c1"># also fr.exc.Conflict, for a duplicate value</span>
+                <span class="k">continue</span>
+        <span class="k">return</span> <span class="n">orders</span>
+</pre></div>
+</div>
+<p>Each order is committed on its own. On <code class="docutils literal notranslate"><span class="pre">fr.RestView</span></code>, use the sync handlers.
+To save all orders in one commit, see
+<a class="reference internal" href="#shared-write-action-commit">Commit several writes together</a>.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p>Each outermost write action runs in a savepoint, SQLAlchemy’s
+<a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/session_api.html#sqlalchemy.orm.Session.begin_nested" title="(in SQLAlchemy v2.0)"><code class="xref py py-meth docutils literal notranslate"><span class="pre">session.begin_nested()</span></code></a>. The
+savepoint begins after <code class="docutils literal notranslate"><span class="pre">authorize</span></code>, the reference check and the snapshot, and
+it ends at the commit. When the action raises before the commit, Restly rolls
+back to the savepoint. This undoes only what the action changed. Rows that
+the action did not change stay loaded, so async code can still read them.
+Rows that it changed, such as the row of an update, are expired. In async
+code, call <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">session.refresh(obj)</span></code> before you read such a row. Inside a
+<code class="docutils literal notranslate"><span class="pre">shared_write_action_commit()</span></code> block, or inside the block of another action,
+an action has no savepoint of its own; see
+<a class="reference internal" href="#shared-write-action-commit">Commit several writes together</a>. A view with
+<code class="docutils literal notranslate"><span class="pre">atomic_write_actions</span> <span class="pre">=</span> <span class="pre">False</span></code> has no savepoint; see
+<a class="reference internal" href="#atomic-write-actions">Code that must commit in a write action</a>.</p>
+<p>A savepoint begins with a flush of what is pending in the session, as
+<code class="docutils literal notranslate"><span class="pre">begin_nested()</span></code> always does. So an object that a route adds to the session
+before the write action is written when the action begins, and an error in
+the action does not undo it. This is also true for a new object that a route
+appends to a collection of a loaded row. Give a new object to <code class="docutils literal notranslate"><span class="pre">write_action</span></code>
+as <code class="docutils literal notranslate"><span class="pre">obj</span></code>, without <code class="docutils literal notranslate"><span class="pre">session.add()</span></code>, and connect it to loaded rows inside the
+block: the action then adds it inside its savepoint.</p>
+<p>An error from <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code> does not undo the order: the order is
+saved. See <a class="reference internal" href="#after-action-commit-raises">When <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code> raises</a>.
+When the commit itself fails, for example on a deferred constraint, Restly
+rolls back the whole transaction. This also expires the rows that were loaded
+before. On SQLite with the default settings of the driver, the end of the
+savepoint can already commit, just before the commit; see
+<a class="reference internal" href="database.html#sqlite-transactions"><span class="std std-ref">Transactions on SQLite</span></a>.</p>
+<p>The savepoint costs two more statements for each write: <code class="docutils literal notranslate"><span class="pre">SAVEPOINT</span></code> and
+<code class="docutils literal notranslate"><span class="pre">RELEASE</span> <span class="pre">SAVEPOINT</span></code>.</p>
+<p>SQLAlchemy calls the listeners of the session for a savepoint too:
+<code class="docutils literal notranslate"><span class="pre">after_begin</span></code> when it begins, <code class="docutils literal notranslate"><span class="pre">before_commit</span></code> and <code class="docutils literal notranslate"><span class="pre">after_commit</span></code> when it ends,
+and <code class="docutils literal notranslate"><span class="pre">after_rollback</span></code> when it rolls back. So <code class="docutils literal notranslate"><span class="pre">before_commit</span></code> and <code class="docutils literal notranslate"><span class="pre">after_commit</span></code>
+run twice for each outermost write action: when the savepoint ends, and at the
+commit. The first time is before the commit, which can still fail. A listener
+that must run only at the commit returns early when
+<code class="docutils literal notranslate"><span class="pre">session.in_nested_transaction()</span></code> is true. Work that must wait for the commit,
+such as an email, belongs in <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code>. On SQLite, the savepoint
+can also make <code class="docutils literal notranslate"><span class="pre">database</span> <span class="pre">is</span> <span class="pre">locked</span></code> come sooner; see
+<a class="reference internal" href="database.html#sqlite-wal"><span class="std std-ref">Turn on WAL for SQLite</span></a>.</p>
+</div>
+</section>
+<section id="commit-several-writes-together">
+<span id="shared-write-action-commit"></span><h2>Commit several writes together<a class="headerlink" href="#commit-several-writes-together" title="Link to this heading">#</a></h2>
+<p>A handler or a <code class="docutils literal notranslate"><span class="pre">write_action</span></code> block commits on its own, unless it runs
+inside another <code class="docutils literal notranslate"><span class="pre">write_action</span></code> block, which then owns the commit. To commit
+several of them at once, put them inside a
+<a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView.shared_write_action_commit" title="fastapi_restly.views.AsyncRestView.shared_write_action_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">shared_write_action_commit()</span></code></a>
+block. The outermost block commits once. Then the queued <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code>
+hooks run:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">"/bulk"</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">201</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">bulk_create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">items</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">OrderCreate</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">ViewResponse</span><span class="p">]:</span>
+        <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">shared_write_action_commit</span><span class="p">():</span>
+            <span class="n">orders</span> <span class="o">=</span> <span class="p">[</span><span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_create</span><span class="p">(</span><span class="n">item</span><span class="p">)</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">items</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">orders</span>
+</pre></div>
+</div>
+<p>Inside the block, each action still calls <code class="docutils literal notranslate"><span class="pre">authorize</span></code>, takes the snapshot,
+makes its change and runs <code class="docutils literal notranslate"><span class="pre">before_action_commit</span></code>. Then it flushes and returns.
+Its changes are not committed yet, and its <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code> has not run.
+So code after a handler call inside the block runs before the commit. Code
+that needs the commit, or an after-hook that has run, goes after the block,
+or in <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code>. The route above returns the orders after the
+block, so Restly builds their responses after the commit. On <code class="docutils literal notranslate"><span class="pre">fr.RestView</span></code>, use
+<code class="docutils literal notranslate"><span class="pre">with</span></code> and the sync handlers. The method has the same name.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p>The block can also hold the handlers of other views, for an operation on more
+than one model. Each create runs the steps of its own view: <code class="docutils literal notranslate"><span class="pre">authorize</span></code>, the
+reference checks, the save and the hooks. The SaaS example creates a label and
+attaches it to a task:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">"/create-and-attach"</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">TaskLabelResponse</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">201</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_and_attach</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">CreateAndAttachLabelRequest</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TaskLabel</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Sibling-creation: build a Label *and* a TaskLabel in one request.</span>
+
+<span class="sd">        Two creates, each through the handler of its own view, inside one</span>
+<span class="sd">        ``shared_write_action_commit()``. So each runs its own steps:</span>
+<span class="sd">        ``authorize``, the reference checks, the save and the hooks. The</span>
+<span class="sd">        label's handler saves the label, so the link gets its id. The Label</span>
+<span class="sd">        lands in the organization the request acts in: ``organization_id`` is</span>
+<span class="sd">        the model's stamp, not an argument here. The link's ``authorize``</span>
+<span class="sd">        refuses a task that the member is not assigned to (403), and its</span>
+<span class="sd">        reference check refuses a foreign or deleted task (404). Then nothing</span>
+<span class="sd">        is committed, the label included.</span>
+<span class="sd">        """</span>
+        <span class="n">labels</span> <span class="o">=</span> <span class="n">LabelView</span><span class="p">(</span><span class="n">session</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">,</span> <span class="n">request</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="p">)</span>
+        <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">shared_write_action_commit</span><span class="p">():</span>
+            <span class="n">label</span> <span class="o">=</span> <span class="k">await</span> <span class="n">labels</span><span class="o">.</span><span class="n">handle_create</span><span class="p">(</span>
+                <span class="n">LabelView</span><span class="o">.</span><span class="n">create_schema</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">label_name</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">color</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">link</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_create</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">create_schema</span><span class="p">(</span><span class="n">task_id</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">task_id</span><span class="p">,</span> <span class="n">label_id</span><span class="o">=</span><span class="n">label</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">link</span>
+</pre></div>
+</div>
+<p>The label’s handler saves the label, so the link gets its id. The label, the
+link and the rows that their <code class="docutils literal notranslate"><span class="pre">before_action_commit</span></code> hooks write are committed
+together. If any part fails, none of them is committed. Code that only
+belongs to one action, such as copied child rows, goes in that action’s
+<code class="docutils literal notranslate"><span class="pre">write_action</span></code> block instead, as the clone route does.</p>
+<p>Blocks inside each other share the commit when their views share a session.
+A <code class="docutils literal notranslate"><span class="pre">write_action</span></code> block counts as such a block, so a handler that you call
+inside it joins its commit. The handler saves, so it also writes the changes
+of the outer block so far: set the required values of the block’s objects
+before you call it.
+An exception that leaves a <code class="docutils literal notranslate"><span class="pre">shared_write_action_commit()</span></code> block cancels the
+shared commit and drops the queued hooks. This also happens when an outer
+block catches the exception. For a write action that raises inside the
+block, see the savepoint below.
+The outermost block runs in a savepoint of its own. When an exception leaves
+it, Restly rolls back to that savepoint: what the block changed is undone, and
+the session can write again. A direct <code class="docutils literal notranslate"><span class="pre">session.commit()</span></code> inside the block
+raises <code class="docutils literal notranslate"><span class="pre">RuntimeError</span></code>, because the outermost block owns the commit.</p>
+<p>When some rows may fail and the others must still be saved, put SQLAlchemy’s
+<code class="docutils literal notranslate"><span class="pre">session.begin_nested()</span></code> around each handler call. Catch the error outside
+that savepoint:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.exc</span><span class="w"> </span><span class="kn">import</span> <span class="n">IntegrityError</span>
+
+    <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">shared_write_action_commit</span><span class="p">():</span>
+        <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">items</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">begin_nested</span><span class="p">():</span>
+                    <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_create</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+            <span class="k">except</span> <span class="n">IntegrityError</span><span class="p">:</span>
+                <span class="k">continue</span>
+</pre></div>
+</div>
+<p>The savepoint holds the row’s change and the rows that its
+<code class="docutils literal notranslate"><span class="pre">before_action_commit</span></code> wrote. So a failed row rolls back both, and its queued
+after-hook is dropped. Without the savepoint, a row that failed after its
+change began, such as a <code class="docutils literal notranslate"><span class="pre">create</span></code> that refuses after <code class="docutils literal notranslate"><span class="pre">super().create()</span></code>, would
+leave a half-done change in the session. So when the route catches such an
+error without a savepoint, the commit raises <code class="docutils literal notranslate"><span class="pre">RuntimeError</span></code>, and nothing is
+committed. An error before the change, from <code class="docutils literal notranslate"><span class="pre">authorize</span></code> or the reference
+check, changed nothing, and the commit goes on. Inside the shared block, the row’s error stays a raw
+<code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code>, so the route can catch it. An <code class="docutils literal notranslate"><span class="pre">IntegrityError</span></code> that escapes
+the shared block, or that its commit raises, becomes a <code class="docutils literal notranslate"><span class="pre">409</span></code>; see
+<a class="reference internal" href="errors.html#default-exception-handling"><span class="std std-ref">Unique values and other database conflicts: 409</span></a>. After the shared commit, the after-hooks of the saved
+rows run in order. They stop at the first exception.</p>
+<p>The SaaS example runs both forms. <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/tasks/bulk</span></code>, <code class="docutils literal notranslate"><span class="pre">/tasks/bulk-delete</span></code>
+and <code class="docutils literal notranslate"><span class="pre">/tasks/import-csv</span></code> put a savepoint around each row inside one
+<code class="docutils literal notranslate"><span class="pre">shared_write_action_commit()</span></code> block
+(<a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/tasks/views.py"><code class="docutils literal notranslate"><span class="pre">app/tasks/views.py</span></code></a>).
+<code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/task-labels/create-and-attach</span></code> commits a label and its link together
+(<a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/labels/views.py"><code class="docutils literal notranslate"><span class="pre">app/labels/views.py</span></code></a>).</p>
+</div>
+</section>
+<section id="code-that-must-commit-in-a-write-action">
+<span id="atomic-write-actions"></span><h2>Code that must commit in a write action<a class="headerlink" href="#code-that-must-commit-in-a-write-action" title="Link to this heading">#</a></h2>
+<p>A write action is one transaction, so Restly refuses a <code class="docutils literal notranslate"><span class="pre">session.commit()</span></code> in it.
+The client gets a 500, and nothing is saved. Remove that commit if you can. The
+action then saves all of its work or none of it.</p>
+<p>Some code must keep its commit: a library that commits, or a function that a job
+or a script also calls. For that code, set
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.atomic_write_actions" title="fastapi_restly.views.BaseRestView.atomic_write_actions"><code class="xref py py-attr docutils literal notranslate"><span class="pre">atomic_write_actions</span></code></a>
+to <code class="docutils literal notranslate"><span class="pre">False</span></code>, on the view or on a base view:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">"/users"</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserSchema</span>
+    <span class="n">atomic_write_actions</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="k">return</span> <span class="k">await</span> <span class="n">register_user</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>  <span class="c1"># this function commits</span>
+</pre></div>
+</div>
+<p>This setting takes away two things: the refusal of a commit, and the savepoint.
+All else stays as on other views: <code class="docutils literal notranslate"><span class="pre">authorize</span></code>, the save, both hooks, a commit at
+the end, and a 409 for a conflict.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>The action is no longer one transaction. What the code committed stays saved when
+a later step raises: the client gets an error, the rows are saved, and
+<code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code> does not run. This is also true for an error in
+<code class="docutils literal notranslate"><span class="pre">before_action_commit</span></code>. What that hook writes is not saved together with the rows
+of that commit, so an outbox row can be missing.</p>
+</div>
+<p>An error rolls back all that is not committed, and not only the changes of the
+action, because there is no savepoint. A route that catches the error and goes on
+must load its rows again, because the rollback expires them.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p>The outermost write action decides, and the actions inside it join it, as on
+other views. So a handler inside the <code class="docutils literal notranslate"><span class="pre">write_action</span></code> block of this view does not
+commit on its own. The commit comes at the end of the outermost action, and then
+the <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code> hooks of all its actions run. Code inside an action of
+this view may commit, also in a handler of a view that keeps the default. Inside
+an action of a view that keeps the default, a commit is refused, also in a
+handler of this view. An outermost
+<a class="reference internal" href="#shared-write-action-commit"><code class="docutils literal notranslate"><span class="pre">shared_write_action_commit()</span></code></a> block always refuses
+a commit, also on this view. Inside an action of this view, such a block joins
+the action, as an action does.</p>
+<p>Restly refuses only <code class="docutils literal notranslate"><span class="pre">session.commit()</span></code>. A commit on the connection, such as
+<code class="docutils literal notranslate"><span class="pre">session.connection().commit()</span></code>, is not refused, on any view.</p>
+<p>On this view, Restly does not check what else the code does with the transaction:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">session.rollback()</span></code> and <code class="docutils literal notranslate"><span class="pre">session.close()</span></code> undo all that is not committed, but
+the action goes on, and the client gets a 2xx. So changes can be lost without
+an error. A method that rolls back or closes the session must raise.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">with</span> <span class="pre">session.begin():</span></code> raises when a transaction is open, and the load of an
+update opens one.</p></li>
+</ul>
+<p>The save leaves alone a row that your code took out of this session, because it
+expunged the row or gave it to another session. The save does not add that row
+and does not read it back, so a task can still use it. The hooks get it as <code class="docutils literal notranslate"><span class="pre">new</span></code>,
+but a change that a hook makes to it is not saved. The response uses it as it is,
+so what the response reads must be loaded. A row with a change is different: the
+save adds it and writes the change. A new row is different too: the save adds
+it. After a delete and a commit in your code, the hooks get <code class="docutils literal notranslate"><span class="pre">new=None</span></code>.</p>
+<p><a class="reference external" href="https://docs.djangoproject.com/en/5.2/topics/db/transactions/">Django</a> has the
+same choice. Its <code class="docutils literal notranslate"><span class="pre">atomic</span></code> refuses a commit, and <code class="docutils literal notranslate"><span class="pre">non_atomic_requests</span></code> takes one
+view function out of the transaction of the request. Here the setting is for
+every route of the view.</p>
+</div>
+</section>
+<section id="run-the-same-logic-in-a-script-or-a-worker">
+<span id="domain-utilities"></span><span id="logic-outside-a-view"></span><h2>Run the same logic in a script or a worker<a class="headerlink" href="#run-the-same-logic-in-a-script-or-a-worker" title="Link to this heading">#</a></h2>
+<p>While the view is the only caller, keep the logic in its <code class="docutils literal notranslate"><span class="pre">create</span></code> or <code class="docutils literal notranslate"><span class="pre">update</span></code>.
+There it has <code class="docutils literal notranslate"><span class="pre">self.session</span></code>, <code class="docutils literal notranslate"><span class="pre">self.request</span></code> and the view’s dependencies.</p>
+<p>When a script or a worker must run the same logic, move it into a plain
+function and call it from both:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi_restly.objects</span><span class="w"> </span><span class="kn">import</span> <span class="n">async_make_new_object</span><span class="p">,</span> <span class="n">async_save_object</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">set_password</span><span class="p">(</span><span class="n">user</span><span class="p">:</span> <span class="n">User</span><span class="p">,</span> <span class="n">raw_password</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">user</span><span class="o">.</span><span class="n">password</span> <span class="o">=</span> <span class="n">hash_password</span><span class="p">(</span><span class="n">raw_password</span><span class="p">)</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">"/users"</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">UserSchema</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="n">user</span> <span class="o">=</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="n">set_password</span><span class="p">(</span><span class="n">user</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">password</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">user</span>
+
+
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">import_user</span><span class="p">(</span><span class="n">session</span><span class="p">,</span> <span class="n">payload</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">User</span><span class="p">:</span>
+    <span class="n">user</span> <span class="o">=</span> <span class="k">await</span> <span class="n">async_make_new_object</span><span class="p">(</span><span class="n">session</span><span class="p">,</span> <span class="n">User</span><span class="p">,</span> <span class="n">payload</span><span class="p">)</span>
+    <span class="n">set_password</span><span class="p">(</span><span class="n">user</span><span class="p">,</span> <span class="n">payload</span><span class="o">.</span><span class="n">password</span><span class="p">)</span>
+    <span class="k">await</span> <span class="n">async_save_object</span><span class="p">(</span><span class="n">session</span><span class="p">,</span> <span class="n">user</span><span class="p">)</span>
+    <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">user</span>
+</pre></div>
+</div>
+<p>The script has no handler, so it saves and commits itself. Do not move logic
+out of the view before there is a second caller.</p>
+<p>A value that every write path must set does not need this. Put it on the
+model (<a class="reference internal" href="models.html#write-path-values"><span class="std std-ref">Models</span></a>), and every path gets it.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p>The functions in <a class="reference internal" href="api/objects.html#module-fastapi_restly.objects" title="fastapi_restly.objects"><code class="xref py py-mod docutils literal notranslate"><span class="pre">fr.objects</span></code></a> are for another
+model and for code outside a view:
+<a class="reference internal" href="api/objects.html#fastapi_restly.objects.async_make_new_object" title="fastapi_restly.objects.async_make_new_object"><code class="xref py py-func docutils literal notranslate"><span class="pre">async_make_new_object</span></code></a>,
+<a class="reference internal" href="api/objects.html#fastapi_restly.objects.async_update_object" title="fastapi_restly.objects.async_update_object"><code class="xref py py-func docutils literal notranslate"><span class="pre">async_update_object</span></code></a>,
+<a class="reference internal" href="api/objects.html#fastapi_restly.objects.async_save_object" title="fastapi_restly.objects.async_save_object"><code class="xref py py-func docutils literal notranslate"><span class="pre">async_save_object</span></code></a> and
+<a class="reference internal" href="api/objects.html#fastapi_restly.objects.async_delete_object" title="fastapi_restly.objects.async_delete_object"><code class="xref py py-func docutils literal notranslate"><span class="pre">async_delete_object</span></code></a>, and
+their sync versions. See
+<a class="reference internal" href="view_reference.html#advanced-object-helpers"><span class="std std-ref">The same operations outside a view</span></a>. They do not
+call <code class="docutils literal notranslate"><span class="pre">authorize</span></code> or the hooks. <code class="docutils literal notranslate"><span class="pre">async_make_new_object</span></code> and
+<code class="docutils literal notranslate"><span class="pre">async_update_object</span></code> check the references too. In a CRUD route the handler
+has checked them first, and the second check does not query the database
+again. <code class="docutils literal notranslate"><span class="pre">async_save_object</span></code> refreshes the object, but it does not load the
+relationships that the view’s response schema names.</p>
+<p>Up to 0.11, views had the methods <code class="docutils literal notranslate"><span class="pre">make_new_object</span></code>, <code class="docutils literal notranslate"><span class="pre">update_object</span></code> and
+<code class="docutils literal notranslate"><span class="pre">save_object</span></code>. They are removed. A view class that defines one fails when
+Python creates the class, with a message that names the replacement.</p>
+</div>
+</section>
+<section id="internals">
+<h2>Internals<a class="headerlink" href="#internals" title="Link to this heading">#</a></h2>
+<p>The CRUD handlers and <code class="docutils literal notranslate"><span class="pre">write_action</span></code> share one private implementation of the
+commit bracket. It calls <code class="docutils literal notranslate"><span class="pre">authorize</span></code>, checks the references in <code class="docutils literal notranslate"><span class="pre">data</span></code>, takes
+the snapshot, and runs the change under <code class="docutils literal notranslate"><span class="pre">session.no_autoflush</span></code>. Then it
+saves: it flushes and refreshes the subject. Then one reload with the view’s
+loader options covers the subject and the other written rows of the view’s
+model. It does not apply the scope, so a row that the action moved out of it,
+such as a soft-deleted row, still comes back. Then it runs
+<code class="docutils literal notranslate"><span class="pre">before_action_commit</span></code>, the commit and <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code>. The outermost
+bracket on a session owns the commit. So inside a <code class="docutils literal notranslate"><span class="pre">write_action</span></code> or a
+<code class="docutils literal notranslate"><span class="pre">shared_write_action_commit()</span></code> block, a bracket flushes instead of
+committing and queues its after-hook for the outermost block. A handler
+hands the object that <code class="docutils literal notranslate"><span class="pre">create</span></code> or <code class="docutils literal notranslate"><span class="pre">update</span></code> returns to the bracket as the
+subject. <code class="docutils literal notranslate"><span class="pre">write_action</span></code> gets its subject from <code class="docutils literal notranslate"><span class="pre">obj</span></code>. The outermost bracket
+opens a savepoint after the snapshot, and an exception rolls back to it; see
+<a class="reference internal" href="#write-action-error">When a write action raises</a>.</p>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="custom_routes.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Custom Routes</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="nested_routes.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Nested Routes</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#what-commits-and-when">What commits, and when</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#run-code-before-or-after-the-commit">Run code before or after the commit</a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#run-the-work-after-the-response">Run the work after the response</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#when-after-action-commit-raises">When <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code> raises</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#when-a-write-action-raises">When a write action raises</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#commit-several-writes-together">Commit several writes together</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#code-that-must-commit-in-a-write-action">Code that must commit in a write action</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#run-the-same-logic-in-a-script-or-a-worker">Run the same logic in a script or a worker</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#internals">Internals</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+<p class="sidebar-newsletter">
+  <a href="newsletter.html">Subscribe to newsletter</a>
+</p></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="_static/scripts/bootstrap.js?digest=18bd87630a240e9c25be"></script>
+<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=18bd87630a240e9c25be"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, Rutger Prins.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.23.0.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

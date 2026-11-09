@@ -7,7 +7,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Scopes &#8212; FastAPI-Restly 0.13.0 documentation</title>
+    <title>Scopes &#8212; FastAPI-Restly 0.14.0 documentation</title>
   
   
   
@@ -32,7 +32,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=643d5ecc" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=964c8a9c" />
   
   <!-- So that users can add custom icons -->
   <script defer src="_static/scripts/fontawesome.js?digest=18bd87630a240e9c25be"></script>
@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=18bd87630a240e9c25be" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=18bd87630a240e9c25be" />
 
-    <script src="_static/documentation_options.js?v=1019fba8"></script>
+    <script src="_static/documentation_options.js?v=9e420a66"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -67,7 +67,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="color-scheme" content="light dark"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.13" />
+  <meta name="docsearch:version" content="0.14" />
   
     
     <script src="_static/searchtools.js"></script>
@@ -426,7 +426,10 @@
 <nav class="bd-docs-nav bd-links"
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
-  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Setup</span></p>
+  <div class="bd-toc-item navbar-nav">
+    <ul class="nav bd-sidenav">
+      <li class="toctree-l1"><a class="reference internal" href="guide.html#how-restly-works">How Restly works</a></li>
+    </ul><p aria-level="2" class="caption" role="heading"><span class="caption-text">Setup</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="new_projects.html">New Projects</a></li>
 <li class="toctree-l1"><a class="reference internal" href="existing_projects.html">Existing Projects</a></li>
@@ -436,10 +439,20 @@
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Views &amp; Routes</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="views.html">Views</a></li>
-<li class="toctree-l1"><a class="reference internal" href="crud_routes.html">CRUD Routes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="lifecycle.html">Request Lifecycle &amp; Hooks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="react_admin.html">React Admin</a></li>
 <li class="toctree-l1"><a class="reference internal" href="typing.html">Type Annotations</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">CRUD Routes</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="crud_routes.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_list.html">List</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_get_one.html">Get One</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_create.html">Create</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_update.html">Update</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_delete.html">Delete</a></li>
+<li class="toctree-l1"><a class="reference internal" href="custom_routes.html">Custom Routes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="commits.html">Commits &amp; Hooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nested_routes.html">Nested Routes</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Requests &amp; Responses</span></p>
 <ul class="nav bd-sidenav">
@@ -631,7 +644,7 @@ reach through relationships. A response that embeds a related model, such as
 the comments of an item, loads those rows through the relationship, without
 their scope. A filter or sort on a relationship field, such as
 <code class="docutils literal notranslate"><span class="pre">?items.name=x</span></code>, also joins the related table without its scope. Where
-embedded rows must be filtered, shape the view’s schema, or override
+embedded rows must be filtered, shape the view’s main schema, or override
 <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.get_loader_options" title="fastapi_restly.views.BaseRestView.get_loader_options"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_loader_options</span></code></a>.</p>
 <p>For the same reason, a model does not follow the scope of a related model.
 To make it follow, give the model its own <code class="docutils literal notranslate"><span class="pre">default_scope</span></code> that names the
@@ -765,7 +778,7 @@ each value.</p>
 <p>A custom route can pass a clause as <code class="docutils literal notranslate"><span class="pre">scope=</span></code> to the handler. That clause
 replaces the view’s scope for this one read. So the trash list and the
 restore action can be routes on the same view, not a second view class:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi_restly.views</span><span class="w"> </span><span class="kn">import</span> <span class="n">ViewID</span><span class="p">,</span> <span class="n">ViewListResponse</span><span class="p">,</span> <span class="n">ViewResponse</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi_restly.views</span><span class="w"> </span><span class="kn">import</span> <span class="n">IDType</span><span class="p">,</span> <span class="n">ViewListResponse</span><span class="p">,</span> <span class="n">ViewResponse</span>
 
 
 <span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
@@ -783,7 +796,7 @@ restore action can be routes on the same view, not a second view class:</p>
         <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_get_many</span><span class="p">(</span><span class="n">list_params</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="n">ItemClauses</span><span class="o">.</span><span class="n">trashed</span><span class="p">)</span>
 
     <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">"/</span><span class="si">{id}</span><span class="s2">/restore"</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">restore</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="n">ViewID</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ViewResponse</span><span class="p">:</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">restore</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="n">IDType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ViewResponse</span><span class="p">:</span>
         <span class="n">item</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_one</span><span class="p">(</span><span class="nb">id</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="n">ItemClauses</span><span class="o">.</span><span class="n">trashed</span><span class="p">)</span>
         <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">write_action</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Action</span><span class="o">.</span><span class="n">RESTORE</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="n">item</span><span class="p">):</span>
             <span class="n">item</span><span class="o">.</span><span class="n">deleted_at</span> <span class="o">=</span> <span class="kc">None</span>
@@ -802,14 +815,14 @@ never be replaced belongs on the session, like the
 <p>The restore route loads the row with <code class="docutils literal notranslate"><span class="pre">get_one(id,</span> <span class="pre">scope=...)</span></code>, not with
 <code class="docutils literal notranslate"><span class="pre">handle_get_one</span></code>, because
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.write_action" title="fastapi_restly.views.RestView.write_action"><code class="xref py py-meth docutils literal notranslate"><span class="pre">write_action</span></code></a> authorizes
-the action itself; see <a class="reference internal" href="lifecycle.html#custom-action-route"><span class="std std-ref">Add a custom action route</span></a>. The
+the action itself; see <a class="reference internal" href="custom_routes.html#custom-action-route"><span class="std std-ref">Add a custom action route</span></a>. The
 route reads only the trash, so a row that is not deleted returns 404 here. To
 read without any scope on one route, pass <code class="docutils literal notranslate"><span class="pre">scope=fr.clauses.UNSCOPED</span></code>.</p>
-<p>The markers <code class="docutils literal notranslate"><span class="pre">ViewListResponse</span></code>, <code class="docutils literal notranslate"><span class="pre">ViewResponse</span></code> and <code class="docutils literal notranslate"><span class="pre">ViewID</span></code> give the two
-routes the view’s classes, <code class="docutils literal notranslate"><span class="pre">ItemListResponse</span></code> and <code class="docutils literal notranslate"><span class="pre">ItemResponse</span></code>, and its id
+<p>The markers <code class="docutils literal notranslate"><span class="pre">ViewListResponse</span></code>, <code class="docutils literal notranslate"><span class="pre">ViewResponse</span></code> and <code class="docutils literal notranslate"><span class="pre">IDType</span></code> give the two
+routes the view’s schemas, <code class="docutils literal notranslate"><span class="pre">ItemListResponse</span></code> and <code class="docutils literal notranslate"><span class="pre">ItemResponse</span></code>, and its id
 type. So OpenAPI shows the same types as for the CRUD routes, and Restly
 sends the list result and the row through the view’s response step.
-<a class="reference internal" href="schemas.html#name-the-response-classes"><span class="std std-ref">Name the view’s classes in a custom route</span></a>
+<a class="reference internal" href="schemas.html#name-the-view-schemas"><span class="std std-ref">Name the view’s schemas in a custom route</span></a>
 explains the markers.</p>
 <p><code class="docutils literal notranslate"><span class="pre">get_one</span></code>, <code class="docutils literal notranslate"><span class="pre">get_many</span></code> and <code class="docutils literal notranslate"><span class="pre">select()</span></code> take the same <code class="docutils literal notranslate"><span class="pre">scope=</span></code> argument. A
 custom read that starts from <code class="docutils literal notranslate"><span class="pre">self.select(scope=ItemClauses.trashed)</span></code> sees
@@ -871,7 +884,7 @@ clause that a view’s reads apply. Apply it with
 <p>Pass another view, as in <code class="docutils literal notranslate"><span class="pre">fr.resolve_scope(ProjectView)</span></code>, to follow the rows
 that view shows. The parent lookup of a nested view does this, so a parent
 that its own view hides is also a 404 under the child’s path; see
-<a class="reference internal" href="crud_routes.html#nested-parent-access"><span class="std std-ref">Which parents a client can reach</span></a>.</p>
+<a class="reference internal" href="nested_routes.html#nested-parent-access"><span class="std std-ref">Which parents a client can reach</span></a>.</p>
 <p>Pass a model class, as in <code class="docutils literal notranslate"><span class="pre">fr.resolve_scope(Task)</span></code>, for the model’s
 <code class="docutils literal notranslate"><span class="pre">default_scope</span></code> only. That is the scope that every reference check applies,
 and that every view without its own scope uses. The two results differ
