@@ -7,15 +7,15 @@ methods. The handler handles the steps, and you override a step:
    signature and ``response_model``. Replace only to change the HTTP contract.
 2. ``handle_<verb>``, the handler: handles the steps, ``authorize``, the
    load or the business method, and the commit bracket
-   (``before_action_commit`` -> commit -> ``after_action_commit``). Final:
-   call it from a custom route, never override it.
+   (``before_action_commit`` -> commit -> ``after_action_commit``). Call
+   it from a custom route. You cannot override it.
 3. ``create``, ``update``, ``delete``, the business method: the domain
    operation, auth-free and commit-free. The usual override point. It
    changes objects in the session and returns the object; it does not
    flush.
 
-``get_one`` and ``get_many`` are the loads. They are final and start from
-``select()``: the scope and the loader options.
+``get_one`` and ``get_many`` are the loads. You cannot override them. They
+start from ``select()``: the scope and the loader options.
 
 Cross-cutting seams: ``scope`` (read visibility), ``where_id`` (the row an
 id names), ``not_found`` (the error for a missing row),

@@ -75,7 +75,7 @@ def test_route_named_like_read_verb_is_rejected():
         name: str
 
     with pytest.raises(
-        fr.exc.RestlyConfigurationError, match="get_many, which is final"
+        fr.exc.RestlyConfigurationError, match="get_many, which you cannot override"
     ):
 
         class ItemView(fr.AsyncRestView):

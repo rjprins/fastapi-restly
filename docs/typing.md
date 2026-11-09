@@ -161,8 +161,9 @@ these points:
 - `where_id` gets the id from the path, so its type is the id type, the last
   parameter. It returns a SQL condition, a `ColumnElement[bool]`; see
   [Find the row by another key](#natural-key-route).
-- `get_one` and `get_many` are final, so you call them and do not override
-  them. A type checker reports an override, as it does for a handler. Their
+- You call `get_one` and `get_many`, but you cannot override them. They are
+  marked with {func}`@typing.final <typing.final>`, so a type checker reports
+  an override, as it does for a handler. Their
   return types follow the model parameter: `await self.get_one(id)` is a
   `User`, and so is each row of `self.select()`.
 - For the response type, give the main schema: the response schema that

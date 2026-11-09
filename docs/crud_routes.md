@@ -149,7 +149,7 @@ method**:
   - {override}`create_endpoint(data) <fastapi_restly.views.RestView.create_endpoint>`
     The endpoint method: the HTTP contract.
     - {meth}`handle_create(data) <fastapi_restly.views.RestView.handle_create>`
-      The handler: it runs the steps. It is final.
+      The handler: it runs the steps. You call it, but you cannot override it.
       - {override}`authorize("create", data=data) <fastapi_restly.views.RestView.authorize>`
       - Check the [references](#reference-exists) in the data. An id that does
         not exist is a 404.
@@ -196,9 +196,11 @@ all five actions: `update_endpoint` calls `handle_update`, which calls
   {meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>`,
   commits, then runs
   {meth}`after_action_commit <fastapi_restly.views.RestView.after_action_commit>`.
-  It returns the object. Only the delete handler returns nothing. A handler
-  is final: a view class that defines one fails when Python creates the
-  class. A custom route calls a handler to run the same steps.
+  It returns the object. Only the delete handler returns nothing. You
+  cannot override a handler: a view class that defines one fails when Python
+  creates the class. Restly marks the handlers with Python's
+  {func}`@typing.final <typing.final>`, so a type checker reports an override
+  too. A custom route calls a handler to run the same steps.
 - The **business method** of a write is the bare verb:
   {meth}`create <fastapi_restly.views.RestView.create>`,
   {meth}`update <fastapi_restly.views.RestView.update>` or
@@ -210,8 +212,8 @@ all five actions: `update_endpoint` calls `handle_update`, which calls
   then the commit follows.
 - A read has a **load**:
   {meth}`get_one <fastapi_restly.views.RestView.get_one>` or
-  {meth}`get_many <fastapi_restly.views.RestView.get_many>`. A load is
-  final, as a handler is. You change it through the scope, the list params,
+  {meth}`get_many <fastapi_restly.views.RestView.get_many>`. You cannot
+  override a load either. You change it through the scope, the list params,
   the loader options and two small hooks. See
   [Visibility, then policy](#read-request-steps).
 

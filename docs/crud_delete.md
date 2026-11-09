@@ -11,12 +11,12 @@ business method. For `DELETE /{id}`, these steps run:
   - {override}`delete_endpoint(id) <fastapi_restly.views.RestView.delete_endpoint>`
     The endpoint method. The response is empty, with status 204.
     - {meth}`handle_delete(id) <fastapi_restly.views.RestView.handle_delete>`
-      The handler. It is final.
+      The handler. You call it, but you cannot override it.
       - {meth}`get_one(id) <fastapi_restly.views.RestView.get_one>`
         Loads the row through the scope. A missing or hidden row is a 404.
       - {override}`authorize("delete", obj=obj) <fastapi_restly.views.RestView.authorize>`
         A refusal is a 403.
-      - {meth}`snapshot(obj) <fastapi_restly.views.BaseRestView.snapshot>`
+      - {override}`snapshot(obj) <fastapi_restly.views.BaseRestView.snapshot>`
         Takes `old`: the column values before the delete.
       - {override}`delete(obj) <fastapi_restly.views.RestView.delete>`
         The business method: it marks the row for deletion.

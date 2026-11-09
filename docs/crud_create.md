@@ -12,7 +12,7 @@ each route: the endpoint method, the handler and the business method. For
   - {override}`create_endpoint(data) <fastapi_restly.views.RestView.create_endpoint>`
     The endpoint method. FastAPI has checked `data` against the create schema.
     - {meth}`handle_create(data) <fastapi_restly.views.RestView.handle_create>`
-      The handler. It is final.
+      The handler. You call it, but you cannot override it.
       - {override}`authorize("create", data=data) <fastapi_restly.views.RestView.authorize>`
         A refusal is a 403.
       - Check the [references](#reference-exists) in the data. An id that does

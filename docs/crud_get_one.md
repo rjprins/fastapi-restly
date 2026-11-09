@@ -11,9 +11,9 @@ route. For `GET /{id}`, these steps run:
   - {override}`get_one_endpoint(id) <fastapi_restly.views.RestView.get_one_endpoint>`
     The endpoint method.
     - {meth}`handle_get_one(id) <fastapi_restly.views.RestView.handle_get_one>`
-      The handler. It is final.
+      The handler. You call it, but you cannot override it.
       - {meth}`get_one(id) <fastapi_restly.views.RestView.get_one>`
-        The load. It is final.
+        The load. You call it, but you cannot override it.
         - {meth}`select() <fastapi_restly.views.BaseRestView.select>`
           The model, the scope and the loader options.
         - {override}`where_id(id) <fastapi_restly.views.BaseRestView.where_id>`
@@ -69,11 +69,11 @@ too.
 :::{admonition} Details
 :class: details
 
-The loads are final: a view class that defines `get_one`, `get_many` or
-`select` fails when Python creates the class. The message names the place
-for each change. An override of a load could leave out the scope, or the
-`scope=` that a route asked for, and nothing would tell you. With final
-loads, the scope always applies.
+You cannot override the loads: a view class that defines `get_one`,
+`get_many` or `select` fails when Python creates the class. The message names
+the place for each change. An override of a load could leave out the scope,
+or the `scope=` that a route asked for, and nothing would tell you. Because
+you cannot override the loads, the scope always applies.
 
 `select()` also adds the options of
 {meth}`get_loader_options <fastapi_restly.views.BaseRestView.get_loader_options>`,

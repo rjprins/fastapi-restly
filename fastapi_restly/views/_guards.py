@@ -201,7 +201,7 @@ def _final_handler_message(view_name: str, name: str, origin: str) -> str:
     verb = name.removeprefix("handle_")
     if verb not in _WRITE_VERBS:
         return (
-            f"{view_name} defines {name}{origin}, which is a final handler: it "
+            f"{view_name} defines {name}{origin}, which is a handler that you cannot override: it "
             "handles the steps of the request, and a custom route calls it. "
             "Put a gate in authorize, the rows in scope, the lookup of an id "
             "in where_id, the list params in apply_list_params, a response "
@@ -209,7 +209,7 @@ def _final_handler_message(view_name: str, name: str, origin: str) -> str:
             f"{verb}_endpoint."
         )
     return (
-        f"{view_name} defines {name}{origin}, which is a final handler: it "
+        f"{view_name} defines {name}{origin}, which is a handler that you cannot override: it "
         f"handles the steps of the request, and a custom route calls it. Put "
         f"domain logic in the {verb} business method, a gate in authorize, "
         "a side effect in before_action_commit or after_action_commit, "

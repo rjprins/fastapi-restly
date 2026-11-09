@@ -63,15 +63,15 @@ class RestView(
     * ``handle_<verb>``: the handler. Handles the steps: ``authorize``, the
       load or the business method, and the commit bracket
       (``before_action_commit`` -> commit -> ``after_action_commit``);
-      returns the domain object. Final: call it from a custom route to run
-      the same steps, never override it.
+      returns the domain object. Call it from a custom route to run the
+      same steps. You cannot override it.
     * ``create`` / ``update`` / ``delete``: the business method. Auth-free,
       commit-free; the common override point (hash a password, ...). It
       changes objects in the session and does not flush: the commit bracket
       saves.
 
-    ``get_one`` and ``get_many`` are the loads. They are final, as the
-    handlers are, and start from :meth:`~fastapi_restly.views.BaseRestView.select`: the scope and the loader
+    ``get_one`` and ``get_many`` are the loads. As with the handlers, you
+    cannot override them. They start from :meth:`~fastapi_restly.views.BaseRestView.select`: the scope and the loader
     options. Change a load through ``scope``, ``where_id``, ``not_found``,
     ``apply_list_params`` and ``get_loader_options``.
     """
@@ -139,7 +139,8 @@ class RestView(
     ) -> ListResult[ModelT]:
         """List handler: ``authorize``, then the ``get_many`` load.
 
-        Final, like every handler: ``authorize`` is the gate, and the list
+        You cannot override it, as with every handler: ``authorize`` is the
+        gate, and the list
         params and the scope decide the rows. Call it from a custom list
         route.
 
@@ -164,7 +165,8 @@ class RestView(
     ) -> ModelT:
         """Retrieve handler: scoped load (404 by visibility) then read-auth.
 
-        Final: ``authorize`` is the gate, and ``where_id`` and ``not_found``
+        You cannot override it: ``authorize`` is the gate, and ``where_id``
+        and ``not_found``
         shape the load. Call it from a custom read route as "load with scope + 404 +
         read-auth". A write action instead loads with ``get_one(id,
         scope=...)`` and gates only its own action, the way
@@ -300,7 +302,8 @@ class RestView(
     def handle_create(self, data: CreateSchemaT) -> ModelT:
         """Create handler: ``authorize``, the reference check, ``create``, commit bracket.
 
-        Final: override ``create`` for the domain change, ``authorize`` for
+        You cannot override it. Override ``create`` for the domain change,
+        ``authorize`` for
         the gate, and ``before_action_commit`` / ``after_action_commit`` for
         side effects. ``authorize`` gets the payload, and no row. The object
         that ``create`` returns is the subject of the action: the save adds
@@ -322,7 +325,8 @@ class RestView(
     ) -> ModelT:
         """Update handler: scoped load, then ``update`` in the commit bracket.
 
-        Final, like :meth:`handle_create`: ``update`` receives the loaded
+        You cannot override it, as with :meth:`handle_create`: ``update``
+        receives the loaded
         object, so the load, the 404, ``authorize`` and the reference check
         stay here. ``old`` is the snapshot of the loaded row, and ``new`` is
         the object that ``update`` returns, after the save. Inside
@@ -340,7 +344,8 @@ class RestView(
     def handle_delete(self, id: IdT | ColumnElement[bool]) -> None:
         """Delete handler: scoped load, then ``delete`` in the commit bracket.
 
-        Final, like :meth:`handle_create`. The loaded row is the subject.
+        You cannot override it, as with :meth:`handle_create`. The loaded row
+        is the subject.
         After a hard delete, the hooks get ``new=None``. A soft delete flips a
         timestamp in ``delete`` and keeps the row, so the hooks get the row as
         ``new``. An off-request follow-up runs in ``after_action_commit``.
@@ -362,7 +367,8 @@ class RestView(
         """The load of the list: the rows the scope allows, filtered and paged
         by ``list_params``.
 
-        Final, and auth-free: ``handle_get_many`` adds ``authorize``. The
+        You cannot override it. It is auth-free: ``handle_get_many`` adds
+        ``authorize``. The
         statement is :meth:`~fastapi_restly.views.BaseRestView.select`, then :meth:`apply_list_params`. A
         paginated view also runs :meth:`count` for ``total_count``; a view
         without pagination returns every matching row with
@@ -405,7 +411,8 @@ class RestView(
         """The load of one row: the row ``id`` names, through the scope, or
         the exception of :meth:`~fastapi_restly.views.BaseRestView.not_found`.
 
-        Final, and auth-free: ``handle_get_one`` adds ``authorize``; a write
+        You cannot override it. It is auth-free: ``handle_get_one`` adds
+        ``authorize``; a write
         action calls this directly and gates its own action. The statement
         is :meth:`~fastapi_restly.views.BaseRestView.select` with :meth:`~fastapi_restly.views.BaseRestView.where_id`, so a row outside the scope
         is a 404 for every caller. Override ``where_id`` to find the row by

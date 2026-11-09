@@ -91,7 +91,7 @@ def test_a_view_that_defines_a_load_fails_when_python_creates_it(base, name):
 
     with pytest.raises(
         fr.exc.RestlyConfigurationError,
-        match=f"BookView defines {name}, which is final",
+        match=f"BookView defines {name}, which you cannot override",
     ):
         type("BookView", (base,), {name: method})
 
@@ -107,7 +107,10 @@ def test_the_guard_names_the_replacements():
             pass
 
     message = str(raised.value)
-    assert "BookView defines get_one (from LegacyReads), which is final" in message
+    assert (
+        "BookView defines get_one (from LegacyReads), which you cannot override"
+        in message
+    )
     for replacement in (
         "where_id(id)",
         "not_found(id)",

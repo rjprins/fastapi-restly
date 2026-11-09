@@ -12,14 +12,14 @@ each route: the endpoint method, the handler and the business method. For
   - {override}`update_endpoint(id, data) <fastapi_restly.views.RestView.update_endpoint>`
     The endpoint method. FastAPI has checked `data` against the update schema.
     - {meth}`handle_update(id, data) <fastapi_restly.views.RestView.handle_update>`
-      The handler. It is final.
+      The handler. You call it, but you cannot override it.
       - {meth}`get_one(id) <fastapi_restly.views.RestView.get_one>`
         Loads the row through the scope. A missing or hidden row is a 404.
       - {override}`authorize("update", obj=obj, data=data) <fastapi_restly.views.RestView.authorize>`
         A refusal is a 403.
       - Check the [references](#reference-exists) in the data. An id that does
         not exist is a 404.
-      - {meth}`snapshot(obj) <fastapi_restly.views.BaseRestView.snapshot>`
+      - {override}`snapshot(obj) <fastapi_restly.views.BaseRestView.snapshot>`
         Takes `old`: the column values before the change.
       - {override}`update(obj, data) <fastapi_restly.views.RestView.update>`
         The business method: it changes the row.

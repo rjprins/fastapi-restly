@@ -48,7 +48,7 @@ def test_async_view_defining_a_handler_fails_at_class_definition(name):
 
     with pytest.raises(
         fr.exc.RestlyConfigurationError,
-        match=rf"RecordView defines {name}, which is a final handler",
+        match=rf"RecordView defines {name}, which is a handler that you cannot override",
     ):
         _define(fr.AsyncRestView, name, override)
 
@@ -60,7 +60,7 @@ def test_sync_view_defining_a_handler_fails_at_class_definition(name):
 
     with pytest.raises(
         fr.exc.RestlyConfigurationError,
-        match=rf"RecordView defines {name}, which is a final handler",
+        match=rf"RecordView defines {name}, which is a handler that you cannot override",
     ):
         _define(fr.RestView, name, override)
 

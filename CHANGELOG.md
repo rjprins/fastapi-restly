@@ -359,6 +359,12 @@ miss it.
   the savepoint can already commit, just before the commit. A write with
   `sqlite+aiosqlite` and `connect_args={"autocommit": True}` is saved again.
   See "Transactions on SQLite" in the guide.
+- The error for a view class that defines a handler, `get_one`, `get_many` or
+  `select` now says that you cannot override the method, not that it is final.
+- The guide has a group "CRUD Routes", with a page for each of the five routes. Each
+  page shows the steps of its route and what you can change. The page "Request
+  Lifecycle & Hooks" is gone; its sections are on the new pages, and its address
+  leads to the "CRUD Routes" overview.
 
 ### Removed
 

@@ -869,8 +869,8 @@ class BaseRestView(
                 if name in vars(klass):
                     origin = _origin(cls, klass)
                     raise RestlyConfigurationError(
-                        f"{cls.__name__} defines {name}{origin}, which is "
-                        f"final. {instead}"
+                        f"{cls.__name__} defines {name}{origin}, which you "
+                        f"cannot override. {instead}"
                     )
         _check_load_hooks(cls)
         # the handlers are final: an override re-implements the load,
@@ -923,7 +923,8 @@ class BaseRestView(
         ``get_one`` and ``get_many`` start here, and so does a custom route
         that builds its own read: ``self.select().where(Item.price > 10)``.
         The rows are the ones the view shows, and each row loads what the
-        response needs. Final: set ``scope`` to change the rows, and override
+        response needs. You cannot override it: set ``scope`` to change the
+        rows, and override
         :meth:`get_loader_options` to change the loads.
 
         :param scope: a clause that replaces the view scope for this

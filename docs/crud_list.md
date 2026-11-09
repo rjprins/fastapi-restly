@@ -13,11 +13,11 @@ route. For `GET /`, these steps run:
   - {override}`get_many_endpoint(list_params) <fastapi_restly.views.RestView.get_many_endpoint>`
     The endpoint method.
     - {meth}`handle_get_many(list_params) <fastapi_restly.views.RestView.handle_get_many>`
-      The handler. It is final.
+      The handler. You call it, but you cannot override it.
       - {override}`authorize("get_many") <fastapi_restly.views.RestView.authorize>`
         There is no row yet. A refusal is a 403.
       - {meth}`get_many(list_params) <fastapi_restly.views.RestView.get_many>`
-        The load. It is final.
+        The load. You call it, but you cannot override it.
         - {meth}`select() <fastapi_restly.views.BaseRestView.select>`
           The model, the scope and the loader options.
         - {override}`apply_list_params(stmt, list_params) <fastapi_restly.views.RestView.apply_list_params>`
