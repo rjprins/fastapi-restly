@@ -38,20 +38,20 @@ code than an override, and they also hold for the other routes.
 
 | Your change | Where it goes |
 |---|---|
-| The fields that a client can send | `fr.ReadOnly` on the main schema ([Hide a field](#readonly-and-writeonly)), or an update schema of your own ([Write the update schema yourself](#explicit-write-schemas)) |
-| A rule on one value, such as a format or a range | A Pydantic validator on the schema ([Validate input](#validation)) |
-| The rows that a client can update | The view's {attr}`scope <fastapi_restly.views.BaseRestView.scope>`. A row outside it is a 404 ([Scopes](#view-scope)) |
-| Who may update a row | {meth}`authorize <fastapi_restly.views.RestView.authorize>`. A refusal is a 403 ([Authorization](#authorize-gate)) |
-| How the route finds its row, such as by a slug | {meth}`where_id <fastapi_restly.views.BaseRestView.where_id>` ([Look a row up by another key](#natural-key-route)) |
-| A value that every write sets, such as the user who changed the row last | `onupdate` on the column, or a mapper event ([Models](#write-path-values)) |
-| What the update does: refuse a change, check two fields together, hash a password | {meth}`update <fastapi_restly.views.RestView.update>` ([below](#update-method)) |
-| Work in the same transaction, such as an audit row | {meth}`before_action_commit <fastapi_restly.views.RestView.before_action_commit>` ([Run code before or after the commit](#transaction-hooks)) |
-| Work after the commit, such as an email | {meth}`after_action_commit <fastapi_restly.views.RestView.after_action_commit>` ([Run code before or after the commit](#transaction-hooks)) |
-| A value in the response that is not a column | {meth}`to_single_response <fastapi_restly.views.BaseRestView.to_single_response>` ([Add a value to each row](#value-on-each-row)) |
-| The status code, the path or the dependencies of the route | {func}`fr.modify_route <fastapi_restly.views.modify_route>` ([Change one option of a route](#modify-route)) |
-| The HTTP method, the parameters or the request body | Your own `update_endpoint` ([below](#replace-update-endpoint)) |
-| No update route | `update_endpoint = None` ([Leave out a route](#leave-out-routes)) |
-| The same update under another path, such as `PATCH /users/me` | A custom route that calls {meth}`handle_update <fastapi_restly.views.RestView.handle_update>` ([below](#update-from-custom-route)) |
+| The fields a client can send | [`fr.ReadOnly`](#readonly-and-writeonly) or [an update schema](#explicit-write-schemas) |
+| Check one value | [A validator](#validation) |
+| The rows a client can update | [`scope`](#view-scope) |
+| Who may update | [`authorize`](#authorize-gate) |
+| Find the row by a slug | [`where_id`](#natural-key-route) |
+| A value that every write sets | [`onupdate` on the column](#write-path-values) |
+| Refuse a change, check two fields | [`update`](#update-method) |
+| Write more rows in the same commit | [`before_action_commit`](#transaction-hooks) |
+| Work after the commit | [`after_action_commit`](#transaction-hooks) |
+| A value in the response | [`to_single_response`](#value-on-each-row) |
+| Status code, path, dependencies | [`fr.modify_route`](#modify-route) |
+| HTTP method, parameters, body | [`update_endpoint`](#replace-update-endpoint) |
+| No update route | [`update_endpoint = None`](#leave-out-routes) |
+| The same update on another path | [`handle_update`](#update-from-custom-route) |
 
 (update-method)=
 ## Change what the update does
