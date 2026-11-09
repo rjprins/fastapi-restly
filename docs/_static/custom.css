@@ -80,11 +80,26 @@ html {
    rule starts where the theme shows the right sidebar next to the article.
 
    The space between a table and each sidebar line is the same: 1.5rem. The
-   theme gives 3rem on the left and 2rem on the right. */
+   theme gives 3rem on the left and 2rem on the right.
+
+   A page without a left sidebar, such as the front page, gets an empty space
+   on the left that is as wide as the right sidebar. That keeps the text in
+   the center of the page. When the screen gets narrower, this space gives up
+   its width first. */
 @media (min-width: 75rem) {
+    .bd-main .bd-content {
+        --restly-toc-width: clamp(17rem, 100% - 48rem, 24rem);
+    }
+
     .bd-sidebar-secondary {
-        width: clamp(17rem, 100% - 48rem, 24rem);
+        width: var(--restly-toc-width);
         padding-left: 0;
+    }
+
+    .bd-container__inner:has(> .bd-sidebar-primary.hide-on-wide) .bd-content::before {
+        content: "";
+        flex-shrink: 0;
+        width: clamp(0rem, 100% - 48rem - var(--restly-toc-width), var(--restly-toc-width));
     }
 
     .bd-main .bd-content .bd-article-container {
@@ -100,8 +115,12 @@ html {
    are easy to read. Tables and call trees can use the full width of the
    article; the theme already centers tables. The column uses margins, not
    max-width, so that a narrower block such as the newsletter form keeps its
-   own max-width and starts at the left edge of the text. */
-.bd-article section > :not(section, .pst-scrollable-table-container, .call-tree) {
+   own max-width and starts at the left edge of the text.
+
+   The rule skips the empty <span id="..."> that Sphinx puts before a heading
+   with a label. With side margins, that span would take up a line of its
+   own, and the space above the heading would get much larger. */
+.bd-article section > :not(section, span, .pst-scrollable-table-container, .call-tree) {
     margin-left: max(0px, (100% - 45rem) / 2);
     margin-right: max(0px, (100% - 45rem) / 2);
 }
