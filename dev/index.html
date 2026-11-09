@@ -33,7 +33,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=ea69bafe" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=b715876a" />
   
   <!-- So that users can add custom icons -->
   <script defer src="_static/scripts/fontawesome.js?digest=18bd87630a240e9c25be"></script>
@@ -455,9 +455,10 @@ boilerplate, full control.</strong></p>
     <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>  <span class="c1"># your SQLAlchemy model</span>
 </pre></div>
 </div>
-<p>This view serves the five CRUD routes under <code class="docutils literal notranslate"><span class="pre">/users</span></code>, with Pydantic schemas
-made from the model, and filtering, sorting and pagination on the list. To
-change one step, override its method, and the rest stays the same.</p>
+<p>This view serves five CRUD routes under <code class="docutils literal notranslate"><span class="pre">/users</span></code>. It makes Pydantic schemas
+from the model, and a list route that can filter, sort and paginate. Each route
+runs a few small methods on the view. To change one part, override that
+method; the rest stays the same.</p>
 <p>Restly is for REST resources, not for your whole app. It works inside the
 FastAPI app that you already have, and you add it one resource at a time;
 see <a class="reference internal" href="existing_projects.html#add-to-existing-app"><span class="std std-ref">Use Restly in an existing project</span></a>.</p>
@@ -469,7 +470,7 @@ change in your code. Subscribe to the <a class="reference internal" href="#newsl
 get an email when 1.0 is released. If something is broken or missing,
 please <a class="reference external" href="https://github.com/rjprins/fastapi-restly/issues">open an issue</a>.</p>
 </div></blockquote>
-<p><a class="reference internal" href="guide.html#how-restly-works"><span class="std std-ref">How Restly works</span></a> shows all the parts on one screen, and
+<p><a class="reference internal" href="guide.html#how-restly-works"><span class="std std-ref">How Restly works</span></a> gives the main ideas in a few paragraphs, and
 the <a class="reference internal" href="guide.html"><span class="std std-doc">Guide</span></a> explains each part and how you can change it.</p>
 <section id="quick-start">
 <h2>Quick Start<a class="headerlink" href="#quick-start" title="Link to this heading">#</a></h2>
@@ -546,7 +547,7 @@ to <code class="docutils literal notranslate"><span class="pre">UserView</span><
 <p><code class="docutils literal notranslate"><span class="pre">DELETE</span> <span class="pre">/users/{id}</span></code> still runs
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.authorize" title="fastapi_restly.views.RestView.authorize"><code class="xref py py-meth docutils literal notranslate"><span class="pre">authorize</span></code></a>, commits and
 returns 204. The other four routes do not change. See
-<a class="reference internal" href="lifecycle.html"><span class="std std-doc">Request Lifecycle &amp; Hooks</span></a>.</p>
+<a class="reference internal" href="crud_delete.html"><span class="std std-doc">Delete</span></a>.</p>
 </section>
 <section id="a-hidden-row-is-a-404-a-refused-action-is-a-403">
 <h3>A hidden row is a 404, a refused action is a 403<a class="headerlink" href="#a-hidden-row-is-a-404-a-refused-action-is-a-403" title="Link to this heading">#</a></h3>

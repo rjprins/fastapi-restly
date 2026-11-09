@@ -33,7 +33,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=ea69bafe" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=b715876a" />
   
   <!-- So that users can add custom icons -->
   <script defer src="_static/scripts/fontawesome.js?digest=18bd87630a240e9c25be"></script>
@@ -427,7 +427,10 @@
 <nav class="bd-docs-nav bd-links"
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
-  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Setup</span></p>
+  <div class="bd-toc-item navbar-nav">
+    <ul class="nav bd-sidenav">
+      <li class="toctree-l1"><a class="reference internal" href="guide.html#how-restly-works">How Restly works</a></li>
+    </ul><p aria-level="2" class="caption" role="heading"><span class="caption-text">Setup</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="new_projects.html">New Projects</a></li>
 <li class="toctree-l1"><a class="reference internal" href="existing_projects.html">Existing Projects</a></li>
@@ -437,10 +440,20 @@
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Views &amp; Routes</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="views.html">Views</a></li>
-<li class="toctree-l1"><a class="reference internal" href="crud_routes.html">CRUD Routes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="lifecycle.html">Request Lifecycle &amp; Hooks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="react_admin.html">React Admin</a></li>
 <li class="toctree-l1"><a class="reference internal" href="typing.html">Type Annotations</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">CRUD Routes</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="crud_routes.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_list.html">List</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_get_one.html">Get One</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_create.html">Create</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_update.html">Update</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_delete.html">Delete</a></li>
+<li class="toctree-l1"><a class="reference internal" href="custom_routes.html">Custom Routes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="commits.html">Commits &amp; Hooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nested_routes.html">Nested Routes</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Requests &amp; Responses</span></p>
 <ul class="current nav bd-sidenav">
@@ -1014,7 +1027,7 @@ that each one gets.</p>
 default <code class="docutils literal notranslate"><span class="pre">create</span></code> or <code class="docutils literal notranslate"><span class="pre">update</span></code> builds the object, every reference field has the
 right type: a <code class="docutils literal notranslate"><span class="pre">MustExist</span></code> field holds a plain id, and an <code class="docutils literal notranslate"><span class="pre">IDRef</span></code> or <code class="docutils literal notranslate"><span class="pre">IDSchema</span></code>
 field holds a reference object.</p>
-<p>A <a class="reference internal" href="lifecycle.html#custom-action-route"><span class="std std-ref">custom route</span></a> that builds a schema object itself must
+<p>A <a class="reference internal" href="custom_routes.html#custom-action-route"><span class="std std-ref">custom route</span></a> that builds a schema object itself must
 give each field that type. Pydantic’s <code class="docutils literal notranslate"><span class="pre">model_construct()</span></code> builds a schema
 object without validation. It helps when the schema has required fields that
 only responses fill, such as <code class="docutils literal notranslate"><span class="pre">id</span></code> or timestamps. For a <code class="docutils literal notranslate"><span class="pre">MustExist</span></code> field, pass
@@ -1157,7 +1170,7 @@ keeps those loads. To replace them, return a new list, for example to use
 <code class="docutils literal notranslate"><span class="pre">joinedload</span></code> instead of <code class="docutils literal notranslate"><span class="pre">selectinload</span></code>.</p>
 <p>The method holds every loader option of a read, not only relationships. A
 <code class="docutils literal notranslate"><span class="pre">query_expression()</span></code> on the model gets its value here, with
-<code class="docutils literal notranslate"><span class="pre">with_expression(...)</span></code>; see <a class="reference internal" href="lifecycle.html#value-on-each-row"><span class="std std-ref">Add a value to each row</span></a>.</p>
+<code class="docutils literal notranslate"><span class="pre">with_expression(...)</span></code>; see <a class="reference internal" href="responses.html#value-on-each-row"><span class="std std-ref">Add a value to each row</span></a>.</p>
 <p>For a load that only the list needs, add <code class="docutils literal notranslate"><span class="pre">.options(...)</span></code> in
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.apply_list_params" title="fastapi_restly.views.RestView.apply_list_params"><code class="xref py py-meth docutils literal notranslate"><span class="pre">apply_list_params</span></code></a>.
 It does not change <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/{id}</span></code>, or the create and update responses. A load

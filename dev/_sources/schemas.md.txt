@@ -302,7 +302,7 @@ Each kind of rule has one place:
 | A value that its column can hold, such as a number in the range of `Integer` | Nothing for the generic integer and text types of SQLAlchemy, a `Field` constraint for other types; see [Column validation](#column-validation) | 422 |
 | A referenced row must exist | {class}`fr.MustExist <fastapi_restly.schemas.MustExist>` or a reference field; see [Relationships](#reference-exists) | 404 |
 | A value must be unique | A unique constraint on the column; see [Errors](#default-exception-handling) | 409 |
-| A rule that needs the database, the stored row or the caller | The `create` or `update` business method; see [Request Lifecycle & Hooks](#business-methods) | The error that you raise |
+| A rule that needs the database, the stored row or the caller | The `create` or `update` business method; see [Change what a write does](#business-methods) | The error that you raise |
 
 Whether the caller may run the action at all is not validation. It is a
 policy, and it goes in
@@ -470,7 +470,7 @@ caller:
 - A rule that needs the database or the caller, such as "no new tasks in an
   archived project": check it in the `create` or `update` business method
   and raise an error there; see
-  [Request Lifecycle & Hooks](#business-methods). The SaaS example checks
+  [Change what a write does](#business-methods). The SaaS example checks
   such rules in
   [`app/tasks/views.py`](https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/tasks/views.py).
 

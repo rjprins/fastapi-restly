@@ -12,9 +12,10 @@ class UserView(fr.AsyncRestView):
     model = User  # your SQLAlchemy model
 ```
 
-This view serves the five CRUD routes under `/users`, with Pydantic schemas
-made from the model, and filtering, sorting and pagination on the list. To
-change one step, override its method, and the rest stays the same.
+This view serves five CRUD routes under `/users`. It makes Pydantic schemas
+from the model, and a list route that can filter, sort and paginate. Each route
+runs a few small methods on the view. To change one part, override that
+method; the rest stays the same.
 
 Restly is for REST resources, not for your whole app. It works inside the
 FastAPI app that you already have, and you add it one resource at a time;
@@ -27,7 +28,7 @@ see [Use Restly in an existing project](#add-to-existing-app).
 > get an email when 1.0 is released. If something is broken or missing,
 > please [open an issue](https://github.com/rjprins/fastapi-restly/issues).
 
-[How Restly works](#how-restly-works) shows all the parts on one screen, and
+[How Restly works](#how-restly-works) gives the main ideas in a few paragraphs, and
 the [Guide](guide.md) explains each part and how you can change it.
 
 ## Quick Start
@@ -114,7 +115,7 @@ to `UserView`, so that it keeps the row and marks the user as inactive:
 `DELETE /users/{id}` still runs
 {meth}`authorize <fastapi_restly.views.RestView.authorize>`, commits and
 returns 204. The other four routes do not change. See
-[Request Lifecycle & Hooks](lifecycle.md).
+[Delete](crud_delete.md).
 
 ### A hidden row is a 404, a refused action is a 403
 

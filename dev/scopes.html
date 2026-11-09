@@ -33,7 +33,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=ea69bafe" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=b715876a" />
   
   <!-- So that users can add custom icons -->
   <script defer src="_static/scripts/fontawesome.js?digest=18bd87630a240e9c25be"></script>
@@ -427,7 +427,10 @@
 <nav class="bd-docs-nav bd-links"
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
-  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Setup</span></p>
+  <div class="bd-toc-item navbar-nav">
+    <ul class="nav bd-sidenav">
+      <li class="toctree-l1"><a class="reference internal" href="guide.html#how-restly-works">How Restly works</a></li>
+    </ul><p aria-level="2" class="caption" role="heading"><span class="caption-text">Setup</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="new_projects.html">New Projects</a></li>
 <li class="toctree-l1"><a class="reference internal" href="existing_projects.html">Existing Projects</a></li>
@@ -437,10 +440,20 @@
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Views &amp; Routes</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="views.html">Views</a></li>
-<li class="toctree-l1"><a class="reference internal" href="crud_routes.html">CRUD Routes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="lifecycle.html">Request Lifecycle &amp; Hooks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="react_admin.html">React Admin</a></li>
 <li class="toctree-l1"><a class="reference internal" href="typing.html">Type Annotations</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">CRUD Routes</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="crud_routes.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_list.html">List</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_get_one.html">Get One</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_create.html">Create</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_update.html">Update</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_delete.html">Delete</a></li>
+<li class="toctree-l1"><a class="reference internal" href="custom_routes.html">Custom Routes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="commits.html">Commits &amp; Hooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nested_routes.html">Nested Routes</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Requests &amp; Responses</span></p>
 <ul class="nav bd-sidenav">
@@ -803,7 +816,7 @@ never be replaced belongs on the session, like the
 <p>The restore route loads the row with <code class="docutils literal notranslate"><span class="pre">get_one(id,</span> <span class="pre">scope=...)</span></code>, not with
 <code class="docutils literal notranslate"><span class="pre">handle_get_one</span></code>, because
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.write_action" title="fastapi_restly.views.RestView.write_action"><code class="xref py py-meth docutils literal notranslate"><span class="pre">write_action</span></code></a> authorizes
-the action itself; see <a class="reference internal" href="lifecycle.html#custom-action-route"><span class="std std-ref">Add a custom action route</span></a>. The
+the action itself; see <a class="reference internal" href="custom_routes.html#custom-action-route"><span class="std std-ref">Add a custom action route</span></a>. The
 route reads only the trash, so a row that is not deleted returns 404 here. To
 read without any scope on one route, pass <code class="docutils literal notranslate"><span class="pre">scope=fr.clauses.UNSCOPED</span></code>.</p>
 <p>The markers <code class="docutils literal notranslate"><span class="pre">ListResponseSchema</span></code>, <code class="docutils literal notranslate"><span class="pre">ResponseSchema</span></code> and <code class="docutils literal notranslate"><span class="pre">IDType</span></code> give the two
@@ -872,7 +885,7 @@ clause that a view’s reads apply. Apply it with
 <p>Pass another view, as in <code class="docutils literal notranslate"><span class="pre">fr.resolve_scope(ProjectView)</span></code>, to follow the rows
 that view shows. The parent lookup of a nested view does this, so a parent
 that its own view hides is also a 404 under the child’s path; see
-<a class="reference internal" href="crud_routes.html#nested-parent-access"><span class="std std-ref">Which parents a client can reach</span></a>.</p>
+<a class="reference internal" href="nested_routes.html#nested-parent-access"><span class="std std-ref">Which parents a client can reach</span></a>.</p>
 <p>Pass a model class, as in <code class="docutils literal notranslate"><span class="pre">fr.resolve_scope(Task)</span></code>, for the model’s
 <code class="docutils literal notranslate"><span class="pre">default_scope</span></code> only. That is the scope that every reference check applies,
 and that every view without its own scope uses. The two results differ

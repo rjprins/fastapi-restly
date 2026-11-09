@@ -33,7 +33,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=ea69bafe" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=b715876a" />
   
   <!-- So that users can add custom icons -->
   <script defer src="_static/scripts/fontawesome.js?digest=18bd87630a240e9c25be"></script>
@@ -769,7 +769,16 @@ view that ignores unknown keys, see step 38.</p></li>
 <code class="docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code> when it registers. The server ran the first route,
 but the spec showed the second. This happens, for example, with a method of
 your own at <code class="docutils literal notranslate"><span class="pre">&#64;fr.get(&quot;/{id}&quot;)</span></code> next to <code class="docutils literal notranslate"><span class="pre">get_one_endpoint</span></code>. Replace
-<code class="docutils literal notranslate"><span class="pre">get_one_endpoint</span></code> instead, or leave it out with <code class="docutils literal notranslate"><span class="pre">exclude_routes</span></code>.</p></li>
+<code class="docutils literal notranslate"><span class="pre">get_one_endpoint</span></code> instead, or leave it out with <code class="docutils literal notranslate"><span class="pre">get_one_endpoint</span> <span class="pre">=</span> <span class="pre">None</span></code>.</p></li>
+<li><p>Replace <code class="docutils literal notranslate"><span class="pre">include_routes</span></code> and <code class="docutils literal notranslate"><span class="pre">exclude_routes</span></code>: set each route that the view
+leaves out to <code class="docutils literal notranslate"><span class="pre">None</span></code>, such as <code class="docutils literal notranslate"><span class="pre">delete_endpoint</span> <span class="pre">=</span> <span class="pre">None</span></code>. <code class="docutils literal notranslate"><span class="pre">fr.ViewRoute</span></code> is
+gone. A view that still sets one of these settings raises an error that names
+the fix, and so does <code class="docutils literal notranslate"><span class="pre">fr.ViewRoute</span></code>.</p></li>
+<li><p>Silent: a view on an <code class="docutils literal notranslate"><span class="pre">APIRouter</span></code> with tags of its own, such as
+<code class="docutils literal notranslate"><span class="pre">APIRouter(tags=[&quot;shop&quot;])</span></code>, no longer gets a tag from its prefix. Its routes
+get only the tags of the router, as a plain route on that router does. Before,
+each route was in two groups in the spec, such as <code class="docutils literal notranslate"><span class="pre">shop</span></code> and <code class="docutils literal notranslate"><span class="pre">Widgets</span></code>. To keep
+the old tag, set <code class="docutils literal notranslate"><span class="pre">tags</span> <span class="pre">=</span> <span class="pre">[&quot;Widgets&quot;]</span></code> on the view.</p></li>
 </ol>
 <section id="added">
 <h3>Added<a class="headerlink" href="#added" title="Link to this heading">#</a></h3>
@@ -784,7 +793,9 @@ later step raises. See “Code that must commit in a write action” in the guid
 the rest. Use it under the name of the route method, as in
 <code class="docutils literal notranslate"><span class="pre">create_endpoint</span> <span class="pre">=</span> <span class="pre">fr.modify_route(status_code=200,</span> <span class="pre">name=&quot;create_tag&quot;)</span></code>. The route
 needs no method of its own for a name, a status code, a path, dependencies or the
-documented responses. See “Change one option of a route” in the guide.</p></li>
+documented responses. It changes how a route is served, not what it sends, so
+<code class="docutils literal notranslate"><span class="pre">response_model</span></code> and the other <code class="docutils literal notranslate"><span class="pre">response_model_*</span></code> arguments raise an error.
+See “Change one option of a route” in the guide.</p></li>
 <li><p>A status code set to <code class="docutils literal notranslate"><span class="pre">None</span></code> in <code class="docutils literal notranslate"><span class="pre">responses</span></code>, on a view or on a route, is left
 out of the spec. So <code class="docutils literal notranslate"><span class="pre">responses</span> <span class="pre">=</span> <span class="pre">{404:</span> <span class="pre">None}</span></code> removes a 404 that a route of a
 CRUD view documents by itself.</p></li>
@@ -820,6 +831,8 @@ of the view.</p></li>
 <section id="changed">
 <h3>Changed<a class="headerlink" href="#changed" title="Link to this heading">#</a></h3>
 <ul class="simple">
+<li><p>A view on a router with tags gets no tag from its prefix, so each route is in
+one group of the spec, as a plain route on that router is.</p></li>
 <li><p>Each filter key in OpenAPI has the type of its field, such as <code class="docutils literal notranslate"><span class="pre">integer</span></code> or a date,
 not text. Each description is written once, not on both the parameter and its
 schema.</p></li>
@@ -865,6 +878,9 @@ See “Transactions on SQLite” in the guide.</p></li>
 <section id="removed">
 <h3>Removed<a class="headerlink" href="#removed" title="Link to this heading">#</a></h3>
 <ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">include_routes</span></code>, <code class="docutils literal notranslate"><span class="pre">exclude_routes</span></code> and <code class="docutils literal notranslate"><span class="pre">fr.ViewRoute</span></code>. A view leaves out a route
+with <code class="docutils literal notranslate"><span class="pre">delete_endpoint</span> <span class="pre">=</span> <span class="pre">None</span></code>. <code class="docutils literal notranslate"><span class="pre">include_routes</span></code> also left out the custom routes
+that it did not name, with no error.</p></li>
 <li><p>The <code class="docutils literal notranslate"><span class="pre">x-resource-ref</span></code> extension in OpenAPI. No part of Restly read it, and it could
 name the wrong view when several views served one model.</p></li>
 </ul>

@@ -33,7 +33,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=ea69bafe" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=b715876a" />
   
   <!-- So that users can add custom icons -->
   <script defer src="_static/scripts/fontawesome.js?digest=18bd87630a240e9c25be"></script>
@@ -427,7 +427,10 @@
 <nav class="bd-docs-nav bd-links"
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
-  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Setup</span></p>
+  <div class="bd-toc-item navbar-nav">
+    <ul class="nav bd-sidenav">
+      <li class="toctree-l1"><a class="reference internal" href="guide.html#how-restly-works">How Restly works</a></li>
+    </ul><p aria-level="2" class="caption" role="heading"><span class="caption-text">Setup</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="new_projects.html">New Projects</a></li>
 <li class="toctree-l1"><a class="reference internal" href="existing_projects.html">Existing Projects</a></li>
@@ -437,10 +440,20 @@
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Views &amp; Routes</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="views.html">Views</a></li>
-<li class="toctree-l1"><a class="reference internal" href="crud_routes.html">CRUD Routes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="lifecycle.html">Request Lifecycle &amp; Hooks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="react_admin.html">React Admin</a></li>
 <li class="toctree-l1"><a class="reference internal" href="typing.html">Type Annotations</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">CRUD Routes</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="crud_routes.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_list.html">List</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_get_one.html">Get One</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_create.html">Create</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_update.html">Update</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_delete.html">Delete</a></li>
+<li class="toctree-l1"><a class="reference internal" href="custom_routes.html">Custom Routes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="commits.html">Commits &amp; Hooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nested_routes.html">Nested Routes</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Requests &amp; Responses</span></p>
 <ul class="current nav bd-sidenav">
@@ -561,6 +574,13 @@ of the view, the CRUD routes and the custom routes:</p>
 <p><code class="docutils literal notranslate"><span class="pre">tags</span></code> replaces the tag that Restly makes from the prefix. A subclass
 inherits it. <code class="docutils literal notranslate"><span class="pre">responses</span></code> adds to the responses of the base classes, and an
 entry for the same status code in a subclass wins.</p>
+<p>On an <code class="docutils literal notranslate"><span class="pre">APIRouter</span></code> with tags of its own, such as <code class="docutils literal notranslate"><span class="pre">APIRouter(tags=[&quot;billing&quot;])</span></code>,
+Restly makes no tag. The routes of the view then get only the tags of the
+router, as a plain route on that router does. FastAPI adds the tags of each
+router to the tags of the routes on it, so a tag from the prefix would put each
+route in a second group. Restly sees only the router that <code class="docutils literal notranslate"><span class="pre">fr.include_view</span></code>
+gets. Tags that you pass later, as in <code class="docutils literal notranslate"><span class="pre">app.include_router(router,</span> <span class="pre">tags=[...])</span></code>,
+still come in addition to the tag from the prefix.</p>
 <p>A route of a CRUD view documents <code class="docutils literal notranslate"><span class="pre">404</span></code> by itself when it can answer 404. That is
 when its path has a parameter, or when its request body holds a reference to a
 row. In both cases, the row can be missing. A custom route that answers 404 for
@@ -684,10 +704,8 @@ another shape on one route, replace its endpoint method with your own
 decorator and <code class="docutils literal notranslate"><span class="pre">response_model</span></code>; see
 <a class="reference internal" href="responses.html#one-route-shape"><span class="std std-ref">Change the shape of one route</span></a> and
 <a class="reference internal" href="responses.html#list-schema"><span class="std std-ref">Use a different schema for the list route</span></a>.</p>
-<p>A route that the view leaves out with
-<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.include_routes" title="fastapi_restly.views.BaseRestView.include_routes"><code class="xref py py-attr docutils literal notranslate"><span class="pre">include_routes</span></code></a> or
-<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.exclude_routes" title="fastapi_restly.views.BaseRestView.exclude_routes"><code class="xref py py-attr docutils literal notranslate"><span class="pre">exclude_routes</span></code></a> is
-not in the spec at all; see <a class="reference internal" href="crud_routes.html#exclude-crud-routes"><span class="std std-ref">Exclude CRUD routes</span></a>.</p>
+<p>A route that the view leaves out, such as with <code class="docutils literal notranslate"><span class="pre">delete_endpoint</span> <span class="pre">=</span> <span class="pre">None</span></code>, is
+not in the spec at all; see <a class="reference internal" href="crud_routes.html#leave-out-routes"><span class="std std-ref">Leave out a route</span></a>.</p>
 </section>
 <section id="see-also">
 <h2>See also<a class="headerlink" href="#see-also" title="Link to this heading">#</a></h2>

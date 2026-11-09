@@ -54,5 +54,6 @@ for each view, use :class:`~fastapi_restly.views.SchemaType`; see
 .. seealso::
 
    :doc:`/views` introduces the class-based view concept and
-   hierarchy, and :doc:`/lifecycle` explains how a view handles a request
-   and collects the task-shaped override recipes.
+   hierarchy, and :doc:`/crud_routes` explains how a CRUD route runs. The
+   page of each route, such as :doc:`/crud_update`, shows what you can
+   change.

@@ -33,7 +33,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=ea69bafe" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=b715876a" />
   
   <!-- So that users can add custom icons -->
   <script defer src="_static/scripts/fontawesome.js?digest=18bd87630a240e9c25be"></script>
@@ -63,7 +63,7 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Relationships" href="relationships.html" />
-    <link rel="prev" title="Type Annotations" href="typing.html" />
+    <link rel="prev" title="Nested Routes" href="nested_routes.html" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="color-scheme" content="light dark"/>
@@ -427,7 +427,10 @@
 <nav class="bd-docs-nav bd-links"
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
-  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Setup</span></p>
+  <div class="bd-toc-item navbar-nav">
+    <ul class="nav bd-sidenav">
+      <li class="toctree-l1"><a class="reference internal" href="guide.html#how-restly-works">How Restly works</a></li>
+    </ul><p aria-level="2" class="caption" role="heading"><span class="caption-text">Setup</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="new_projects.html">New Projects</a></li>
 <li class="toctree-l1"><a class="reference internal" href="existing_projects.html">Existing Projects</a></li>
@@ -437,10 +440,20 @@
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Views &amp; Routes</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="views.html">Views</a></li>
-<li class="toctree-l1"><a class="reference internal" href="crud_routes.html">CRUD Routes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="lifecycle.html">Request Lifecycle &amp; Hooks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="react_admin.html">React Admin</a></li>
 <li class="toctree-l1"><a class="reference internal" href="typing.html">Type Annotations</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">CRUD Routes</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="crud_routes.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_list.html">List</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_get_one.html">Get One</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_create.html">Create</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_update.html">Update</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_delete.html">Delete</a></li>
+<li class="toctree-l1"><a class="reference internal" href="custom_routes.html">Custom Routes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="commits.html">Commits &amp; Hooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nested_routes.html">Nested Routes</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Requests &amp; Responses</span></p>
 <ul class="current nav bd-sidenav">
@@ -875,7 +888,7 @@ create or update schema that you write. Otherwise a client can set it.</p>
 <td><p>409</p></td>
 </tr>
 <tr class="row-even"><td><p>A rule that needs the database, the stored row or the caller</p></td>
-<td><p>The <code class="docutils literal notranslate"><span class="pre">create</span></code> or <code class="docutils literal notranslate"><span class="pre">update</span></code> business method; see <a class="reference internal" href="lifecycle.html#business-methods"><span class="std std-ref">Request Lifecycle &amp; Hooks</span></a></p></td>
+<td><p>The <code class="docutils literal notranslate"><span class="pre">create</span></code> or <code class="docutils literal notranslate"><span class="pre">update</span></code> business method; see <a class="reference internal" href="crud_routes.html#business-methods"><span class="std std-ref">Change what a write does</span></a></p></td>
 <td><p>The error that you raise</p></td>
 </tr>
 </tbody>
@@ -1051,7 +1064,7 @@ turns the error into a 409; see <a class="reference internal" href="errors.html#
 <li><p>A rule that needs the database or the caller, such as “no new tasks in an
 archived project”: check it in the <code class="docutils literal notranslate"><span class="pre">create</span></code> or <code class="docutils literal notranslate"><span class="pre">update</span></code> business method
 and raise an error there; see
-<a class="reference internal" href="lifecycle.html#business-methods"><span class="std std-ref">Request Lifecycle &amp; Hooks</span></a>. The SaaS example checks
+<a class="reference internal" href="crud_routes.html#business-methods"><span class="std std-ref">Change what a write does</span></a>. The SaaS example checks
 such rules in
 <a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/tasks/views.py"><code class="docutils literal notranslate"><span class="pre">app/tasks/views.py</span></code></a>.</p></li>
 </ul>
@@ -2054,12 +2067,12 @@ keys that come from the response schema.</p></li>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="typing.html"
+       href="nested_routes.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Type Annotations</p>
+        <p class="prev-next-title">Nested Routes</p>
       </div>
     </a>
     <a class="right-next"

@@ -33,7 +33,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=ea69bafe" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=b715876a" />
   
   <!-- So that users can add custom icons -->
   <script defer src="_static/scripts/fontawesome.js?digest=18bd87630a240e9c25be"></script>
@@ -767,7 +767,7 @@ function above <code class="docutils literal notranslate"><span class="pre">Post
 <a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView.after_action_commit" title="fastapi_restly.views.AsyncRestView.after_action_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">after_action_commit</span></code></a>
 after it commits a write. <code class="docutils literal notranslate"><span class="pre">action</span></code> is the name of the action, and <code class="docutils literal notranslate"><span class="pre">new</span></code> is
 the saved post. The hook runs after the commit, so an error in it cannot
-undo the publish. <a class="reference internal" href="lifecycle.html#after-action-commit-raises"><span class="std std-ref">When <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code> raises</span></a>
+undo the publish. <a class="reference internal" href="commits.html#after-action-commit-raises"><span class="std std-ref">When <code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code> raises</span></a>
 shows how to handle such an error.</p>
 <p>Anna writes a second post and publishes it. The server terminal prints
 <code class="docutils literal notranslate"><span class="pre">New</span> <span class="pre">post:</span> <span class="pre">Second</span></code>:</p>
@@ -780,7 +780,7 @@ curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </spa
 <p>A side effect that must be saved together with the post, such as an audit
 row, goes in
 <a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView.before_action_commit" title="fastapi_restly.views.AsyncRestView.before_action_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">before_action_commit</span></code></a>
-instead. See <a class="reference internal" href="lifecycle.html#transaction-hooks"><span class="std std-ref">Run code before or after the commit</span></a>.</p>
+instead. See <a class="reference internal" href="commits.html#transaction-hooks"><span class="std std-ref">Run code before or after the commit</span></a>.</p>
 </section>
 <section id="share-the-rules-with-comments">
 <h2>Share the rules with comments<a class="headerlink" href="#share-the-rules-with-comments" title="Link to this heading">#</a></h2>
@@ -1120,8 +1120,8 @@ why.</p></li>
 <li><p><a class="reference internal" href="context.html"><span class="std std-doc">Request Context</span></a>: bind values in scripts, jobs, and
 tests</p></li>
 <li><p><a class="reference internal" href="scopes.html"><span class="std std-doc">Scopes</span></a>: the model scope, view scopes, and a scope for one route</p></li>
-<li><p><a class="reference internal" href="lifecycle.html"><span class="std std-doc">Request Lifecycle &amp; Hooks</span></a>: every method you can override, and
-when to override one</p></li>
+<li><p><a class="reference internal" href="crud_routes.html"><span class="std std-doc">CRUD Routes</span></a>: the steps of each route, every method you can
+override, and when to override one</p></li>
 <li><p><a class="reference internal" href="views.html#share-behaviour-with-base-views"><span class="std std-ref">Share behavior with base views</span></a>: the full
 inheritance guide</p></li>
 <li><p><a class="reference internal" href="testing.html"><span class="std std-doc">Testing</span></a>: the test fixtures, and test databases</p></li>

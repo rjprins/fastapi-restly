@@ -21,8 +21,8 @@ For `get_one`, `update` and `delete`, the handler first loads the row through
 the view's scope, and then calls `authorize` with it. So `authorize` only gets
 rows that the caller can see. For `get_many`, it runs before the query and
 gets no row. On a write, it runs before the change is made.
-[A read](#read-request-steps) shows where `authorize` runs among the steps of
-a request.
+[How a CRUD route runs](#view-request-steps) shows where `authorize` runs
+among the steps of a route, and the page of each route shows all its steps.
 
 A refusal from `authorize` is a 403: the caller can see the row, but may not
 do this. To hide a row, so that the caller gets a 404 as if the row did not
@@ -219,8 +219,8 @@ themselves.
 ## See also
 
 - [Scopes](scopes.md): which rows a caller can see, and the 404.
-- [Request Lifecycle & Hooks](#view-request-steps): the steps of a request,
-  and where `authorize` runs.
+- [CRUD Routes](#view-request-steps): the steps of a route, and where
+  `authorize` runs.
 - [Request Context](context.md): who is calling.
 - [Errors](errors.md): the exceptions to raise, and how errors
   look.

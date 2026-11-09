@@ -33,7 +33,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=ea69bafe" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=b715876a" />
   
   <!-- So that users can add custom icons -->
   <script defer src="_static/scripts/fontawesome.js?digest=18bd87630a240e9c25be"></script>
@@ -427,7 +427,10 @@
 <nav class="bd-docs-nav bd-links"
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
-  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Setup</span></p>
+  <div class="bd-toc-item navbar-nav">
+    <ul class="nav bd-sidenav">
+      <li class="toctree-l1"><a class="reference internal" href="guide.html#how-restly-works">How Restly works</a></li>
+    </ul><p aria-level="2" class="caption" role="heading"><span class="caption-text">Setup</span></p>
 <ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="new_projects.html">New Projects</a></li>
 <li class="toctree-l1"><a class="reference internal" href="existing_projects.html">Existing Projects</a></li>
@@ -437,10 +440,20 @@
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Views &amp; Routes</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="views.html">Views</a></li>
-<li class="toctree-l1"><a class="reference internal" href="crud_routes.html">CRUD Routes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="lifecycle.html">Request Lifecycle &amp; Hooks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="react_admin.html">React Admin</a></li>
 <li class="toctree-l1"><a class="reference internal" href="typing.html">Type Annotations</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">CRUD Routes</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="crud_routes.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_list.html">List</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_get_one.html">Get One</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_create.html">Create</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_update.html">Update</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_delete.html">Delete</a></li>
+<li class="toctree-l1"><a class="reference internal" href="custom_routes.html">Custom Routes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="commits.html">Commits &amp; Hooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nested_routes.html">Nested Routes</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Requests &amp; Responses</span></p>
 <ul class="nav bd-sidenav">
@@ -581,7 +594,7 @@ through <a class="reference internal" href="api/db.html#fastapi_restly.db.AsyncS
 a <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a> through
 <a class="reference internal" href="api/db.html#fastapi_restly.db.SessionDep" title="fastapi_restly.db.SessionDep"><code class="xref py py-data docutils literal notranslate"><span class="pre">fr.SessionDep</span></code></a>. The source opens the
 session and closes it after the request, but it does not commit; see
-<a class="reference internal" href="lifecycle.html#what-commits"><span class="std std-ref">What commits, and when</span></a>.</p>
+<a class="reference internal" href="commits.html#what-commits"><span class="std std-ref">What commits, and when</span></a>.</p>
 <p id="one-configuration-per-process">There is one configuration for each process. Restly stores it in the process,
 not on the app. A second call to <code class="docutils literal notranslate"><span class="pre">fr.configure()</span></code> replaces the sources it
 names, and every app in the process then uses the new ones. Restly has no
@@ -790,7 +803,7 @@ them a session. Open one from Restly’s configured source with
 </pre></div>
 </div>
 <p>These helpers do not commit. Code outside a request commits its own changes.
-<a class="reference internal" href="lifecycle.html#logic-outside-a-view"><span class="std std-ref">Run the same logic in a script or a worker</span></a> shows how
+<a class="reference internal" href="commits.html#logic-outside-a-view"><span class="std std-ref">Run the same logic in a script or a worker</span></a> shows how
 to share logic between a view and such code.</p>
 </section>
 <section id="close-the-engine-on-shutdown">
@@ -871,7 +884,7 @@ for every program that opens the file later. Turn it on yourself:</p>
 removes them, but they stay after the process is killed. WAL does not work on
 a network file system.</p>
 <p>Each outermost write action runs in a savepoint; see
-<a class="reference internal" href="lifecycle.html#write-action-error"><span class="std std-ref">When a write action raises</span></a>. So on SQLite, a query in
+<a class="reference internal" href="commits.html#write-action-error"><span class="std std-ref">When a write action raises</span></a>. So on SQLite, a query in
 the change of an action, such as in a business method, keeps a read lock until
 the commit. When another request writes at that moment, the action cannot get
 the write lock. It then fails at once with <code class="docutils literal notranslate"><span class="pre">database</span> <span class="pre">is</span> <span class="pre">locked</span></code>, without

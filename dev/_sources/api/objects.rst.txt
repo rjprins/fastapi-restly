@@ -12,5 +12,6 @@ deleting them, and snapshotting loaded column values.
 
 .. seealso::
 
-   :doc:`/lifecycle` covers the view-bound counterparts of
-   these helpers and includes the domain-utilities table.
+   :ref:`domain-utilities` shows these functions in a script or a worker,
+   and :doc:`/crud_routes` shows the business methods that call them in a
+   view.

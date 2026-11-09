@@ -33,7 +33,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=ea69bafe" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=b715876a" />
   
   <!-- So that users can add custom icons -->
   <script defer src="_static/scripts/fontawesome.js?digest=18bd87630a240e9c25be"></script>
@@ -62,8 +62,8 @@
     <link rel="author" title="About these documents" href="about.html" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Request Lifecycle &amp; Hooks" href="lifecycle.html" />
-    <link rel="prev" title="Views" href="views.html" />
+    <link rel="next" title="List" href="crud_list.html" />
+    <link rel="prev" title="Type Annotations" href="typing.html" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="color-scheme" content="light dark"/>
@@ -427,7 +427,10 @@
 <nav class="bd-docs-nav bd-links"
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
-  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Setup</span></p>
+  <div class="bd-toc-item navbar-nav">
+    <ul class="nav bd-sidenav">
+      <li class="toctree-l1"><a class="reference internal" href="guide.html#how-restly-works">How Restly works</a></li>
+    </ul><p aria-level="2" class="caption" role="heading"><span class="caption-text">Setup</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="new_projects.html">New Projects</a></li>
 <li class="toctree-l1"><a class="reference internal" href="existing_projects.html">Existing Projects</a></li>
@@ -435,12 +438,22 @@
 <li class="toctree-l1"><a class="reference internal" href="models.html">Models</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Views &amp; Routes</span></p>
-<ul class="current nav bd-sidenav">
+<ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="views.html">Views</a></li>
-<li class="toctree-l1 current active"><a aria-current="page" class="current reference internal" href="#">CRUD Routes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="lifecycle.html">Request Lifecycle &amp; Hooks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="react_admin.html">React Admin</a></li>
 <li class="toctree-l1"><a class="reference internal" href="typing.html">Type Annotations</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">CRUD Routes</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1 current active"><a aria-current="page" class="current reference internal" href="#">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_list.html">List</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_get_one.html">Get One</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_create.html">Create</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_update.html">Update</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_delete.html">Delete</a></li>
+<li class="toctree-l1"><a class="reference internal" href="custom_routes.html">Custom Routes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="commits.html">Commits &amp; Hooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nested_routes.html">Nested Routes</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Requests &amp; Responses</span></p>
 <ul class="nav bd-sidenav">
@@ -540,11 +553,12 @@ under <code class="docutils literal notranslate"><span class="pre">/users</span>
 configuration and the model around such a view, in one file that runs.
 <code class="docutils literal notranslate"><span class="pre">include_view</span></code> also works as a direct call; see
 <a class="reference internal" href="views.html#register-a-view"><span class="std std-ref">Register a view</span></a>.</p>
-<p>Each route runs an endpoint method, a final handler, and a business method
-or, for a read, a final load. To change what a route does, you override the
-endpoint method or the business method, or set what the load reads;
-<a class="reference internal" href="lifecycle.html#which-method-to-override"><span class="std std-ref">Which method do I override</span></a> maps each change to
-its method.</p>
+<p>Each route runs a fixed list of steps, such as loading the row, <code class="docutils literal notranslate"><span class="pre">authorize</span></code>
+and the commit. <a class="reference internal" href="#view-request-steps">How a CRUD route runs</a> explains these
+steps. Each route also has a page of its own: <a class="reference internal" href="crud_list.html"><span class="std std-doc">List</span></a>,
+<a class="reference internal" href="crud_get_one.html"><span class="std std-doc">Get One</span></a>, <a class="reference internal" href="crud_create.html"><span class="std std-doc">Create</span></a>, <a class="reference internal" href="crud_update.html"><span class="std std-doc">Update</span></a>
+and <a class="reference internal" href="crud_delete.html"><span class="std std-doc">Delete</span></a>. It shows the steps of that route in order, and a
+table of what you can change.</p>
 <section id="choose-async-or-sync">
 <span id="id1"></span><h2>Choose async or sync<a class="headerlink" href="#choose-async-or-sync" title="Link to this heading">#</a></h2>
 <p>Use <a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestView</span></code></a> for a new
@@ -576,31 +590,31 @@ The examples on this page use <code class="docutils literal notranslate"><span c
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/users</span></code></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="crud_list.html"><span class="std std-doc"><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/users</span></code></span></a></p></td>
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView.get_many_endpoint" title="fastapi_restly.views.AsyncRestView.get_many_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many_endpoint</span></code></a></p></td>
 <td><p>Filter, sort and page parameters</p></td>
 <td><p>A page of objects in a <code class="docutils literal notranslate"><span class="pre">data</span></code> envelope</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">200</span></code></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/users</span></code></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="crud_create.html"><span class="std std-doc"><code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/users</span></code></span></a></p></td>
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView.create_endpoint" title="fastapi_restly.views.AsyncRestView.create_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create_endpoint</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">create_schema</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">response_schema</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">201</span></code></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/users/{id}</span></code></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="crud_get_one.html"><span class="std std-doc"><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/users/{id}</span></code></span></a></p></td>
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView.get_one_endpoint" title="fastapi_restly.views.AsyncRestView.get_one_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one_endpoint</span></code></a></p></td>
 <td><p>The id in the path</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">response_schema</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">200</span></code></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">PATCH</span> <span class="pre">/users/{id}</span></code></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="crud_update.html"><span class="std std-doc"><code class="docutils literal notranslate"><span class="pre">PATCH</span> <span class="pre">/users/{id}</span></code></span></a></p></td>
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView.update_endpoint" title="fastapi_restly.views.AsyncRestView.update_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">update_endpoint</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">update_schema</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">response_schema</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">200</span></code></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">DELETE</span> <span class="pre">/users/{id}</span></code></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="crud_delete.html"><span class="std std-doc"><code class="docutils literal notranslate"><span class="pre">DELETE</span> <span class="pre">/users/{id}</span></code></span></a></p></td>
 <td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView.delete_endpoint" title="fastapi_restly.views.AsyncRestView.delete_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">delete_endpoint</span></code></a></p></td>
 <td><p>The id in the path</p></td>
 <td><p>Empty body</p></td>
@@ -619,7 +633,7 @@ change the <code class="docutils literal notranslate"><span class="pre">data</sp
 <p>A row that does not exist returns <code class="docutils literal notranslate"><span class="pre">404</span></code>, and so does a row that the view’s
 <a class="reference internal" href="scopes.html"><span class="std std-doc">scope</span></a> hides. Each write commits before Restly builds the
 response, and a read does not commit; see
-<a class="reference internal" href="lifecycle.html#what-commits"><span class="std std-ref">What commits, and when</span></a>.</p>
+<a class="reference internal" href="commits.html#what-commits"><span class="std std-ref">What commits, and when</span></a>.</p>
 <div class="admonition important">
 <p class="admonition-title">Important</p>
 <p>Restly does not authenticate requests, and by default it allows every action
@@ -675,7 +689,7 @@ the converter only to a path parameter annotated
 accept negative integer ids, replace each item endpoint you need with an
 untyped path such as <code class="docutils literal notranslate"><span class="pre">&#64;fr.get(&quot;/{id}&quot;)</span></code>, and annotate its <code class="docutils literal notranslate"><span class="pre">id</span></code> parameter as
 <code class="docutils literal notranslate"><span class="pre">int</span></code>; see
-<a class="reference internal" href="lifecycle.html#replace-endpoint-method"><span class="std std-ref">Replace the endpoint method of one route</span></a>.</p>
+<a class="reference internal" href="#replace-endpoint-method">Replace an endpoint method</a>.</p>
 <p>The item routes use the name <code class="docutils literal notranslate"><span class="pre">id</span></code> in the path. An existing API can use another
 name, such as <code class="docutils literal notranslate"><span class="pre">{user_id}</span></code>. The URLs are the same, but OpenAPI and the clients that
 are generated from it show the name. To keep that name, replace each item endpoint,
@@ -687,6 +701,99 @@ parameters. So <code class="docutils literal notranslate"><span class="pre">/{id
 register the view. Use the same name in both paths.</p>
 </div>
 </section>
+</section>
+<section id="how-a-crud-route-runs">
+<span id="view-request-steps"></span><h2>How a CRUD route runs<a class="headerlink" href="#how-a-crud-route-runs" title="Link to this heading">#</a></h2>
+<p>Take <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/</span></code>, the create route. FastAPI calls
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create_endpoint" title="fastapi_restly.views.RestView.create_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create_endpoint</span></code></a>, the
+<strong>endpoint method</strong>. It calls
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_create" title="fastapi_restly.views.RestView.handle_create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_create</span></code></a>, the
+<strong>handler</strong>. The handler runs the steps, and calls
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create" title="fastapi_restly.views.RestView.create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create</span></code></a>, the <strong>business
+method</strong>:</p>
+<div class="call-tree docutils container">
+<ul><li class="call-tree-fold"><details open="open"><summary><span class="call-tree-step"><code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/</span></code></span></summary><ul><li class="call-tree-fold"><details open="open"><summary><span class="call-tree-step"><span class="call-tree-call"><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create_endpoint" title="fastapi_restly.views.RestView.create_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create_endpoint(data)</span></code></a><span class="call-tree-badge">override</span></span><span class="call-tree-note">The endpoint method: the HTTP contract.</span></span></summary><ul><li class="call-tree-fold"><details open="open"><summary><span class="call-tree-step"><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_create" title="fastapi_restly.views.RestView.handle_create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_create(data)</span></code></a><span class="call-tree-note">The handler: it runs the steps. It is final.</span></span></summary><ul><li><span class="call-tree-step"><span class="call-tree-call"><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.authorize" title="fastapi_restly.views.RestView.authorize"><code class="xref py py-meth docutils literal notranslate"><span class="pre">authorize(&quot;create&quot;,</span> <span class="pre">data=data)</span></code></a><span class="call-tree-badge">override</span></span></span></li><li><span class="call-tree-step call-tree-words">Check the <a class="reference internal" href="relationships.html#reference-exists"><span class="std std-ref">references</span></a> in the data. An id that does
+not exist is a 404.</span></li><li><span class="call-tree-step"><span class="call-tree-call"><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create" title="fastapi_restly.views.RestView.create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create(data)</span></code></a><span class="call-tree-badge">override</span></span><span class="call-tree-note">The business method: it builds the object. Nothing is written yet.</span></span></li><li class="call-tree-fold"><details><summary><span class="call-tree-step call-tree-words">Save: flush, refresh the object, and load it with the loader options.</span></summary><div class="call-tree-text docutils container">
+<p>The save does what <code class="docutils literal notranslate"><span class="pre">session.flush()</span></code> and <code class="docutils literal notranslate"><span class="pre">session.refresh()</span></code> do in
+plain SQLAlchemy. It flushes the session. Then it refreshes the object,
+and every other row of the view’s model that the action wrote. It loads
+them with the view’s
+<a class="reference internal" href="relationships.html#eager-load-extra-relationships"><span class="std std-ref">loader options</span></a>, as a read does: the
+relationships that the response shows, and any value that you add
+there. So the hooks and the response see the saved rows. Rows of other
+models are written, but not refreshed.</p>
+</div>
+</details></li><li><span class="call-tree-step"><span class="call-tree-call"><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.before_action_commit" title="fastapi_restly.views.RestView.before_action_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">before_action_commit(&quot;create&quot;,</span> <span class="pre">new=obj,</span> <span class="pre">old=None)</span></code></a><span class="call-tree-badge">override</span></span></span></li><li><span class="call-tree-step call-tree-words">Commit.</span></li><li><span class="call-tree-step"><span class="call-tree-call"><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.after_action_commit" title="fastapi_restly.views.RestView.after_action_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">after_action_commit(&quot;create&quot;,</span> <span class="pre">new=obj,</span> <span class="pre">old=None)</span></code></a><span class="call-tree-badge">override</span></span></span></li></ul></details></li><li><span class="call-tree-step"><span class="call-tree-call"><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_single_response" title="fastapi_restly.views.BaseRestView.to_single_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_single_response(obj)</span></code></a><span class="call-tree-badge">override</span></span><span class="call-tree-note">The response of the object.</span></span></li></ul></details></li></ul></details></li></ul></div>
+<p>A method marked <em>override</em> is a method that you can override in your view.
+A step with an arrow opens and closes when you click it. The page of each
+route, such as <a class="reference internal" href="crud_create.html"><span class="std std-doc">Create</span></a>, shows the steps of that route.</p>
+<p>Every CRUD route has these three methods. The names follow one pattern for
+all five actions: <code class="docutils literal notranslate"><span class="pre">update_endpoint</span></code> calls <code class="docutils literal notranslate"><span class="pre">handle_update</span></code>, which calls
+<code class="docutils literal notranslate"><span class="pre">update</span></code>, and so on. A read has a load in the place of the business method.</p>
+<ul class="simple">
+<li><p>The <strong>endpoint method</strong>, <code class="docutils literal notranslate"><span class="pre">&lt;verb&gt;_endpoint</span></code>, is the method that FastAPI
+calls. It owns the HTTP contract: the route decorator, the parameters and
+the <code class="docutils literal notranslate"><span class="pre">response_model</span></code>. It returns the row, and Restly builds the response with
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_single_response" title="fastapi_restly.views.BaseRestView.to_single_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_single_response</span></code></a>.
+To change one option of the route, such as the status code, use
+<a class="reference internal" href="api/views.html#fastapi_restly.views.modify_route" title="fastapi_restly.views.modify_route"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.modify_route</span></code></a>. Replace the method
+only when the change needs code. See
+<a class="reference internal" href="#replace-endpoint-method">Replace an endpoint method</a>.</p></li>
+<li><p>The <strong>handler</strong>, <code class="docutils literal notranslate"><span class="pre">handle_&lt;verb&gt;</span></code>, runs the steps. It calls
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.authorize" title="fastapi_restly.views.RestView.authorize"><code class="xref py py-meth docutils literal notranslate"><span class="pre">authorize</span></code></a>, checks the
+<a class="reference internal" href="relationships.html#reference-exists"><span class="std std-ref">references</span></a> in the data, and then calls the business
+method. On a write, it ends with the <strong>commit bracket</strong>: it saves the
+object, runs
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.before_action_commit" title="fastapi_restly.views.RestView.before_action_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">before_action_commit</span></code></a>,
+commits, then runs
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.after_action_commit" title="fastapi_restly.views.RestView.after_action_commit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">after_action_commit</span></code></a>.
+It returns the object. Only the delete handler returns nothing. A handler
+is final: a view class that defines one fails when Python creates the
+class. A custom route calls a handler to run the same steps.</p></li>
+<li><p>The <strong>business method</strong> of a write is the bare verb:
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create" title="fastapi_restly.views.RestView.create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create</span></code></a>,
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.update" title="fastapi_restly.views.RestView.update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">update</span></code></a> or
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.delete" title="fastapi_restly.views.RestView.delete"><code class="xref py py-meth docutils literal notranslate"><span class="pre">delete</span></code></a>. It makes the
+change: it builds the object or applies the input to it, and returns it. It
+does not check permissions, does not flush and does not commit. So when your
+override runs, <code class="docutils literal notranslate"><span class="pre">authorize</span></code> and the reference checks have already passed.
+Nothing is written while it runs. The save after it writes the change, and
+then the commit follows.</p></li>
+<li><p>A read has a <strong>load</strong>:
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one" title="fastapi_restly.views.RestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one</span></code></a> or
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many" title="fastapi_restly.views.RestView.get_many"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many</span></code></a>. A load is
+final, as a handler is. You change it through the scope, the list params,
+the loader options and two small hooks. See
+<a class="reference internal" href="crud_get_one.html#read-request-steps"><span class="std std-ref">Visibility, then policy</span></a>.</p></li>
+</ul>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p>Update and delete have the same steps, with a load first. Their handlers load
+the row through <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_one" title="fastapi_restly.views.RestView.get_one"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_one</span></code></a>, so a
+row that the caller cannot see is a 404. Then they call <code class="docutils literal notranslate"><span class="pre">authorize</span></code> with the
+loaded row, check the references in the data, and take a
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.snapshot" title="fastapi_restly.views.BaseRestView.snapshot"><code class="xref py py-meth docutils literal notranslate"><span class="pre">snapshot</span></code></a> of it as <code class="docutils literal notranslate"><span class="pre">old</span></code>.
+The business method runs next, then the commit bracket. The delete business
+method only marks the row for deletion.</p>
+<p>The row that an action is about is its <strong>subject</strong>: the object that <code class="docutils literal notranslate"><span class="pre">create</span></code>
+or <code class="docutils literal notranslate"><span class="pre">update</span></code> returns, or the row that <code class="docutils literal notranslate"><span class="pre">delete</span></code> gets. <code class="docutils literal notranslate"><span class="pre">old</span></code> is the subject
+before the action, and <code class="docutils literal notranslate"><span class="pre">new</span></code> is the subject after it. So the hooks can see
+what changed. After a delete, the row is gone and <code class="docutils literal notranslate"><span class="pre">new</span></code> is <code class="docutils literal notranslate"><span class="pre">None</span></code>. A soft
+delete keeps the row, so <code class="docutils literal notranslate"><span class="pre">new</span></code> is the row.</p>
+<p>The business method runs under SQLAlchemy’s
+<a class="reference external" href="https://docs.sqlalchemy.org/en/20/orm/session_api.html#sqlalchemy.orm.Session.no_autoflush" title="(in SQLAlchemy v2.0)"><code class="xref py py-attr docutils literal notranslate"><span class="pre">session.no_autoflush</span></code></a>.
+So a query inside it does not write a half-built object, also on a
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestView</span></code></a>, whose session flushes
+before each query everywhere else.</p>
+<p>The save writes every change in the session. It refreshes the object that the
+business method returns, and every other row of the view’s model that the
+action wrote. A row of another model that the method changes, such as a line
+of an order, is written but not refreshed. When the change set a foreign key
+column of such a row, such as <code class="docutils literal notranslate"><span class="pre">line.product_id</span></code>, the save unloads that
+relationship. So a response that nests the line loads the new product, not
+the old one. A business method that you call yourself, outside a handler or a
+<code class="docutils literal notranslate"><span class="pre">write_action</span></code> block, writes nothing: the handler does the save.</p>
+</div>
 </section>
 <section id="set-the-model-and-the-schemas">
 <span id="crud-model-and-schemas"></span><h2>Set the model and the schemas<a class="headerlink" href="#set-the-model-and-the-schemas" title="Link to this heading">#</a></h2>
@@ -713,55 +820,57 @@ shows which fields each schema takes.</p>
 </section>
 <section id="configure-a-crud-view">
 <span id="id2"></span><h2>Configure a CRUD view<a class="headerlink" href="#configure-a-crud-view" title="Link to this heading">#</a></h2>
-<p>This table maps each need to its setting:</p>
+<p>Most changes to a CRUD view are a class attribute. The page of each route
+lists the changes for that route; this table lists the settings for the
+whole view:</p>
 <div class="pst-scrollable-table-container"><table class="table">
 <thead>
-<tr class="row-odd"><th class="head"><p>You need</p></th>
-<th class="head"><p>Configuration</p></th>
+<tr class="row-odd"><th class="head"><p>Your change</p></th>
+<th class="head"><p>Setting</p></th>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p>Stable response fields</p></td>
-<td><p>Declare <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema" title="fastapi_restly.views.BaseRestView.schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">schema</span></code></a></p></td>
+<tr class="row-even"><td><p>Fixed fields in the responses</p></td>
+<td><p><a class="reference internal" href="schemas.html#write-or-generate"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">schema</span></code></span></a></p></td>
 </tr>
-<tr class="row-odd"><td><p>Other fields or validation on create or update</p></td>
-<td><p>Declare <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.create_schema" title="fastapi_restly.views.BaseRestView.create_schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">create_schema</span></code></a> or <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.update_schema" title="fastapi_restly.views.BaseRestView.update_schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">update_schema</span></code></a> (<a class="reference internal" href="schemas.html#explicit-write-schemas"><span class="std std-ref">Explicit write schemas</span></a>)</p></td>
+<tr class="row-odd"><td><p>Other fields on create or update</p></td>
+<td><p><a class="reference internal" href="schemas.html#explicit-write-schemas"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">create_schema</span></code>, <code class="docutils literal notranslate"><span class="pre">update_schema</span></code></span></a></p></td>
 </tr>
-<tr class="row-even"><td><p>Another type for the <code class="docutils literal notranslate"><span class="pre">{id}</span></code> path parameter</p></td>
-<td><p>Set <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.id_type" title="fastapi_restly.views.BaseRestView.id_type"><code class="xref py py-attr docutils literal notranslate"><span class="pre">id_type</span></code></a> (<a class="reference internal" href="#item-route-matching">Item paths</a>)</p></td>
+<tr class="row-even"><td><p>The type of <code class="docutils literal notranslate"><span class="pre">{id}</span></code> in the path</p></td>
+<td><p><a class="reference internal" href="#item-route-matching"><code class="docutils literal notranslate"><span class="pre">id_type</span></code></a></p></td>
 </tr>
-<tr class="row-odd"><td><p>Fewer routes, such as a read-only view</p></td>
-<td><p>Set <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.include_routes" title="fastapi_restly.views.BaseRestView.include_routes"><code class="xref py py-attr docutils literal notranslate"><span class="pre">include_routes</span></code></a> (the routes to serve) or <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.exclude_routes" title="fastapi_restly.views.BaseRestView.exclude_routes"><code class="xref py py-attr docutils literal notranslate"><span class="pre">exclude_routes</span></code></a> (the routes to leave out) (<a class="reference internal" href="#exclude-crud-routes">Exclude CRUD routes</a>)</p></td>
+<tr class="row-odd"><td><p>Fewer routes</p></td>
+<td><p><a class="reference internal" href="#leave-out-routes"><code class="docutils literal notranslate"><span class="pre">delete_endpoint</span> <span class="pre">=</span> <span class="pre">None</span></code></a></p></td>
 </tr>
 <tr class="row-even"><td><p>Hide rows from every read</p></td>
-<td><p>Set <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.scope" title="fastapi_restly.views.BaseRestView.scope"><code class="xref py py-attr docutils literal notranslate"><span class="pre">scope</span></code></a>, or <code class="docutils literal notranslate"><span class="pre">default_scope</span></code> on the model (<a class="reference internal" href="scopes.html#view-scope"><span class="std std-ref">Scopes</span></a>)</p></td>
+<td><p><a class="reference internal" href="scopes.html#view-scope"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">scope</span></code></span></a></p></td>
 </tr>
-<tr class="row-odd"><td><p>No pagination</p></td>
-<td><p>Set <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.pagination" title="fastapi_restly.views.BaseRestView.pagination"><code class="xref py py-attr docutils literal notranslate"><span class="pre">pagination</span></code></a> to <code class="docutils literal notranslate"><span class="pre">None</span></code>, or to a <a class="reference internal" href="api/views.html#fastapi_restly.views.NoPagination" title="fastapi_restly.views.NoPagination"><code class="xref py py-class docutils literal notranslate"><span class="pre">NoPagination</span></code></a> to choose its envelope (<a class="reference internal" href="filtering.html#no-pagination"><span class="std std-ref">Filtering, Sorting &amp; Pagination</span></a>)</p></td>
+<tr class="row-odd"><td><p>Pages of the list</p></td>
+<td><p><a class="reference internal" href="filtering.html#list-pagination"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">pagination</span></code></span></a></p></td>
 </tr>
-<tr class="row-even"><td><p>Other page limits, parameter names or list envelope</p></td>
-<td><p>Set <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.pagination" title="fastapi_restly.views.BaseRestView.pagination"><code class="xref py py-attr docutils literal notranslate"><span class="pre">pagination</span></code></a> to a <a class="reference internal" href="api/views.html#fastapi_restly.views.NumberedPagination" title="fastapi_restly.views.NumberedPagination"><code class="xref py py-class docutils literal notranslate"><span class="pre">NumberedPagination</span></code></a> (<a class="reference internal" href="view_reference.html#pagination-settings"><span class="std std-ref">Pagination settings</span></a>)</p></td>
+<tr class="row-even"><td><p>No pages</p></td>
+<td><p><a class="reference internal" href="filtering.html#no-pagination"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">pagination</span> <span class="pre">=</span> <span class="pre">None</span></code></span></a></p></td>
 </tr>
-<tr class="row-odd"><td><p>A list with <code class="docutils literal notranslate"><span class="pre">limit</span></code> and <code class="docutils literal notranslate"><span class="pre">offset</span></code></p></td>
-<td><p>Set <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.pagination" title="fastapi_restly.views.BaseRestView.pagination"><code class="xref py py-attr docutils literal notranslate"><span class="pre">pagination</span></code></a> to an <a class="reference internal" href="api/views.html#fastapi_restly.views.OffsetPagination" title="fastapi_restly.views.OffsetPagination"><code class="xref py py-class docutils literal notranslate"><span class="pre">OffsetPagination</span></code></a> (<a class="reference internal" href="filtering.html#limit-offset-pagination"><span class="std std-ref">Page with limit and offset</span></a>)</p></td>
+<tr class="row-odd"><td><p>Pages with <code class="docutils literal notranslate"><span class="pre">limit</span></code> and <code class="docutils literal notranslate"><span class="pre">offset</span></code></p></td>
+<td><p><a class="reference internal" href="filtering.html#limit-offset-pagination"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">fr.OffsetPagination</span></code></span></a></p></td>
 </tr>
-<tr class="row-even"><td><p>Fewer filter or sort keys on a list</p></td>
-<td><p>Set <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.include_filters" title="fastapi_restly.views.BaseRestView.include_filters"><code class="xref py py-attr docutils literal notranslate"><span class="pre">include_filters</span></code></a> or <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.include_sort_keys" title="fastapi_restly.views.BaseRestView.include_sort_keys"><code class="xref py py-attr docutils literal notranslate"><span class="pre">include_sort_keys</span></code></a> (<a class="reference internal" href="filtering.html#choose-list-keys"><span class="std std-ref">Choose the keys of a list</span></a>)</p></td>
+<tr class="row-even"><td><p>Fewer filter or sort keys</p></td>
+<td><p><a class="reference internal" href="filtering.html#choose-list-keys"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">include_filters</span></code></span></a></p></td>
 </tr>
-<tr class="row-odd"><td><p>A list filter of your own</p></td>
-<td><p>Decorate a method with <a class="reference internal" href="api/views.html#fastapi_restly.views.list_filter" title="fastapi_restly.views.list_filter"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.list_filter</span></code></a> (<a class="reference internal" href="filtering.html#own-list-filter"><span class="std std-ref">Add a filter of your own</span></a>)</p></td>
+<tr class="row-odd"><td><p>A filter of your own</p></td>
+<td><p><a class="reference internal" href="filtering.html#own-list-filter"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">fr.list_filter</span></code></span></a></p></td>
 </tr>
-<tr class="row-even"><td><p>A query key of your own next to the list params, not a filter</p></td>
-<td><p>Declare it on the endpoint method or in a dependency (<a class="reference internal" href="filtering.html#extra-query-parameters"><span class="std std-ref">Accept extra query parameters</span></a>)</p></td>
+<tr class="row-even"><td><p>A query key that is not a filter</p></td>
+<td><p><a class="reference internal" href="filtering.html#extra-query-parameters"><span class="std std-ref">A parameter</span></a></p></td>
 </tr>
-<tr class="row-odd"><td><p>OpenAPI metadata or dependencies on every route</p></td>
-<td><p>Set <a class="reference internal" href="api/views.html#fastapi_restly.views.View.tags" title="fastapi_restly.views.View.tags"><code class="xref py py-attr docutils literal notranslate"><span class="pre">tags</span></code></a>, <a class="reference internal" href="api/views.html#fastapi_restly.views.View.responses" title="fastapi_restly.views.View.responses"><code class="xref py py-attr docutils literal notranslate"><span class="pre">responses</span></code></a> or <a class="reference internal" href="api/views.html#fastapi_restly.views.View.dependencies" title="fastapi_restly.views.View.dependencies"><code class="xref py py-attr docutils literal notranslate"><span class="pre">dependencies</span></code></a> (<a class="reference internal" href="views.html#share-behaviour-with-base-views"><span class="std std-ref">Share behavior with base views</span></a>)</p></td>
+<tr class="row-odd"><td><p>Tags or dependencies on every route</p></td>
+<td><p><a class="reference internal" href="views.html#share-behaviour-with-base-views"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">tags</span></code>, <code class="docutils literal notranslate"><span class="pre">dependencies</span></code></span></a></p></td>
 </tr>
-<tr class="row-even"><td><p>One option of a route, such as its name, status code or dependencies</p></td>
-<td><p>Use <a class="reference internal" href="api/views.html#fastapi_restly.views.modify_route" title="fastapi_restly.views.modify_route"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.modify_route</span></code></a> under the name of the route method (<a class="reference internal" href="#modify-route">Change one option of a route</a>)</p></td>
+<tr class="row-even"><td><p>One option of one route</p></td>
+<td><p><a class="reference internal" href="#modify-route"><code class="docutils literal notranslate"><span class="pre">fr.modify_route</span></code></a></p></td>
 </tr>
 <tr class="row-odd"><td><p>Another session for one view</p></td>
-<td><p>Override the <code class="docutils literal notranslate"><span class="pre">session</span></code> annotation (<a class="reference internal" href="database.html#session-dependency-one-view"><span class="std std-ref">Database &amp; Configuration</span></a>)</p></td>
+<td><p><a class="reference internal" href="database.html#session-dependency-one-view"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">session</span></code></span></a></p></td>
 </tr>
 </tbody>
 </table>
@@ -814,9 +923,24 @@ method reads <code class="docutils literal notranslate"><span class="pre">id</sp
 fields that the client sends. A React Admin view already has a <code class="docutils literal notranslate"><span class="pre">PUT</span></code> route,
 <code class="docutils literal notranslate"><span class="pre">put</span></code>. So there, <code class="docutils literal notranslate"><span class="pre">methods=[&quot;PUT&quot;]</span></code> on <code class="docutils literal notranslate"><span class="pre">update_endpoint</span></code> raises an error, because
 two routes would have the same path and HTTP method. A status code without a
-body, such as 204, also removes the response model of the route. For the list
-route, set <code class="docutils literal notranslate"><span class="pre">list_response_schema</span></code>, not <code class="docutils literal notranslate"><span class="pre">response_model</span></code>. For a delete with a
-body, write the method.</p>
+body, such as 204, also removes the response model of the route. For a delete
+with a body, write the method.</p>
+<p><code class="docutils literal notranslate"><span class="pre">fr.modify_route</span></code> changes how a route is served, not what it sends. So
+<code class="docutils literal notranslate"><span class="pre">response_model</span></code> and the other <code class="docutils literal notranslate"><span class="pre">response_model_*</span></code> arguments raise an error.
+A route of the view builds its response with
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_single_response" title="fastapi_restly.views.BaseRestView.to_single_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_single_response</span></code></a>
+or <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_list_response" title="fastapi_restly.views.BaseRestView.to_list_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_list_response</span></code></a>.
+Another response model would skip that step, and the fields that it hides would
+go out. To change the response of the view, set <code class="docutils literal notranslate"><span class="pre">response_schema</span></code> or
+<code class="docutils literal notranslate"><span class="pre">list_response_schema</span></code>. To send another schema from one route, write the method,
+for example a schema with more fields on <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/{id}</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="nd">@fr</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/</span><span class="si">{id}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_one_endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="n">IDType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">InvoiceDetailSchema</span><span class="p">:</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_get_one</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">InvoiceDetailSchema</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Then the route decides what it sends, as a plain FastAPI route does.</p>
 <p>An option does not change the order of the routes. So a route that the
 class writes, such as <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/stats</span></code>, stays before the item route.</p>
 <p>A subclass inherits the options and can change them further. A plain class can
@@ -851,22 +975,24 @@ Restly adds the <code class="docutils literal notranslate"><span class="pre">int
 </div>
 </section>
 </section>
-<section id="exclude-crud-routes">
-<span id="id3"></span><h2>Exclude CRUD routes<a class="headerlink" href="#exclude-crud-routes" title="Link to this heading">#</a></h2>
-<p>Set <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.exclude_routes" title="fastapi_restly.views.BaseRestView.exclude_routes"><code class="xref py py-attr docutils literal notranslate"><span class="pre">exclude_routes</span></code></a>
-to leave out some of the CRUD routes:</p>
+<section id="leave-out-a-route">
+<span id="leave-out-routes"></span><h2>Leave out a route<a class="headerlink" href="#leave-out-a-route" title="Link to this heading">#</a></h2>
+<p>To leave out a route that the view inherits, set its method to <code class="docutils literal notranslate"><span class="pre">None</span></code>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">"/users"</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
-    <span class="n">exclude_routes</span> <span class="o">=</span> <span class="p">[</span><span class="n">fr</span><span class="o">.</span><span class="n">ViewRoute</span><span class="o">.</span><span class="n">DELETE</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">ViewRoute</span><span class="o">.</span><span class="n">UPDATE</span><span class="p">]</span>
+    <span class="n">update_endpoint</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">delete_endpoint</span> <span class="o">=</span> <span class="kc">None</span>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">UserView</span></code> now serves only <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/users</span></code>, <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/users</span></code> and <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/users/{id}</span></code>.</p>
-<p>Subclasses inherit <code class="docutils literal notranslate"><span class="pre">exclude_routes</span></code>. To make several views read-only, set it
-on a base view:</p>
+<p>A subclass inherits the <code class="docutils literal notranslate"><span class="pre">None</span></code>. To make several views read-only, set it on a
+base view:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ReadOnlyView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
-    <span class="n">exclude_routes</span> <span class="o">=</span> <span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">ViewRoute</span><span class="o">.</span><span class="n">CREATE</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">ViewRoute</span><span class="o">.</span><span class="n">UPDATE</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">ViewRoute</span><span class="o">.</span><span class="n">DELETE</span><span class="p">)</span>
+    <span class="n">create_endpoint</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">update_endpoint</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">delete_endpoint</span> <span class="o">=</span> <span class="kc">None</span>
 
 
 <span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
@@ -876,46 +1002,11 @@ on a base view:</p>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">ProductView</span></code> only serves <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/products</span></code> and <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/products/{id}</span></code>.</p>
-<p>A subclass that sets its own <code class="docutils literal notranslate"><span class="pre">exclude_routes</span></code> replaces the list of its base. It
-does not add to it. So repeat the entries of the base, or the subclass serves
-the write routes again:
-<code class="docutils literal notranslate"><span class="pre">exclude_routes</span> <span class="pre">=</span> <span class="pre">(*ReadOnlyView.exclude_routes,</span> <span class="pre">fr.ViewRoute.GET_ONE)</span></code>.</p>
-<p><code class="docutils literal notranslate"><span class="pre">exclude_routes</span></code> leaves out only the routes that it names. So a subclass also
+<p>A subclass leaves out only the routes that it sets to <code class="docutils literal notranslate"><span class="pre">None</span></code>. So it also
 serves the custom routes of its base, such as <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/tags/merge</span></code>, and also a
 write route that someone adds to the base later. For a read-only copy of a
-view with custom routes, set
-<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.include_routes" title="fastapi_restly.views.BaseRestView.include_routes"><code class="xref py py-attr docutils literal notranslate"><span class="pre">include_routes</span></code></a>
-instead. It names the routes to serve, and the view leaves out every other
-route:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
-<span class="k">class</span><span class="w"> </span><span class="nc">TagView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
-    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">"/tags"</span>
-    <span class="n">model</span> <span class="o">=</span> <span class="n">Tag</span>
-
-    <span class="nd">@fr</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">"/merge"</span><span class="p">)</span>
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">merge</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">target_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span> <span class="o">...</span>
-
-
-<span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">public_router</span><span class="p">)</span>  <span class="c1"># an APIRouter(prefix="/public")</span>
-<span class="k">class</span><span class="w"> </span><span class="nc">PublicTagView</span><span class="p">(</span><span class="n">TagView</span><span class="p">):</span>
-    <span class="n">include_routes</span> <span class="o">=</span> <span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">ViewRoute</span><span class="o">.</span><span class="n">GET_MANY</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">ViewRoute</span><span class="o">.</span><span class="n">GET_ONE</span><span class="p">)</span>
-</pre></div>
-</div>
-<p><code class="docutils literal notranslate"><span class="pre">PublicTagView</span></code> serves only <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/public/tags</span></code> and <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/public/tags/{id}</span></code>,
-also when <code class="docutils literal notranslate"><span class="pre">TagView</span></code> gets more routes later.</p>
-<div class="details admonition">
-<p class="admonition-title">Details</p>
-<p>Each entry of <code class="docutils literal notranslate"><span class="pre">include_routes</span></code> and <code class="docutils literal notranslate"><span class="pre">exclude_routes</span></code> is a
-<a class="reference internal" href="api/views.html#fastapi_restly.views.ViewRoute" title="fastapi_restly.views.ViewRoute"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.ViewRoute</span></code></a> value, <code class="docutils literal notranslate"><span class="pre">GET_MANY</span></code>,
-<code class="docutils literal notranslate"><span class="pre">GET_ONE</span></code>, <code class="docutils literal notranslate"><span class="pre">CREATE</span></code>, <code class="docutils literal notranslate"><span class="pre">UPDATE</span></code> or <code class="docutils literal notranslate"><span class="pre">DELETE</span></code>, or the name of a route method,
-such as <code class="docutils literal notranslate"><span class="pre">&quot;delete_endpoint&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;merge&quot;</span></code>. A name that is not a route of the
-view raises <code class="docutils literal notranslate"><span class="pre">AttributeError</span></code> when you register the view.</p>
-<p>The default of <code class="docutils literal notranslate"><span class="pre">include_routes</span></code>, <code class="docutils literal notranslate"><span class="pre">(&quot;*&quot;,)</span></code>, is every route. A view serves a
-route when <code class="docutils literal notranslate"><span class="pre">include_routes</span></code> has it and <code class="docutils literal notranslate"><span class="pre">exclude_routes</span></code> does not. A subclass
-that sets its own <code class="docutils literal notranslate"><span class="pre">include_routes</span></code> replaces the list of its base.</p>
-<p>The other way to make a read-only copy is a base view with the shared
-settings, subclassed twice. Then the copy does not inherit the custom routes
-of <code class="docutils literal notranslate"><span class="pre">TagView</span></code>:</p>
+view with custom routes, put the shared settings in a base view, and subclass
+it twice. Then the copy does not inherit the custom routes of <code class="docutils literal notranslate"><span class="pre">TagView</span></code>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">TagBase</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Tag</span>
 
@@ -931,302 +1022,149 @@ of <code class="docutils literal notranslate"><span class="pre">TagView</span></
 <span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">PublicTagView</span><span class="p">(</span><span class="n">TagBase</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">"/public/tags"</span>
-    <span class="n">exclude_routes</span> <span class="o">=</span> <span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">ViewRoute</span><span class="o">.</span><span class="n">CREATE</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">ViewRoute</span><span class="o">.</span><span class="n">UPDATE</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">ViewRoute</span><span class="o">.</span><span class="n">DELETE</span><span class="p">)</span>
+    <span class="n">create_endpoint</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">update_endpoint</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">delete_endpoint</span> <span class="o">=</span> <span class="kc">None</span>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">PublicTagView</span></code> serves only the two read routes, also when <code class="docutils literal notranslate"><span class="pre">TagView</span></code> gets more
 routes later. But both views serve a route that <code class="docutils literal notranslate"><span class="pre">TagBase</span></code> gets later.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p><code class="docutils literal notranslate"><span class="pre">None</span></code> works the same for a custom route, such as <code class="docutils literal notranslate"><span class="pre">merge</span> <span class="pre">=</span> <span class="pre">None</span></code>, and on a
+plain <a class="reference internal" href="api/views.html#fastapi_restly.views.View" title="fastapi_restly.views.View"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.View</span></code></a>. Restly does not check the
+name, so a typo such as <code class="docutils literal notranslate"><span class="pre">delte_endpoint</span> <span class="pre">=</span> <span class="pre">None</span></code> leaves out nothing.
+<code class="docutils literal notranslate"><span class="pre">fr.modify_route</span></code> on a route that a base sets to <code class="docutils literal notranslate"><span class="pre">None</span></code> raises an error,
+because there is no route to change.</p>
 </div>
 </section>
-<section id="nest-a-resource-under-its-parent">
-<span id="nested-resources"></span><h2>Nest a resource under its parent<a class="headerlink" href="#nest-a-resource-under-its-parent" title="Link to this heading">#</a></h2>
-<p>A nested resource is a child resource that the URL places under its parent,
-such as <code class="docutils literal notranslate"><span class="pre">/projects/{project_id}/tasks</span></code>. In Restly, it is a normal
-<a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncRestView</span></code></a> with three
-additions: a path parameter in its <code class="docutils literal notranslate"><span class="pre">prefix</span></code>, a dependency that looks up the
-parent, and a <a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.scope" title="fastapi_restly.views.BaseRestView.scope"><code class="xref py py-attr docutils literal notranslate"><span class="pre">scope</span></code></a> that
-limits the rows to that parent. Every CRUD route keeps working, including
-pages, filters and sorting.</p>
-<p>A flat view that filters on the foreign key, <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/tasks?project_id=17</span></code>,
-needs no extra code; see <a class="reference internal" href="filtering.html#foreign-key-filtering"><span class="std std-ref">Filter by a foreign key</span></a>.
-Nest the view when the nested URL is part of your API.</p>
-<section id="nest-one-level">
-<span id="nested-one-level"></span><h3>Nest one level<a class="headerlink" href="#nest-one-level" title="Link to this heading">#</a></h3>
-<p>This example serves the tasks of a project at
-<code class="docutils literal notranslate"><span class="pre">/projects/{project_id}/tasks</span></code>:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sa</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">FastAPI</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.orm</span><span class="w"> </span><span class="kn">import</span> <span class="n">DeclarativeBase</span><span class="p">,</span> <span class="n">Mapped</span><span class="p">,</span> <span class="n">mapped_column</span>
-
-<span class="kn">import</span><span class="w"> </span><span class="nn">fastapi_restly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">fr</span>
-
-
-<span class="k">class</span><span class="w"> </span><span class="nc">Base</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">ModelDefaults</span><span class="p">,</span> <span class="n">DeclarativeBase</span><span class="p">):</span>
-    <span class="k">pass</span>
-
-
-<span class="k">class</span><span class="w"> </span><span class="nc">Project</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDMixin</span><span class="p">,</span> <span class="n">Base</span><span class="p">):</span>
-    <span class="n">name</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
-    <span class="n">archived</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-
-
-<span class="k">class</span><span class="w"> </span><span class="nc">Task</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDMixin</span><span class="p">,</span> <span class="n">Base</span><span class="p">):</span>
-    <span class="n">title</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
-    <span class="n">project_id</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span><span class="n">sa</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span><span class="s2">"project.id"</span><span class="p">),</span> <span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-
-
-<span class="k">class</span><span class="w"> </span><span class="nc">ProjectSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
-    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
-
-
-<span class="k">class</span><span class="w"> </span><span class="nc">TaskSchema</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDSchema</span><span class="p">):</span>
-    <span class="n">title</span><span class="p">:</span> <span class="nb">str</span>
-    <span class="n">project_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">ReadOnly</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
-
-
-<span class="k">class</span><span class="w"> </span><span class="nc">Parent</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">ContextNamespace</span><span class="p">):</span>
-    <span class="n">project_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">ContextParam</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
-
-
-<span class="n">app</span> <span class="o">=</span> <span class="n">FastAPI</span><span class="p">()</span>
-<span class="n">fr</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">async_database_url</span><span class="o">=</span><span class="s2">"sqlite+aiosqlite:///app.db"</span><span class="p">)</span>
-
-
-<span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
-<span class="k">class</span><span class="w"> </span><span class="nc">ProjectView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
-    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">"/projects"</span>
-    <span class="n">model</span> <span class="o">=</span> <span class="n">Project</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">ProjectSchema</span>
-    <span class="n">scope</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">where_clause</span><span class="p">(</span><span class="n">Project</span><span class="o">.</span><span class="n">archived</span><span class="o">.</span><span class="n">is_</span><span class="p">(</span><span class="kc">False</span><span class="p">))</span>
-
-
-<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">project_from_path</span><span class="p">(</span><span class="n">project_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">session</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">AsyncSessionDep</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-    <span class="n">stmt</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">apply_clauses</span><span class="p">(</span>
-        <span class="n">sa</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">Project</span><span class="o">.</span><span class="n">id</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">Project</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="n">project_id</span><span class="p">),</span>
-        <span class="n">fr</span><span class="o">.</span><span class="n">resolve_scope</span><span class="p">(</span><span class="n">ProjectView</span><span class="p">),</span>
-    <span class="p">)</span>
-    <span class="n">found</span> <span class="o">=</span> <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="n">stmt</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">found</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="n">fr</span><span class="o">.</span><span class="n">exc</span><span class="o">.</span><span class="n">NotFound</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Project with id </span><span class="si">{</span><span class="n">project_id</span><span class="si">}</span><span class="s2"> was not found"</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">found</span>
-
-
-<span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
-<span class="k">class</span><span class="w"> </span><span class="nc">ProjectTaskView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
-    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">"/projects/</span><span class="si">{project_id}</span><span class="s2">/tasks"</span>
-    <span class="n">model</span> <span class="o">=</span> <span class="n">Task</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">TaskSchema</span>
-    <span class="n">dependencies</span> <span class="o">=</span> <span class="p">[</span><span class="n">Parent</span><span class="o">.</span><span class="n">depends</span><span class="p">(</span><span class="n">project_id</span><span class="o">=</span><span class="n">project_from_path</span><span class="p">)]</span>
-    <span class="n">scope</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">all_of</span><span class="p">(</span>
-        <span class="n">fr</span><span class="o">.</span><span class="n">resolve_scope</span><span class="p">(</span><span class="n">Task</span><span class="p">),</span>
-        <span class="n">fr</span><span class="o">.</span><span class="n">where_clause</span><span class="p">(</span><span class="n">Task</span><span class="o">.</span><span class="n">project_id</span> <span class="o">==</span> <span class="n">Parent</span><span class="o">.</span><span class="n">project_id</span><span class="p">),</span>
-    <span class="p">)</span>
-
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
-        <span class="n">task</span> <span class="o">=</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
-        <span class="n">task</span><span class="o">.</span><span class="n">project_id</span> <span class="o">=</span> <span class="n">Parent</span><span class="o">.</span><span class="n">project_id</span><span class="p">()</span>
-        <span class="k">return</span> <span class="n">task</span>
-</pre></div>
-</div>
-<p><code class="docutils literal notranslate"><span class="pre">ProjectTaskView</span></code> differs from a flat view in these places:</p>
+<section id="change-what-a-write-does">
+<span id="business-methods"></span><h2>Change what a write does<a class="headerlink" href="#change-what-a-write-does" title="Link to this heading">#</a></h2>
+<p>Each write has a business method:
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create" title="fastapi_restly.views.RestView.create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create</span></code></a>,
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.update" title="fastapi_restly.views.RestView.update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">update</span></code></a> or
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.delete" title="fastapi_restly.views.RestView.delete"><code class="xref py py-meth docutils literal notranslate"><span class="pre">delete</span></code></a>. Override only the
+one you need. The handler still checks permissions and commits around it.
+The page of each write shows its business method in full:
+<a class="reference internal" href="crud_create.html#create-method"><span class="std std-ref">Create</span></a>, <a class="reference internal" href="crud_update.html#update-method"><span class="std std-ref">Update</span></a> and
+<a class="reference internal" href="crud_delete.html#delete-method"><span class="std std-ref">Delete</span></a>.</p>
+<p>Before you set a value in <code class="docutils literal notranslate"><span class="pre">create</span></code> or <code class="docutils literal notranslate"><span class="pre">update</span></code>, ask which write paths must set
+it, as <a class="reference internal" href="models.html#write-path-values"><span class="std std-ref">Set a value on every write path</span></a> explains:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">prefix</span></code> contains <code class="docutils literal notranslate"><span class="pre">{project_id}</span></code>, so every route of the view is under a
-project. Name the path parameter after the parent, as here. The item routes
-already use <code class="docutils literal notranslate"><span class="pre">{id}</span></code>, and FastAPI raises an error for a second <code class="docutils literal notranslate"><span class="pre">{id}</span></code> when you
-register the view.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">project_from_path</span></code> reads <code class="docutils literal notranslate"><span class="pre">project_id</span></code> from the path. FastAPI checks that it
-is an integer, and OpenAPI lists it on every route. The function returns
-<code class="docutils literal notranslate"><span class="pre">404</span></code> when the project does not exist or when <code class="docutils literal notranslate"><span class="pre">ProjectView</span></code> hides it.</p></li>
-<li><p><a class="reference internal" href="api/clauses.html#fastapi_restly.clauses.ContextNamespace.depends" title="fastapi_restly.clauses.ContextNamespace.depends"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Parent.depends</span></code></a>
-binds the project id for the request. <code class="docutils literal notranslate"><span class="pre">Parent</span></code> is a
-<a class="reference internal" href="api/clauses.html#fastapi_restly.clauses.ContextNamespace" title="fastapi_restly.clauses.ContextNamespace"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.ContextNamespace</span></code></a>, like
-<code class="docutils literal notranslate"><span class="pre">Current</span></code> in <a class="reference internal" href="context.html#current-request-binding"><span class="std std-ref">Request Context</span></a>. One <code class="docutils literal notranslate"><span class="pre">Parent</span></code>
-serves every nested view in the app.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">scope</span></code> limits every read to the tasks of that project: the list, its
-total count, get one, update and delete. A task of another project returns
-<code class="docutils literal notranslate"><span class="pre">404</span></code>. A view’s scope replaces the model’s default scope
-(<a class="reference internal" href="scopes.html#view-scope"><span class="std std-ref">Give one view other rows</span></a>), so <code class="docutils literal notranslate"><span class="pre">fr.resolve_scope(Task)</span></code>
-adds the default scope back.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">create</span></code> sets the project id; see <a class="reference internal" href="#nested-create">Create a child</a>.</p></li>
+<li><p>A value that every write path must set belongs on the model, as a column
+default or a mapper event.</p></li>
+<li><p>A value that only the HTTP routes set belongs in <code class="docutils literal notranslate"><span class="pre">create</span></code> or <code class="docutils literal notranslate"><span class="pre">update</span></code>.</p></li>
 </ul>
-<p>The routes then answer like this:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GET    /projects/1/tasks?sort=-title   the tasks of project 1, by title, descending
-POST   /projects/1/tasks               a new task in project 1
-GET    /projects/2/tasks/7             404 when task 7 is in another project
-GET    /projects/99/tasks              404 when project 99 does not exist
-GET    /projects/x/tasks               422, x is not an integer
-</pre></div>
-</div>
-<div class="details admonition">
-<p class="admonition-title">Details</p>
-<p>A sync <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.RestView</span></code></a> works in the same
-way. Write the lookups as plain functions that take
-<a class="reference internal" href="api/db.html#fastapi_restly.db.SessionDep" title="fastapi_restly.db.SessionDep"><code class="xref py py-data docutils literal notranslate"><span class="pre">fr.SessionDep</span></code></a>, and write the <code class="docutils literal notranslate"><span class="pre">create</span></code>
-override as a plain <code class="docutils literal notranslate"><span class="pre">def</span></code> without <code class="docutils literal notranslate"><span class="pre">await</span></code>.</p>
-</div>
-</section>
-<section id="create-a-child">
-<span id="nested-create"></span><h3>Create a child<a class="headerlink" href="#create-a-child" title="Link to this heading">#</a></h3>
-<p>The project id comes from the path, not from the request body. <code class="docutils literal notranslate"><span class="pre">TaskSchema</span></code>
-marks <code class="docutils literal notranslate"><span class="pre">project_id</span></code> as <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.ReadOnly" title="fastapi_restly.schemas.ReadOnly"><code class="xref py py-data docutils literal notranslate"><span class="pre">fr.ReadOnly</span></code></a>,
-so the generated create and update schemas leave it out. The <code class="docutils literal notranslate"><span class="pre">create</span></code>
-override sets it from <code class="docutils literal notranslate"><span class="pre">Parent</span></code> after <code class="docutils literal notranslate"><span class="pre">super().create()</span></code> builds the task. The
-INSERT has the id, because Restly saves after <code class="docutils literal notranslate"><span class="pre">create</span></code> returns.</p>
-<p>Declare the foreign key with <code class="docutils literal notranslate"><span class="pre">init=False</span></code>. <code class="docutils literal notranslate"><span class="pre">super().create()</span></code> builds the task
-from the request body, which has no <code class="docutils literal notranslate"><span class="pre">project_id</span></code>. Without <code class="docutils literal notranslate"><span class="pre">init=False</span></code>, the
-model requires <code class="docutils literal notranslate"><span class="pre">project_id</span></code> in its constructor, and the create returns <code class="docutils literal notranslate"><span class="pre">500</span></code>.</p>
-<p>Keep the parent id out of every write schema of the nested view. If
-<code class="docutils literal notranslate"><span class="pre">TaskSchema</span></code> declared a writable <code class="docutils literal notranslate"><span class="pre">project_id</span></code>, the generated update schema
-would include it. An <a class="reference internal" href="schemas.html#explicit-write-schemas"><span class="std std-ref">explicit write schema</span></a> writes
-every field it declares. In both cases, a <code class="docutils literal notranslate"><span class="pre">PATCH</span></code> request could move the task
-to a project that the URL never named, and the lookup would not check it.</p>
-<div class="details admonition">
-<p class="admonition-title">Details</p>
-<p>Set the parent id in the view, not in a column default that reads
-<code class="docutils literal notranslate"><span class="pre">Parent.project_id</span></code>. Only the nested route knows the parent, so the value
-belongs in <code class="docutils literal notranslate"><span class="pre">create</span></code>; see <a class="reference internal" href="models.html#write-path-values"><span class="std std-ref">Values every write path sets</span></a>
-for the difference. With such a default, creating a task anywhere else
-fails, for example in a flat view or a script, because nothing binds
-<code class="docutils literal notranslate"><span class="pre">Parent</span></code> there.</p>
-</div>
-</section>
-<section id="which-parents-a-client-can-reach">
-<span id="nested-parent-access"></span><h3>Which parents a client can reach<a class="headerlink" href="#which-parents-a-client-can-reach" title="Link to this heading">#</a></h3>
-<p>The lookup decides which parents a client can reach. <code class="docutils literal notranslate"><span class="pre">project_from_path</span></code>
-applies the scope of <code class="docutils literal notranslate"><span class="pre">ProjectView</span></code> through
-<a class="reference internal" href="api/views.html#fastapi_restly.views.resolve_scope" title="fastapi_restly.views.resolve_scope"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.resolve_scope</span></code></a>. So a project
-that <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/projects/{id}</span></code> hides also returns <code class="docutils literal notranslate"><span class="pre">404</span></code> here, with all of its
-tasks. In the example, that is an archived project.</p>
-<p>Without this check, <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/projects/{project_id}/tasks</span></code> creates a task in any
-project whose id a client can guess.</p>
-<p>The lookup does not run the
-<a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView.authorize" title="fastapi_restly.views.AsyncRestView.authorize"><code class="xref py py-meth docutils literal notranslate"><span class="pre">authorize</span></code></a> method of
-<code class="docutils literal notranslate"><span class="pre">ProjectView</span></code>. Put rules about which rows a user may see in a scope, so that
-both views apply them. The nested view still runs its own <code class="docutils literal notranslate"><span class="pre">authorize</span></code> on each
-of its routes.</p>
-</section>
-<section id="nest-more-than-one-level">
-<span id="nested-deeper"></span><h3>Nest more than one level<a class="headerlink" href="#nest-more-than-one-level" title="Link to this heading">#</a></h3>
-<p>For more levels, build a chain of base views, one for each level. Each base
-adds its segment to <code class="docutils literal notranslate"><span class="pre">prefix</span></code> and its lookup to <code class="docutils literal notranslate"><span class="pre">dependencies</span></code>. Both add up
-from base to subclass; see <a class="reference internal" href="views.html#prefix-concatenation"><span class="std std-ref">Concatenate URL prefixes</span></a>.
-This example serves tasks at
-<code class="docutils literal notranslate"><span class="pre">/companies/{company_id}/projects/{project_id}/tasks</span></code>. It is a separate app.
-It uses the imports, <code class="docutils literal notranslate"><span class="pre">app</span></code>, <code class="docutils literal notranslate"><span class="pre">Base</span></code>, <code class="docutils literal notranslate"><span class="pre">Task</span></code> and <code class="docutils literal notranslate"><span class="pre">TaskSchema</span></code> of the first
-example, and its own <code class="docutils literal notranslate"><span class="pre">Project</span></code>, <code class="docutils literal notranslate"><span class="pre">Parent</span></code> and lookups:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span>
-
-<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">Depends</span>
-
-
-<span class="k">class</span><span class="w"> </span><span class="nc">Company</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDMixin</span><span class="p">,</span> <span class="n">Base</span><span class="p">):</span>
-    <span class="n">name</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
-
-
-<span class="k">class</span><span class="w"> </span><span class="nc">Project</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">IDMixin</span><span class="p">,</span> <span class="n">Base</span><span class="p">):</span>
-    <span class="n">name</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
-    <span class="n">company_id</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span><span class="n">sa</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span><span class="s2">"company.id"</span><span class="p">),</span> <span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-
-
-<span class="k">class</span><span class="w"> </span><span class="nc">Parent</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">ContextNamespace</span><span class="p">):</span>
-    <span class="n">company_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">ContextParam</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
-    <span class="n">project_id</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">ContextParam</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
-
-
-<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">company_from_path</span><span class="p">(</span><span class="n">company_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">session</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">AsyncSessionDep</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-    <span class="n">stmt</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">apply_clauses</span><span class="p">(</span>
-        <span class="n">sa</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">Company</span><span class="o">.</span><span class="n">id</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">Company</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="n">company_id</span><span class="p">),</span>
-        <span class="n">fr</span><span class="o">.</span><span class="n">resolve_scope</span><span class="p">(</span><span class="n">Company</span><span class="p">),</span>
-    <span class="p">)</span>
-    <span class="n">found</span> <span class="o">=</span> <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="n">stmt</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">found</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="n">fr</span><span class="o">.</span><span class="n">exc</span><span class="o">.</span><span class="n">NotFound</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Company with id </span><span class="si">{</span><span class="n">company_id</span><span class="si">}</span><span class="s2"> was not found"</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">found</span>
-
-
-<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">project_from_path</span><span class="p">(</span>
-    <span class="n">project_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
-    <span class="n">company_id</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Depends</span><span class="p">(</span><span class="n">company_from_path</span><span class="p">)],</span>
-    <span class="n">session</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">AsyncSessionDep</span><span class="p">,</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-    <span class="n">stmt</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">apply_clauses</span><span class="p">(</span>
-        <span class="n">sa</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">Project</span><span class="o">.</span><span class="n">id</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
-            <span class="n">Project</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="n">project_id</span><span class="p">,</span> <span class="n">Project</span><span class="o">.</span><span class="n">company_id</span> <span class="o">==</span> <span class="n">company_id</span>
-        <span class="p">),</span>
-        <span class="n">fr</span><span class="o">.</span><span class="n">resolve_scope</span><span class="p">(</span><span class="n">Project</span><span class="p">),</span>
-    <span class="p">)</span>
-    <span class="n">found</span> <span class="o">=</span> <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="n">stmt</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">found</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="n">fr</span><span class="o">.</span><span class="n">exc</span><span class="o">.</span><span class="n">NotFound</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Project with id </span><span class="si">{</span><span class="n">project_id</span><span class="si">}</span><span class="s2"> was not found"</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">found</span>
-
-
-<span class="k">class</span><span class="w"> </span><span class="nc">CompanyScoped</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
-    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">"/companies/</span><span class="si">{company_id}</span><span class="s2">"</span>
-    <span class="n">dependencies</span> <span class="o">=</span> <span class="p">[</span><span class="n">Parent</span><span class="o">.</span><span class="n">depends</span><span class="p">(</span><span class="n">company_id</span><span class="o">=</span><span class="n">company_from_path</span><span class="p">)]</span>
-
-
-<span class="k">class</span><span class="w"> </span><span class="nc">ProjectScoped</span><span class="p">(</span><span class="n">CompanyScoped</span><span class="p">):</span>
-    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">"/projects/</span><span class="si">{project_id}</span><span class="s2">"</span>
-    <span class="n">dependencies</span> <span class="o">=</span> <span class="p">[</span><span class="n">Parent</span><span class="o">.</span><span class="n">depends</span><span class="p">(</span><span class="n">project_id</span><span class="o">=</span><span class="n">project_from_path</span><span class="p">)]</span>
-
-
-<span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
-<span class="k">class</span><span class="w"> </span><span class="nc">ProjectTaskView</span><span class="p">(</span><span class="n">ProjectScoped</span><span class="p">):</span>
-    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">"/tasks"</span>
-    <span class="n">model</span> <span class="o">=</span> <span class="n">Task</span>
-    <span class="n">schema</span> <span class="o">=</span> <span class="n">TaskSchema</span>
-    <span class="n">scope</span> <span class="o">=</span> <span class="n">fr</span><span class="o">.</span><span class="n">all_of</span><span class="p">(</span>
-        <span class="n">fr</span><span class="o">.</span><span class="n">resolve_scope</span><span class="p">(</span><span class="n">Task</span><span class="p">),</span>
-        <span class="n">fr</span><span class="o">.</span><span class="n">where_clause</span><span class="p">(</span><span class="n">Task</span><span class="o">.</span><span class="n">project_id</span> <span class="o">==</span> <span class="n">Parent</span><span class="o">.</span><span class="n">project_id</span><span class="p">),</span>
-    <span class="p">)</span>
-
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
-        <span class="n">task</span> <span class="o">=</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
-        <span class="n">task</span><span class="o">.</span><span class="n">project_id</span> <span class="o">=</span> <span class="n">Parent</span><span class="o">.</span><span class="n">project_id</span><span class="p">()</span>
-        <span class="k">return</span> <span class="n">task</span>
-</pre></div>
-</div>
-<p><code class="docutils literal notranslate"><span class="pre">project_from_path</span></code> gets the company id from <code class="docutils literal notranslate"><span class="pre">company_from_path</span></code> as a FastAPI
-sub-dependency. FastAPI runs the company lookup first, once per request, and
-returns <code class="docutils literal notranslate"><span class="pre">404</span></code> for an unknown company. The project query also checks that the
-project belongs to that company. So <code class="docutils literal notranslate"><span class="pre">/companies/2/projects/1/tasks</span></code> returns
-<code class="docutils literal notranslate"><span class="pre">404</span></code> when project 1 is in company 1.</p>
-<p>Each lookup applies the scope of its parent, as in
-<a class="reference internal" href="#nested-parent-access">Which parents a client can reach</a>. This example has
-no views for companies or projects, so it passes the models. When a view
-serves the parent, such as a <code class="docutils literal notranslate"><span class="pre">ProjectView</span></code>, pass the view instead. The nested
-routes then hide what that view hides.</p>
-<div class="details admonition">
-<p class="admonition-title">Details</p>
-<p>Do not read <code class="docutils literal notranslate"><span class="pre">Parent.company_id()</span></code> in <code class="docutils literal notranslate"><span class="pre">project_from_path</span></code> instead. When the
-company id in the path is not an integer, FastAPI still runs the project
-lookup. <code class="docutils literal notranslate"><span class="pre">Parent.company_id</span></code> is then not bound, and the request returns <code class="docutils literal notranslate"><span class="pre">500</span></code>
-instead of <code class="docutils literal notranslate"><span class="pre">422</span></code>.</p>
-<p>Let each base inherit the one above it, as <code class="docutils literal notranslate"><span class="pre">ProjectScoped</span></code> inherits
-<code class="docutils literal notranslate"><span class="pre">CompanyScoped</span></code>. Two mixins side by side,
-<code class="docutils literal notranslate"><span class="pre">class</span> <span class="pre">ProjectTaskView(CompanyMixin,</span> <span class="pre">ProjectMixin,</span> <span class="pre">fr.AsyncRestView)</span></code>, add their
-segments in reverse order: <code class="docutils literal notranslate"><span class="pre">/projects/{project_id}/companies/{company_id}/tasks</span></code>.</p>
-<p>Each level adds one query to every request.</p>
-</div>
-</section>
-<section id="a-flat-view-next-to-the-nested-one">
-<span id="nested-and-flat-views"></span><h3>A flat view next to the nested one<a class="headerlink" href="#a-flat-view-next-to-the-nested-one" title="Link to this heading">#</a></h3>
-<p>A model can have a flat view and nested views at the same time, such as a
-<code class="docutils literal notranslate"><span class="pre">TaskView</span></code> at <code class="docutils literal notranslate"><span class="pre">/tasks</span></code> next to <code class="docutils literal notranslate"><span class="pre">ProjectTaskView</span></code>. Watch these points:</p>
+<p>The common cases:</p>
 <ul class="simple">
-<li><p>Each view applies its own scope. Rows that the scope of <code class="docutils literal notranslate"><span class="pre">TaskView</span></code> hides,
-such as the tasks of other users, still show under the nested URL. To hide
-them there too, use <code class="docutils literal notranslate"><span class="pre">fr.resolve_scope(TaskView)</span></code> instead of
-<code class="docutils literal notranslate"><span class="pre">fr.resolve_scope(Task)</span></code> in the scope of <code class="docutils literal notranslate"><span class="pre">ProjectTaskView</span></code>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">TaskView</span></code> cannot create tasks with <code class="docutils literal notranslate"><span class="pre">TaskSchema</span></code>, because <code class="docutils literal notranslate"><span class="pre">project_id</span></code> is
-read-only there. Give <code class="docutils literal notranslate"><span class="pre">TaskView</span></code> its own <code class="docutils literal notranslate"><span class="pre">create_schema</span></code>, a
-<code class="docutils literal notranslate"><span class="pre">fr.BaseSchema</span></code> with <code class="docutils literal notranslate"><span class="pre">project_id:</span> <span class="pre">fr.MustExist[int,</span> <span class="pre">Project]</span></code>. Keep
-<code class="docutils literal notranslate"><span class="pre">project_id</span></code> read-only in <code class="docutils literal notranslate"><span class="pre">TaskSchema</span></code>; see <a class="reference internal" href="#nested-create">Create a child</a>.</p></li>
-<li><p>Both views appear under the “Tasks” tag in OpenAPI, unless you set
-<a class="reference internal" href="api/views.html#fastapi_restly.views.View.tags" title="fastapi_restly.views.View.tags"><code class="xref py py-attr docutils literal notranslate"><span class="pre">tags</span></code></a>.</p></li>
+<li><p><strong>Hash a password:</strong> in <code class="docutils literal notranslate"><span class="pre">create</span></code>. The plain password arrives in the request
+body, and only the route has it. A script that also gets plain passwords
+calls the same function: see
+<a class="reference internal" href="commits.html#logic-outside-a-view"><span class="std std-ref">Run the same logic in a script or a worker</span></a>.</p></li>
+<li><p><strong>Make a slug from the title:</strong> on the model. Every new row needs a slug,
+whichever path writes it.</p></li>
+<li><p><strong>Keep a total on a parent row up to date</strong>, such as the story points of a
+project: on the model. The total is wrong as soon as one write path skips it.</p></li>
+<li><p><strong>Send an event about a change:</strong> in a
+<a class="reference internal" href="commits.html#transaction-hooks"><span class="std std-ref">commit hook</span></a>, for an event about an action of the
+view. An event that every write path must send needs a SQLAlchemy session
+event instead.</p></li>
 </ul>
 </section>
+<section id="replace-an-endpoint-method">
+<span id="replace-endpoint-method"></span><h2>Replace an endpoint method<a class="headerlink" href="#replace-an-endpoint-method" title="Link to this heading">#</a></h2>
+<p>Business methods and hooks keep the HTTP side of a route: its path, its
+parameters and its response. To change only an option of the route, such as
+its status code, use
+<a class="reference internal" href="api/views.html#fastapi_restly.views.modify_route" title="fastapi_restly.views.modify_route"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.modify_route</span></code></a>; see
+<a class="reference internal" href="#modify-route">Change one option of a route</a>. Replace the endpoint method
+when the change needs code: the headers, the parameters or what the route
+returns.</p>
+<p>Define a method with the same name, such as <code class="docutils literal notranslate"><span class="pre">delete_endpoint</span></code>, and give it a
+route decorator. Keep the call to the handler, so the steps of the route
+still run. The page of each route has an example:
+<a class="reference internal" href="crud_list.html#replace-get-many-endpoint"><span class="std std-ref">List</span></a>, <a class="reference internal" href="crud_get_one.html#replace-get-one-endpoint"><span class="std std-ref">Get One</span></a>,
+<a class="reference internal" href="crud_create.html#replace-create-endpoint"><span class="std std-ref">Create</span></a>, <a class="reference internal" href="crud_update.html#replace-update-endpoint"><span class="std std-ref">Update</span></a> and
+<a class="reference internal" href="crud_delete.html#replace-delete-endpoint"><span class="std std-ref">Delete</span></a>. To change the shape of the response body,
+such as an envelope around one object, see
+<a class="reference internal" href="responses.html#one-route-shape"><span class="std std-ref">Change the shape of one route</span></a>.</p>
+<p>When several views need the same replacement, put it in a mixin. List the
+mixin before the view class, so Python finds its method first:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi_restly.views</span><span class="w"> </span><span class="kn">import</span> <span class="n">IDType</span><span class="p">,</span> <span class="n">ResponseSchema</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">DeleteReturnsObjectMixin</span><span class="p">:</span>
+    <span class="nd">@fr</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="s2">"/</span><span class="si">{id}</span><span class="s2">"</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">delete_endpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="n">IDType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ResponseSchema</span><span class="p">:</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_one</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_single_response</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_delete</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">response</span>
+
+
+<span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ProductView</span><span class="p">(</span><span class="n">DeleteReturnsObjectMixin</span><span class="p">,</span> <span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">"/products"</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Product</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">IDType</span></code> and <code class="docutils literal notranslate"><span class="pre">ResponseSchema</span></code> give each view that uses the mixin its own id
+type and response schema. The <a class="reference internal" href="react_admin.html"><span class="std std-doc">React Admin</span></a> views use this
+pattern. They replace
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.get_many_endpoint" title="fastapi_restly.views.RestView.get_many_endpoint"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_many_endpoint</span></code></a>
+for the <code class="docutils literal notranslate"><span class="pre">ra-data-simple-rest</span></code> contract, and keep the handlers, the loads and
+the business methods.</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p>When Restly registers the view, an endpoint method that the class defines
+replaces the inherited method with the same name. The other inherited
+endpoint methods stay. A method with no route decorator is not a route, so the
+view then has no such route. With <code class="docutils literal notranslate"><span class="pre">fr.configure(warn_on_misuse=True)</span></code>, Restly
+warns about it.</p>
+<p>The built-in endpoint methods get the view’s types from markers, such as
+<code class="docutils literal notranslate"><span class="pre">get_one_endpoint(self,</span> <span class="pre">id:</span> <span class="pre">IDType)</span> <span class="pre">-&gt;</span> <span class="pre">ResponseSchema</span></code>. A replacement gets the
+view’s types only where it uses the markers too; see
+<a class="reference internal" href="schemas.html#name-the-view-schemas"><span class="std std-ref">Name the view’s schemas in a custom route</span></a>. A
+parameter or a return without an annotation gets no type. Restly keeps an
+annotation that you write, so <code class="docutils literal notranslate"><span class="pre">data:</span> <span class="pre">ProductReplace</span></code> validates the
+request body against <code class="docutils literal notranslate"><span class="pre">ProductReplace</span></code>. <code class="docutils literal notranslate"><span class="pre">list_params</span></code> is the exception: it
+always gets the view’s
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.list_params_schema" title="fastapi_restly.views.BaseRestView.list_params_schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">list_params_schema</span></code></a>.</p>
+</div>
+</section>
+<section id="what-is-available-on-self">
+<span id="view-self-attributes"></span><h2>What is available on <code class="docutils literal notranslate"><span class="pre">self</span></code><a class="headerlink" href="#what-is-available-on-self" title="Link to this heading">#</a></h2>
+<p>Inside every method and custom route, you can use these attributes:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Attribute</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.session" title="fastapi_restly.views.RestView.session"><code class="xref py py-attr docutils literal notranslate"><span class="pre">self.session</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">AsyncSession</span></code>, or <code class="docutils literal notranslate"><span class="pre">Session</span></code> on <code class="docutils literal notranslate"><span class="pre">RestView</span></code></p></td>
+<td><p>The database session of the request</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.request" title="fastapi_restly.views.BaseRestView.request"><code class="xref py py-attr docutils literal notranslate"><span class="pre">self.request</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">fastapi.Request</span></code></p></td>
+<td><p>The HTTP request</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.model" title="fastapi_restly.views.BaseRestView.model"><code class="xref py py-attr docutils literal notranslate"><span class="pre">self.model</span></code></a></p></td>
+<td><p>the model class</p></td>
+<td><p>The SQLAlchemy model of the view</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.schema" title="fastapi_restly.views.BaseRestView.schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">self.schema</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">type[pydantic.BaseModel]</span></code></p></td>
+<td><p>The main schema</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>A class attribute that you declare with <code class="docutils literal notranslate"><span class="pre">Annotated[...,</span> <span class="pre">Depends(...)]</span></code>, such
+as the current user, is also set on <code class="docutils literal notranslate"><span class="pre">self</span></code> for each request. See
+<a class="reference internal" href="views.html#dependency-injection-on-class-attributes"><span class="std std-ref">Declare dependencies as class attributes</span></a>.</p>
 </section>
 <section id="what-the-default-routes-do-not-do">
 <span id="crud-limits"></span><h2>What the default routes do not do<a class="headerlink" href="#what-the-default-routes-do-not-do" title="Link to this heading">#</a></h2>
@@ -1237,7 +1175,7 @@ takes the Python type of the key, so a UUID or string key needs no
 configuration. Reference fields such as <code class="docutils literal notranslate"><span class="pre">fr.MustExist[UUID,</span> <span class="pre">Model]</span></code> accept
 these keys too. For a composite key, set <code class="docutils literal notranslate"><span class="pre">id_type</span> <span class="pre">=</span> <span class="pre">str</span></code> and override
 <code class="docutils literal notranslate"><span class="pre">where_id</span></code> to read the parts of the key from the path; see
-<a class="reference internal" href="lifecycle.html#natural-key-route"><span class="std std-ref">Look a row up by another key</span></a>. Without <code class="docutils literal notranslate"><span class="pre">where_id</span></code>, a
+<a class="reference internal" href="crud_get_one.html#natural-key-route"><span class="std std-ref">Find the row by another key</span></a>. Without <code class="docutils literal notranslate"><span class="pre">where_id</span></code>, a
 view of such a model fails when it registers, unless it leaves out the
 item routes.</p></li>
 <li><p>Responses can contain nested objects, and lists can filter on
@@ -1246,14 +1184,18 @@ general. Use <code class="docutils literal notranslate"><span class="pre">MustEx
 change the payload in a business method; see
 <a class="reference internal" href="relationships.html"><span class="std std-doc">Relationships</span></a>.</p></li>
 <li><p>The update route uses <code class="docutils literal notranslate"><span class="pre">PATCH</span></code>, not <code class="docutils literal notranslate"><span class="pre">PUT</span></code>. Add a <code class="docutils literal notranslate"><span class="pre">PUT</span></code> route only when the
-client needs one.</p></li>
+client needs one; see <a class="reference internal" href="crud_update.html#replace-update-endpoint"><span class="std std-ref">Replace <code class="docutils literal notranslate"><span class="pre">update_endpoint</span></code></span></a>.</p></li>
 </ul>
 </section>
 <section id="see-also">
 <h2>See also<a class="headerlink" href="#see-also" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p><a class="reference internal" href="tutorial.html"><span class="std std-doc">Build a Blog API</span></a>: build and run a first resource.</p></li>
-<li><p><a class="reference internal" href="lifecycle.html"><span class="std std-doc">Request Lifecycle &amp; Hooks</span></a>: change what a route does.</p></li>
+<li><p><a class="reference internal" href="custom_routes.html"><span class="std std-doc">Custom Routes</span></a>: routes of your own on a CRUD view.</p></li>
+<li><p><a class="reference internal" href="commits.html"><span class="std std-doc">Commits &amp; Hooks</span></a>: what commits, and code before or after the
+commit.</p></li>
+<li><p><a class="reference internal" href="nested_routes.html"><span class="std std-doc">Nested Routes</span></a>: serve a child resource under its
+parent.</p></li>
 <li><p><a class="reference internal" href="schemas.html"><span class="std std-doc">Schemas &amp; Validation</span></a>: the fields that the routes
 accept and return.</p></li>
 <li><p><a class="reference internal" href="views.html"><span class="std std-doc">Views</span></a>: registration, shared dependencies and base
@@ -1274,20 +1216,20 @@ views.</p></li>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="views.html"
+       href="typing.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Views</p>
+        <p class="prev-next-title">Type Annotations</p>
       </div>
     </a>
     <a class="right-next"
-       href="lifecycle.html"
+       href="crud_list.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Request Lifecycle &amp; Hooks</p>
+        <p class="prev-next-title">List</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -1315,20 +1257,16 @@ views.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#item-paths-and-static-routes">Item paths and static routes</a></li>
 </ul>
 </li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#how-a-crud-route-runs">How a CRUD route runs</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#set-the-model-and-the-schemas">Set the model and the schemas</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#configure-a-crud-view">Configure a CRUD view</a><ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#change-one-option-of-a-route">Change one option of a route</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#exclude-crud-routes">Exclude CRUD routes</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#nest-a-resource-under-its-parent">Nest a resource under its parent</a><ul class="pst-show_toc_level nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nest-one-level">Nest one level</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#create-a-child">Create a child</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#which-parents-a-client-can-reach">Which parents a client can reach</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nest-more-than-one-level">Nest more than one level</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#a-flat-view-next-to-the-nested-one">A flat view next to the nested one</a></li>
-</ul>
-</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#leave-out-a-route">Leave out a route</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#change-what-a-write-does">Change what a write does</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#replace-an-endpoint-method">Replace an endpoint method</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#what-is-available-on-self">What is available on <code class="docutils literal notranslate"><span class="pre">self</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#what-the-default-routes-do-not-do">What the default routes do not do</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#see-also">See also</a></li>
 </ul>

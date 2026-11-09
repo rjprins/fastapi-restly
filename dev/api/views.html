@@ -33,7 +33,7 @@
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=ea69bafe" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=b715876a" />
   
   <!-- So that users can add custom icons -->
   <script defer src="../_static/scripts/fontawesome.js?digest=18bd87630a240e9c25be"></script>
@@ -554,8 +554,8 @@ Basic usage:</p>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Foo</span>
 </pre></div>
 </div>
-<p>Each CRUD route runs through three methods (see “Request Lifecycle &amp; Hooks”
-in the docs):</p>
+<p>Each CRUD route runs through three methods (see “CRUD Routes” in the
+docs):</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">&lt;verb&gt;_endpoint</span></code>: the endpoint method. Owns the HTTP signature,
 and <code class="docutils literal notranslate"><span class="pre">response_model</span></code>. Override it to change the HTTP contract.</p></li>
@@ -1054,8 +1054,8 @@ Basic usage:</p>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Foo</span>
 </pre></div>
 </div>
-<p>Each CRUD route runs through three methods (see “Request Lifecycle &amp; Hooks”
-in the docs):</p>
+<p>Each CRUD route runs through three methods (see “CRUD Routes” in the
+docs):</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">&lt;verb&gt;_endpoint</span></code>: the endpoint method. Owns the HTTP signature,
 and <code class="docutils literal notranslate"><span class="pre">response_model</span></code>. Override it to change the HTTP contract.</p></li>
@@ -1864,29 +1864,6 @@ falls through to another route or returns 404, instead of 422.</p>
 </dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="fastapi_restly.views.BaseRestView.include_routes">
-<span class="sig-name descname"><span class="pre">include_routes</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.15)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Collection" title="(in Python v3.15)"><span class="pre">Collection</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#fastapi_restly.views.ViewRoute" title="fastapi_restly.views._base.ViewRoute"><span class="pre">ViewRoute</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">('*',)</span></em><a class="headerlink" href="#fastapi_restly.views.BaseRestView.include_routes" title="Link to this definition">#</a></dt>
-<dd><p>The routes that the view serves, such as
-<code class="docutils literal notranslate"><span class="pre">(fr.ViewRoute.GET_MANY,</span> <span class="pre">fr.ViewRoute.GET_ONE)</span></code>: <a class="reference internal" href="#fastapi_restly.views.ViewRoute" title="fastapi_restly.views.ViewRoute"><code class="xref py py-class docutils literal notranslate"><span class="pre">ViewRoute</span></code></a>
-values for the CRUD routes, or the names of route methods, also of a
-custom route. The view leaves out every other route, also a route that
-a base view gets later. The default, <code class="docutils literal notranslate"><span class="pre">(&quot;*&quot;,)</span></code>, is every route. A
-subclass that sets its own value replaces the list of its base. A name
-that is not a route raises <code class="docutils literal notranslate"><span class="pre">AttributeError</span></code> when the view is
-registered.</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="fastapi_restly.views.BaseRestView.exclude_routes">
-<span class="sig-name descname"><span class="pre">exclude_routes</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.15)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Collection" title="(in Python v3.15)"><span class="pre">Collection</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#fastapi_restly.views.ViewRoute" title="fastapi_restly.views._base.ViewRoute"><span class="pre">ViewRoute</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">()</span></em><a class="headerlink" href="#fastapi_restly.views.BaseRestView.exclude_routes" title="Link to this definition">#</a></dt>
-<dd><p>The routes to leave out of the view, after <a class="reference internal" href="#fastapi_restly.views.BaseRestView.include_routes" title="fastapi_restly.views.BaseRestView.include_routes"><code class="xref py py-attr docutils literal notranslate"><span class="pre">include_routes</span></code></a>,
-such as <code class="docutils literal notranslate"><span class="pre">(fr.ViewRoute.DELETE,)</span></code>: <a class="reference internal" href="#fastapi_restly.views.ViewRoute" title="fastapi_restly.views.ViewRoute"><code class="xref py py-class docutils literal notranslate"><span class="pre">ViewRoute</span></code></a> values for the
-CRUD routes, or the names of endpoint methods. A subclass that sets its
-own value replaces the list of its base. A name that is not a route
-raises <code class="docutils literal notranslate"><span class="pre">AttributeError</span></code> when the view is registered.</p>
-</dd></dl>
-
-<dl class="py attribute">
 <dt class="sig sig-object py" id="fastapi_restly.views.BaseRestView.unknown_query_params">
 <span class="sig-name descname"><span class="pre">unknown_query_params</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.15)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.15)"><span class="pre">Literal</span></a><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'forbid'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'ignore'</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'forbid'</span></em><a class="headerlink" href="#fastapi_restly.views.BaseRestView.unknown_query_params" title="Link to this definition">#</a></dt>
 <dd><p>What a list route does with a query key that it does not read.
@@ -2556,8 +2533,10 @@ adds a segment, base first. Without a prefix, the routes are at the root.</p>
 <span class="sig-name descname"><span class="pre">tags</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.15)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Iterable" title="(in Python v3.15)"><span class="pre">Iterable</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/enum.html#enum.Enum" title="(in Python v3.15)"><span class="pre">Enum</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.15)"><span class="pre">None</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#fastapi_restly.views.View.tags" title="Link to this definition">#</a></dt>
 <dd><p>The OpenAPI tags of every route. When it is not set, the tag is the
 last part of the prefix in title case, so <code class="docutils literal notranslate"><span class="pre">/order-items</span></code> gives
-<code class="docutils literal notranslate"><span class="pre">Order</span> <span class="pre">Items</span></code>. Without a prefix, the tag is the class name. Setting
-it replaces that tag.</p>
+<code class="docutils literal notranslate"><span class="pre">Order</span> <span class="pre">Items</span></code>. Without a prefix, the tag is the class name. On a
+router with tags of its own, Restly makes no tag: the routes get the
+tags of the router, as a plain route on it does. Setting it replaces
+the tag that Restly makes.</p>
 </dd></dl>
 
 <dl class="py attribute">
@@ -2583,45 +2562,6 @@ view documents on a route that can answer 404.</p>
 <em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">before_include_view</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.15)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#fastapi_restly.views.View.before_include_view" title="Link to this definition">#</a></dt>
 <dd><p>Run by <a class="reference internal" href="#fastapi_restly.views.include_view" title="fastapi_restly.views.include_view"><code class="xref py py-func docutils literal notranslate"><span class="pre">include_view()</span></code></a> once per class, before its routes are
 registered. A no-op here; override to adjust route methods first.</p>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="fastapi_restly.views.ViewRoute">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">fastapi_restly.views.</span></span><span class="sig-name descname"><span class="pre">ViewRoute</span></span><a class="headerlink" href="#fastapi_restly.views.ViewRoute" title="Link to this definition">#</a></dt>
-<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/enum.html#enum.Enum" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></a></p>
-<p>Default CRUD route names that can be referenced by view options.</p>
-<p>Values are the endpoint method names, so <code class="docutils literal notranslate"><span class="pre">include_routes</span></code> and
-<code class="docutils literal notranslate"><span class="pre">exclude_routes</span></code> can name them.</p>
-<dl class="py attribute">
-<dt class="sig sig-object py" id="fastapi_restly.views.ViewRoute.GET_MANY">
-<span class="sig-name descname"><span class="pre">GET_MANY</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'get_many_endpoint'</span></em><a class="headerlink" href="#fastapi_restly.views.ViewRoute.GET_MANY" title="Link to this definition">#</a></dt>
-<dd><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code>: the list.</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="fastapi_restly.views.ViewRoute.GET_ONE">
-<span class="sig-name descname"><span class="pre">GET_ONE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'get_one_endpoint'</span></em><a class="headerlink" href="#fastapi_restly.views.ViewRoute.GET_ONE" title="Link to this definition">#</a></dt>
-<dd><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/{id}</span></code>: one row.</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="fastapi_restly.views.ViewRoute.CREATE">
-<span class="sig-name descname"><span class="pre">CREATE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'create_endpoint'</span></em><a class="headerlink" href="#fastapi_restly.views.ViewRoute.CREATE" title="Link to this definition">#</a></dt>
-<dd><p><code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/</span></code>: create a row.</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="fastapi_restly.views.ViewRoute.UPDATE">
-<span class="sig-name descname"><span class="pre">UPDATE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'update_endpoint'</span></em><a class="headerlink" href="#fastapi_restly.views.ViewRoute.UPDATE" title="Link to this definition">#</a></dt>
-<dd><p><code class="docutils literal notranslate"><span class="pre">PATCH</span> <span class="pre">/{id}</span></code>: update a row.</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="fastapi_restly.views.ViewRoute.DELETE">
-<span class="sig-name descname"><span class="pre">DELETE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'delete_endpoint'</span></em><a class="headerlink" href="#fastapi_restly.views.ViewRoute.DELETE" title="Link to this definition">#</a></dt>
-<dd><p><code class="docutils literal notranslate"><span class="pre">DELETE</span> <span class="pre">/{id}</span></code>: delete a row.</p>
 </dd></dl>
 
 </dd></dl>
@@ -2819,6 +2759,11 @@ the route.</p>
 <code class="docutils literal notranslate"><span class="pre">responses</span></code> add up per status code, and a status code set to <code class="docutils literal notranslate"><span class="pre">None</span></code> is
 left out. A status code without a body, such as 204, also removes the
 response model of the route.</p>
+<p>It changes how a route is served, not what it sends. So
+<code class="docutils literal notranslate"><span class="pre">response_model</span></code> and the other <code class="docutils literal notranslate"><span class="pre">response_model_*</span></code> arguments raise
+<a class="reference internal" href="exc.html#fastapi_restly.exc.RestlyConfigurationError" title="fastapi_restly.exc.RestlyConfigurationError"><code class="xref py py-class docutils literal notranslate"><span class="pre">RestlyConfigurationError</span></code></a>. To change the
+response of the view, set <code class="docutils literal notranslate"><span class="pre">response_schema</span></code> or <code class="docutils literal notranslate"><span class="pre">list_response_schema</span></code>.
+To change the response of one route, write the route method.</p>
 <p>This changes the route of this view and its subclasses. The route of the
 base class stays the same.</p>
 <p>A name that is not an inherited route raises
@@ -2918,8 +2863,9 @@ items of the view’s response schema.</p>
 <div class="admonition seealso">
 <p class="admonition-title">See also</p>
 <p><a class="reference internal" href="../views.html"><span class="doc">Views</span></a> introduces the class-based view concept and
-hierarchy, and <a class="reference internal" href="../lifecycle.html"><span class="doc">Request Lifecycle &amp; Hooks</span></a> explains how a view handles a request
-and collects the task-shaped override recipes.</p>
+hierarchy, and <a class="reference internal" href="../crud_routes.html"><span class="doc">CRUD Routes</span></a> explains how a CRUD route runs. The
+page of each route, such as <a class="reference internal" href="../crud_update.html"><span class="doc">Update</span></a>, shows what you can
+change.</p>
 </div>
 </section>
 </section>
@@ -3066,8 +3012,6 @@ and collects the task-shaped override recipes.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.model"><code class="docutils literal notranslate"><span class="pre">BaseRestView.model</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.scope"><code class="docutils literal notranslate"><span class="pre">BaseRestView.scope</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.id_type"><code class="docutils literal notranslate"><span class="pre">BaseRestView.id_type</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.include_routes"><code class="docutils literal notranslate"><span class="pre">BaseRestView.include_routes</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.exclude_routes"><code class="docutils literal notranslate"><span class="pre">BaseRestView.exclude_routes</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.unknown_query_params"><code class="docutils literal notranslate"><span class="pre">BaseRestView.unknown_query_params</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.pagination"><code class="docutils literal notranslate"><span class="pre">BaseRestView.pagination</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.BaseRestView.include_filters"><code class="docutils literal notranslate"><span class="pre">BaseRestView.include_filters</span></code></a></li>
@@ -3155,14 +3099,6 @@ and collects the task-shaped override recipes.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.View.dependencies"><code class="docutils literal notranslate"><span class="pre">View.dependencies</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.View.responses"><code class="docutils literal notranslate"><span class="pre">View.responses</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.View.before_include_view"><code class="docutils literal notranslate"><span class="pre">View.before_include_view()</span></code></a></li>
-</ul>
-</li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.ViewRoute"><code class="docutils literal notranslate"><span class="pre">ViewRoute</span></code></a><ul class="pst-show_toc_level nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.ViewRoute.GET_MANY"><code class="docutils literal notranslate"><span class="pre">ViewRoute.GET_MANY</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.ViewRoute.GET_ONE"><code class="docutils literal notranslate"><span class="pre">ViewRoute.GET_ONE</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.ViewRoute.CREATE"><code class="docutils literal notranslate"><span class="pre">ViewRoute.CREATE</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.ViewRoute.UPDATE"><code class="docutils literal notranslate"><span class="pre">ViewRoute.UPDATE</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.ViewRoute.DELETE"><code class="docutils literal notranslate"><span class="pre">ViewRoute.DELETE</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fastapi_restly.views.SchemaType"><code class="docutils literal notranslate"><span class="pre">SchemaType</span></code></a><ul class="pst-show_toc_level nav section-nav flex-column">

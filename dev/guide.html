@@ -33,7 +33,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=ea69bafe" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=b715876a" />
   
   <!-- So that users can add custom icons -->
   <script defer src="_static/scripts/fontawesome.js?digest=18bd87630a240e9c25be"></script>
@@ -427,7 +427,10 @@
 <nav class="bd-docs-nav bd-links"
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
-  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Setup</span></p>
+  <div class="bd-toc-item navbar-nav">
+    <ul class="nav bd-sidenav">
+      <li class="toctree-l1"><a class="reference internal" href="##how-restly-works">How Restly works</a></li>
+    </ul><p aria-level="2" class="caption" role="heading"><span class="caption-text">Setup</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="new_projects.html">New Projects</a></li>
 <li class="toctree-l1"><a class="reference internal" href="existing_projects.html">Existing Projects</a></li>
@@ -437,10 +440,20 @@
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Views &amp; Routes</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="views.html">Views</a></li>
-<li class="toctree-l1"><a class="reference internal" href="crud_routes.html">CRUD Routes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="lifecycle.html">Request Lifecycle &amp; Hooks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="react_admin.html">React Admin</a></li>
 <li class="toctree-l1"><a class="reference internal" href="typing.html">Type Annotations</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">CRUD Routes</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="crud_routes.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_list.html">List</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_get_one.html">Get One</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_create.html">Create</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_update.html">Update</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_delete.html">Delete</a></li>
+<li class="toctree-l1"><a class="reference internal" href="custom_routes.html">Custom Routes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="commits.html">Commits &amp; Hooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nested_routes.html">Nested Routes</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Requests &amp; Responses</span></p>
 <ul class="nav bd-sidenav">
@@ -527,72 +540,54 @@ starts with how that part works, then shows how to use it. If you are new to
 Restly, start with the tutorial, <a class="reference internal" href="tutorial.html"><span class="std std-doc">Build a Blog API</span></a>.</p>
 <section id="how-restly-works">
 <span id="id1"></span><h2>How Restly works<a class="headerlink" href="#how-restly-works" title="Link to this heading">#</a></h2>
-<p>You write a SQLAlchemy model and a view class, and Restly turns the view into
-FastAPI routes. For example, when a client sends <code class="docutils literal notranslate"><span class="pre">PATCH</span> <span class="pre">/projects/1</span></code>,
-FastAPI first checks the request body against the update schema,
-<code class="docutils literal notranslate"><span class="pre">ProjectUpdate</span></code>. Then these steps run:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>PATCH /projects/1
-<span class="hll">  └─ update_endpoint(id, data)            # endpoint method: HTTP contract
-</span>       ├─ handle_update(id, data)         # handler: runs the steps
-       │    ├─ get_one(id)                # loads through the scope, or 404
-<span class="hll">       │    ├─ authorize("update", ...)   # may the caller do this? Or 403
-</span>       │    ├─ check the references       # an id that does not exist: 404
-<span class="hll">       │    ├─ update(obj, data)          # business method: the change
-</span>       │    ├─ save                       # flush and refresh the row
-<span class="hll">       │    ├─ before_action_commit(...)
-</span>       │    ├─ commit
-<span class="hll">       │    └─ after_action_commit(...)
-</span><span class="hll">       └─ to_single_response(obj)         # the response schema, as JSON
-</span></pre></div>
+<p>The goal of Restly is less boilerplate and more consistency.</p>
+<p>In Restly, you write your API as view classes. A view is a class that groups
+related FastAPI routes, for example all routes under <code class="docutils literal notranslate"><span class="pre">/projects</span></code>. The base
+class, <a class="reference internal" href="api/views.html#fastapi_restly.views.View" title="fastapi_restly.views.View"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.View</span></code></a>, is for your own set of
+reusable endpoints. It has no predefined routes. See
+<a class="reference internal" href="views.html#when-to-use-view-directly"><span class="std std-ref">Group endpoints that are not CRUD</span></a>.</p>
+<p><a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.RestView</span></code></a> is a view that already
+has five CRUD routes. You give it a SQLAlchemy model, and it serves routes to
+list, read, create, update and delete rows of that model. <code class="docutils literal notranslate"><span class="pre">RestView</span></code> has an
+async version, <a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.AsyncRestView</span></code></a>.
+These docs say <code class="docutils literal notranslate"><span class="pre">RestView</span></code> for both.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ProjectView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="s2">"/projects"</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">Project</span>  <span class="c1"># your SQLAlchemy model</span>
+</pre></div>
 </div>
-<p>The highlighted lines are the methods that you can override in your view.
-Restly runs the other steps itself, and the handler and <code class="docutils literal notranslate"><span class="pre">get_one</span></code> are
-final.</p>
-<p>These are the parts, and the page that explains each one:</p>
+<p>Each route of a <code class="docutils literal notranslate"><span class="pre">RestView</span></code> has two layers that you can change:</p>
 <ul class="simple">
-<li><p><strong>Model</strong>: your SQLAlchemy model, on a declarative base of your own.
-Restly works with it, but does not own it. See <a class="reference internal" href="models.html"><span class="std std-doc">Models</span></a>.</p></li>
-<li><p><strong>View</strong>: a class that groups related endpoints under a <code class="docutils literal notranslate"><span class="pre">prefix</span></code>.
-<a class="reference internal" href="api/views.html#fastapi_restly.views.include_view" title="fastapi_restly.views.include_view"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.include_view()</span></code></a> registers its
-routes on an app or a router. A CRUD view,
-<a class="reference internal" href="api/views.html#fastapi_restly.views.AsyncRestView" title="fastapi_restly.views.AsyncRestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.AsyncRestView</span></code></a> or
-<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView" title="fastapi_restly.views.RestView"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.RestView</span></code></a>, also names a <code class="docutils literal notranslate"><span class="pre">model</span></code>,
-and serves five routes for it. See <a class="reference internal" href="views.html"><span class="std std-doc">Views</span></a> and
-<a class="reference internal" href="crud_routes.html"><span class="std std-doc">CRUD Routes</span></a>.</p></li>
-<li><p><strong>The main schema</strong>: a Pydantic class that lists the fields of the
-resource. Restly builds the other schemas from it, such as the update schema
-<code class="docutils literal notranslate"><span class="pre">ProjectUpdate</span></code> and the response schema <code class="docutils literal notranslate"><span class="pre">ProjectResponse</span></code>. A view without a
-schema gets one that Restly generates from the model. See
-<a class="reference internal" href="schemas.html"><span class="std std-doc">Schemas &amp; Validation</span></a>.</p></li>
-<li><p><strong>Endpoint method, handler and business method</strong>: the three layers of each
-CRUD route. To change what an action does, override the business method,
-such as <code class="docutils literal notranslate"><span class="pre">update</span></code>. A read has a final load, <code class="docutils literal notranslate"><span class="pre">get_one</span></code> or <code class="docutils literal notranslate"><span class="pre">get_many</span></code>, in
-place of a business method: the scope and the loader options decide what
-it reads. To change one option of a route, such as the status code, use
-<a class="reference internal" href="api/views.html#fastapi_restly.views.modify_route" title="fastapi_restly.views.modify_route"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.modify_route</span></code></a>. For a change that
-needs code, replace the endpoint method. A handler is final. See
-<a class="reference internal" href="lifecycle.html"><span class="std std-doc">Request Lifecycle &amp; Hooks</span></a>.</p></li>
-<li><p><strong>Commit</strong>: a write route commits after the business method.
-<code class="docutils literal notranslate"><span class="pre">before_action_commit</span></code> runs just before the commit, and
-<code class="docutils literal notranslate"><span class="pre">after_action_commit</span></code> just after it. A read does not commit. See
-<a class="reference internal" href="lifecycle.html#what-commits"><span class="std std-ref">What commits, and when</span></a>.</p></li>
-<li><p><strong>Scope</strong>: a SQL where clause that limits which rows of a model a request
-can read. Restly applies it to every read of the model and to every
-reference to the model, so a row outside the scope is a 404. You write a
-scope as a query clause, a named rule that you can reuse. See
-<a class="reference internal" href="scopes.html"><span class="std std-doc">Scopes</span></a> and <a class="reference internal" href="clauses.html"><span class="std std-doc">Query Clauses</span></a>.</p></li>
-<li><p><strong><code class="docutils literal notranslate"><span class="pre">authorize</span></code></strong>: decides whether the caller may do the action. A refusal
-is a 403. See <a class="reference internal" href="authorization.html"><span class="std std-doc">Authorization</span></a>.</p></li>
-<li><p><strong><code class="docutils literal notranslate"><span class="pre">Current</span></code></strong>: the request context. It holds the caller and other values
-for the request. Scopes, column defaults and your <code class="docutils literal notranslate"><span class="pre">authorize</span></code> can read it.
-See <a class="reference internal" href="context.html"><span class="std std-doc">Request Context</span></a>.</p></li>
-<li><p><strong>List params</strong>: the filter, sort and page parameters of the list route.
-Restly builds them from the response schema. See
-<a class="reference internal" href="filtering.html"><span class="std std-doc">Filtering, Sorting &amp; Pagination</span></a>.</p></li>
-<li><p><strong>Session</strong>: each request gets a database session from the source that
-<a class="reference internal" href="api/db.html#fastapi_restly.db.configure" title="fastapi_restly.db.configure"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.configure()</span></code></a> sets. See
-<a class="reference internal" href="database.html"><span class="std std-doc">Database &amp; Configuration</span></a>.</p></li>
+<li><p><strong>The HTTP layer</strong>: one endpoint method for each route, such as
+<code class="docutils literal notranslate"><span class="pre">update_endpoint</span></code>. It holds what is about HTTP: the path, the parameters
+and the response. To change one option of a route, such as the status
+code, use <a class="reference internal" href="api/views.html#fastapi_restly.views.modify_route" title="fastapi_restly.views.modify_route"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.modify_route</span></code></a>. To
+change more, replace the endpoint method. See
+<a class="reference internal" href="crud_routes.html#modify-route"><span class="std std-ref">Change one option of a route</span></a>.</p></li>
+<li><p><strong>The business layer</strong>: business methods, such as <code class="docutils literal notranslate"><span class="pre">create</span></code>, <code class="docutils literal notranslate"><span class="pre">update</span></code> and
+<code class="docutils literal notranslate"><span class="pre">delete</span></code>. They make the change to the data. Override one to change what a
+route does, for example to hash a password or to set a field. See
+<a class="reference internal" href="crud_routes.html#business-methods"><span class="std std-ref">Change what a write does</span></a>.</p></li>
 </ul>
+<p>Between the two layers, Restly runs a fixed set of steps, such as loading a
+row from the database, checking access and committing.
+<a class="reference internal" href="crud_routes.html#view-request-steps"><span class="std std-ref">How a CRUD route runs</span></a> shows all steps in order, and
+which ones you can override.</p>
+<p>Some things you write only once:</p>
+<ul class="simple">
+<li><p><strong>Fields</strong>: you list the fields that clients see in one Pydantic schema, and
+Restly builds the create, update and response schemas from it. If you do not
+write this schema, Restly makes one from the model.</p></li>
+<li><p><strong>Access</strong>: you write once which rows a caller can see, as a scope, and
+Restly applies it to every read of the model.</p></li>
+<li><p><strong>Shared behavior</strong>: behavior that several views share goes in a base view
+that they inherit from.</p></li>
+</ul>
+<p>Underneath, Restly is plain FastAPI, SQLAlchemy and Pydantic. Your model stays
+your own SQLAlchemy model, the routes are FastAPI routes, and the schemas are
+Pydantic classes. When a route does not fit Restly, write it as a normal
+FastAPI route next to your views.</p>
 </section>
 <section id="setup">
 <h2>Setup<a class="headerlink" href="#setup" title="Link to this heading">#</a></h2>
@@ -617,27 +612,52 @@ slug.</p></li>
 </section>
 <section id="views-routes">
 <h2>Views &amp; Routes<a class="headerlink" href="#views-routes" title="Link to this heading">#</a></h2>
-<p>A view is a class that groups related endpoints. A CRUD view serves five
-routes for one model by default. Each route runs a fixed list of steps, such
-as <code class="docutils literal notranslate"><span class="pre">authorize</span></code> and <code class="docutils literal notranslate"><span class="pre">create</span></code>. To change a route, you override the method of
-one step. <a class="reference internal" href="view_reference.html"><span class="std std-doc">View Reference</span></a> lists everything that you can
-set, override or call on a view.</p>
+<p>A view is a class that groups related endpoints under one URL prefix.
+<a class="reference internal" href="view_reference.html"><span class="std std-doc">View Reference</span></a> lists everything that you can set,
+override or call on a view.</p>
 <ul class="simple">
 <li><p><a class="reference internal" href="views.html"><span class="std std-doc">Views</span></a>: the view classes, how to declare routes, add a decorator
 and register a view, routes that are not CRUD, such as login and webhooks, and
 how views share behavior through base classes.</p></li>
-<li><p><a class="reference internal" href="crud_routes.html"><span class="std std-doc">CRUD Routes</span></a>: the five default routes, async or sync, how
-to change one option of a route, how to leave some routes out, and how to
-serve a child resource under its parent.</p></li>
-<li><p><a class="reference internal" href="lifecycle.html"><span class="std std-doc">Request Lifecycle &amp; Hooks</span></a>: the steps of a request, which
-method to override for each change, a value on each row, a lookup by
-another key, custom routes, what commits when, code that must commit, several
-writes in one commit, and the same logic in a script or a worker.</p></li>
 <li><p><a class="reference internal" href="react_admin.html"><span class="std std-doc">React Admin</span></a>: connect react-admin to a view, the list
 format and the routes that react-admin expects, to-many id arrays, CORS,
 and a list that shows no rows.</p></li>
 <li><p><a class="reference internal" href="typing.html"><span class="std std-doc">Type Annotations</span></a>: type the schema, the methods that you
 override and your custom routes.</p></li>
+</ul>
+</section>
+<section id="crud-routes">
+<h2>CRUD Routes<a class="headerlink" href="#crud-routes" title="Link to this heading">#</a></h2>
+<p>A CRUD view serves five routes for one model by default: list, get one,
+create, update and delete. Each route runs a fixed list of steps, such as
+<code class="docutils literal notranslate"><span class="pre">authorize</span></code> and the commit. Each route has a page that shows its steps in
+order, and what you can change, from a rule on the schema to a route of your
+own.</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="crud_routes.html"><span class="std std-doc">Overview</span></a>: the five default routes, how a route runs,
+async or sync, how to change one option of a route, leave some routes out,
+where a business method fits, and how to replace an endpoint method.</p></li>
+<li><p><a class="reference internal" href="crud_list.html"><span class="std std-doc">List</span></a>: the steps of <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/</span></code>, what you can change, a header
+with the total, and a list of a subset.</p></li>
+<li><p><a class="reference internal" href="crud_get_one.html"><span class="std std-doc">Get One</span></a>: the steps of <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/{id}</span></code>, visibility and
+policy, a row found by a slug or a composite key, and the error for a
+missing row.</p></li>
+<li><p><a class="reference internal" href="crud_create.html"><span class="std std-doc">Create</span></a>: the steps of <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/</span></code>, the <code class="docutils literal notranslate"><span class="pre">create</span></code> method, a
+password hash, the id of a new row, and a <code class="docutils literal notranslate"><span class="pre">Location</span></code> header.</p></li>
+<li><p><a class="reference internal" href="crud_update.html"><span class="std std-doc">Update</span></a>: the steps of <code class="docutils literal notranslate"><span class="pre">PATCH</span> <span class="pre">/{id}</span></code>, what you can change,
+the <code class="docutils literal notranslate"><span class="pre">update</span></code> method, a <code class="docutils literal notranslate"><span class="pre">PUT</span></code> route, and an update from a custom route.</p></li>
+<li><p><a class="reference internal" href="crud_delete.html"><span class="std std-doc">Delete</span></a>: the steps of <code class="docutils literal notranslate"><span class="pre">DELETE</span> <span class="pre">/{id}</span></code>, the <code class="docutils literal notranslate"><span class="pre">delete</span></code>
+method, a soft delete, and a response with the deleted row.</p></li>
+<li><p><a class="reference internal" href="custom_routes.html"><span class="std std-doc">Custom Routes</span></a>: routes of your own on a CRUD view, a
+lookup by another key, actions such as publish, and several rows in one
+action.</p></li>
+<li><p><a class="reference internal" href="commits.html"><span class="std std-doc">Commits &amp; Hooks</span></a>: what commits and when, code before or after
+the commit, work after the response, errors in a write, several writes in
+one commit, code that must commit, and the same logic in a script or a
+worker.</p></li>
+<li><p><a class="reference internal" href="nested_routes.html"><span class="std std-doc">Nested Routes</span></a>: serve a child resource under its
+parent, create a child, limit the parents that a client can reach, and nest
+more than one level.</p></li>
 </ul>
 </section>
 <section id="requests-responses">
@@ -716,12 +736,14 @@ views, see <a class="reference internal" href="context.html#current-request-bind
 frontend, see also <a class="reference internal" href="react_admin.html#react-admin-cors"><span class="std std-ref">CORS for React Admin</span></a>.</p></li>
 <li><p><a class="reference external" href="https://fastapi.tiangolo.com/tutorial/background-tasks/">Background tasks</a>.
 For work that must still happen after a crash, use an outbox row in a
-<a class="reference internal" href="lifecycle.html#after-action-commit-raises"><span class="std std-ref">transaction hook</span></a>.</p></li>
+<a class="reference internal" href="commits.html#after-action-commit-raises"><span class="std std-ref">transaction hook</span></a>.</p></li>
 <li><p><a class="reference external" href="https://fastapi.tiangolo.com/tutorial/request-files/">File uploads</a>.</p></li>
 <li><p><a class="reference external" href="https://fastapi.tiangolo.com/advanced/websockets/">WebSockets</a>. Declare
 them on the app or on a router, not on a view: a view has HTTP routes
 only.</p></li>
 </ul>
+<div class="toctree-wrapper compound">
+</div>
 <div class="toctree-wrapper compound">
 </div>
 <div class="toctree-wrapper compound">
@@ -785,6 +807,7 @@ only.</p></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#how-restly-works">How Restly works</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#setup">Setup</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#views-routes">Views &amp; Routes</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#crud-routes">CRUD Routes</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#requests-responses">Requests &amp; Responses</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#access">Access</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#testing-deploying">Testing &amp; Deploying</a></li>

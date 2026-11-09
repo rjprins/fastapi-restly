@@ -33,7 +33,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=ea69bafe" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=b715876a" />
   
   <!-- So that users can add custom icons -->
   <script defer src="_static/scripts/fontawesome.js?digest=18bd87630a240e9c25be"></script>
@@ -427,7 +427,10 @@
 <nav class="bd-docs-nav bd-links"
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
-  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Setup</span></p>
+  <div class="bd-toc-item navbar-nav">
+    <ul class="nav bd-sidenav">
+      <li class="toctree-l1"><a class="reference internal" href="guide.html#how-restly-works">How Restly works</a></li>
+    </ul><p aria-level="2" class="caption" role="heading"><span class="caption-text">Setup</span></p>
 <ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="new_projects.html">New Projects</a></li>
 <li class="toctree-l1 current active"><a aria-current="page" class="current reference internal" href="#">Existing Projects</a></li>
@@ -437,10 +440,20 @@
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Views &amp; Routes</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="views.html">Views</a></li>
-<li class="toctree-l1"><a class="reference internal" href="crud_routes.html">CRUD Routes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="lifecycle.html">Request Lifecycle &amp; Hooks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="react_admin.html">React Admin</a></li>
 <li class="toctree-l1"><a class="reference internal" href="typing.html">Type Annotations</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">CRUD Routes</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="crud_routes.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_list.html">List</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_get_one.html">Get One</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_create.html">Create</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_update.html">Update</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_delete.html">Delete</a></li>
+<li class="toctree-l1"><a class="reference internal" href="custom_routes.html">Custom Routes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="commits.html">Commits &amp; Hooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nested_routes.html">Nested Routes</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Requests &amp; Responses</span></p>
 <ul class="nav bd-sidenav">
@@ -649,17 +662,17 @@ commit, set <code class="docutils literal notranslate"><span class="pre">atomic_
 plain FastAPI route. With that setting, a write action of the view is no longer
 one transaction: when a step raises after the commit, the client gets an error,
 and what was committed stays saved. See
-<a class="reference internal" href="lifecycle.html#atomic-write-actions"><span class="std std-ref">Code that must commit in a write action</span></a>.</p>
+<a class="reference internal" href="commits.html#atomic-write-actions"><span class="std std-ref">Code that must commit in a write action</span></a>.</p>
 </section>
 <section id="write-one-crud-route-by-hand">
 <span id="hand-written-crud-route"></span><h2>Write one CRUD route by hand<a class="headerlink" href="#write-one-crud-route-by-hand" title="Link to this heading">#</a></h2>
 <p>To write one of the default CRUD routes yourself, leave it out of the view
-with <a class="reference internal" href="crud_routes.html#exclude-crud-routes"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">exclude_routes</span></code></span></a> and add your own FastAPI route:</p>
+with <a class="reference internal" href="crud_routes.html#leave-out-routes"><span class="std std-ref"><code class="docutils literal notranslate"><span class="pre">delete_endpoint</span> <span class="pre">=</span> <span class="pre">None</span></code></span></a> and add your own FastAPI route:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">UserView</span><span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">AsyncRestView</span><span class="p">):</span>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">"/users"</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
     <span class="n">schema</span> <span class="o">=</span> <span class="n">UserSchema</span>
-    <span class="n">exclude_routes</span> <span class="o">=</span> <span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">ViewRoute</span><span class="o">.</span><span class="n">DELETE</span><span class="p">,)</span>
+    <span class="n">delete_endpoint</span> <span class="o">=</span> <span class="kc">None</span>
 
 
 <span class="n">fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">api</span><span class="p">,</span> <span class="n">UserView</span><span class="p">)</span>
@@ -674,8 +687,8 @@ with <a class="reference internal" href="crud_routes.html#exclude-crud-routes"><
 serves DELETE. When the HTTP contract stays the same and only the logic
 changes, override a business method instead, such as
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.delete" title="fastapi_restly.views.RestView.delete"><code class="xref py py-meth docutils literal notranslate"><span class="pre">delete</span></code></a>. For a different status
-code, response shape or query interface, see
-<a class="reference internal" href="lifecycle.html#which-method-to-override"><span class="std std-ref">Request Lifecycle &amp; Hooks</span></a>.</p>
+code, response shape or query interface, see the page of the route, such as
+<a class="reference internal" href="crud_delete.html"><span class="std std-doc">Delete</span></a>.</p>
 </section>
 <section id="move-a-resource-back-to-plain-fastapi">
 <span id="move-back-to-fastapi"></span><h2>Move a resource back to plain FastAPI<a class="headerlink" href="#move-a-resource-back-to-plain-fastapi" title="Link to this heading">#</a></h2>
@@ -700,9 +713,8 @@ path, stays on the view with
 <a class="reference internal" href="api/views.html#fastapi_restly.views.modify_route" title="fastapi_restly.views.modify_route"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.modify_route</span></code></a>; see
 <a class="reference internal" href="crud_routes.html#modify-route"><span class="std std-ref">Change one option of a route</span></a>. Keep routes with another
 contract out of the change. For example, a <code class="docutils literal notranslate"><span class="pre">PUT</span></code> update that replaces the whole
-row can stay hand-written: leave it out with
-<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.exclude_routes" title="fastapi_restly.views.BaseRestView.exclude_routes"><code class="xref py py-attr docutils literal notranslate"><span class="pre">exclude_routes</span></code></a>
-until you change its contract. A route that stays outside the view must name
+row can stay hand-written: leave it out with <code class="docutils literal notranslate"><span class="pre">update_endpoint</span> <span class="pre">=</span> <span class="pre">None</span></code> until
+you change its contract. A route that stays outside the view must name
 its path parameter <code class="docutils literal notranslate"><span class="pre">id</span></code> too, as in <code class="docutils literal notranslate"><span class="pre">PUT</span> <span class="pre">/products/{id}</span></code>. OpenAPI does not
 allow <code class="docutils literal notranslate"><span class="pre">/products/{product_id}</span></code> next to <code class="docutils literal notranslate"><span class="pre">/products/{id}</span></code>, and Restly cannot
 check a route outside the view.</p></li>
@@ -716,7 +728,7 @@ code then shows at once.</p></li>
     <span class="n">prefix</span> <span class="o">=</span> <span class="s2">"/products"</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">Product</span>
     <span class="n">schema</span> <span class="o">=</span> <span class="n">ProductSchema</span>          <span class="c1"># match your old response shape exactly</span>
-    <span class="n">exclude_routes</span> <span class="o">=</span> <span class="p">(</span><span class="n">fr</span><span class="o">.</span><span class="n">ViewRoute</span><span class="o">.</span><span class="n">DELETE</span><span class="p">,)</span>  <span class="c1"># the old DELETE returns the object</span>
+    <span class="n">delete_endpoint</span> <span class="o">=</span> <span class="kc">None</span>          <span class="c1"># the old DELETE returns the object</span>
 
 
 <span class="n">fr</span><span class="o">.</span><span class="n">include_view</span><span class="p">(</span><span class="n">api</span><span class="p">,</span> <span class="n">ProductView</span><span class="p">)</span>
@@ -741,7 +753,7 @@ your models.</p></li>
 <ul class="simple">
 <li><p><a class="reference internal" href="database.html"><span class="std std-doc">Database &amp; Configuration</span></a>: the engine, the sessions, and
 <code class="docutils literal notranslate"><span class="pre">fr.configure()</span></code>.</p></li>
-<li><p><a class="reference internal" href="crud_routes.html#nested-resources"><span class="std std-ref">Nest a resource under its parent</span></a> and
+<li><p><a class="reference internal" href="nested_routes.html#nested-resources"><span class="std std-ref">Nest a resource under its parent</span></a> and
 <a class="reference internal" href="views.html#receive-a-webhook"><span class="std std-ref">Receive a webhook</span></a>: shapes that your existing app
 probably has.</p></li>
 </ul>

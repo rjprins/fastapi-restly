@@ -160,7 +160,7 @@ these points:
   loads the row, and returns 404 if it does not exist, before `update` runs.
 - `where_id` gets the id from the path, so its type is the id type, the last
   parameter. It returns a SQL condition, a `ColumnElement[bool]`; see
-  [Look a row up by another key](#natural-key-route).
+  [Find the row by another key](#natural-key-route).
 - `get_one` and `get_many` are final, so you call them and do not override
   them. A type checker reports an override, as it does for a handler. Their
   return types follow the model parameter: `await self.get_one(id)` is a
@@ -262,8 +262,8 @@ not see this.
 
 - [View Reference](#view-method-surface): the methods that the type
   parameters type, sorted by kind.
-- [Request Lifecycle & Hooks](lifecycle.md): which method to override for
-  each change.
+- [CRUD Routes](crud_routes.md): which method to override for each
+  change.
 - [Relationships](relationships.md): what
   {class}`fr.MustExist <fastapi_restly.schemas.MustExist>`,
   {class}`fr.IDRef <fastapi_restly.schemas.IDRef>` and

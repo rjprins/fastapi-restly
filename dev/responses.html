@@ -33,7 +33,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=ea69bafe" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=b715876a" />
   
   <!-- So that users can add custom icons -->
   <script defer src="_static/scripts/fontawesome.js?digest=18bd87630a240e9c25be"></script>
@@ -427,7 +427,10 @@
 <nav class="bd-docs-nav bd-links"
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
-  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Setup</span></p>
+  <div class="bd-toc-item navbar-nav">
+    <ul class="nav bd-sidenav">
+      <li class="toctree-l1"><a class="reference internal" href="guide.html#how-restly-works">How Restly works</a></li>
+    </ul><p aria-level="2" class="caption" role="heading"><span class="caption-text">Setup</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="new_projects.html">New Projects</a></li>
 <li class="toctree-l1"><a class="reference internal" href="existing_projects.html">Existing Projects</a></li>
@@ -437,10 +440,20 @@
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Views &amp; Routes</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="views.html">Views</a></li>
-<li class="toctree-l1"><a class="reference internal" href="crud_routes.html">CRUD Routes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="lifecycle.html">Request Lifecycle &amp; Hooks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="react_admin.html">React Admin</a></li>
 <li class="toctree-l1"><a class="reference internal" href="typing.html">Type Annotations</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">CRUD Routes</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="crud_routes.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_list.html">List</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_get_one.html">Get One</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_create.html">Create</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_update.html">Update</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_delete.html">Delete</a></li>
+<li class="toctree-l1"><a class="reference internal" href="custom_routes.html">Custom Routes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="commits.html">Commits &amp; Hooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nested_routes.html">Nested Routes</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Requests &amp; Responses</span></p>
 <ul class="current nav bd-sidenav">
@@ -847,7 +860,7 @@ response.</p>
 <span id="one-route-shape"></span><h2>Change the shape of one route<a class="headerlink" href="#change-the-shape-of-one-route" title="Link to this heading">#</a></h2>
 <p>An envelope around a single object changes the HTTP contract. So does a list
 shape that no envelope model can express, such as a count in a header. For
-these, <a class="reference internal" href="lifecycle.html#replace-endpoint-method"><span class="std std-ref">replace the endpoint method</span></a> and declare the
+these, <a class="reference internal" href="crud_routes.html#replace-endpoint-method"><span class="std std-ref">replace the endpoint method</span></a> and declare the
 new shape on the replacement.</p>
 <p>For a <code class="docutils literal notranslate"><span class="pre">{&quot;data&quot;:</span> <span class="pre">...}</span></code> wrapper around a single object, write a generic class, and
 replace
@@ -927,7 +940,7 @@ status code of one route, use
 <a class="reference internal" href="api/views.html#fastapi_restly.views.modify_route" title="fastapi_restly.views.modify_route"><code class="xref py py-func docutils literal notranslate"><span class="pre">fr.modify_route</span></code></a>; see
 <a class="reference internal" href="crud_routes.html#modify-route"><span class="std std-ref">Change one option of a route</span></a>. To change the headers, replace
 that endpoint method; see
-<a class="reference internal" href="lifecycle.html#replace-endpoint-method"><span class="std std-ref">Replace the endpoint method of one route</span></a>.</p>
+<a class="reference internal" href="crud_routes.html#replace-endpoint-method"><span class="std std-ref">Replace an endpoint method</span></a>.</p>
 </section>
 <section id="change-how-one-object-is-serialized">
 <span id="to-single-response"></span><h2>Change how one object is serialized<a class="headerlink" href="#change-how-one-object-is-serialized" title="Link to this heading">#</a></h2>
@@ -954,6 +967,76 @@ response schema as it is, and converts an instance of any other class first.</p>
 <p>An override may return an instance of another model, such as the main
 schema. Only the fields of the response schema go out; see
 <a class="reference internal" href="#response-conversion">Internals</a> for how Restly converts it.</p>
+</div>
+</section>
+<section id="add-a-value-to-each-row">
+<span id="value-on-each-row"></span><h2>Add a value to each row<a class="headerlink" href="#add-a-value-to-each-row" title="Link to this heading">#</a></h2>
+<p>A value that needs no query, such as whether the caller may edit the row,
+goes in
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.to_single_response" title="fastapi_restly.views.BaseRestView.to_single_response"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_single_response</span></code></a>.
+Every response of the view passes there: one row, each row of a list, the
+row after a write, and a custom route that returns the row:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="k">def</span><span class="w"> </span><span class="nf">to_single_response</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">to_single_response</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">response</span><span class="o">.</span><span class="n">model_copy</span><span class="p">(</span><span class="n">update</span><span class="o">=</span><span class="p">{</span><span class="s2">"can_edit"</span><span class="p">:</span> <span class="n">obj</span><span class="o">.</span><span class="n">owner_id</span> <span class="o">==</span> <span class="n">Current</span><span class="o">.</span><span class="n">user_id</span><span class="p">()})</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">Current.user_id()</span></code> is the id of the caller
+(<a class="reference internal" href="context.html"><span class="std std-doc">Request Context</span></a>). The view’s main schema declares the
+field:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span>    <span class="n">can_edit</span><span class="p">:</span> <span class="n">fr</span><span class="o">.</span><span class="n">ReadOnly</span><span class="p">[</span><span class="nb">bool</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+</pre></div>
+</div>
+<p>It is not a column, so <code class="docutils literal notranslate"><span class="pre">ReadOnly</span></code> keeps it out of the create and update
+bodies.</p>
+<p>A value that needs a query, such as the number of tasks of a project, is SQL
+on the model. A <code class="docutils literal notranslate"><span class="pre">column_property</span></code> loads with the row, in the same SELECT. So
+a list of 50 projects still runs one query for the page:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="kn">import</span> <span class="n">func</span><span class="p">,</span> <span class="n">select</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.orm</span><span class="w"> </span><span class="kn">import</span> <span class="n">column_property</span>
+
+<span class="n">Project</span><span class="o">.</span><span class="n">task_count</span> <span class="o">=</span> <span class="n">column_property</span><span class="p">(</span>
+    <span class="n">select</span><span class="p">(</span><span class="n">func</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="n">Task</span><span class="o">.</span><span class="n">id</span><span class="p">))</span>
+    <span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">Task</span><span class="o">.</span><span class="n">project_id</span> <span class="o">==</span> <span class="n">Project</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">correlate_except</span><span class="p">(</span><span class="n">Task</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">scalar_subquery</span><span class="p">()</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>Declare <code class="docutils literal notranslate"><span class="pre">task_count:</span> <span class="pre">fr.ReadOnly[int]</span> <span class="pre">=</span> <span class="pre">0</span></code> in the main schema, as for
+<code class="docutils literal notranslate"><span class="pre">can_edit</span></code>. The save after a write loads the value again, so the create and
+update responses show it too. The list gets filters and a sort key for it,
+such as <code class="docutils literal notranslate"><span class="pre">?sort=-task_count</span></code>; see <a class="reference internal" href="filtering.html#filter-a-list"><span class="std std-ref">Filter a list</span></a>. The SaaS
+example sets two task counts on its
+projects this way
+(<a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/tasks/models.py"><code class="docutils literal notranslate"><span class="pre">app/tasks/models.py</span></code></a>),
+and <code class="docutils literal notranslate"><span class="pre">can_edit</span></code> in <code class="docutils literal notranslate"><span class="pre">ProjectView.to_single_response</span></code>
+(<a class="reference external" href="https://github.com/rjprins/fastapi-restly/blob/main/example-projects/saas/app/projects/views.py"><code class="docutils literal notranslate"><span class="pre">app/projects/views.py</span></code></a>).</p>
+<p>Other changes to a list have their own place. A <a class="reference internal" href="scopes.html#view-scope"><span class="std std-ref">scope</span></a> hides
+rows.
+<a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.apply_list_params" title="fastapi_restly.views.RestView.apply_list_params"><code class="xref py py-meth docutils literal notranslate"><span class="pre">apply_list_params</span></code></a>
+changes how the list params filter, sort and page
+(<a class="reference internal" href="filtering.html"><span class="std std-doc">Filtering, Sorting &amp; Pagination</span></a>).
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.get_loader_options" title="fastapi_restly.views.BaseRestView.get_loader_options"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_loader_options</span></code></a>
+loads more for each row (<a class="reference internal" href="relationships.html#eager-load-extra-relationships"><span class="std std-ref">Relationships</span></a>).</p>
+<div class="details admonition">
+<p class="admonition-title">Details</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">column_property</span></code> is set after both classes, because the expression names
+<code class="docutils literal notranslate"><span class="pre">Task</span></code>. Place it in the module of <code class="docutils literal notranslate"><span class="pre">Task</span></code> when that module imports <code class="docutils literal notranslate"><span class="pre">Project</span></code>.
+For type checkers, declare it on the class under <code class="docutils literal notranslate"><span class="pre">if</span> <span class="pre">TYPE_CHECKING:</span></code>, as
+<code class="docutils literal notranslate"><span class="pre">task_count:</span> <span class="pre">Mapped[int]</span> <span class="pre">=</span> <span class="pre">mapped_column(init=False)</span></code>. Every SELECT of the
+model computes a <code class="docutils literal notranslate"><span class="pre">column_property</span></code>, also <code class="docutils literal notranslate"><span class="pre">session.get()</span></code>. The list count does
+not: it counts the primary keys.</p>
+<p>A value that only one view shows can be a <code class="docutils literal notranslate"><span class="pre">query_expression()</span></code> on the model
+instead. The view fills it with <code class="docutils literal notranslate"><span class="pre">with_expression(...)</span></code> in
+<a class="reference internal" href="api/views.html#fastapi_restly.views.BaseRestView.get_loader_options" title="fastapi_restly.views.BaseRestView.get_loader_options"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_loader_options</span></code></a>.
+Every read of the view applies the loader options, and so does the save after
+a write. So the value is there in every response of the view, also after
+<code class="docutils literal notranslate"><span class="pre">POST</span></code>. Another view of the model, or <code class="docutils literal notranslate"><span class="pre">session.get()</span></code>, leaves it unloaded.</p>
+<p>A custom route that names another class in <code class="docutils literal notranslate"><span class="pre">response_model=</span></code> skips
+<code class="docutils literal notranslate"><span class="pre">to_single_response</span></code>: FastAPI builds the response from the object, so the
+value is missing. Declare the view’s response instead, as
+<a class="reference internal" href="#custom-route-response">The response of a custom route</a> explains.</p>
 </div>
 </section>
 <section id="use-a-different-schema-for-the-list-route">
@@ -1049,8 +1132,8 @@ other fields and types, so Restly cannot copy into it.</p></li>
 <ul class="simple">
 <li><p><a class="reference internal" href="schemas.html"><span class="std std-doc">Schemas &amp; Validation</span></a>: which fields the response
 schema has.</p></li>
-<li><p><a class="reference internal" href="lifecycle.html#replace-endpoint-method"><span class="std std-ref">Request Lifecycle &amp; Hooks</span></a>: how to replace an
-endpoint method.</p></li>
+<li><p><a class="reference internal" href="crud_routes.html#replace-endpoint-method"><span class="std std-ref">Replace an endpoint method</span></a>: how to replace the
+endpoint method of a CRUD route.</p></li>
 <li><p><a class="reference internal" href="filtering.html"><span class="std std-doc">Filtering, Sorting &amp; Pagination</span></a>: the page parameters
 that clients send.</p></li>
 <li><p><a class="reference internal" href="errors.html"><span class="std std-doc">Errors</span></a>: the error shape, which does not pass through the
@@ -1117,6 +1200,7 @@ relationship fields load, and <code class="docutils literal notranslate"><span c
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#change-the-shape-of-one-route">Change the shape of one route</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#change-the-shape-of-every-route">Change the shape of every route</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#change-how-one-object-is-serialized">Change how one object is serialized</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#add-a-value-to-each-row">Add a value to each row</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#use-a-different-schema-for-the-list-route">Use a different schema for the list route</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#internals">Internals</a><ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#how-restly-converts-the-value-of-to-single-response">How Restly converts the value of <code class="docutils literal notranslate"><span class="pre">to_single_response</span></code></a></li>

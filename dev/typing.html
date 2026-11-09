@@ -33,7 +33,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=ea69bafe" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=b715876a" />
   
   <!-- So that users can add custom icons -->
   <script defer src="_static/scripts/fontawesome.js?digest=18bd87630a240e9c25be"></script>
@@ -62,7 +62,7 @@
     <link rel="author" title="About these documents" href="about.html" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Schemas &amp; Validation" href="schemas.html" />
+    <link rel="next" title="CRUD Routes" href="crud_routes.html" />
     <link rel="prev" title="React Admin" href="react_admin.html" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -427,7 +427,10 @@
 <nav class="bd-docs-nav bd-links"
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
-  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Setup</span></p>
+  <div class="bd-toc-item navbar-nav">
+    <ul class="nav bd-sidenav">
+      <li class="toctree-l1"><a class="reference internal" href="guide.html#how-restly-works">How Restly works</a></li>
+    </ul><p aria-level="2" class="caption" role="heading"><span class="caption-text">Setup</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="new_projects.html">New Projects</a></li>
 <li class="toctree-l1"><a class="reference internal" href="existing_projects.html">Existing Projects</a></li>
@@ -437,10 +440,20 @@
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Views &amp; Routes</span></p>
 <ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="views.html">Views</a></li>
-<li class="toctree-l1"><a class="reference internal" href="crud_routes.html">CRUD Routes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="lifecycle.html">Request Lifecycle &amp; Hooks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="react_admin.html">React Admin</a></li>
 <li class="toctree-l1 current active"><a aria-current="page" class="current reference internal" href="#">Type Annotations</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">CRUD Routes</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="crud_routes.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_list.html">List</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_get_one.html">Get One</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_create.html">Create</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_update.html">Update</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crud_delete.html">Delete</a></li>
+<li class="toctree-l1"><a class="reference internal" href="custom_routes.html">Custom Routes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="commits.html">Commits &amp; Hooks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nested_routes.html">Nested Routes</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Requests &amp; Responses</span></p>
 <ul class="nav bd-sidenav">
@@ -658,7 +671,7 @@ starter project names the model and the schema
 </pre></div>
 </div>
 <p>The parameters help most where you override
-<a class="reference internal" href="lifecycle.html#view-request-steps"><span class="std std-ref">a view method</span></a>, usually a business method:
+<a class="reference internal" href="crud_routes.html#view-request-steps"><span class="std std-ref">a view method</span></a>, usually a business method:
 <code class="docutils literal notranslate"><span class="pre">create</span></code>, <code class="docutils literal notranslate"><span class="pre">update</span></code> or <code class="docutils literal notranslate"><span class="pre">delete</span></code>. Here is a view with all five parameters and
 typed overrides:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColumnElement</span>
@@ -709,7 +722,7 @@ handler <a class="reference internal" href="api/views.html#fastapi_restly.views.
 loads the row, and returns 404 if it does not exist, before <code class="docutils literal notranslate"><span class="pre">update</span></code> runs.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">where_id</span></code> gets the id from the path, so its type is the id type, the last
 parameter. It returns a SQL condition, a <code class="docutils literal notranslate"><span class="pre">ColumnElement[bool]</span></code>; see
-<a class="reference internal" href="lifecycle.html#natural-key-route"><span class="std std-ref">Look a row up by another key</span></a>.</p></li>
+<a class="reference internal" href="crud_get_one.html#natural-key-route"><span class="std std-ref">Find the row by another key</span></a>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">get_one</span></code> and <code class="docutils literal notranslate"><span class="pre">get_many</span></code> are final, so you call them and do not override
 them. A type checker reports an override, as it does for a handler. Their
 return types follow the model parameter: <code class="docutils literal notranslate"><span class="pre">await</span> <span class="pre">self.get_one(id)</span></code> is a
@@ -775,7 +788,7 @@ types, class attributes, and the view methods such as
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.create" title="fastapi_restly.views.RestView.create"><code class="xref py py-meth docutils literal notranslate"><span class="pre">create</span></code></a> and
 <a class="reference internal" href="api/views.html#fastapi_restly.views.RestView.handle_update" title="fastapi_restly.views.RestView.handle_update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">handle_update</span></code></a>.</p></li>
 <li><p>They help less with the
-<a class="reference internal" href="lifecycle.html#replace-endpoint-method"><span class="std std-ref">endpoint methods</span></a> (<code class="docutils literal notranslate"><span class="pre">*_endpoint</span></code>), whose
+<a class="reference internal" href="crud_routes.html#replace-endpoint-method"><span class="std std-ref">endpoint methods</span></a> (<code class="docutils literal notranslate"><span class="pre">*_endpoint</span></code>), whose
 signatures Restly fills in at registration.</p></li>
 <li><p>mypy gives a setting that a base view sets without an annotation the type
 of its value. So after <code class="docutils literal notranslate"><span class="pre">id_type</span> <span class="pre">=</span> <span class="pre">UUID</span></code> on a base view, <code class="docutils literal notranslate"><span class="pre">id_type</span> <span class="pre">=</span> <span class="pre">int</span></code> in a
@@ -807,8 +820,8 @@ not see this.</p>
 <ul class="simple">
 <li><p><a class="reference internal" href="view_reference.html#view-method-surface"><span class="std std-ref">View Reference</span></a>: the methods that the type
 parameters type, sorted by kind.</p></li>
-<li><p><a class="reference internal" href="lifecycle.html"><span class="std std-doc">Request Lifecycle &amp; Hooks</span></a>: which method to override for
-each change.</p></li>
+<li><p><a class="reference internal" href="crud_routes.html"><span class="std std-doc">CRUD Routes</span></a>: which method to override for each
+change.</p></li>
 <li><p><a class="reference internal" href="relationships.html"><span class="std std-doc">Relationships</span></a>: what
 <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.MustExist" title="fastapi_restly.schemas.MustExist"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.MustExist</span></code></a>,
 <a class="reference internal" href="api/schemas.html#fastapi_restly.schemas.IDRef" title="fastapi_restly.schemas.IDRef"><code class="xref py py-class docutils literal notranslate"><span class="pre">fr.IDRef</span></code></a> and
@@ -840,11 +853,11 @@ the response schema.</p></li>
       </div>
     </a>
     <a class="right-next"
-       href="schemas.html"
+       href="crud_routes.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Schemas &amp; Validation</p>
+        <p class="prev-next-title">CRUD Routes</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
