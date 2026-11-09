@@ -42,10 +42,10 @@ code than an override, and they also hold for the other routes.
 | Check one value | [A validator](#validation) |
 | The rows a client can update | [`scope`](#view-scope) |
 | Who may update | [`authorize`](#authorize-gate) |
-| Find the row by a slug | [`where_id`](#natural-key-route) |
+| How the route finds the row | [`where_id`](#natural-key-route) |
 | A value that every write sets | [`onupdate` on the column](#write-path-values) |
-| Refuse a change, check two fields | [`update`](#update-method) |
-| Write more rows in the same commit | [`before_action_commit`](#transaction-hooks) |
+| What the update does | [`update`](#update-method) |
+| Work before the commit | [`before_action_commit`](#transaction-hooks) |
 | Work after the commit | [`after_action_commit`](#transaction-hooks) |
 | A value in the response | [`to_single_response`](#value-on-each-row) |
 | Status code, path, dependencies | [`fr.modify_route`](#modify-route) |
