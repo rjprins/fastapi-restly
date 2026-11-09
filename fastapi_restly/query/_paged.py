@@ -149,8 +149,8 @@ def _completed_list_params(
         declared.__name__,
         __base__=declared,
         __module__=declared.__module__,
-        __validators__=pagination._own_list_params_validators(),
-        **pagination._own_list_params_fields(),
+        __validators__=pagination._list_params_validators(own=True),
+        **pagination._list_params_fields(own=True),
     )
     _COMPLETED_WITH[completed] = pagination
     return completed

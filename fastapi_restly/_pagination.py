@@ -136,31 +136,39 @@ class Pagination(abc.ABC):
         """
         return dataclasses.replace(self, **changes)
 
-    @abc.abstractmethod
+    def _page_fields(self) -> dict[str, tuple[str, dict[str, Any], int]]:
+        """The page fields of this style, by their Python name. Each has the
+        name in the URL, the arguments of its ``pydantic.Field``, and its
+        default."""
+        return {}
+
     def _query_params(self) -> tuple[str, ...]:
         """The names of the parameters of this style in the URL."""
+        return tuple(url for url, _, _ in self._page_fields().values())
 
-    @abc.abstractmethod
-    def _list_params_fields(self) -> dict[str, Any]:
-        """The fields that generated list params get, by their name in the URL."""
-
-    def _list_params_validators(self) -> dict[str, Any]:
-        """The model validators that generated list params get."""
-        return {}
-
-    def _own_list_params_fields(self) -> dict[str, Any]:
-        """The fields that list params of your own get in a view, by their
-        Python name. The alias is the name in the URL, so code reads one name
+    def _list_params_fields(self, own: bool = False) -> dict[str, Any]:
+        """The fields that list params get. Generated list params name a field
+        as the URL does. List params of your own (``own=True``) name it by its
+        Python name, with the name in the URL as alias, so code reads one name
         whatever the URL calls it."""
-        return {}
+        return {
+            (name if own else url): (
+                Annotated[
+                    int, pydantic.Field(alias=url if own else None, **field_args)
+                ],
+                default,
+            )
+            for name, (url, field_args, default) in self._page_fields().items()
+        }
 
-    def _own_list_params_validators(self) -> dict[str, Any]:
-        """The model validators that list params of your own get in a view."""
+    def _list_params_validators(self, own: bool = False) -> dict[str, Any]:
+        """The model validators that list params get, as for
+        :meth:`_list_params_fields`."""
         return {}
 
     def _own_list_params_keys(self) -> dict[str, str]:
         """The name in the URL of each field of list params of your own."""
-        return {}
+        return {name: url for name, (url, _, _) in self._page_fields().items()}
 
     def _row_limit_query_param(self) -> str | None:
         """The name in the URL of the parameter that limits the rows of a page,
@@ -267,72 +275,40 @@ class NumberedPagination(Pagination):
         )
         _check_envelope("NumberedPagination", self.envelope, self._page_info_sample())
 
-    def _query_params(self) -> tuple[str, ...]:
-        return (self.page_query_param, self.page_size_query_param)
-
     def _row_limit_query_param(self) -> str:
         return self.page_size_query_param
 
-    def _page_field(self, alias: str | None = None) -> tuple[Any, int]:
-        description = "1-based page number."
+    def _page_fields(self) -> dict[str, tuple[str, dict[str, Any], int]]:
+        page = "1-based page number."
         if self.max_page is not None:
-            description += f" At most {self.max_page}."
-        return (
-            Annotated[
-                int,
-                pydantic.Field(
-                    ge=1, le=self.max_page, alias=alias, description=description
-                ),
-            ],
-            1,
+            page += f" At most {self.max_page}."
+        page_size = (
+            f"Number of items per page (1–{self.max_page_size}). "
+            f"Defaults to {self.default_page_size}."
         )
-
-    def _page_size_field(self, alias: str | None = None) -> tuple[Any, int]:
-        return (
-            Annotated[
-                int,
-                pydantic.Field(
-                    ge=1,
-                    le=self.max_page_size,
-                    alias=alias,
-                    description=(
-                        f"Number of items per page (1–{self.max_page_size}). "
-                        f"Defaults to {self.default_page_size}."
-                    ),
-                ),
-            ],
-            self.default_page_size,
-        )
-
-    def _list_params_fields(self) -> dict[str, Any]:
         return {
-            self.page_query_param: self._page_field(),
-            self.page_size_query_param: self._page_size_field(),
+            "page": (
+                self.page_query_param,
+                {"ge": 1, "le": self.max_page, "description": page},
+                1,
+            ),
+            "page_size": (
+                self.page_size_query_param,
+                {"ge": 1, "le": self.max_page_size, "description": page_size},
+                self.default_page_size,
+            ),
         }
 
-    def _list_params_validators(self) -> dict[str, Any]:
+    def _list_params_validators(self, own: bool = False) -> dict[str, Any]:
         page_param, page_size_param = self._query_params()
+        page_attr, page_size_attr = (
+            ("page", "page_size") if own else self._query_params()
+        )
         return {
             "_validate_pagination_offset": _offset_validator(
-                page_param, page_size_param, page_param, page_size_param
+                page_attr, page_size_attr, page_param, page_size_param
             )
         }
-
-    def _own_list_params_fields(self) -> dict[str, Any]:
-        return {
-            "page": self._page_field(alias=self.page_query_param),
-            "page_size": self._page_size_field(alias=self.page_size_query_param),
-        }
-
-    def _own_list_params_validators(self) -> dict[str, Any]:
-        return {
-            "_validate_pagination_offset": _offset_validator(
-                "page", "page_size", self.page_query_param, self.page_size_query_param
-            )
-        }
-
-    def _own_list_params_keys(self) -> dict[str, str]:
-        return {"page": self.page_query_param, "page_size": self.page_size_query_param}
 
     def _apply(self, stmt: Select[Any], values: Mapping[str, Any]) -> Select[Any]:
         page_size = _get_int(values, self.page_size_query_param)
@@ -419,57 +395,31 @@ class OffsetPagination(Pagination):
         )
         _check_envelope("OffsetPagination", self.envelope, self._page_info_sample())
 
-    def _query_params(self) -> tuple[str, ...]:
-        return (self.limit_query_param, self.offset_query_param)
-
     def _row_limit_query_param(self) -> str:
         return self.limit_query_param
 
-    def _limit_field(self, alias: str | None = None) -> tuple[Any, int]:
-        return (
-            Annotated[
-                int,
-                pydantic.Field(
-                    ge=1,
-                    le=self.max_limit,
-                    alias=alias,
-                    description=(
-                        f"Largest number of items to return (1–{self.max_limit}). "
-                        f"Defaults to {self.default_limit}."
-                    ),
-                ),
-            ],
-            self.default_limit,
+    def _page_fields(self) -> dict[str, tuple[str, dict[str, Any], int]]:
+        limit = (
+            f"Largest number of items to return (1–{self.max_limit}). "
+            f"Defaults to {self.default_limit}."
         )
-
-    def _offset_field(self, alias: str | None = None) -> tuple[Any, int]:
         largest = _MAX_PAGINATION_OFFSET
-        description = "Number of items to skip. Defaults to 0."
+        offset = "Number of items to skip. Defaults to 0."
         if self.max_offset is not None:
             largest = min(self.max_offset, _MAX_PAGINATION_OFFSET)
-            description += f" At most {largest}."
-        return (
-            Annotated[
-                int,
-                pydantic.Field(ge=0, le=largest, alias=alias, description=description),
-            ],
-            0,
-        )
-
-    def _list_params_fields(self) -> dict[str, Any]:
+            offset += f" At most {largest}."
         return {
-            self.limit_query_param: self._limit_field(),
-            self.offset_query_param: self._offset_field(),
+            "limit": (
+                self.limit_query_param,
+                {"ge": 1, "le": self.max_limit, "description": limit},
+                self.default_limit,
+            ),
+            "offset": (
+                self.offset_query_param,
+                {"ge": 0, "le": largest, "description": offset},
+                0,
+            ),
         }
-
-    def _own_list_params_fields(self) -> dict[str, Any]:
-        return {
-            "limit": self._limit_field(alias=self.limit_query_param),
-            "offset": self._offset_field(alias=self.offset_query_param),
-        }
-
-    def _own_list_params_keys(self) -> dict[str, str]:
-        return {"limit": self.limit_query_param, "offset": self.offset_query_param}
 
     def _apply(self, stmt: Select[Any], values: Mapping[str, Any]) -> Select[Any]:
         limit = _get_int(values, self.limit_query_param)
@@ -519,12 +469,6 @@ class NoPagination(Pagination):
 
     def __post_init__(self) -> None:
         _check_envelope("NoPagination", self.envelope, self._page_info_sample())
-
-    def _query_params(self) -> tuple[str, ...]:
-        return ()
-
-    def _list_params_fields(self) -> dict[str, Any]:
-        return {}
 
     def _apply(self, stmt: Select[Any], values: Mapping[str, Any]) -> Select[Any]:
         return stmt
