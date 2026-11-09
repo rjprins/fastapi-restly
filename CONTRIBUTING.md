@@ -114,8 +114,8 @@ These rules apply to the docs, docstrings, error messages and the changelog.
 - Each topic has one page that owns it. Other pages link to that page; they
   do not explain the topic again.
 - Keep table cells short, so that no cell wraps to a second line at normal
-  zoom (100%). A cell names a thing in a few words. Put examples, reasons
-  and status codes in the section that the cell links to.
+  zoom (100%). A cell names a thing in a few words. Put examples and
+  reasons in the section that the cell links to.
 - The Guide front page (`docs/guide.md`) lists each Guide page in its group.
   Each page gets one line that names its main topics. The docs build writes
   `llms.txt` from this front page, and it fails when a Guide page has no
