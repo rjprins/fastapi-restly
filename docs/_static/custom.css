@@ -32,11 +32,31 @@
     .bd-header ul.bd-navbar-elements > li.nav-item > .nav-link {
         white-space: nowrap;
     }
+
+    /* The links stand in the middle of the space between the logo and the
+       search field. On a wide screen, the header then has two small gaps
+       instead of one large gap. The theme already gives the right margin. */
+    .bd-header .navbar-header-items__center {
+        margin-left: auto;
+    }
+
+    /* The header is narrower than the page (99rem), so that on a wide screen
+       the logo and the search field do not stand at the far edges. */
+    .bd-header .bd-header__inner.bd-page-width {
+        max-width: 80rem;
+    }
 }
 
+/* On a wide screen, the links get a larger font (the theme gives 1rem) and
+   more space between them. A narrower screen keeps the theme's size, so that
+   the header fits on one line. */
 @media (min-width: 84rem) {
     .bd-header ul.bd-navbar-elements > li.nav-item {
-        margin-inline: 0.25rem;
+        margin-inline: 0.5rem;
+    }
+
+    .bd-header ul.bd-navbar-elements > li.nav-item > .nav-link {
+        font-size: 1.0625rem;
     }
 }
 
